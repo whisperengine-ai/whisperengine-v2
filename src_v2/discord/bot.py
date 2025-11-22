@@ -265,6 +265,13 @@ class WhisperBot(commands.Bot):
                     knowledge_facts = ""
                     try:
                         knowledge_facts = await knowledge_manager.get_user_knowledge(user_id)
+                        
+                        # Fallback: If name is not in knowledge graph, use Discord display name
+                        if "name" not in knowledge_facts.lower():
+                            display_name = message.author.display_name
+                            knowledge_facts += f"\n- User's Discord Display Name: {display_name}"
+                            logger.info(f"Using Discord display name as fallback: {display_name}")
+
                     except Exception as e:
                         logger.error(f"Failed to retrieve knowledge facts: {e}")
 

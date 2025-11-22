@@ -32,6 +32,7 @@ Extract facts in the format: (Subject)-[PREDICATE]->(Object).
 
 Only extract facts that are explicitly stated and have long-term value (e.g., names, pets, location, preferences).
 Ignore transient states (e.g., "I am hungry", "I am walking").
+Ignore behavioral configuration preferences (e.g., "speak less", "use emojis", "change style") - these are handled by a separate system.
 
 If no extractable facts are found, return an empty facts list: {{"facts": []}}
 
