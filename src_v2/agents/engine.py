@@ -10,6 +10,8 @@ from src_v2.config.settings import settings
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.router import CognitiveRouter
+from src_v2.agents.classifier import ComplexityClassifier
+from src_v2.agents.reflective import ReflectiveAgent
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
@@ -36,6 +38,8 @@ class AgentEngine:
     ):
         self.llm = llm_client_dep or create_llm()
         self.router = CognitiveRouter()
+        self.classifier = ComplexityClassifier()
+        self.reflective_agent = ReflectiveAgent()
         
         # Dependency Injection or Default to Global Instances
         self.trust_manager = trust_manager_dep or trust_manager
@@ -59,26 +63,17 @@ class AgentEngine:
         chat_history = chat_history or []
         context_variables = context_variables or {}
         
-        # 1. Cognitive Routing (The "Brain")
-        # Only run if we have a user_id to look up memories for AND memory_context isn't already provided
-        if user_id and not context_variables.get("memory_context"):
+        # 1. Classify Intent (Simple vs Complex)
+        is_complex = False
+        if user_id:
             try:
-                router_result = await self.router.route_and_retrieve(user_id, user_message, chat_history)
-                memory_context = router_result.get("context", "")
-                reasoning = router_result.get("reasoning", "")
-                
-                if memory_context:
-                    logger.info(f"Injecting memory context. Reasoning: {reasoning}")
-                    # Inject into context_variables so it can be used in the prompt if {memory_context} exists,
-                    # or append to system prompt.
-                    context_variables["memory_context"] = memory_context
-                    context_variables["router_reasoning"] = reasoning
-                else:
-                    logger.debug(f"No memory context retrieved. Reasoning: {reasoning}")
+                is_complex_str = await self.classifier.classify(user_message, chat_history)
+                is_complex = (is_complex_str == "COMPLEX")
+                logger.info(f"Complexity Analysis: {is_complex_str}")
             except Exception as e:
-                logger.error(f"Cognitive Router failed: {e}")
+                logger.error(f"Complexity classifier failed: {e}")
 
-        # 2. Construct System Prompt
+        # 2. Construct Base System Prompt (Character + Evolution + Goals)
         # The character object already contains the full prompt loaded from the markdown file
         system_content = character.system_prompt
         
@@ -189,23 +184,50 @@ class AgentEngine:
                 
             except Exception as e:
                 logger.error(f"Failed to inject evolution/goal state: {e}")
+
+        # 3. Branching Logic
+        if is_complex and user_id:
+            logger.info("Engaging Reflective Mode")
+            # Reflective Agent handles its own tool usage and reasoning
+            return await self.reflective_agent.run(user_message, user_id, system_content)
+        
+        # 4. Fast Mode (Standard Flow)
+        
+        # 4.1 Cognitive Routing (The "Brain")
+        # Only run if we have a user_id to look up memories for AND memory_context isn't already provided
+        if user_id and not context_variables.get("memory_context"):
+            try:
+                router_result = await self.router.route_and_retrieve(user_id, user_message, chat_history)
+                memory_context = router_result.get("context", "")
+                reasoning = router_result.get("reasoning", "")
+                
+                if memory_context:
+                    logger.info(f"Injecting memory context. Reasoning: {reasoning}")
+                    # Inject into context_variables so it can be used in the prompt if {memory_context} exists,
+                    # or append to system prompt.
+                    context_variables["memory_context"] = memory_context
+                    context_variables["router_reasoning"] = reasoning
+                else:
+                    logger.debug(f"No memory context retrieved. Reasoning: {reasoning}")
+            except Exception as e:
+                logger.error(f"Cognitive Router failed: {e}")
         
         # Inject memory context if it exists and wasn't handled by a placeholder
         if context_variables.get("memory_context"):
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
             system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
-        # 3. Create Prompt Template
+        # 5. Create Prompt Template
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_content),
             MessagesPlaceholder(variable_name="chat_history"),
             MessagesPlaceholder(variable_name="user_input_message")
         ])
 
-        # 3. Create Chain
+        # 6. Create Chain
         chain = prompt | self.llm
 
-        # 4. Execute
+        # 7. Execute
         try:
             # Prepare input content
             if image_urls and settings.LLM_SUPPORTS_VISION:
@@ -237,7 +259,7 @@ class AgentEngine:
             
             response = await chain.ainvoke(inputs)
             
-            # 5. Log Prompt (if enabled)
+            # 8. Log Prompt (if enabled)
             if settings.ENABLE_PROMPT_LOGGING:
                 await self._log_prompt(
                     character_name=character.name,
