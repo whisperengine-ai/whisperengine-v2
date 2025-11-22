@@ -1,35 +1,39 @@
-# DEPRECATED: This file is being replaced by a multi-tier dependency system
-# Please use the new structure for clean cross-platform support:
-#
-# Core dependencies (shared):     requirements-core.txt
-# Platform optimizations:        requirements-platform.txt  
-# Discord bot specific:          requirements-discord.txt
-#
-# Installation:
-#   Discord Bot: ./scripts/install-discord.sh (or .bat for Windows)
-#
-# See DEPENDENCY_MANAGEMENT.md for full migration guide
-#
-# This file maintained for backward compatibility until migration complete
+# WhisperEngine 2.0 Dependencies
 
-# Minimal compatibility installation - use new structure instead
-# All versions locked for reproducible builds - UPDATED TO LATEST
-discord.py==2.6.3
-python-dotenv==1.1.1
-# chromadb==1.1.0  # REMOVED - Using Qdrant for vector memory system
-# REMOVED: spacy==3.8.7  # Replaced by vector-native approach
-textblob==0.18.0.post0  # Lightweight sentiment analysis (replaces RoBERTa)
-redis==6.4.0
-requests==2.32.5
-aiohttp==3.12.15
-fastembed>=0.7.0  # Fast, lightweight embeddings from Qdrant team (Python 3.13 compatible)
-numpy==2.3.3  # Updated from 2.3.2
-scikit-learn==1.7.2  # Machine learning algorithms for vector similarity and clustering
-pytest==8.4.2
+# Core
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+loguru>=0.7.0
+httpx>=0.25.0
 
-# InfluxDB for time series performance monitoring
-influxdb-client==1.49.0  # Time series database client for fidelity-first metrics
-pyyaml==6.0.1  # YAML parser for character goals and configuration files
+# Discord
+discord.py[voice]>=2.3.0
+PyNaCl>=1.5.0  # Required for voice
 
-# For new installations, use:
-# pip install -r requirements-core.txt
+# Voice
+elevenlabs>=0.2.27
+
+# AI & Orchestration
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-openai>=0.0.5
+llama-index>=0.9.0
+openai>=1.0.0
+
+# Database Drivers
+asyncpg>=0.29.0  # PostgreSQL
+qdrant-client>=1.7.0  # Qdrant
+neo4j>=5.15.0  # Neo4j
+influxdb-client>=1.39.0  # InfluxDB
+
+# Embeddings
+fastembed>=0.2.0
+
+# API
+fastapi>=0.109.0
+uvicorn>=0.27.0
+
+# Utilities
+alembic>=1.13.0  # Migrations
+tenacity>=8.2.0  # Retries
