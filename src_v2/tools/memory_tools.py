@@ -6,6 +6,7 @@ from loguru import logger
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
+from src_v2.config.settings import settings
 
 class SearchSummariesInput(BaseModel):
     query: str = Field(description="The topic or concept to search for in past conversation summaries.")
@@ -26,11 +27,15 @@ class SearchSummariesTool(BaseTool):
             if not results:
                 return "No relevant summaries found."
             
+            # Limit results for Reflective Mode to reduce token bloat
+            limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
+            results = results[:limit]
+            
             formatted = "\n".join([
                 f"- [Score: {r['meaningfulness']}/5] {r['content']} ({r['timestamp'][:10]})" 
                 for r in results
             ])
-            return f"Found Summaries:\n{formatted}"
+            return f"Found {len(results)} Summaries (top matches):\n{formatted}"
         except Exception as e:
             return f"Error searching summaries: {e}"
 
@@ -53,8 +58,12 @@ class SearchEpisodesTool(BaseTool):
             if not results:
                 return "No specific memories found."
             
+            # Limit results for Reflective Mode to reduce token bloat
+            limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
+            results = results[:limit]
+            
             formatted = "\n".join([f"- {r['content']}" for r in results])
-            return f"Found Episodes:\n{formatted}"
+            return f"Found {len(results)} Episodes (top matches):\n{formatted}"
         except Exception as e:
             return f"Error searching episodes: {e}"
 

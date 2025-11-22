@@ -16,7 +16,7 @@ class SummaryResult(BaseModel):
 
 class SummaryManager:
     def __init__(self):
-        self.llm = create_llm(temperature=0.3)
+        self.llm = create_llm(temperature=0.3, mode="utility")
         self.memory_manager = MemoryManager()
         self.parser = PydanticOutputParser(pydantic_object=SummaryResult)
         
@@ -64,7 +64,7 @@ RULES:
             logger.error(f"Failed to generate summary: {e}")
             return None
 
-    async def save_summary(self, session_id: str, result: SummaryResult):
+    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult):
         """
         Saves the summary to Postgres and Qdrant.
         """
@@ -104,6 +104,7 @@ RULES:
             # Call MemoryManager to save vector
             embedding_id = await self.memory_manager.save_summary_vector(
                 session_id=session_id,
+                user_id=user_id,
                 content=result.summary,
                 meaningfulness_score=result.meaningfulness_score,
                 emotions=result.emotions

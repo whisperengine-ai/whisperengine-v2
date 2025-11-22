@@ -1,7 +1,7 @@
 import re
 from typing import List, Dict, Any, Optional
 from loguru import logger
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
@@ -19,10 +19,8 @@ class ReflectiveAgent:
     Executes a ReAct (Reasoning + Acting) loop to handle complex queries.
     """
     def __init__(self):
-        # Use 'main' mode or a specific 'reflective' mode if we had one. 
-        # Using temperature=0.0 for precise tool usage reasoning.
-        self.llm = create_llm(temperature=0.0, mode="main")
-        self.max_steps = 5
+        self.llm = create_llm(temperature=0.1, mode="reflective")
+        self.max_steps = settings.REFLECTIVE_MAX_STEPS
 
     async def run(self, user_input: str, user_id: str, system_prompt: str) -> str:
         """
@@ -40,6 +38,7 @@ class ReflectiveAgent:
         # 3. Initialize Loop
         scratchpad = ""
         steps = 0
+        tools_used = 0
         
         logger.info(f"Starting Reflective Mode for user {user_id}")
 
@@ -56,22 +55,21 @@ class ReflectiveAgent:
             if isinstance(text, list):
                 text = " ".join([str(item) for item in text])
             
+            # Log raw output for debugging
+            logger.debug(f"Reflective Step {steps} raw output: {text[:300]}...")
+            
             # Append to scratchpad (the LLM's output)
             scratchpad += text
             
-            # Parse output
-            action_match = re.search(r"Action:\s*(.*?)\nAction Input:\s*(.*)", text, re.DOTALL)
-            
-            if "Final Answer:" in text:
-                final_answer = text.split("Final Answer:")[-1].strip()
-                logger.info(f"Reflective Mode finished in {steps} steps.")
-                return final_answer
+            # Parse output for Action
+            action_match = re.search(r"Action:\s*(.+?)\s*\nAction Input:\s*(.+?)(?:\n|$)", text, re.DOTALL)
             
             if action_match:
                 action = action_match.group(1).strip()
                 action_input = action_match.group(2).strip()
                 
-                logger.info(f"Reflective Step {steps}: {action} -> {action_input}")
+                logger.info(f"Reflective Step {steps}: {action} -> {action_input[:50]}...")
+                tools_used += 1
                 
                 if action in tool_map:
                     tool = tool_map[action]
@@ -85,12 +83,24 @@ class ReflectiveAgent:
                 
                 # Append Observation
                 scratchpad += f"\nObservation: {observation}\nThought:"
-            else:
-                # If no action and no final answer, the LLM might be confused or just thinking.
-                # We'll force it to continue or stop if it looks like it's done.
-                if steps == self.max_steps:
-                    logger.warning("Reflective Mode reached max steps without Final Answer.")
-                    return text # Return whatever we have
+                continue
+            
+            # Check for Final Answer AFTER checking for actions
+            if "Final Answer:" in text:
+                if tools_used == 0:
+                    logger.warning("Reflective Mode tried to finish without using tools. Forcing continuation.")
+                    scratchpad += "\n[SYSTEM: You must use at least one tool before providing Final Answer. Choose a tool now.]\nThought:"
+                    continue
+                    
+                final_answer = text.split("Final Answer:")[-1].strip()
+                logger.info(f"Reflective Mode finished in {steps} steps using {tools_used} tools.")
+                return final_answer
+            
+            # If no action and no final answer, the LLM might be confused or just thinking.
+            # We'll force it to continue or stop if it looks like it's done.
+            if steps == self.max_steps:
+                logger.warning("Reflective Mode reached max steps without Final Answer.")
+                return text # Return whatever we have
                 
                 # If it didn't output an action, maybe it's just monologuing. 
                 # We append a newline and hope it continues or we can prompt it to act.
@@ -109,28 +119,46 @@ class ReflectiveAgent:
         ]
 
     def _construct_prompt(self, base_system_prompt: str, tool_descriptions: str, tool_names: str) -> str:
-        # We need to incorporate the character's persona into the ReAct prompt
-        # so the Final Answer is in character.
+        # Include explicit examples to guide the LLM
         
-        return f"""{base_system_prompt}
+        return f"""You are an AI assistant that uses tools to answer questions accurately.
 
-You are currently in "Deep Thinking" mode to answer a complex user query.
-You need to use a reasoning loop to gather information before answering.
-
-TOOLS AVAILABLE:
+AVAILABLE TOOLS:
 {tool_descriptions}
 
-FORMAT INSTRUCTIONS:
-Use the following format:
+STRICT FORMAT - You must follow this format EXACTLY:
 
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final response to the user, written in your voice/persona.
+Thought: [describe what you need to do]
+Action: [ONE tool name from: {tool_names}]
+Action Input: [the input for that tool]
 
-Begin!
+After each tool returns an "Observation:", continue with another Thought/Action OR finish with:
+
+Thought: I have enough information now
+Final Answer: [response in the character voice below]
+
+EXAMPLE 1:
+Question: What did the user tell me about their dog?
+Thought: I need to search for past mentions of the user's dog
+Action: search_specific_memories
+Action Input: dog pet animal
+
+[You would then see an Observation with the results]
+
+EXAMPLE 2:
+Question: What topics have we discussed over the past week?
+Thought: I should search the conversation summaries for recent topics
+Action: search_archived_summaries
+Action Input: recent conversations topics discussed
+
+CRITICAL RULES:
+1. ALWAYS start with Action (not Final Answer) on your first response
+2. Output Action and Action Input on separate lines
+3. For questions about past conversations or "first conversation", use search_archived_summaries or search_specific_memories
+4. If tools return no results, acknowledge that in Final Answer
+
+CHARACTER CONTEXT (use this voice for Final Answer only):
+{base_system_prompt}
+
+Now begin!
 """
