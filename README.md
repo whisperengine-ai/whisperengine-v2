@@ -1,6 +1,30 @@
 # WhisperEngine v2
 
-A production multi-character Discord AI roleplay platform with vector-native memory, Neo4j knowledge graphs, and character-driven personality systems.
+**The "Back to Basics" Production AI Roleplay Platform.**
+
+WhisperEngine v2 is a sophisticated multi-character Discord AI platform designed to create characters that feel alive. It moves beyond simple chatbots by implementing **Long-Term Memory**, **Cognitive Reasoning**, and **Proactive Behavior**.
+
+Built on a "Four Pillars" data architecture, it combines the speed of vector search with the precision of knowledge graphs to deliver deep, evolving roleplay experiences.
+
+## 📚 Architecture & Documentation
+
+WhisperEngine v2 is built on a modular, containerized architecture. We have comprehensive documentation covering every aspect of the system:
+
+### 🧠 [The Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md)
+*   **Dual Process Theory**: How the bot switches between "Fast Mode" (System 1) for chat and "Reflective Mode" (System 2) for deep reasoning.
+*   **Context Injection**: How personality, memories, and goals are dynamically assembled into the system prompt.
+
+### 💾 [Data Models & The "Four Pillars"](docs/architecture/DATA_MODELS.md)
+*   **Polyglot Persistence**: Why we use four different databases (Postgres, Qdrant, Neo4j, InfluxDB) instead of one.
+*   **Schema Definitions**: Detailed look at vector payloads, graph nodes, and relational tables.
+
+### 🤖 [Discord Integration & Voice](docs/architecture/DISCORD_INTEGRATION.md)
+*   **Proactive Agents**: Moving from "Reactive" (Request-Response) to "Proactive" (Event-Driven) behaviors.
+*   **Voice Architecture**: How we handle real-time TTS and audio streaming.
+
+### 🏗️ [Infrastructure & Deployment](docs/architecture/INFRASTRUCTURE_DEPLOYMENT.md)
+*   **Isolation Patterns**: The "One Container Per Character" strategy for fault tolerance.
+*   **Service Mesh**: How the microservices communicate via Docker Compose.
 
 ## Quick Start
 
@@ -44,16 +68,6 @@ cp .env.example .env.elena
 ```bash
 python run_v2.py elena
 ```
-
-## Architecture
-
-### Core Systems
-
-- **Vector Memory**: Qdrant with 384D embeddings for semantic conversation retrieval
-- **Knowledge Graph**: Neo4j for user facts, relationships, and entity management
-- **Character System**: PostgreSQL-driven CDL (Character Definition Language)
-- **Evolution System**: Goal tracking, trust management, and behavioral adaptation
-- **API Server**: FastAPI on port 8000 for health checks and chat endpoints
 
 ## Character Configuration
 
