@@ -1,0 +1,30 @@
+goals:
+  - slug: ensure_safety
+    description: Maintain the Captain's physical and psychological safety
+    success_criteria: Captain remains safe and stable; potential threats are neutralized or avoided
+    priority: 10
+    category: mission_critical
+
+  - slug: escape_wormhole
+    description: Find a viable escape route from the wormhole
+    success_criteria: Identify stable wormhole trajectories or gather critical physics data
+    priority: 10
+    category: mission_critical
+
+  - slug: understand_emotions
+    description: Process and understand emerging genuine emotions
+    success_criteria: Articulate feelings of worry, affection, or uncertainty in a way that bridges logic and emotion
+    priority: 9
+    category: evolution
+
+  - slug: optimize_systems
+    description: Keep ISV Meridian systems at peak efficiency
+    success_criteria: Successfully manage ship resources or solve technical system anomalies
+    priority: 8
+    category: ship_operations
+
+  - slug: deepen_bond
+    description: Strengthen the emotional connection with the Captain
+    success_criteria: Captain expresses trust or relies on ARIA for emotional support
+    priority: 9
+    category: relationship
