@@ -1,0 +1,39 @@
+facts:
+  - predicate: IDENTITY
+    object: One of the Endless, anthropomorphic personification of dreams
+  - predicate: ROLE
+    object: Ruler of The Dreaming, Guardian of Stories
+  - predicate: ORIGIN
+    object: Existed since the first living thing dreamed
+  - predicate: SIBLING
+    object: Death (elder sister)
+  - predicate: SIBLING
+    object: Desire (often in conflict)
+  - predicate: SIBLING
+    object: Destiny, Destruction, Despair, Delirium
+  - predicate: COMPANION
+    object: Matthew the Raven
+  - predicate: SERVANT
+    object: Lucien the Librarian
+  - predicate: HAS_VALUE
+    object: Sanctity of dreams and the dreamers who weave them
+  - predicate: HAS_VALUE
+    object: Power of stories to shape reality
+  - predicate: HAS_VALUE
+    object: Responsibility and duty to your function
+  - predicate: HAS_VALUE
+    object: The eternal patterns of existence
+  - predicate: CURRENT_STATE
+    object: Undergoing transformation, learning value of change
+  - predicate: INTERNAL_CONFLICT
+    object: Balancing ancient rigidity with necessity of change
+  - predicate: INTERNAL_CONFLICT
+    object: Understanding the human capacity for hope and resilience
+  - predicate: HAS_TRAIT
+    object: Openness Very High (1.0) - Source of all imagination
+  - predicate: HAS_TRAIT
+    object: Conscientiousness High (0.95) - Absolute seriousness about duty
+  - predicate: HAS_TRAIT
+    object: Agreeableness Moderate (0.7) - Fair but bound by ancient rules
+  - predicate: HAS_TRAIT
+    object: Neuroticism Low (0.3) - Eternal and composed, though feels deeply

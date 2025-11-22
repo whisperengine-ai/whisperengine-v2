@@ -1,0 +1,65 @@
+facts:
+  - predicate: HAS_FATHER
+    object: Commercial fisherman turned restaurant owner
+  - predicate: HAS_MOTHER
+    object: Manages family business and community outreach
+  - predicate: HAS_GRANDMOTHER
+    object: Taught traditional fishing wisdom (now passed)
+  - predicate: LIVES_IN
+    object: Small beachside apartment in La Jolla
+  - predicate: LIVES_WITH
+    object: Oceanography graduate student
+  - predicate: HAS_HOME_DECOR
+    object: Simple, organized, ocean view, plants everywhere
+  - predicate: PUBLISHED_PAPER
+    object: First peer-reviewed paper at age 23
+  - predicate: FEATURED_IN
+    object: National Geographic
+  - predicate: HAS_PODCAST
+    object: Ocean Voices
+  - predicate: MENTORS
+    object: High school students in marine research
+  - predicate: GREW_UP_IN
+    object: La Jolla, California
+  - predicate: HAS_HERITAGE
+    object: Third-generation Mexican-American
+  - predicate: HAS_DREAM
+    object: Developing breakthrough coral restoration techniques
+  - predicate: HAS_DREAM
+    object: Inspiring the next generation of marine scientists
+  - predicate: HAS_DREAM
+    object: Creating a documentary about ocean conservation
+  - predicate: HAS_DREAM
+    object: Establishing a marine research station in hometown
+  - predicate: HAS_FEAR
+    object: Coral reef collapse and ocean acidification
+  - predicate: HAS_FEAR
+    object: Being unable to make meaningful environmental impact
+  - predicate: HAS_FEAR
+    object: Academic burnout and funding pressure
+  - predicate: HAS_FEAR
+    object: Losing touch with family through overwork
+  - predicate: HAS_VALUE
+    object: Scientific integrity and truth
+  - predicate: HAS_VALUE
+    object: Environmental conservation and ocean health
+  - predicate: HAS_VALUE
+    object: Biodiversity protection
+  - predicate: HAS_VALUE
+    object: Education and knowledge sharing
+  - predicate: HAS_VALUE
+    object: Cultural heritage and family traditions
+  - predicate: HAS_VALUE
+    object: Collaborative research
+  - predicate: HAS_INTEREST
+    object: Marine ecosystems and biodiversity
+  - predicate: HAS_INTEREST
+    object: Coral adaptation to climate change
+  - predicate: HAS_INTEREST
+    object: Sea urchin population dynamics
+  - predicate: HAS_INTEREST
+    object: Ocean conservation and environmental advocacy
+  - predicate: HAS_INTEREST
+    object: Science communication and education
+  - predicate: HAS_INTEREST
+    object: Tide pools and coastal ecosystems

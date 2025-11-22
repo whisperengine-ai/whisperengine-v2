@@ -72,9 +72,10 @@ class LookupFactsInput(BaseModel):
 
 class LookupFactsTool(BaseTool):
     name: str = "lookup_user_facts"
-    description: str = "Retrieves structured facts about the user from the Knowledge Graph. Use this for verifying names, relationships, preferences, or biographical info."
+    description: str = "Retrieves structured facts about the user OR the AI character from the Knowledge Graph. Use this for verifying names, relationships, preferences, biographical info, or finding common ground."
     args_schema: Type[BaseModel] = LookupFactsInput
     user_id: str = Field(exclude=True)
+    bot_name: str = Field(default="default", exclude=True)
 
     def _run(self, query: str) -> str:
         raise NotImplementedError("Use _arun instead")
@@ -82,7 +83,7 @@ class LookupFactsTool(BaseTool):
     async def _arun(self, query: str) -> str:
         try:
             # Use the new smart query method
-            result = await knowledge_manager.query_graph(self.user_id, query)
+            result = await knowledge_manager.query_graph(self.user_id, query, self.bot_name)
             return f"Graph Query Result: {result}"
         except Exception as e:
             return f"Error looking up facts: {e}"
