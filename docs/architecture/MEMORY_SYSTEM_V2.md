@@ -22,7 +22,7 @@ To address the "Latency vs. Depth" trade-off, the Agent operates in two modes:
 *   **Process**: Router -> Single Tool (if needed) -> Response.
 *   **Use Case**: Casual chat, greetings, simple questions.
 
-### 2. Reflective Mode (Deep Thinking)
+### 2. Reflective Mode (Deep Thinking) [Planned]
 *   **Goal**: Depth, philosophical consistency, complex reasoning.
 *   **Process**: Router -> Chain of Thought -> Multiple Tools -> Synthesis -> Response.
 *   **Trigger**: Complex user queries ("What do you think about the concept of soul?") or explicit user request.
@@ -43,12 +43,12 @@ The Agent uses a **Cognitive Router** to decide which tool to use.
 *   **Metadata**: Includes a **Meaningfulness Score** (1-5). High-score summaries are retained longer.
 *   **Aging**: Scores decay over time. Recent summaries are boosted.
 
-### 3. `search_specific_memories` (Episodic & Hybrid Search)
-*   **Source**: Qdrant (Collection: `episodes`)
+### 3. `search_specific_memories` (Episodic Search)
+*   **Source**: Qdrant (Collection: `whisperengine_memory_{bot_name}`)
 *   **Usage**: Finding specific details or quotes.
-*   **Mechanism**: **Hybrid Search** (Dense Vector + Sparse/Keyword).
-    *   *Why?* Vectors are great for concepts ("boat"), but Keywords are better for names ("The S.S. Minnow").
-*   **Aging**: Uses a "Recency Decay" formula.
+*   **Mechanism**: **Dense Vector Search** (Current).
+    *   *Planned*: Hybrid Search (Dense + Sparse) for better keyword matching.
+*   **Aging**: Uses a "Recency Decay" formula (Planned).
 
 ### 4. `manage_user_facts` (Semantic, Correction & Preferences)
 *   **Source**: Neo4j (Knowledge Graph)
@@ -78,7 +78,7 @@ The Agent uses a **Cognitive Router** to decide which tool to use.
     *   **Asynchronous Epiphanies**: If the reflection process finds a new connection ("Wait, user mentioned X last week and Y today..."), it can schedule a **Proactive Message** to the user (e.g., "I just realized something about what you said...").
     *   **Self-Validation**: The character reviews recent interactions to "learn" from mistakes.
 
-### 3. Memory Pruning (Aging)
+### 3. Memory Pruning (Aging) [Planned]
 *   **Trigger**: Weekly.
 *   **Action**: Move very old, low-relevance memories to "Cold Storage" (text file archive) and remove from active Vector Index to keep search fast and relevant.
 

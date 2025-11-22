@@ -23,7 +23,7 @@ This document tracks the progress of the "Back to Basics" rewrite.
 - [x] **Vector Storage**: 
     - Update `MemoryManager.add_message` to upsert vectors into Qdrant.
     - Store metadata: `user_id`, `role`, `content`, `timestamp`.
-    - **Named Vectors**: Implemented `content`, `emotion`, `semantic` vectors.
+    - **Vector Strategy**: Implemented Single Vector (Content) for simplicity and performance.
 - [x] **Semantic Retrieval**: 
     - Implement `MemoryManager.search_memories(query, user_id)`.
     - Filter by `user_id` to ensure privacy.
@@ -45,18 +45,6 @@ This document tracks the progress of the "Back to Basics" rewrite.
     - Implemented Cypher queries to merge nodes/relationships.
 - [x] **Context Injection**: 
     - Updated `src_v2/discord/bot.py` to inject facts into `{knowledge_context}`.
-
----
-
-## 🗣️ Phase 4: Multimodal Capabilities
-**Goal**: Voice interaction and image understanding.
-
-- [ ] **Voice Support**: 
-    - Integrate ElevenLabs API (using keys from `.env`).
-    - Implement Discord Voice Client to join channels and speak.
-- [ ] **Vision Support**: 
-    - Detect image attachments in Discord messages.
-    - Pass image URLs to multimodal LLMs (GPT-4o/Vision).
 
 ---
 
@@ -95,18 +83,18 @@ This document tracks the progress of the "Back to Basics" rewrite.
 
 ---
 
-## 🧬 Phase 7: Character Evolution & Feedback Loop
+## 🧬 Phase 7: Character Evolution & Feedback Loop (Completed)
 **Goal**: Enable the character to "grow" and "adapt" based on long-term interaction and feedback.
 
-- [ ] **Emoji Feedback Loop (RLHF)**:
+- [x] **Emoji Feedback Loop (RLHF)**:
     - Analyze `reaction_feedback` from InfluxDB.
     - Implement `MemoryScorer` to boost/penalize memories based on reactions (👍/👎).
     - **Auto-Tuning**: Adjust character "Temperature" or "Verbosity" based on aggregate feedback.
-- [ ] **Trust & Relationship System**:
+- [x] **Trust & Relationship System**:
     - Implement `TrustManager` to track `trust_score` per user.
     - **Dynamic Traits**: Unlock new personality traits (e.g., "Vulnerable", "Sarcastic") as trust increases.
     - **Relationship Milestones**: Trigger special events when trust thresholds are met (e.g., "Close Friend" status).
-- [ ] **Long-Term Goal Tracking**:
+- [x] **Long-Term Goal Tracking**:
     - Give characters "Life Goals" (e.g., "Finish my research paper").
     - Track progress based on conversation topics (e.g., User helps with research -> Progress +1).
 - [ ] **Session Analytics**:
@@ -145,15 +133,6 @@ This document tracks the progress of the "Back to Basics" rewrite.
 - [x] **Style Analyzer**: LLM-based critique of bot responses.
 - [x] **Automated Evaluation**: "Golden Scenario" testing.
 - [x] **Dynamic Preferences**: User-configurable verbosity and style.
-
----
-
-## ✅ Phase 12: Multimodal Capabilities (Voice & Vision) (Completed)
-**Goal**: Voice interaction and image understanding.
-
-- [x] **Voice Output (TTS)**: ElevenLabs integration.
-- [x] **Discord Voice**: Voice channel support.
-- [x] **Vision Support**: Image understanding and memory.
 
 ---
 

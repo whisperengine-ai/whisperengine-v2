@@ -3,10 +3,10 @@
 This phase focuses on "Memory Consolidation" - the process of turning raw conversation logs into high-level summaries and insights. This allows the bot to remember "what we talked about" over long periods without needing to retrieve every single message.
 
 ## Goals
-- [ ] **Session Management**: Logic to detect when a conversation starts and ends.
-- [ ] **Auto-Summarization**: Generate summaries of completed sessions.
-- [ ] **Reflection**: Extract high-level insights (e.g., "User seems stressed about work") from sessions.
-- [ ] **Consolidation**: Store summaries in Qdrant for semantic retrieval.
+- [x] **Session Management**: Logic to detect when a conversation starts and ends.
+- [x] **Auto-Summarization**: Generate summaries of completed sessions.
+- [x] **Reflection**: Extract high-level insights (e.g., "User seems stressed about work") from sessions.
+- [x] **Consolidation**: Store summaries in Qdrant for semantic retrieval.
 
 ## Tasks
 

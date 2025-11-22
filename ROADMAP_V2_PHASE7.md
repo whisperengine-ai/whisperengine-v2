@@ -37,11 +37,11 @@ This phase focuses on making the character "alive" by allowing it to learn from 
 - [x] Verify bot behavior changes based on these injections.
 
 ### 4. Long-Term Goal System (`src_v2/evolution/goals.py`)
-- [ ] Define `goals` in `character.yaml` (e.g., "Publish Research Paper").
-- [ ] Implement `GoalTracker`:
+- [x] Define `goals` in `character.yaml` (e.g., "Publish Research Paper").
+- [x] Implement `GoalTracker`:
     - Analyze conversation for "Goal Progress" (e.g., User gives advice on research).
     - Update `goal_progress` in DB.
-- [ ] **Goal-Driven Proactivity**:
+- [x] **Goal-Driven Proactivity**:
     - If goal progress is high, bot initiates conversation about the goal.
 
 ### 5. Analytics Dashboard (Grafana)
