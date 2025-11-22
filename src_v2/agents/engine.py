@@ -63,7 +63,7 @@ class AgentEngine:
         # Only run if we have a user_id to look up memories for AND memory_context isn't already provided
         if user_id and not context_variables.get("memory_context"):
             try:
-                router_result = await self.router.route_and_retrieve(user_id, user_message)
+                router_result = await self.router.route_and_retrieve(user_id, user_message, chat_history)
                 memory_context = router_result.get("context", "")
                 reasoning = router_result.get("reasoning", "")
                 

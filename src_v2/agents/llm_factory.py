@@ -5,20 +5,32 @@ from loguru import logger
 
 from src_v2.config.settings import settings
 
-def create_llm(temperature: Optional[float] = None) -> BaseChatModel:
+def create_llm(temperature: Optional[float] = None, mode: str = "main") -> BaseChatModel:
     """
     Creates a LangChain Chat Model based on the configuration.
     Supports: openai, openrouter, ollama, lmstudio
+    
+    Args:
+        temperature: The temperature to use for the model.
+        mode: "main" for the character model, "router" for the cognitive router.
     """
-    provider = settings.LLM_PROVIDER
-    api_key = settings.LLM_API_KEY.get_secret_value() if settings.LLM_API_KEY else "dummy"
-    base_url = settings.LLM_BASE_URL
-    model_name = settings.LLM_MODEL_NAME
+    # Determine which settings to use
+    if mode == "router" and settings.ROUTER_LLM_PROVIDER:
+        provider = settings.ROUTER_LLM_PROVIDER
+        api_key = settings.ROUTER_LLM_API_KEY.get_secret_value() if settings.ROUTER_LLM_API_KEY else "dummy"
+        base_url = settings.ROUTER_LLM_BASE_URL
+        model_name = settings.ROUTER_LLM_MODEL_NAME or "gpt-3.5-turbo" # Default fallback if provider is set but model isn't
+    else:
+        # Default to main settings
+        provider = settings.LLM_PROVIDER
+        api_key = settings.LLM_API_KEY.get_secret_value() if settings.LLM_API_KEY else "dummy"
+        base_url = settings.LLM_BASE_URL
+        model_name = settings.LLM_MODEL_NAME
     
     # Use default from settings if not provided, or 0.7 as fallback
     temp = temperature if temperature is not None else 0.7
 
-    logger.info(f"Initializing LLM: {provider} ({model_name}) Temp: {temp}")
+    logger.info(f"Initializing LLM ({mode}): {provider} ({model_name}) Temp: {temp}")
 
     if provider == "openai":
         return ChatOpenAI(
@@ -51,16 +63,6 @@ def create_llm(temperature: Optional[float] = None) -> BaseChatModel:
             base_url=base_url or "http://localhost:11434",
             model=model_name,
             temperature=temp
-        )
-
-    elif provider == "ollama":
-        # We can use ChatOllama or ChatOpenAI (Ollama supports OpenAI API now)
-        # Let's use ChatOpenAI for consistency if base_url is provided
-        return ChatOpenAI(
-            api_key="ollama",
-            base_url=base_url or "http://localhost:11434/v1",
-            model=model_name,
-            temperature=0.7
         )
     
     else:

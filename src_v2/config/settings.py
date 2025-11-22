@@ -33,6 +33,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LLM_MODEL_NAME", "LLM_CHAT_MODEL")
     )
     
+    # --- Router LLM Configuration (Optional - for faster/cheaper routing) ---
+    ROUTER_LLM_PROVIDER: Optional[Literal["openai", "openrouter", "ollama", "lmstudio"]] = None
+    ROUTER_LLM_API_KEY: Optional[SecretStr] = None
+    ROUTER_LLM_BASE_URL: Optional[str] = None
+    ROUTER_LLM_MODEL_NAME: Optional[str] = None
+
     # --- Discord ---
     DISCORD_TOKEN: SecretStr = Field(validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
 
