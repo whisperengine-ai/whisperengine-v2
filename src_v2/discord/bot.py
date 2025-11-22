@@ -89,6 +89,56 @@ class WhisperBot(commands.Bot):
         
         return chunks
 
+    async def update_status_loop(self):
+        await self.wait_until_ready()
+        status_index = 0
+        while not self.is_closed():
+            try:
+                if db_manager.postgres_pool:
+                    async with db_manager.postgres_pool.acquire() as conn:
+                        if status_index % 2 == 0:
+                            # Status 1: Friends & Memories
+                            friends_count = await conn.fetchval("""
+                                SELECT COUNT(*) FROM v2_user_relationships 
+                                WHERE character_name = $1 AND trust_score >= 20
+                            """, self.character_name)
+                            
+                            memories_count = await conn.fetchval("""
+                                SELECT COUNT(*) FROM v2_chat_history 
+                                WHERE character_name = $1
+                            """, self.character_name)
+                            
+                            status_text = f"with {friends_count} friends | {memories_count} memories"
+                        else:
+                            # Status 2: Goal Progress
+                            goal_stats = await conn.fetchrow("""
+                                SELECT 
+                                    COUNT(*) FILTER (WHERE p.status = 'completed') as completed,
+                                    COUNT(*) as total
+                                FROM v2_user_goal_progress p
+                                JOIN v2_goals g ON p.goal_id = g.id
+                                WHERE g.character_name = $1
+                            """, self.character_name)
+                            
+                            completed = goal_stats['completed'] or 0
+                            total = goal_stats['total'] or 0
+                            percentage = int((completed / total * 100)) if total > 0 else 0
+                            
+                            status_text = f"Goal Progress: {percentage}% ({completed}/{total})"
+                        
+                        await self.change_presence(
+                            activity=discord.Activity(
+                                type=discord.ActivityType.playing, 
+                                name=status_text
+                            )
+                        )
+                        logger.debug(f"Updated status to: {status_text}")
+                        status_index += 1
+            except Exception as e:
+                logger.error(f"Failed to update status: {e}")
+            
+            await asyncio.sleep(300) # Update every 5 minutes
+
     async def setup_hook(self):
         # Load extensions
         try:
@@ -110,6 +160,9 @@ class WhisperBot(commands.Bot):
             logger.info("Proactive Scheduler enabled and started.")
         else:
             logger.info("Proactive Scheduler disabled in settings.")
+
+        # Start status update loop
+        self.loop.create_task(self.update_status_loop())
 
     async def on_ready(self):
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
