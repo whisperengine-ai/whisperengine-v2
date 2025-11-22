@@ -1,5 +1,3 @@
-# WhisperEngine 2.0 - Phase 5
-
 ## ✅ Phase 5: Polish & Production (Completed)
 - [x] **Tooling**: Add "slash commands" for debugging (e.g., `/memory wipe`, `/debug`).
 - [x] **Error Handling**: Graceful fallbacks if LLM or DB is unreachable.

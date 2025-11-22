@@ -1,5 +1,3 @@
-# WhisperEngine 2.0 - Phase 3
-
 ## ✅ Phase 3: Knowledge & Reasoning (Neo4j) (Completed)
 **Goal**: Allow the bot to remember structured facts (e.g., "User owns a cat named Luna").
 

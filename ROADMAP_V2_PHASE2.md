@@ -1,5 +1,3 @@
-# WhisperEngine 2.0 - Phase 2
-
 ## ✅ Phase 2: Long-Term Memory (Vector RAG) (Completed)
 **Goal**: Give the bot "episodic memory" so it remembers details from past conversations.
 
