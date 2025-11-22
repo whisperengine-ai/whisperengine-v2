@@ -18,6 +18,7 @@ from src_v2.core.database import db_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_analyzer
 from src_v2.evolution.trust import trust_manager
+from src_v2.evolution.extractor import preference_extractor
 from src_v2.intelligence.reflection import reflection_engine
 from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
@@ -301,6 +302,16 @@ class WhisperBot(commands.Bot):
                         await knowledge_manager.process_user_message(user_id, original_message)
                     except Exception as e:
                         logger.error(f"Failed to process knowledge extraction: {e}")
+
+                    # Fire-and-forget Preference Extraction
+                    async def process_preferences(uid, msg, char_name):
+                        prefs = await preference_extractor.extract_preferences(msg)
+                        if prefs:
+                            logger.info(f"Detected preferences for {uid}: {prefs}")
+                            for key, value in prefs.items():
+                                await trust_manager.update_preference(uid, char_name, key, value)
+                                
+                    self.loop.create_task(process_preferences(user_id, original_message, self.character_name))
 
                     # 2.5 Check for Summarization
                     if session_id:

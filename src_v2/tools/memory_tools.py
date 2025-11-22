@@ -97,6 +97,34 @@ class UpdateFactsTool(BaseTool):
         except Exception as e:
             return f"Error updating facts: {e}"
 
+class UpdatePreferencesInput(BaseModel):
+    action: str = Field(description="The action to perform: 'update' or 'delete'.")
+    key: str = Field(description="The preference key (e.g., 'verbosity', 'nickname').")
+    value: Optional[str] = Field(description="The new value (only for 'update' action).", default=None)
+
+class UpdatePreferencesTool(BaseTool):
+    name: str = "update_user_preferences"
+    description: str = "Updates or deletes user preferences (configuration). Use this when the user explicitly changes a setting like 'stop calling me Captain' or 'change verbosity to short'."
+    args_schema: Type[BaseModel] = UpdatePreferencesInput
+    user_id: str = Field(exclude=True)
+    character_name: str = Field(exclude=True)
+
+    def _run(self, action: str, key: str, value: Optional[str] = None) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, action: str, key: str, value: Optional[str] = None) -> str:
+        try:
+            if action == "delete":
+                await trust_manager.delete_preference(self.user_id, self.character_name, key)
+                return f"Deleted preference: {key}"
+            elif action == "update":
+                await trust_manager.update_preference(self.user_id, self.character_name, key, value)
+                return f"Updated preference: {key} = {value}"
+            else:
+                return "Invalid action. Use 'update' or 'delete'."
+        except Exception as e:
+            return f"Error updating preferences: {e}"
+
 class GetEvolutionStateInput(BaseModel):
     """No parameters needed - retrieves current state for this user."""
     pass
