@@ -96,15 +96,15 @@ The engine dynamically assembles the system prompt at runtime. This ensures the 
 
 ```mermaid
 graph LR
-    subgraph "Static Sources"
-        CDL[Character Definition (.md)]
+    subgraph StaticSources["Static Sources"]
+        CDL[Character Definition]
     end
     
-    subgraph "Dynamic Sources"
+    subgraph DynamicSources["Dynamic Sources"]
         Vector[(Qdrant: Summaries)]
         Graph[(Neo4j: Facts)]
         SQL[(Postgres: Trust Score)]
-        Goals[(Goal Manager)]
+        Goals[Goal Manager]
     end
     
     CDL --> Builder[Prompt Builder]
@@ -113,7 +113,7 @@ graph LR
     SQL -->|Relationship Level| Builder
     Goals -->|Active Objective| Builder
     
-    Builder -->|Final System Prompt| LLM
+    Builder -->|Final System Prompt| LLM[LLM]
 ```
 
 **Injection Layers:**
