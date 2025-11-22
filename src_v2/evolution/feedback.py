@@ -298,7 +298,8 @@ class FeedbackAnalyzer:
                 .time(datetime.utcnow())
             
             db_manager.influxdb_write_api.write(
-                bucket=settings.INFLUXDB_BUCKET, 
+                bucket=settings.INFLUXDB_BUCKET,
+                org=settings.INFLUXDB_ORG,
                 record=point
             )
             

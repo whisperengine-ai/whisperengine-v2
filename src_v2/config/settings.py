@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     # --- Knowledge Graph ---
     ENABLE_RUNTIME_FACT_EXTRACTION: bool = True
 
+    # --- Preference Extraction ---
+    ENABLE_PREFERENCE_EXTRACTION: bool = True
+
     # --- Proactive Engagement ---
     ENABLE_PROACTIVE_MESSAGING: bool = False
 
