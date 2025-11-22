@@ -48,12 +48,18 @@ class ReflectiveAgent:
             # Prepare prompt with scratchpad
             current_prompt = f"{full_prompt}\n\nQuestion: {user_input}\nThought:{scratchpad}"
             
-            # Call LLM
+            # Call LLM with stop sequence to prevent hallucinating observations
             messages = [HumanMessage(content=current_prompt)]
-            response = await self.llm.ainvoke(messages)
+            # Bind stop sequence for this call
+            llm_with_stop = self.llm.bind(stop=["Observation:"])
+            response = await llm_with_stop.ainvoke(messages)
             text = response.content
             if isinstance(text, list):
                 text = " ".join([str(item) for item in text])
+            
+            # Safety: If stop sequence failed and Observation leaked, truncate it
+            if "Observation:" in text:
+                text = text.split("Observation:")[0].rstrip()
             
             # Log raw output for debugging
             logger.debug(f"Reflective Step {steps} raw output: {text[:300]}...")
@@ -62,6 +68,7 @@ class ReflectiveAgent:
             scratchpad += text
             
             # Parse output for Action
+            # We use a stricter regex that expects the text to end or hit a newline after input
             action_match = re.search(r"Action:\s*(.+?)\s*\nAction Input:\s*(.+?)(?:\n|$)", text, re.DOTALL)
             
             if action_match:

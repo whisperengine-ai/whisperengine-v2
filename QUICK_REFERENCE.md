@@ -20,6 +20,9 @@
 
 # Stop everything
 ./bot.sh down
+
+# Ingest Character Backgrounds (New)
+DISCORD_BOT_NAME=elena python scripts/ingest_character_facts.py
 ```
 
 ## 🚀 Deployment Patterns

@@ -1,4 +1,6 @@
 from typing import List, Optional
+import yaml
+from pathlib import Path
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -37,9 +39,13 @@ EXAMPLES:
 4. Q: "Do we have anything in common?"
    A: MATCH (u:User {{id: $user_id}})-[r1:FACT]->(e:Entity)<-[r2:FACT]-(c:Character {{name: $bot_name}}) RETURN e.name, r1.predicate
 
+5. Q: "pinky finger callus" (keyword search)
+   A: MATCH (n)-[r:FACT]->(o:Entity) WHERE ((n:User AND n.id = $user_id) OR (n:Character AND n.name = $bot_name)) AND (o.name CONTAINS 'pinky' OR o.name CONTAINS 'callus') RETURN labels(n)[0] as owner, o.name, r.predicate
+
 RULES:
 - ALWAYS use the parameter $user_id for the User node.
 - ALWAYS use the parameter $bot_name for the Character node.
+- If the query is ambiguous about the target (User vs Character), search BOTH.
 - Return the relevant properties (usually o.name or r.predicate).
 - Do NOT include markdown formatting (```cypher). Just the raw query.
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
@@ -107,8 +113,53 @@ RULES:
                 """)
 
                 logger.info("Knowledge Graph schema initialized.")
+            
+            # Auto-ingest character background if available
+            if settings.DISCORD_BOT_NAME:
+                await self.ingest_character_background(settings.DISCORD_BOT_NAME)
+
         except Exception as e:
             logger.error(f"Failed to initialize Knowledge Graph schema: {e}")
+
+    async def ingest_character_background(self, bot_name: str):
+        """
+        Ingests character background facts from characters/<bot_name>/background.yaml
+        """
+        yaml_path = Path(f"characters/{bot_name}/background.yaml")
+        if not yaml_path.exists():
+            logger.debug(f"No background.yaml found for {bot_name}. Skipping ingestion.")
+            return
+
+        try:
+            with open(yaml_path, "r") as f:
+                data = yaml.safe_load(f)
+            
+            facts = data.get("facts", [])
+            if not facts:
+                return
+
+            logger.info(f"Ingesting {len(facts)} background facts for {bot_name}...")
+            
+            async with db_manager.neo4j_driver.session() as session:
+                # Ensure Character Node exists
+                await session.run("MERGE (c:Character {name: $name})", name=bot_name)
+                
+                for fact in facts:
+                    predicate = fact["predicate"]
+                    obj = fact["object"]
+                    
+                    # Create Entity and Relationship (Idempotent MERGE)
+                    query = """
+                    MATCH (c:Character {name: $name})
+                    MERGE (e:Entity {name: $obj})
+                    MERGE (c)-[r:FACT {predicate: $predicate}]->(e)
+                    """
+                    await session.run(query, name=bot_name, obj=obj, predicate=predicate)
+            
+            logger.info(f"Successfully ingested background for {bot_name}.")
+
+        except Exception as e:
+            logger.error(f"Failed to ingest background for {bot_name}: {e}")
 
     async def query_graph(self, user_id: str, question: str, bot_name: str = "default") -> str:
         """
