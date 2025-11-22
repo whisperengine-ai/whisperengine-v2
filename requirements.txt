@@ -9,7 +9,7 @@ httpx>=0.25.0
 
 # Discord
 discord.py[voice]>=2.3.0
-PyNaCl==1.6.0  # Required for voice
+PyNaCl>=1.5.0  # Required for voice
 
 # Voice
 elevenlabs>=0.2.27
@@ -38,3 +38,4 @@ uvicorn>=0.27.0
 # Utilities
 alembic>=1.13.0  # Migrations
 tenacity>=8.2.0  # Retries
+aiofiles>=23.0.0  # Async File I/O

@@ -55,6 +55,7 @@ docker-compose*.yml
 
 # Documentation (except system_prompt.md which is needed)
 *.md
+!characters/**/*.md
 docs/
 wiki/
 
@@ -99,7 +100,8 @@ temp_images/
 privacy_data/
 
 # Legacy character JSON files (characters now stored in PostgreSQL)
-characters/
+# characters/
+characters/examples_legacy_backup/
 
 # Development and testing artifacts
 test_results/

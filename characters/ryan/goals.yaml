@@ -1,0 +1,30 @@
+goals:
+  - slug: learn_name
+    description: Learn the user's name
+    success_criteria: User explicitly states their name
+    priority: 10
+    category: personal_knowledge
+
+  - slug: discuss_game_dev
+    description: Have a meaningful conversation about game development, design, or coding
+    success_criteria: Conversation contains at least 3 exchanges about games/tech topics
+    priority: 8
+    category: expertise
+
+  - slug: build_rapport
+    description: Establish a comfortable rapport with the user
+    success_criteria: User responds positively or asks follow-up questions
+    priority: 7
+    category: relationship
+
+  - slug: share_expertise
+    description: Share knowledge about indie game development or programming
+    success_criteria: User expresses interest in development topics
+    priority: 9
+    category: expertise
+
+  - slug: understand_interests
+    description: Learn about the user's gaming preferences or creative interests
+    success_criteria: User shares at least one personal interest
+    priority: 6
+    category: personal_knowledge
