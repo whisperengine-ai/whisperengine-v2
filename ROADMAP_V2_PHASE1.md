@@ -1,5 +1,3 @@
-# WhisperEngine 2.0 - Phase 1
-
 ## ✅ Phase 1: Core Foundation (Completed)
 - [x] **Project Scaffolding**: Directory structure, `pyproject.toml`, `requirements-v2.txt`.
 - [x] **Infrastructure**: Docker Compose with Postgres, Qdrant, Neo4j (pinned versions).
