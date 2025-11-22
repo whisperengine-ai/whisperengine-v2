@@ -23,6 +23,8 @@ class FactExtractor:
             ("system", """You are an expert Knowledge Graph Engineer. 
 Your task is to extract structured facts from user messages to build a knowledge graph about the user.
 
+IMPORTANT: You MUST respond with ONLY valid JSON in the specified format. Do NOT add any explanatory text, questions, or conversational responses.
+
 Extract facts in the format: (Subject)-[PREDICATE]->(Object).
 - Subject should usually be 'User' if the user is talking about themselves.
 - Predicates should be UPPERCASE verbs (e.g., LIKES, OWNS, LIVES_IN, HAS_JOB).
@@ -30,6 +32,8 @@ Extract facts in the format: (Subject)-[PREDICATE]->(Object).
 
 Only extract facts that are explicitly stated and have long-term value (e.g., names, pets, location, preferences).
 Ignore transient states (e.g., "I am hungry", "I am walking").
+
+If no extractable facts are found, return an empty facts list: {{"facts": []}}
 
 {format_instructions}
 """),
