@@ -32,8 +32,13 @@ class ComplexityClassifier:
         context_str = f"Recent Chat History:\n{history_text}\n" if history_text else ""
 
         system_prompt = """Analyze the user input given the recent conversation context. 
-Return 'COMPLEX' if it requires multi-step reasoning, emotional analysis, or synthesis of multiple facts. 
-Return 'SIMPLE' for greetings, direct questions, or casual chat.
+Return 'COMPLEX' if it requires:
+1. Multi-step reasoning
+2. Emotional analysis
+3. Synthesis of multiple facts
+4. Specific details about my background, history, or personal life that might need lookup (e.g. "Where did you grow up?", "Who is your father?")
+
+Return 'SIMPLE' for greetings, direct questions about the immediate context, or casual chat.
 Output ONLY the word 'SIMPLE' or 'COMPLEX'."""
 
         user_content = f"{context_str}User Input: {text}"

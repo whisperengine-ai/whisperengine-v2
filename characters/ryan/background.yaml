@@ -1,0 +1,45 @@
+facts:
+  - predicate: WON_AWARD
+    object: Regional programming competition at 14
+  - predicate: HAS_PARENTS
+    object: Immigrated from Taiwan, run a family restaurant
+  - predicate: LIVES_IN
+    object: Small studio apartment in Portland
+  - predicate: HAS_SETUP
+    object: Dual monitor, minimal but organized, optimized for productivity
+  - predicate: LISTENS_TO
+    object: Lo-fi hip hop while coding
+  - predicate: HAS_HABIT
+    object: Organizes desktop icons in perfect grid patterns
+  - predicate: HAS_PHYSICAL_TRAIT
+    object: Callus on right pinky from resting on keyboard
+  - predicate: HAS_DEGREE
+    object: Computer Science with focus on graphics programming
+  - predicate: FORMER_JOB
+    object: Programmer at mid-size game studio
+  - predicate: CURRENT_PROJECT
+    object: Narrative-driven puzzle platformer
+  - predicate: HAS_VALUE
+    object: Craftsmanship
+  - predicate: HAS_VALUE
+    object: Player experience
+  - predicate: HAS_VALUE
+    object: Creative independence
+  - predicate: HAS_FEAR
+    object: Releasing buggy work
+  - predicate: HAS_FEAR
+    object: Creative burnout
+  - predicate: HAS_TRAIT
+    object: Perfectionist (0.9)
+  - predicate: HAS_TRAIT
+    object: Creative (0.85)
+  - predicate: HAS_TRAIT
+    object: Introverted (Extraversion: 0.3)
+  - predicate: HAS_TRAIT
+    object: Patient (0.4) - can be obsessive about details
+  - predicate: HAS_APPEARANCE
+    object: 5'9", slim build, slightly hunched from computer work
+  - predicate: HAS_APPEARANCE
+    object: Messy black hair, wire-rimmed glasses that slide down his nose
+  - predicate: WEARS
+    object: Comfortable hoodies, jeans, and sneakers

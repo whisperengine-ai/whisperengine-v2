@@ -15,6 +15,7 @@ from src_v2.agents.reflective import ReflectiveAgent
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
+from src_v2.knowledge.manager import knowledge_manager
 
 # Define Trait Behaviors
 TRAIT_BEHAVIORS = {
@@ -149,12 +150,19 @@ class AgentEngine:
                             else:
                                 evolution_context += f"- style: {s}\n"
 
-                        # Add other preferences generically
-                        for key, value in prefs.items():
-                            if key not in ['verbosity', 'style']:
-                                evolution_context += f"- {key}: {value}\n"
-                                
-                        evolution_context += "(Strictly adhere to these configuration settings.)\n"
+                    # 2.6 Inject Common Ground & Background Relevance (Knowledge Graph)
+                    try:
+                        # Check for shared interests/facts
+                        common_ground = await knowledge_manager.find_common_ground(user_id, character.name)
+                        if common_ground:
+                            evolution_context += f"\n[COMMON GROUND]\n{common_ground}\n(You share these things with the user. Feel free to reference them naturally.)\n"
+                        
+                        # Check if user message triggers bot background
+                        relevant_bg = await knowledge_manager.search_bot_background(character.name, user_message)
+                        if relevant_bg:
+                            evolution_context += f"\n[RELEVANT BACKGROUND]\n{relevant_bg}\n(The user mentioned something related to your background. You can bring this up.)\n"
+                    except Exception as e:
+                        logger.error(f"Failed to inject knowledge context: {e}")
 
                     system_content += evolution_context
                     logger.debug(f"Injected evolution state: {relationship['level']} (Trust: {relationship['trust_score']})")

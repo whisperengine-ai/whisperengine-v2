@@ -15,11 +15,14 @@ class KnowledgeManager:
         
         self.cypher_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Neo4j Cypher developer.
-Your task is to convert a natural language question into a Cypher query to retrieve information about a user.
+Your task is to convert a natural language question into a Cypher query to retrieve information about a user OR the AI character.
 
 SCHEMA:
-- Nodes: (:User {{id: $user_id}}), (:Entity {{name: "..."}})
-- Relationships: [:FACT {{predicate: "..."}}] (e.g., predicate="LIKES", "OWNS", "LIVES_IN")
+- Nodes: 
+    - (:User {{id: $user_id}})
+    - (:Character {{name: $bot_name}})
+    - (:Entity {{name: "..."}})
+- Relationships: [:FACT {{predicate: "..."}}] (e.g., predicate="LIKES", "OWNS", "LIVES_IN", "HAS_BACKGROUND")
 
 EXAMPLES:
 1. Q: "What do I like?"
@@ -28,11 +31,15 @@ EXAMPLES:
 2. Q: "Where do I live?"
    A: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'LIVES_IN' RETURN o.name
 
-3. Q: "Do I have any pets?"
-   A: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'OWNS' OR o.name CONTAINS 'dog' OR o.name CONTAINS 'cat' RETURN r.predicate, o.name
+3. Q: "Where did you grow up?" (asking the bot)
+   A: MATCH (c:Character {{name: $bot_name}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'GREW_UP_IN' OR r.predicate = 'ORIGIN' RETURN o.name
+
+4. Q: "Do we have anything in common?"
+   A: MATCH (u:User {{id: $user_id}})-[r1:FACT]->(e:Entity)<-[r2:FACT]-(c:Character {{name: $bot_name}}) RETURN e.name, r1.predicate
 
 RULES:
 - ALWAYS use the parameter $user_id for the User node.
+- ALWAYS use the parameter $bot_name for the Character node.
 - Return the relevant properties (usually o.name or r.predicate).
 - Do NOT include markdown formatting (```cypher). Just the raw query.
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
@@ -103,7 +110,7 @@ RULES:
         except Exception as e:
             logger.error(f"Failed to initialize Knowledge Graph schema: {e}")
 
-    async def query_graph(self, user_id: str, question: str) -> str:
+    async def query_graph(self, user_id: str, question: str, bot_name: str = "default") -> str:
         """
         Generates and executes a Cypher query based on a natural language question.
         """
@@ -119,7 +126,7 @@ RULES:
 
             # 2. Execute
             async with db_manager.neo4j_driver.session() as session:
-                result = await session.run(cypher_query, user_id=user_id)
+                result = await session.run(cypher_query, user_id=user_id, bot_name=bot_name)
                 records = await result.data()
                 
                 if not records:
@@ -162,6 +169,99 @@ RULES:
         except Exception as e:
             logger.error(f"Fact correction failed: {e}")
             return "Failed to update fact."
+
+    async def find_common_ground(self, user_id: str, bot_name: str) -> str:
+        """
+        Finds shared facts or entities between the user and the bot.
+        Searches for:
+        1. Direct connections (User -> Entity <- Bot)
+        2. Shared categories (User -> Entity -> Category <- Entity <- Bot)
+        """
+        if not db_manager.neo4j_driver:
+            return ""
+
+        # 1. Direct Connections
+        query_direct = """
+        MATCH (u:User {id: $user_id})-[r1:FACT]->(e:Entity)<-[r2:FACT]-(c:Character {name: $bot_name})
+        RETURN e.name, r1.predicate, r2.predicate, "direct" as type
+        LIMIT 3
+        """
+        
+        # 2. Shared Categories/Concepts (2-hop)
+        # e.g. User likes "Star Wars" (Sci-Fi) and Bot likes "Dune" (Sci-Fi)
+        # Assuming we have some category structure or shared properties
+        query_category = """
+        MATCH (u:User {id: $user_id})-[r1:FACT]->(e1:Entity)-[:IS_A|BELONGS_TO]->(cat:Entity)<-[:IS_A|BELONGS_TO]-(e2:Entity)<-[r2:FACT]-(c:Character {name: $bot_name})
+        WHERE e1 <> e2
+        RETURN cat.name as category, e1.name as user_item, e2.name as bot_item, "category" as type
+        LIMIT 2
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                # Run Direct Check
+                result_direct = await session.run(query_direct, user_id=user_id, bot_name=bot_name)
+                records_direct = await result_direct.data()
+                
+                connections = []
+                for r in records_direct:
+                    connections.append(f"- You both connect to '{r['e.name']}' (User: {r['r1.predicate']}, You: {r['r2.predicate']})")
+                
+                # Run Category Check (if we have room)
+                if len(connections) < 3:
+                    result_cat = await session.run(query_category, user_id=user_id, bot_name=bot_name)
+                    records_cat = await result_cat.data()
+                    for r in records_cat:
+                        connections.append(f"- You both like {r['category']} (User: {r['user_item']}, You: {r['bot_item']})")
+
+                if not connections:
+                    return ""
+                
+                return "\n".join(connections)
+        except Exception as e:
+            logger.error(f"Common ground check failed: {e}")
+            return ""
+
+    async def search_bot_background(self, bot_name: str, user_message: str) -> str:
+        """
+        Checks if the user's message mentions anything related to the bot's background.
+        """
+        if not db_manager.neo4j_driver:
+            return ""
+
+        # Simple keyword extraction (split by space, filter small words)
+        keywords = [w for w in user_message.lower().split() if len(w) > 4]
+        if not keywords:
+            return ""
+
+        # Construct a dynamic OR query for keywords
+        # This is a basic implementation. A full-text index would be better for production.
+        where_clause = " OR ".join([f"toLower(e.name) CONTAINS '{k}'" for k in keywords])
+        
+        query = f"""
+        MATCH (c:Character {{name: $bot_name}})-[r:FACT]->(e:Entity)
+        WHERE {where_clause}
+        RETURN r.predicate, e.name
+        LIMIT 3
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(query, bot_name=bot_name)
+                records = await result.data()
+                
+                if not records:
+                    return ""
+                
+                hits = []
+                for r in records:
+                    hits.append(f"- Relevant to your background: {r['r.predicate']} {r['e.name']}")
+                
+                return "\n".join(hits)
+        except Exception as e:
+            # Syntax error in query construction or connection issue
+            # logger.error(f"Background search failed: {e}") 
+            return ""
 
     async def process_user_message(self, user_id: str, message: str):
         """
