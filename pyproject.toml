@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "whisperengine"
-version = "1.0.40"
+version = "2.0.0"
 description = "WhisperEngine - Privacy-first AI conversation and roleplay platform"
 authors = [{name = "whisperengine-ai", email = "contact@whisperengine.ai"}]
 license = {text = "GPL-3.0-or-later"}
@@ -80,20 +80,20 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/whisperengine-ai/whisperengine"
-Repository = "https://github.com/whisperengine-ai/whisperengine.git"
-Issues = "https://github.com/whisperengine-ai/whisperengine/issues"
+Homepage = "https://github.com/whisperengine-ai/whisperengine-v2"
+Repository = "https://github.com/whisperengine-ai/whisperengine-v2.git"
+Issues = "https://github.com/whisperengine-ai/whisperengine-v2/issues"
 
 [project.scripts]
-whisperengine = "src.main:main"
-whisperengine-bot = "src.main:main"
+whisperengine = "src_v2.main:main"
+whisperengine-bot = "src_v2.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src_v2*"]
 
 [tool.setuptools.package-data]
-"src.config" = ["*.md", "*.example"]
+"src_v2.config" = ["*.md", "*.example"]
 
 [tool.black]
 line-length = 100
@@ -126,7 +126,7 @@ select = ["E9", "F63", "F7", "F82"]  # Only syntax errors and undefined names
 ignore = []
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src_v2"]
 omit = [
     "*/tests/*",
     "*/test_*",
@@ -145,8 +145,8 @@ exclude_lines = [
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --strict-markers --strict-config --cov=src --cov-report=term-missing --cov-report=html"
-testpaths = ["tests"]
+addopts = "-ra -q --strict-markers --strict-config --cov=src_v2 --cov-report=term-missing --cov-report=html"
+testpaths = ["tests_v2"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 markers = [
@@ -177,8 +177,6 @@ strict_equality = true
 show_error_codes = true
 # Exclude deprecated files
 exclude = [
-    "src/platforms/universal_chat_DEPRECATED.py",
-    "src/core/message_processor_fix.py",
 ]
 
 [[tool.mypy.overrides]]

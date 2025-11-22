@@ -26,7 +26,7 @@ def upgrade() -> None:
     if not inspector.has_table('v2_conversation_sessions'):
         op.create_table(
             'v2_conversation_sessions',
-            sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+            sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
             sa.Column('user_id', sa.String(), nullable=False),
             sa.Column('character_name', sa.String(), nullable=False),
             sa.Column('start_time', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -46,7 +46,7 @@ def upgrade() -> None:
     if not inspector.has_table('v2_summaries'):
         op.create_table(
             'v2_summaries',
-            sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+            sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
             sa.Column('session_id', sa.UUID(), nullable=False), # FK added later or loosely coupled
             sa.Column('content', sa.Text(), nullable=False),
             sa.Column('meaningfulness_score', sa.Integer(), nullable=True),

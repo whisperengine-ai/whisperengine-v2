@@ -26,6 +26,14 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+### Start Infrastructure
+
+Start the required databases (PostgreSQL, Qdrant, Neo4j, InfluxDB) using Docker Compose:
+
+```bash
+docker compose -f docker-compose.v2.yml up -d
+```
+
 # Configure environment
 cp .env.example .env.elena
 # Edit .env.elena with your configuration

@@ -26,7 +26,7 @@ def upgrade() -> None:
     if not inspector.has_table('v2_goals'):
         op.create_table(
             'v2_goals',
-            sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+            sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
             sa.Column('character_name', sa.String(length=100), nullable=False),
             sa.Column('slug', sa.String(length=100), nullable=False),
             sa.Column('description', sa.Text(), nullable=False),
@@ -42,7 +42,7 @@ def upgrade() -> None:
     if not inspector.has_table('v2_user_goal_progress'):
         op.create_table(
             'v2_user_goal_progress',
-            sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+            sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
             sa.Column('user_id', sa.String(length=255), nullable=False),
             sa.Column('goal_id', sa.UUID(), nullable=False),
             sa.Column('status', sa.String(length=50), server_default='not_started', nullable=False),
@@ -54,11 +54,11 @@ def upgrade() -> None:
             sa.UniqueConstraint('user_id', 'goal_id', name='unique_user_goal_progress')
         )
 
-    # V2 USER RELATIONSHIPS (Trust)
+    # V2 USER RELATIONSHIPS
     if not inspector.has_table('v2_user_relationships'):
         op.create_table(
             'v2_user_relationships',
-            sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+            sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
             sa.Column('user_id', sa.String(length=255), nullable=False),
             sa.Column('character_name', sa.String(length=100), nullable=False),
             sa.Column('trust_score', sa.Integer(), server_default='0', nullable=False),
