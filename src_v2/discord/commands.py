@@ -206,6 +206,33 @@ class CharacterCommands(app_commands.Group):
             logger.error(f"Failed to update preference: {e}")
             await interaction.followup.send("Failed to update configuration.", ephemeral=True)
 
+    @app_commands.command(name="stats_footer", description="Toggle stats footer on/off")
+    @app_commands.describe(enabled="Enable or disable the stats footer")
+    @app_commands.choices(enabled=[
+        app_commands.Choice(name="Enable", value="true"),
+        app_commands.Choice(name="Disable", value="false")
+    ])
+    async def stats_footer(self, interaction: discord.Interaction, enabled: str):
+        """
+        Toggles the stats footer display for this user.
+        The footer shows relationship metrics, memory stats, and performance info.
+        """
+        await interaction.response.defer(ephemeral=True)
+        
+        user_id = str(interaction.user.id)
+        character_name = settings.DISCORD_BOT_NAME or "default"
+        
+        try:
+            from src_v2.utils.stats_footer import stats_footer
+            is_enabled = enabled.lower() == "true"
+            await stats_footer.toggle_for_user(user_id, character_name, is_enabled)
+            
+            status = "enabled" if is_enabled else "disabled"
+            await interaction.followup.send(f"Stats footer **{status}**.", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Failed to toggle stats footer: {e}")
+            await interaction.followup.send("Failed to toggle stats footer.", ephemeral=True)
+
 class WhisperCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
