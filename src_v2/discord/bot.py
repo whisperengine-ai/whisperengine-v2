@@ -301,6 +301,7 @@ class WhisperBot(commands.Bot):
                     
                     # Retrieve relevant memories
                     formatted_memories = "No relevant memories found."
+                    memories = []  # Initialize for stats footer
                     try:
                         memories = await memory_manager.search_memories(user_message, user_id)
                         formatted_memories = "\n".join([f"- {m['content']}" for m in memories]) if memories else "No relevant memories found."
@@ -401,6 +402,10 @@ class WhisperBot(commands.Bot):
                         context_vars["file_content"] = file_content
                         user_message += f"\n\n[Attached File Content]:\n{file_content}"
 
+                    # Track timing for stats footer
+                    import time
+                    start_time = time.time()
+                    
                     response = await self.agent_engine.generate_response(
                         character=character,
                         user_message=user_message,
@@ -410,10 +415,30 @@ class WhisperBot(commands.Bot):
                         image_urls=image_urls
                     )
                     
+                    processing_time_ms = (time.time() - start_time) * 1000
+                    
+                    # 3.5 Generate Stats Footer (if enabled for user)
+                    from src_v2.utils.stats_footer import stats_footer
+                    should_show_footer = await stats_footer.is_enabled_for_user(user_id, self.character_name)
+                    footer_text = ""
+                    
+                    if should_show_footer:
+                        footer_text = await stats_footer.generate_footer(
+                            user_id=user_id,
+                            character_name=self.character_name,
+                            memory_count=len(memories) if memories else 0,
+                            processing_time_ms=processing_time_ms
+                        )
+                    
                     # 4. Save AI Response
                     try:
+                        # Append footer if enabled
+                        full_response = response
+                        if footer_text:
+                            full_response = f"{response}\n\n{footer_text}"
+                        
                         # Split response into chunks if it's too long
-                        message_chunks = self._chunk_message(response)
+                        message_chunks = self._chunk_message(full_response)
                         
                         # Send all chunks
                         sent_messages = []
