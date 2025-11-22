@@ -69,7 +69,7 @@ graph TD
     Classifier -->|SIMPLE| FastMode[Fast Mode]
     Classifier -->|COMPLEX| ReflectiveMode[Reflective Mode]
     
-    subgraph Fast Mode
+    subgraph "Fast Mode"
         FastMode --> Router{Cognitive Router}
         Router -->|Need Context?| Tools[Memory/Graph Tools]
         Tools --> Context[Context Injection]
@@ -77,7 +77,7 @@ graph TD
         Context --> LLM[LLM Generation]
     end
     
-    subgraph Reflective Mode
+    subgraph "Reflective Mode"
         ReflectiveMode --> ReAct[ReAct Loop]
         ReAct --> Plan[Plan/Reason]
         Plan --> Execute[Execute Tools]
