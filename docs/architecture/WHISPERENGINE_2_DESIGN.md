@@ -92,7 +92,7 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
     *   **Goal**: Allow characters to "see" images shared by users (retained from WE1).
     *   **Mechanism**: Pass Discord image attachments directly to multimodal LLMs (GPT-4o, Claude 3.5 Sonnet) via LangChain's multimodal message types.
     *   **Benefit**: Characters can react to memes, analyze photos, and understand visual context.
-*   **Image Generation (Art)**:
+*   **Image Generation (Art)** [Planned]:
     *   **Goal**: Allow characters to "draw" or share visual imagination.
     *   **Mechanism**:
         *   **Tool**: Expose a `generate_image` tool to the LLM.
