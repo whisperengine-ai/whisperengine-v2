@@ -249,8 +249,27 @@ RULES:
                 result = await session.execute_read(self._fetch_facts, user_id, limit)
                 return "\n".join(result)
         except Exception as e:
-            logger.error(f"Failed to fetch knowledge: {e}")
+            logger.error(f"Failed to get user knowledge: {e}")
             return ""
+
+    async def clear_user_knowledge(self, user_id: str):
+        """
+        Deletes all facts associated with a user.
+        """
+        if not db_manager.neo4j_driver:
+            return
+
+        query = """
+        MATCH (u:User {id: $user_id})-[r:FACT]->()
+        DELETE r
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                await session.run(query, user_id=user_id)
+            logger.info(f"Cleared knowledge graph for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to clear user knowledge: {e}")
 
     @staticmethod
     async def _fetch_facts(tx, user_id: str, limit: int) -> List[str]:

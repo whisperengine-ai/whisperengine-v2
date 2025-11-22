@@ -15,20 +15,42 @@ class CharacterCommands(app_commands.Group):
         name = settings.DISCORD_BOT_NAME.lower() if settings.DISCORD_BOT_NAME else "bot"
         super().__init__(name=name, description=f"Commands for {name}")
 
-    @app_commands.command(name="memory_wipe", description="Wipe your conversation memory with this character")
-    async def memory_wipe(self, interaction: discord.Interaction):
+    @app_commands.command(name="memory_wipe", description="Wipe your data (Memory, Facts, Preferences)")
+    @app_commands.describe(scope="What to wipe: 'all' (default), 'memory', 'facts', 'preferences'")
+    @app_commands.choices(scope=[
+        app_commands.Choice(name="All Data", value="all"),
+        app_commands.Choice(name="Conversation Memory Only", value="memory"),
+        app_commands.Choice(name="Facts Only", value="facts"),
+        app_commands.Choice(name="Preferences Only", value="preferences")
+    ])
+    async def memory_wipe(self, interaction: discord.Interaction, scope: str = "all"):
         await interaction.response.defer(ephemeral=True)
         try:
             user_id = str(interaction.user.id)
             character_name = settings.DISCORD_BOT_NAME or "default"
             
-            # Wipe memory
-            await memory_manager.clear_memory(user_id, character_name)
+            messages = []
+
+            # 1. Wipe Memory (Vector + Chat History)
+            if scope in ["all", "memory"]:
+                await memory_manager.clear_memory(user_id, character_name)
+                messages.append("Conversation memory cleared.")
+
+            # 2. Wipe Facts (Knowledge Graph)
+            if scope in ["all", "facts"]:
+                await knowledge_manager.clear_user_knowledge(user_id)
+                messages.append("Personal facts cleared.")
+
+            # 3. Wipe Preferences
+            if scope in ["all", "preferences"]:
+                await trust_manager.clear_user_preferences(user_id, character_name)
+                messages.append("Preferences reset.")
             
-            await interaction.followup.send(f"Memory wiped for {character_name}.", ephemeral=True)
+            response = f"**Wipe Complete for {character_name}:**\n" + "\n".join([f"✅ {m}" for m in messages])
+            await interaction.followup.send(response, ephemeral=True)
         except Exception as e:
-            logger.error(f"Error wiping memory: {e}")
-            await interaction.followup.send("Failed to wipe memory.", ephemeral=True)
+            logger.error(f"Error wiping data: {e}")
+            await interaction.followup.send("Failed to wipe data.", ephemeral=True)
 
     @app_commands.command(name="profile", description="Show what the bot knows about you (Facts & Preferences)")
     async def profile(self, interaction: discord.Interaction):

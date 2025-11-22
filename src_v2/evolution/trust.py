@@ -162,6 +162,26 @@ class TrustManager:
         except Exception as e:
             logger.error(f"Failed to delete preference: {e}")
 
+    async def clear_user_preferences(self, user_id: str, character_name: str):
+        """
+        Clears all preferences for a user and character.
+        """
+        if not db_manager.postgres_pool:
+            return
+            
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE v2_user_relationships
+                    SET preferences = '{}'::jsonb,
+                        updated_at = NOW()
+                    WHERE user_id = $1 AND character_name = $2
+                """, user_id, character_name)
+                
+                logger.info(f"Cleared preferences for {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to clear preferences: {e}")
+
     async def update_trust(self, user_id: str, character_name: str, delta: int):
         """
         Adjusts trust score by delta amount.
