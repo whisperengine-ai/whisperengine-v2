@@ -3,6 +3,34 @@
 ## Overview
 This document outlines the "Agentic Memory" system for WhisperEngine 2.0. It combines **Vector Search** (for fuzzy recall), **Knowledge Graph** (for precise facts), and **Cognitive Routing** (for intelligent tool use) to create a memory system that supports self-correction, conflict detection, and memory aging.
 
+## Theoretical Foundation: Human Memory Models
+
+The memory architecture is inspired by cognitive science models of human memory, specifically:
+
+### Atkinson-Shiffrin Multi-Store Model
+The classic three-stage memory model informs our storage hierarchy:
+
+*   **Sensory Memory** → **Short-Term (Working) Memory** → **Long-Term Memory**
+*   *In WhisperEngine*: **Recent History** (Postgres) → **Session Context** (Active Summaries) → **Archived Memories** (Qdrant Vectors + Neo4j Facts)
+
+### Tulving's Episodic vs. Semantic Memory
+We distinguish between two types of long-term memory:
+
+*   **Episodic Memory**: Specific events and experiences ("User told me about their dog last Tuesday").
+    *   *Implementation*: **Qdrant Vector Store** with timestamped conversation embeddings.
+*   **Semantic Memory**: General facts and knowledge ("User owns a dog named Rex").
+    *   *Implementation*: **Neo4j Knowledge Graph** with structured entity relationships.
+
+### Design Choice: Hybrid Memory Architecture
+Traditional chatbots use either:
+1.  **Pure Vector Search**: Fast but imprecise. Can't distinguish "User likes pizza" from "User mentioned pizza."
+2.  **Pure Relational/Graph**: Precise but brittle. Requires exact schema matches, struggles with natural language variability.
+
+WhisperEngine v2 uses **both**, routing queries to the appropriate store based on the question type:
+*   "What did we talk about last week?" → Vector (Episodic)
+*   "What's my favorite food?" → Graph (Semantic)
+*   "How do I feel about X?" → Both (Context + Facts)
+
 ## Core Concept: "The Living Memory"
 
 Memory is not just a static database. It is a living system that:
@@ -17,20 +45,59 @@ Memory is not just a static database. It is a living system that:
 
 To address the "Latency vs. Depth" trade-off, the Agent operates in two modes:
 
+### The Trade-off Problem
+In AI systems, there's an inherent tension:
+*   **Fast Responses**: Users expect <2s latency for chat (based on human conversation norms).
+*   **Deep Reasoning**: Complex queries require multi-step retrieval, reasoning, and synthesis (3-10s).
+
+**Solution**: Adaptive routing based on query complexity (inspired by Kahneman's Dual Process Theory - see [Cognitive Engine](COGNITIVE_ENGINE.md)).
+
 ### 1. Fast Mode (Standard Chat)
 *   **Goal**: Low latency (<2s), conversational flow.
 *   **Process**: Router -> Single Tool (if needed) -> Response.
 *   **Use Case**: Casual chat, greetings, simple questions.
 
-### 2. Reflective Mode (Deep Thinking) [Planned]
+### 2. Reflective Mode (Deep Thinking) ✅ IMPLEMENTED
 *   **Goal**: Depth, philosophical consistency, complex reasoning.
-*   **Process**: Router -> Chain of Thought -> Multiple Tools -> Synthesis -> Response.
-*   **Trigger**: Complex user queries ("What do you think about the concept of soul?") or explicit user request.
-*   **Output**: Deeper, more nuanced answers, potentially acknowledging uncertainty ("Confusion Detection").
+*   **Process**: Complexity Classifier -> ReAct Loop (Thought -> Action -> Observation) -> Synthesis -> Response.
+*   **Trigger**: Complex user queries ("What do you think about the concept of soul?", "How has our relationship changed?") detected by the Complexity Classifier.
+*   **Output**: Deeper, more nuanced answers with reasoning traces. Can acknowledge uncertainty and conflicting information.
+*   **Implementation**: Uses a ReAct (Reasoning + Acting) agent that can call tools iteratively, building up context before responding.
+*   **Production Status**: Deployed for Elena (testing), configurable via `ENABLE_REFLECTIVE_MODE` flag.
 
 ## The Memory Tools (Agent Accessible)
 
 The Agent uses a **Cognitive Router** to decide which tool to use.
+
+### Memory Hierarchy Diagram
+
+```mermaid
+graph TB
+    Query[User Query] --> Router{Cognitive Router}
+    
+    subgraph ShortTerm["Short-Term (Working Memory)"]
+        Recent[(Recent History<br/>Last 10-20 turns<br/>Postgres)]
+    end
+    
+    subgraph MidTerm["Mid-Term (Session Memory)"]
+        Summaries[(Summaries<br/>Emotional Context<br/>Qdrant)]
+    end
+    
+    subgraph LongTerm["Long-Term Memory"]
+        Episodic[(Episodic<br/>Specific Events<br/>Qdrant Vectors)]
+        Semantic[(Semantic<br/>Facts & Knowledge<br/>Neo4j Graph)]
+    end
+    
+    Router -->|Default| Recent
+    Router -->|Context Needed| Summaries
+    Router -->|Specific Detail| Episodic
+    Router -->|Fact Lookup| Semantic
+    
+    Recent --> Response[Generate Response]
+    Summaries --> Response
+    Episodic --> Response
+    Semantic --> Response
+```
 
 ### 1. `search_recent_history` (Short-Term)
 *   **Source**: PostgreSQL (`v2_chat_history`)
@@ -42,6 +109,9 @@ The Agent uses a **Cognitive Router** to decide which tool to use.
 *   **Content**: "User was frustrated about work." (Not just "User talked about work").
 *   **Metadata**: Includes a **Meaningfulness Score** (1-5). High-score summaries are retained longer.
 *   **Aging**: Scores decay over time. Recent summaries are boosted.
+*   **Design Choice**: Why store emotion with summaries?
+    *   Pure text summaries lose affective context. "User talked about their job" doesn't capture whether they were complaining or celebrating.
+    *   Emotion tags enable empathetic continuity: "Last time you mentioned work, you seemed stressed. How's it going now?"
 
 ### 3. `search_specific_memories` (Episodic Search)
 *   **Source**: Qdrant (Collection: `whisperengine_memory_{bot_name}`)
@@ -56,6 +126,10 @@ The Agent uses a **Cognitive Router** to decide which tool to use.
 *   **Nodes**: `(User)`, `(Entity)`, `(Preference)`.
 *   **Example Preference**: `(User)-[:PREFERS]->(Style {concise: true, emojis: false})`.
 *   **Conflict Detection**: If `(User)-[:HAS_PET]->(Dog)` exists, and user says "I have a cat", the tool asks: "Is this a new pet or a correction?"
+*   **Design Choice**: Why use a Graph for Facts?
+    *   Relational databases require joins for multi-hop queries ("Friend of a friend who likes X").
+    *   Graphs make traversing relationships O(1) complexity per hop vs. O(n) table scans.
+    *   Native support for "fuzzy" relationships: `MATCH path = (u:User)-[:KNOWS*1..3]->(friend)` finds friends-of-friends automatically.
 
 ### 5. `get_character_evolution` (The Self & Goals)
 *   **Source**: Neo4j (Graph) + Postgres (State)
@@ -67,6 +141,11 @@ The Agent uses a **Cognitive Router** to decide which tool to use.
 
 ## Background Processes (The "Subconscious")
 
+These processes run asynchronously, mimicking the human brain's background consolidation during sleep.
+
+### Theoretical Basis: Memory Consolidation
+In humans, **memory consolidation** occurs during sleep, transferring information from hippocampus (short-term) to neocortex (long-term). Similarly, WhisperEngine performs "offline" processing:
+
 ### 1. Auto-Summarization (Compression)
 *   **Trigger**: Session timeout (30 mins inactivity).
 *   **Action**: Compress raw messages into a summary. Calculate **Meaningfulness Score**. Embed into Qdrant.
@@ -77,14 +156,33 @@ The Agent uses a **Cognitive Router** to decide which tool to use.
     *   Scan Neo4j for contradictions.
     *   **Asynchronous Epiphanies**: If the reflection process finds a new connection ("Wait, user mentioned X last week and Y today..."), it can schedule a **Proactive Message** to the user (e.g., "I just realized something about what you said...").
     *   **Self-Validation**: The character reviews recent interactions to "learn" from mistakes.
+*   **Design Choice**: Why offline reflection?
+    *   Real-time conflict detection during chat would add 500-1000ms latency per message.
+    *   Batch processing at night allows complex graph queries (multi-hop contradiction detection) without impacting user experience.
+    *   Enables "shower thought" moments: The character can surprise users with insights that emerge from connecting distant memories.
 
 ### 3. Memory Pruning (Aging) [Planned]
 *   **Trigger**: Weekly.
 *   **Action**: Move very old, low-relevance memories to "Cold Storage" (text file archive) and remove from active Vector Index to keep search fast and relevant.
+*   **Design Choice**: Forgetting Curve (Ebbinghaus)
+    *   Human memory decays exponentially: We forget 50% of new information within an hour, 70% within 24 hours.
+    *   WhisperEngine implements a modified decay: `relevance_score = base_score * e^(-λ * time_since_access)`
+    *   High-meaningfulness memories (score 4-5) decay slower (lower λ), while mundane exchanges (score 1-2) fade quickly.
+    *   **Why it matters**: Prevents the "database bloat" problem where the character remembers trivial details from years ago better than yesterday's important conversation.
 
 ## Reasoning Transparency
 
-To address the "Black Box" problem, the Cognitive Router logs its decision process:
+To address the "Black Box" problem, the Cognitive Router logs its decision process.
+
+### Design Choice: Explainable AI (XAI)
+In production AI systems, users often ask "Why did you say that?" or "How do you know?"
+Traditional neural models are opaque. WhisperEngine provides transparency via:
+
+*   **Thought Traces**: Logs showing the reasoning path (Input → Tool Selection → Data Retrieved → Response).
+*   **Source Attribution**: "I remember you mentioned this on October 15th" (with link to the specific message).
+*   **Confidence Scores**: "I'm 90% sure your dog's name is Rex" (based on fact confidence in Neo4j).
+
+**Example Trace:**
 *   **Input**: "Do you remember my dog?"
 *   **Thought**: "User is asking about a personal fact. I should check the Knowledge Graph."
 *   **Action**: `manage_user_facts(query="dog")`
@@ -95,20 +193,34 @@ This "Thought Trace" is stored in the logs and can be exposed in a "Debug Mode" 
 
 ## Data Flow: The "Correction Loop"
 
+This diagram illustrates how the system handles fact updates and corrections, a critical feature for maintaining accuracy over long-term relationships.
+
 ```mermaid
 graph TD
-    User[User: 'Actually, I moved to NY'] --> Router{Cognitive Router}
+    User[User: Actually I moved to NY] --> Router{Cognitive Router}
     
     Router -->|Intent: Correction| Tool[Tool: manage_user_facts]
     
-    Tool -->|Check Existing| Neo4j{Neo4j Graph}
+    Tool -->|Check Existing| Neo4j[(Neo4j Graph)]
     Neo4j -->|Found: Lives in LA| Conflict[Conflict Detected]
     
-    Conflict -->|Logic: Overwrite| Update[Update Graph: LA -> NY]
-    Update -->|Log| History[History: 'User moved from LA to NY']
+    Conflict -->|Logic: Overwrite| Update[Update Graph: LA to NY]
+    Update -->|Log Change| History[History: User moved from LA to NY]
     
-    Update --> Response[Agent: 'Got it, updated your location to NY.']
+    Update --> Response[Agent: Got it updated your location to NY]
 ```
+
+### Design Choice: Mutable vs. Immutable Facts
+Should the system overwrite old facts or keep historical versions?
+
+**Our Approach**: **Hybrid**
+*   **Current State** (Neo4j): `(User)-[:LIVES_IN]->(NY)` (Overwrites LA)
+*   **Change History** (Postgres): Logs "User lived in LA until 2025-11-22, now NY"
+
+**Why?**
+*   Users expect the character to "remember" their current state correctly (not say "You live in LA" after being corrected).
+*   But historical context matters: "How's the adjustment to NY after leaving LA?"
+*   This mirrors episodic (what happened) vs. semantic (what's true now) memory in humans.
 
 ## Implementation Strategy
 

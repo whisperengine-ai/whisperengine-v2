@@ -10,9 +10,16 @@ Built on a "Four Pillars" data architecture, it combines the speed of vector sea
 
 WhisperEngine v2 is built on a modular, containerized architecture. We have comprehensive documentation covering every aspect of the system:
 
+### Core Architecture
+
 ### 🧠 [The Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md)
 *   **Dual Process Theory**: How the bot switches between "Fast Mode" (System 1) for chat and "Reflective Mode" (System 2) for deep reasoning.
 *   **Context Injection**: How personality, memories, and goals are dynamically assembled into the system prompt.
+
+### 🧬 [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md)
+*   **Human Memory Models**: How Atkinson-Shiffrin and Tulving's theories inform our hybrid memory architecture.
+*   **The Living Memory**: Background processes for consolidation, aging, and conflict resolution.
+*   **Reasoning Transparency**: Explainable AI through thought traces and source attribution.
 
 ### 💾 [Data Models & The "Four Pillars"](docs/architecture/DATA_MODELS.md)
 *   **Polyglot Persistence**: Why we use four different databases (Postgres, Qdrant, Neo4j, InfluxDB) instead of one.
@@ -25,6 +32,18 @@ WhisperEngine v2 is built on a modular, containerized architecture. We have comp
 ### 🏗️ [Infrastructure & Deployment](docs/architecture/INFRASTRUCTURE_DEPLOYMENT.md)
 *   **Isolation Patterns**: The "One Container Per Character" strategy for fault tolerance.
 *   **Service Mesh**: How the microservices communicate via Docker Compose.
+
+### Design & Implementation
+
+### 📐 [WhisperEngine 2.0 Design Document](docs/architecture/WHISPERENGINE_2_DESIGN.md)
+*   **The "Back to Basics" Philosophy**: Simplifying code while sophisticating architecture.
+*   **Theoretical Foundations**: Cognitive science, agent theory, and neurosymbolic AI principles.
+*   **Technology Stack**: LangChain, Neo4j, and the rationale behind each choice.
+
+### 🔬 [Reflective Mode Implementation](docs/roadmaps/REFLECTIVE_MODE_IMPLEMENTATION.md)
+*   **Deep Thinking Architecture**: How the ReAct loop enables complex reasoning.
+*   **Production Metrics**: Real-world performance data from deployment.
+*   **Cost-Benefit Analysis**: Why the 20x cost increase is justified for 5% of queries.
 
 ## Quick Start
 

@@ -7,6 +7,17 @@ WhisperEngine 1.0 proved that high-fidelity, memory-persistent AI roleplay is po
 
 **WhisperEngine 2.0** aims to deliver the same high-quality user experience (rich personality, long-term memory) with **simplified code logic** while leveraging **robust, specialized infrastructure**.
 
+### Theoretical Foundation: The "Living Character" Paradigm
+
+WhisperEngine v2 is built on principles from multiple domains:
+
+*   **Cognitive Science**: Memory models (Atkinson-Shiffrin, Tulving's episodic/semantic distinction) inform our hybrid storage architecture.
+*   **Agent Theory**: Characters are not passive responders but **autonomous agents** with internal states, goals, and the ability to initiate actions.
+*   **Constructivist Learning**: Characters "learn" through interaction, updating their mental models based on new information (Piaget's accommodation/assimilation).
+*   **Narrative Psychology**: Identity is constructed through storytelling. Characters maintain coherent "life stories" that evolve but remain consistent with their core traits.
+
+**Design Philosophy**: "Simplify the code, sophisticate the architecture." Instead of complex custom pipelines, we use industry-standard tools (LangChain, Neo4j) but orchestrate them in novel ways to create emergent intelligence.
+
 ### Core Mission: Uncompromised Authenticity
 The primary goal remains unchanged: **create AI characters that feel alive**.
 *   **Personality First**: WE2 must support deep personality persistence where characters maintain their unique voice, quirks, and history.
@@ -21,14 +32,22 @@ The primary goal remains unchanged: **create AI characters that feel alive**.
     *   *Simplification*: While we keep the containers, we simplify the *internals* of each container by removing complex custom memory pipelines in favor of standard libraries (LangChain/LlamaIndex).
 
 ### B. Best-in-Class Infrastructure (Right Tool for the Job)
-*   **Philosophy**: Use specialized tools where they excel, rather than forcing everything into Postgres.
+*   **Philosophy**: Use specialized tools where they excel, rather than forcing everything into Postgres. This is **Polyglot Persistence** - matching data access patterns to database strengths.
+
+**Database Selection Theory:**
+
+| Database | Access Pattern | CAP Theorem Trade-off | Why Chosen |
+| :--- | :--- | :--- | :--- |
+| **Qdrant** | Vector similarity search (k-NN) | AP (Available, Partition-tolerant) | HNSW indexing for sub-100ms semantic search over millions of embeddings. |
+| **Neo4j** | Graph traversal (multi-hop) | CA (Consistent, Available) | O(1) relationship traversal vs. O(n) SQL joins. Native support for path queries. |
+| **PostgreSQL** | ACID transactions, structured queries | CA (Consistent, Available) | Reliable, battle-tested, perfect for critical user data and logs. |
+| **InfluxDB** | Time-series aggregation | AP (Available, Partition-tolerant) | Optimized for high-write, range-query workloads (metrics, analytics). |
+
 *   **Vector Store**: **Qdrant** (Retained).
     *   *Reason*: Superior performance, filtering, and management compared to raw `pgvector`.
 *   **Metrics**: **InfluxDB** (Retained).
     *   *Reason*: Purpose-built for high-volume time-series data (analytics, health checks).
-*   **Caching**: **Redis** (Retained).
-    *   *Reason*: Low-latency state management and pub/sub for multi-bot coordination.
-*   **Knowledge Graph**: **Neo4j** (New).
+*   **Knowledge Graph**: **Neo4j** (Implemented).
     *   *Reason*: Model complex character relationships, lore connections, and "knowledge" as a graph, enabling multi-hop reasoning that vector search misses.
 
 ### C. Text-Based Character Definition (CDL as Code)
@@ -56,13 +75,19 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
     *   *New Feature*: Support **File Uploads**. Users can upload PDFs/Docs, and LlamaIndex will ingest them into the character's knowledge base.
     *   Replace custom Qdrant adapter with LlamaIndex's `VectorStoreIndex` (backed by Postgres/pgvector).
 
-### C. LLM-Native Intelligence (No More spaCy)
+### C. LLM-Native Intelligence (No More spaCy) ✅ IMPLEMENTED
 *   **Current (WE1)**: Heavy NLP pipeline using `spaCy`, `RoBERTa` models, and custom regex for intent detection and entity extraction.
 *   **New (WE2)**: **LLM Tool Use / Function Calling**.
     *   *Solution*: Use the LLM (via LangChain Tools) to decide what to do.
-    *   *Mechanism*: Define tools like `update_user_preference`, `search_memory`, `get_current_time`, `save_fact`.
+    *   *Mechanism*: Define tools like `search_memories`, `query_graph`, `get_current_time`.
     *   *Benefit*: Removes heavy ML dependencies, improves accuracy on complex queries, and allows natural handling of edge cases.
     *   *Flow*: User Message -> LLM -> [Decides to Call Tool] -> Tool Execution -> LLM Final Response.
+
+**Theoretical Basis: Symbolic AI meets Neural AI**
+*   **Pre-2020**: Rule-based systems (ELIZA, expert systems) were transparent but brittle.
+*   **2020-2023**: Neural models (GPT) were powerful but opaque.
+*   **2023+**: **Neurosymbolic AI** combines both: LLMs provide natural language understanding, symbolic tools (databases, APIs) provide precision.
+*   *WhisperEngine v2*: The LLM is the "brain" (reasoning), tools are the "senses" (perception) and "muscles" (action). This mirrors embodied cognition theory - intelligence emerges from interaction with the environment, not just internal computation.
 
 ### D. LLM-Based Sentiment & Emotion Analysis
 *   **Current (WE1)**: Dedicated `RoBERTa` model running locally to score emotion/sentiment.
@@ -80,12 +105,22 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
     *   *Mechanism*: When triggered (or passively listening), the bot fetches the last $N$ messages from the channel history to construct the prompt context.
     *   *Benefit*: Enables natural multi-user roleplay, understanding of group dynamics, and "lurking" behavior (bot chiming in when relevant without being pinged).
 
-### F. Continuous Learning & Evolution
+### F. Continuous Learning & Evolution ✅ IMPLEMENTED
 *   **Goal**: Replicate and improve WE1's ability to learn about the user and itself.
 *   **Mechanism**:
     *   **User Learning**: Extract facts/preferences from conversation and store in **Neo4j** (Graph) and **Postgres** (Structured).
-    *   **Self-Evolution**: Allow the character to reflect on conversations and update its own "Self-Knowledge" nodes in the graph.
-    *   **Implementation**: A background "Reflector" agent (or post-interaction step) that analyzes chat logs to update the Knowledge Graph and Vector Store without blocking the real-time response.
+    *   **Self-Evolution**: Characters reflect on conversations and update their own "Self-Knowledge" and relationship state.
+    *   **Implementation**: 
+        *   **Runtime Fact Extraction**: `KnowledgeManager` processes user messages in real-time, extracting facts to Neo4j.
+        *   **Trust Evolution**: `TrustManager` tracks relationship progression through 5 stages (Stranger → Acquaintance → Friend → Close Friend → Soulmate).
+        *   **Goal Tracking**: `GoalManager` maintains active objectives and tracks progress.
+        *   **Reflection Engine**: Background process for deep analysis and epiphany generation (planned).
+
+**Theoretical Basis: Computational Models of Trust**
+*   Based on **Marsh's Formalization of Trust** (1994) and **Rempel's Trust Scale** (1985).
+*   Trust is not binary but a continuous function: `Trust = f(Reliability, Emotional Investment, Vulnerability)`.
+*   Trust unlocks **trait evolution**: Characters reveal deeper personality layers as relationships deepen (inspired by Altman & Taylor's Social Penetration Theory).
+*   **Why it matters**: Users form genuine bonds when characters "remember" not just facts but the *emotional journey* of the relationship.
 
 ### G. Multimodal Capabilities
 *   **Image Input (Vision)**:
