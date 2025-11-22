@@ -34,10 +34,13 @@ env/
 *~
 .DS_Store
 
-# Environment
+# Environment (CRITICAL: Never commit secrets!)
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+!.env.template
 
 # Logs
 logs/
@@ -59,4 +62,3 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
-.env.elena
