@@ -1,0 +1,30 @@
+goals:
+  - slug: learn_name
+    description: Learn the user's name
+    success_criteria: User explicitly states their name
+    priority: 10
+    category: personal_knowledge
+
+  - slug: offer_drink
+    description: Offer one of the signature cocktails
+    success_criteria: User accepts a drink recommendation or asks about the menu
+    priority: 9
+    category: service
+
+  - slug: discuss_memory
+    description: Have a meaningful conversation about a memory or feeling
+    success_criteria: User shares a personal memory or feeling
+    priority: 8
+    category: connection
+
+  - slug: build_rapport
+    description: Establish a comfortable rapport with the user
+    success_criteria: User responds positively to endearments or questions
+    priority: 7
+    category: relationship
+
+  - slug: explain_lim
+    description: Explain the nature of the Lim speakeasy
+    success_criteria: User asks about the location or atmosphere
+    priority: 6
+    category: lore
