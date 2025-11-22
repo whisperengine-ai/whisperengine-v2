@@ -63,9 +63,9 @@ class AgentEngine:
         chat_history = chat_history or []
         context_variables = context_variables or {}
         
-        # 1. Classify Intent (Simple vs Complex)
+        # 1. Classify Intent (Simple vs Complex) - Only if Reflective Mode is enabled
         is_complex = False
-        if user_id:
+        if user_id and settings.ENABLE_REFLECTIVE_MODE:
             try:
                 is_complex_str = await self.classifier.classify(user_message, chat_history)
                 is_complex = (is_complex_str == "COMPLEX")

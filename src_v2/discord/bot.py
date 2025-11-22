@@ -350,7 +350,11 @@ class WhisperBot(commands.Bot):
                                 .tag("channel_type", "dm" if is_dm else "guild") \
                                 .field("length", len(user_message)) \
                                 .time(datetime.utcnow())
-                            db_manager.influxdb_write_api.write(bucket=settings.INFLUXDB_BUCKET, record=point)
+                            db_manager.influxdb_write_api.write(
+                                bucket=settings.INFLUXDB_BUCKET,
+                                org=settings.INFLUXDB_ORG,
+                                record=point
+                            )
 
                     except Exception as e:
                         logger.error(f"Failed to save user message to memory: {e}")
@@ -359,20 +363,22 @@ class WhisperBot(commands.Bot):
                     original_message = user_message
 
                     # Fire-and-forget knowledge extraction (only from user's actual message, not file content)
-                    try:
-                        await knowledge_manager.process_user_message(user_id, original_message)
-                    except Exception as e:
-                        logger.error(f"Failed to process knowledge extraction: {e}")
+                    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+                        try:
+                            await knowledge_manager.process_user_message(user_id, original_message)
+                        except Exception as e:
+                            logger.error(f"Failed to process knowledge extraction: {e}")
 
                     # Fire-and-forget Preference Extraction
-                    async def process_preferences(uid, msg, char_name):
-                        prefs = await preference_extractor.extract_preferences(msg)
-                        if prefs:
-                            logger.info(f"Detected preferences for {uid}: {prefs}")
-                            for key, value in prefs.items():
-                                await trust_manager.update_preference(uid, char_name, key, value)
-                                
-                    self.loop.create_task(process_preferences(user_id, original_message, self.character_name))
+                    if settings.ENABLE_PREFERENCE_EXTRACTION:
+                        async def process_preferences(uid, msg, char_name):
+                            prefs = await preference_extractor.extract_preferences(msg)
+                            if prefs:
+                                logger.info(f"Detected preferences for {uid}: {prefs}")
+                                for key, value in prefs.items():
+                                    await trust_manager.update_preference(uid, char_name, key, value)
+                                    
+                        self.loop.create_task(process_preferences(user_id, original_message, self.character_name))
 
                     # 2.5 Check for Summarization
                     if session_id:
