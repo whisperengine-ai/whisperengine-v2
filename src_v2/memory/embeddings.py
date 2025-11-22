@@ -1,6 +1,7 @@
-from typing import List, Optional
+from typing import List
 from fastembed import TextEmbedding
 from loguru import logger
+import threading
 
 class EmbeddingService:
     """
@@ -8,24 +9,37 @@ class EmbeddingService:
     Defaults to 'sentence-transformers/all-MiniLM-L6-v2' (384 dimensions).
     """
     
+    _model_cache: dict[str, tuple[TextEmbedding, threading.Lock]] = {}
+    _cache_lock = threading.Lock()
+
     def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
         self.model_name = model_name
-        self._model: Optional[TextEmbedding] = None
         
     @property
+    def _model_entry(self) -> tuple[TextEmbedding, threading.Lock]:
+        """Lazy loading of the model with thread-safe locking."""
+        if self.model_name not in self._model_cache:
+            with self._cache_lock:
+                # Double-checked locking pattern to ensure thread safety
+                if self.model_name not in self._model_cache:
+                    logger.info(f"Loading embedding model: {self.model_name}")
+                    model = TextEmbedding(model_name=self.model_name)
+                    self._model_cache[self.model_name] = (model, threading.Lock())
+                    logger.info("Embedding model loaded successfully.")
+        return self._model_cache[self.model_name]
+
+    @property
     def model(self) -> TextEmbedding:
-        """Lazy loading of the model to avoid startup overhead if not used."""
-        if self._model is None:
-            logger.info(f"Loading embedding model: {self.model_name}")
-            self._model = TextEmbedding(model_name=self.model_name)
-            logger.info("Embedding model loaded successfully.")
-        return self._model
+        """Returns the model instance (for backward compatibility/direct access if needed)."""
+        return self._model_entry[0]
 
     def embed_query(self, text: str) -> List[float]:
         """Embed a single string query."""
-        # list(self.model.embed([text])) returns a generator of numpy arrays
-        embeddings = list(self.model.embed([text]))
-        return embeddings[0].tolist()
+        model, lock = self._model_entry
+        with lock:
+            # list(model.embed([text])) returns a generator of numpy arrays
+            embeddings = list(model.embed([text]))
+            return embeddings[0].tolist()
 
     async def embed_query_async(self, text: str) -> List[float]:
         """Embed a single string query asynchronously."""
@@ -35,5 +49,7 @@ class EmbeddingService:
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed a list of documents."""
-        embeddings = list(self.model.embed(texts))
-        return [e.tolist() for e in embeddings]
+        model, lock = self._model_entry
+        with lock:
+            embeddings = list(model.embed(texts))
+            return [e.tolist() for e in embeddings]
