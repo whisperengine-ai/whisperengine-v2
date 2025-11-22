@@ -549,7 +549,7 @@ class WhisperBot(commands.Bot):
                 result = await summary_manager.generate_summary(msg_dicts)
                 
                 if result:
-                    await summary_manager.save_summary(session_id, result)
+                    await summary_manager.save_summary(session_id, user_id, result)
                     logger.info(f"Session {session_id} summarized successfully.")
                     
                     # Trigger Reflection

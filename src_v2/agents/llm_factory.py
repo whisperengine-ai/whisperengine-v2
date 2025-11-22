@@ -12,10 +12,17 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main") -> BaseC
     
     Args:
         temperature: The temperature to use for the model.
-        mode: "main" for the character model, "router" for the cognitive router.
+        mode: "main" for the character model, "router" for the cognitive router, "reflective" for deep thinking, "utility" for structured tasks.
     """
     # Determine which settings to use
-    if mode == "router" and settings.ROUTER_LLM_PROVIDER:
+    if mode == "reflective" and settings.REFLECTIVE_LLM_PROVIDER:
+        # Use configured reflective LLM (if set)
+        provider = settings.REFLECTIVE_LLM_PROVIDER
+        api_key = settings.REFLECTIVE_LLM_API_KEY.get_secret_value() if settings.REFLECTIVE_LLM_API_KEY else "dummy"
+        base_url = settings.REFLECTIVE_LLM_BASE_URL
+        model_name = settings.REFLECTIVE_LLM_MODEL_NAME or "anthropic/claude-3.5-sonnet"
+    elif mode in ["router", "utility"] and settings.ROUTER_LLM_PROVIDER:
+        # Use router LLM for routing AND utility tasks (summarization, classification, etc.)
         provider = settings.ROUTER_LLM_PROVIDER
         api_key = settings.ROUTER_LLM_API_KEY.get_secret_value() if settings.ROUTER_LLM_API_KEY else "dummy"
         base_url = settings.ROUTER_LLM_BASE_URL

@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     ROUTER_LLM_API_KEY: Optional[SecretStr] = None
     ROUTER_LLM_BASE_URL: Optional[str] = None
     ROUTER_LLM_MODEL_NAME: Optional[str] = None
+    
+    # --- Reflective LLM Configuration (Optional - for deep thinking ReAct mode) ---
+    REFLECTIVE_LLM_PROVIDER: Optional[Literal["openai", "openrouter", "ollama", "lmstudio"]] = None
+    REFLECTIVE_LLM_API_KEY: Optional[SecretStr] = None
+    REFLECTIVE_LLM_BASE_URL: Optional[str] = None
+    REFLECTIVE_LLM_MODEL_NAME: Optional[str] = None
 
     # --- Discord ---
     DISCORD_TOKEN: SecretStr = Field(validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
@@ -65,6 +71,15 @@ class Settings(BaseSettings):
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
     
+    # --- Reflective Mode Configuration ---
+    ENABLE_REFLECTIVE_MODE: bool = False
+    REFLECTIVE_LLM_PROVIDER: str = "openrouter"
+    REFLECTIVE_LLM_MODEL_NAME: str = "anthropic/claude-3.5-sonnet"
+    REFLECTIVE_LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
+    REFLECTIVE_LLM_API_KEY: Optional[SecretStr] = None
+    REFLECTIVE_MAX_STEPS: int = 10
+    REFLECTIVE_MEMORY_RESULT_LIMIT: int = 3  # Max results returned per memory search
+
     # --- Bot Identity ---
     DISCORD_BOT_NAME: Optional[str] = Field(default=None, description="Name of the bot/character (e.g. elena)")
 

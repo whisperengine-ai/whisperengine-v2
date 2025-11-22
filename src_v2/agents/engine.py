@@ -186,7 +186,7 @@ class AgentEngine:
                 logger.error(f"Failed to inject evolution/goal state: {e}")
 
         # 3. Branching Logic
-        if is_complex and user_id:
+        if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
             logger.info("Engaging Reflective Mode")
             # Reflective Agent handles its own tool usage and reasoning
             return await self.reflective_agent.run(user_message, user_id, system_content)

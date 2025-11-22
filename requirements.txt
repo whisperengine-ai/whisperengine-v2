@@ -24,7 +24,7 @@ openai>=1.0.0
 # Database Drivers
 psycopg2-binary>=2.9.0  # PostgreSQL adapter
 asyncpg>=0.29.0  # PostgreSQL
-qdrant-client>=1.7.0  # Qdrant
+qdrant-client>=1.16.0  # Qdrant
 neo4j>=5.15.0  # Neo4j
 influxdb-client>=1.39.0  # InfluxDB
 

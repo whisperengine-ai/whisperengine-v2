@@ -128,7 +128,7 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to save vector memory: {e}")
 
-    async def save_summary_vector(self, session_id: str, content: str, meaningfulness_score: int, emotions: List[str]) -> Optional[str]:
+    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str]) -> Optional[str]:
         """
         Embeds and saves a summary to Qdrant.
         """
@@ -146,6 +146,7 @@ class MemoryManager:
                 payload={
                     "type": "summary",
                     "session_id": session_id,
+                    "user_id": str(user_id),
                     "content": content,
                     "meaningfulness_score": meaningfulness_score,
                     "emotions": emotions,
@@ -177,9 +178,9 @@ class MemoryManager:
             
             # Search with filter for user_id
             
-            search_result = await db_manager.qdrant_client.search(
+            search_result = await db_manager.qdrant_client.query_points(
                 collection_name=self.collection_name,
-                query_vector=embedding,
+                query=embedding,
                 query_filter=Filter(
                     must=[
                         FieldCondition(
@@ -198,7 +199,7 @@ class MemoryManager:
                     "score": hit.score,
                     "timestamp": hit.payload.get("timestamp")
                 }
-                for hit in search_result
+                for hit in search_result.points
             ]
             
         except Exception as e:
@@ -210,14 +211,16 @@ class MemoryManager:
         Searches for relevant summaries in Qdrant.
         """
         if not db_manager.qdrant_client:
+            logger.warning("Qdrant client not available for search_summaries")
             return []
 
         try:
+            logger.debug(f"Searching summaries for user {user_id} with query: {query}")
             embedding = await self.embedding_service.embed_query_async(query)
             
-            search_result = await db_manager.qdrant_client.search(
+            search_result = await db_manager.qdrant_client.query_points(
                 collection_name=self.collection_name,
-                query_vector=embedding,
+                query=embedding,
                 query_filter=Filter(
                     must=[
                         FieldCondition(key="user_id", match=MatchValue(value=str(user_id))),
@@ -227,6 +230,8 @@ class MemoryManager:
                 limit=limit
             )
             
+            logger.debug(f"Found {len(search_result.points)} summary results")
+            
             return [
                 {
                     "content": hit.payload.get("content"),
@@ -234,7 +239,7 @@ class MemoryManager:
                     "meaningfulness": hit.payload.get("meaningfulness_score"),
                     "timestamp": hit.payload.get("timestamp")
                 }
-                for hit in search_result
+                for hit in search_result.points
             ]
             
         except Exception as e:
