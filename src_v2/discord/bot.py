@@ -293,9 +293,12 @@ class WhisperBot(commands.Bot):
                     except Exception as e:
                         logger.error(f"Failed to save user message to memory: {e}")
 
-                    # Fire-and-forget knowledge extraction
+                    # Store original message for fact extraction (before appending file content)
+                    original_message = user_message
+
+                    # Fire-and-forget knowledge extraction (only from user's actual message, not file content)
                     try:
-                        await knowledge_manager.process_user_message(user_id, user_message)
+                        await knowledge_manager.process_user_message(user_id, original_message)
                     except Exception as e:
                         logger.error(f"Failed to process knowledge extraction: {e}")
 

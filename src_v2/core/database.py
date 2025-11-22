@@ -65,8 +65,10 @@ class DatabaseManager:
             # For now, using synchronous write_api with batching
             self.influxdb_write_api = self.influxdb_client.write_api(write_options=WriteOptions(batch_size=1))
             
-            # Verify connection
-            if not self.influxdb_client.ping():
+            # Verify connection (run ping in thread pool to avoid blocking)
+            loop = asyncio.get_event_loop()
+            is_healthy = await loop.run_in_executor(None, self.influxdb_client.ping)
+            if not is_healthy:
                 logger.warning("InfluxDB ping failed. Metrics will not be recorded.")
                 self.influxdb_client = None
                 self.influxdb_write_api = None
