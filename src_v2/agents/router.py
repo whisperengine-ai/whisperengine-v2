@@ -5,7 +5,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
-from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool
+from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
+from src_v2.config.settings import settings
 
 class CognitiveRouter:
     """
@@ -27,11 +28,15 @@ class CognitiveRouter:
         """
         
         # 1. Instantiate tools with the current user_id
+        # Note: UpdatePreferencesTool needs character_name, which we can get from settings
+        character_name = settings.DISCORD_BOT_NAME or "default"
+        
         tools = [
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
             LookupFactsTool(user_id=user_id),
-            UpdateFactsTool(user_id=user_id)
+            UpdateFactsTool(user_id=user_id),
+            UpdatePreferencesTool(user_id=user_id, character_name=character_name)
         ]
         
         # 2. Bind tools to LLM
@@ -46,6 +51,7 @@ AVAILABLE TOOLS:
 - search_specific_memories: For specific details, quotes, or "what was the name of that movie?".
 - lookup_user_facts: For biographical info about the user (name, pets, location, preferences).
 - update_user_facts: For when the user explicitly corrects a fact or says something has changed (e.g., "I moved to Seattle", "I don't like pizza anymore").
+- update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
 
 RULES:
 1. If the user is just saying "hi" or small talk, DO NOT call any tools.

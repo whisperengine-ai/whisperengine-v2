@@ -142,6 +142,26 @@ class TrustManager:
         except Exception as e:
             logger.error(f"Failed to update preference: {e}")
 
+    async def delete_preference(self, user_id: str, character_name: str, key: str):
+        """
+        Deletes a specific preference setting.
+        """
+        if not db_manager.postgres_pool:
+            return
+            
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE v2_user_relationships
+                    SET preferences = preferences - $3,
+                        updated_at = NOW()
+                    WHERE user_id = $1 AND character_name = $2
+                """, user_id, character_name, key)
+                
+                logger.info(f"Deleted preference '{key}' for {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete preference: {e}")
+
     async def update_trust(self, user_id: str, character_name: str, delta: int):
         """
         Adjusts trust score by delta amount.
