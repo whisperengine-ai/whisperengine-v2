@@ -71,6 +71,11 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: metrics
     volumes:
       - influxdb_data_v2:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - v2_network
@@ -105,7 +110,7 @@ services:
       qdrant:
         condition: service_started
       influxdb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -141,7 +146,7 @@ services:
       qdrant:
         condition: service_started
       influxdb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
@@ -177,7 +182,7 @@ services:
       qdrant:
         condition: service_started
       influxdb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
@@ -213,7 +218,7 @@ services:
       qdrant:
         condition: service_started
       influxdb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 30s
@@ -249,7 +254,7 @@ services:
       qdrant:
         condition: service_started
       influxdb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
       interval: 30s

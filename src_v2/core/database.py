@@ -17,17 +17,29 @@ class DatabaseManager:
         self.influxdb_client: Optional[InfluxDBClient] = None
         self.influxdb_write_api = None
 
+    async def _connect_with_retry(self, name: str, connect_func, max_retries: int = 5, delay: int = 2):
+        """Helper to connect to a database with retry logic."""
+        for attempt in range(max_retries):
+            try:
+                await connect_func()
+                return
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logger.error(f"Failed to connect to {name} after {max_retries} attempts: {e}")
+                    raise
+                logger.warning(f"Failed to connect to {name} (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                await asyncio.sleep(delay)
+
     async def connect_postgres(self):
-        try:
+        async def _connect():
             logger.info(f"Connecting to PostgreSQL at {settings.POSTGRES_URL}...")
             self.postgres_pool = await asyncpg.create_pool(settings.POSTGRES_URL)
             logger.info("Connected to PostgreSQL.")
-        except Exception as e:
-            logger.error(f"Failed to connect to PostgreSQL: {e}")
-            raise
+        
+        await self._connect_with_retry("PostgreSQL", _connect)
 
     async def connect_qdrant(self):
-        try:
+        async def _connect():
             logger.info(f"Connecting to Qdrant at {settings.QDRANT_URL}...")
             # Use AsyncQdrantClient for non-blocking operations
             self.qdrant_client = AsyncQdrantClient(
@@ -37,21 +49,23 @@ class DatabaseManager:
             # Verify connection
             await self.qdrant_client.get_collections()
             logger.info("Connected to Qdrant.")
-        except Exception as e:
-            logger.error(f"Failed to connect to Qdrant: {e}")
-            raise
+
+        await self._connect_with_retry("Qdrant", _connect)
 
     async def connect_neo4j(self):
-        try:
+        async def _connect():
             logger.info(f"Connecting to Neo4j at {settings.NEO4J_URL}...")
             auth = (settings.NEO4J_USER, settings.NEO4J_PASSWORD.get_secret_value())
-            self.neo4j_driver = AsyncGraphDatabase.driver(settings.NEO4J_URL, auth=auth)
+            self.neo4j_driver = AsyncGraphDatabase.driver(
+                settings.NEO4J_URL, 
+                auth=auth,
+                notifications_disabled_categories=['UNRECOGNIZED']
+            )
             # Verify connection
             await self.neo4j_driver.verify_connectivity()
             logger.info("Connected to Neo4j.")
-        except Exception as e:
-            logger.error(f"Failed to connect to Neo4j: {e}")
-            raise
+
+        await self._connect_with_retry("Neo4j", _connect)
 
     async def connect_influxdb(self):
         try:
