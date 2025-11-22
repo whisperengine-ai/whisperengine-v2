@@ -2,6 +2,8 @@ from typing import List, Dict, Any, Optional
 import json
 import datetime
 from pathlib import Path
+import base64
+import httpx
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from loguru import logger
@@ -241,11 +243,29 @@ class AgentEngine:
             if image_urls and settings.LLM_SUPPORTS_VISION:
                 # Multimodal input with multiple images
                 input_content = [{"type": "text", "text": user_message}]
-                for img_url in image_urls:
-                    input_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": img_url}
-                    })
+                
+                async with httpx.AsyncClient() as client:
+                    for img_url in image_urls:
+                        try:
+                            # Download image to pass as base64 (avoids 403 Forbidden from Discord CDN)
+                            img_response = await client.get(img_url)
+                            img_response.raise_for_status()
+                            
+                            # Convert to base64
+                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                            mime_type = img_response.headers.get("content-type", "image/png")
+                            
+                            input_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
+                            })
+                        except Exception as e:
+                            logger.error(f"Failed to download/process image {img_url}: {e}")
+                            # Fallback to URL if download fails
+                            input_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": img_url}
+                            })
             else:
                 # Text-only input
                 input_content = user_message
