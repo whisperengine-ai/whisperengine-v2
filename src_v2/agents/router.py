@@ -54,7 +54,7 @@ AVAILABLE TOOLS:
 - update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
 
 RULES:
-1. If the user is just saying "hi" or small talk, DO NOT call any tools.
+1. If the user is just saying "hi" or small talk, you MAY call lookup_user_facts to personalize the greeting (e.g. to find their name), but avoid heavy memory searches.
 2. If the user asks a question that requires memory, CALL the appropriate tool.
 3. You can call multiple tools if needed.
 4. Use the provided chat history to resolve pronouns (e.g., "he", "it", "that") to specific entities.
