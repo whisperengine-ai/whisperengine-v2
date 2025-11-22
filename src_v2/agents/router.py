@@ -5,7 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
-from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool
+from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool
 
 class CognitiveRouter:
     """
@@ -30,7 +30,8 @@ class CognitiveRouter:
         tools = [
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
-            LookupFactsTool(user_id=user_id)
+            LookupFactsTool(user_id=user_id),
+            UpdateFactsTool(user_id=user_id)
         ]
         
         # 2. Bind tools to LLM
@@ -44,6 +45,7 @@ AVAILABLE TOOLS:
 - search_archived_summaries: For broad topics, past events, or "what did we talk about last week?".
 - search_specific_memories: For specific details, quotes, or "what was the name of that movie?".
 - lookup_user_facts: For biographical info about the user (name, pets, location, preferences).
+- update_user_facts: For when the user explicitly corrects a fact or says something has changed (e.g., "I moved to Seattle", "I don't like pizza anymore").
 
 RULES:
 1. If the user is just saying "hi" or small talk, DO NOT call any tools.
@@ -53,12 +55,13 @@ RULES:
 
 Analyze the user's input and decide."""
 
-        messages = [SystemMessage(content=system_prompt)]
+        messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
         
         # Add recent history (last 3 messages) to help with context resolution
         if chat_history:
             # We only need the last few messages to resolve context
             recent_history = chat_history[-3:]
+            # Cast to BaseMessage to satisfy type checker if needed, though list extension works at runtime
             messages.extend(recent_history)
 
         messages.append(HumanMessage(content=query))

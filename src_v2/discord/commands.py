@@ -5,6 +5,8 @@ from loguru import logger
 from typing import cast
 from src_v2.memory.manager import memory_manager
 from src_v2.core.character import character_manager
+from src_v2.knowledge.manager import knowledge_manager
+from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
 
 class CharacterCommands(app_commands.Group):
@@ -27,6 +29,43 @@ class CharacterCommands(app_commands.Group):
         except Exception as e:
             logger.error(f"Error wiping memory: {e}")
             await interaction.followup.send("Failed to wipe memory.", ephemeral=True)
+
+    @app_commands.command(name="profile", description="Show what the bot knows about you (Facts & Preferences)")
+    async def profile(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            character_name = settings.DISCORD_BOT_NAME or "default"
+            
+            # 1. Get Facts (Global)
+            facts = await knowledge_manager.get_user_knowledge(user_id, limit=20)
+            if not facts:
+                facts = "No specific facts stored yet."
+            else:
+                # Format facts nicely
+                facts = "\n".join([f"• {f}" for f in facts.split("\n")])
+
+            # 2. Get Preferences & Trust (Character Specific)
+            relationship = await trust_manager.get_relationship_level(user_id, character_name)
+            prefs = relationship.get("preferences", {})
+            trust_score = relationship.get("trust_score", 0)
+            level_label = relationship.get("level_label", "Stranger")
+            
+            prefs_text = "No specific preferences set."
+            if prefs:
+                prefs_text = "\n".join([f"• **{k}**: {v}" for k, v in prefs.items()])
+
+            # Build Response
+            embed = discord.Embed(title=f"User Profile: {interaction.user.display_name}", color=0x00ff00)
+            embed.add_field(name="🧠 Global Facts (Shared)", value=facts, inline=False)
+            embed.add_field(name=f"🤝 Relationship ({character_name})", value=f"Level: {level_label} (Trust: {trust_score})", inline=False)
+            embed.add_field(name="⚙️ Preferences", value=prefs_text, inline=False)
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error getting profile: {e}")
+            await interaction.followup.send("Failed to retrieve profile.", ephemeral=True)
 
     @app_commands.command(name="debug", description="Show debug information")
     async def debug(self, interaction: discord.Interaction):

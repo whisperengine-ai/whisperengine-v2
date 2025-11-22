@@ -41,6 +41,38 @@ RULES:
         ])
         self.cypher_chain = self.cypher_prompt | self.llm | StrOutputParser()
 
+        # New: Fact Correction Chain
+        self.correction_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert Neo4j Cypher developer.
+Your task is to generate a Cypher query to DELETE or UPDATE a fact based on a user's correction.
+
+SCHEMA:
+- Nodes: (:User {{id: $user_id}}), (:Entity {{name: "..."}})
+- Relationships: [:FACT {{predicate: "..."}}]
+
+EXAMPLES:
+1. User: "I don't like pizza anymore."
+   Query: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity {{name: 'Pizza'}}) WHERE r.predicate = 'LIKES' DELETE r
+
+2. User: "Actually, I live in Seattle now, not Portland."
+   Query: 
+   MATCH (u:User {{id: $user_id}})-[r:FACT {{predicate: 'LIVES_IN'}}]->(o:Entity) DELETE r
+   WITH u
+   MERGE (new_loc:Entity {{name: 'Seattle'}})
+   MERGE (u)-[:FACT {{predicate: 'LIVES_IN', confidence: 1.0}}]->(new_loc)
+
+3. User: "Forget that I own a cat."
+   Query: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'OWNS' AND o.name CONTAINS 'cat' DELETE r
+
+RULES:
+- Use $user_id parameter.
+- Return ONLY the raw Cypher query. No markdown.
+- Be careful with DELETE operations.
+"""),
+            ("human", "{correction}")
+        ])
+        self.correction_chain = self.correction_prompt | self.llm | StrOutputParser()
+
     async def initialize(self):
         """
         Initializes the Knowledge Graph schema (constraints and indexes).
@@ -105,6 +137,31 @@ RULES:
         except Exception as e:
             logger.error(f"Graph query failed: {e}")
             return "Error querying knowledge graph."
+
+    async def delete_fact(self, user_id: str, correction: str) -> str:
+        """
+        Generates and executes a Cypher query to delete/update facts based on user input.
+        """
+        if not db_manager.neo4j_driver:
+            return "Graph database not available."
+
+        try:
+            # 1. Generate Cypher
+            cypher_query = await self.correction_chain.ainvoke({"correction": correction})
+            cypher_query = cypher_query.replace("```cypher", "").replace("```", "").strip()
+            
+            logger.info(f"Generated Correction Cypher: {cypher_query}")
+
+            # 2. Execute
+            async with db_manager.neo4j_driver.session() as session:
+                # We use execute_write for modifications
+                await session.run(cypher_query, user_id=user_id)
+                
+                return "Fact updated successfully."
+
+        except Exception as e:
+            logger.error(f"Fact correction failed: {e}")
+            return "Failed to update fact."
 
     async def process_user_message(self, user_id: str, message: str):
         """
