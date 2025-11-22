@@ -78,6 +78,24 @@ class LookupFactsTool(BaseTool):
         except Exception as e:
             return f"Error looking up facts: {e}"
 
+class UpdateFactsInput(BaseModel):
+    correction: str = Field(description="The user's correction or update (e.g., 'I moved to Seattle', 'I don't like pizza anymore').")
+
+class UpdateFactsTool(BaseTool):
+    name: str = "update_user_facts"
+    description: str = "Updates or deletes facts in the Knowledge Graph based on user correction. Use this when the user explicitly says something has changed or was wrong."
+    args_schema: Type[BaseModel] = UpdateFactsInput
+    user_id: str = Field(exclude=True)
+
+    def _run(self, correction: str) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, correction: str) -> str:
+        try:
+            result = await knowledge_manager.delete_fact(self.user_id, correction)
+            return f"Fact Update Result: {result}"
+        except Exception as e:
+            return f"Error updating facts: {e}"
 
 class GetEvolutionStateInput(BaseModel):
     """No parameters needed - retrieves current state for this user."""
