@@ -57,14 +57,30 @@ class TrustManager:
                     return {"trust_score": 0, "level": 1, "level_label": "Stranger", "unlocked_traits": [], "insights": [], "preferences": {}}
                 
                 trust_score = row['trust_score']
-                unlocked_traits = row['unlocked_traits'] if row['unlocked_traits'] else []
-                insights = row['insights'] if row['insights'] else []
+                
+                unlocked_traits = row['unlocked_traits']
+                if isinstance(unlocked_traits, str):
+                    try:
+                        unlocked_traits = json.loads(unlocked_traits)
+                    except Exception:
+                        unlocked_traits = []
+                elif unlocked_traits is None:
+                    unlocked_traits = []
+
+                insights = row['insights']
+                if isinstance(insights, str):
+                    try:
+                        insights = json.loads(insights)
+                    except Exception:
+                        insights = []
+                elif insights is None:
+                    insights = []
                 
                 preferences = row['preferences']
                 if isinstance(preferences, str):
                     try:
                         preferences = json.loads(preferences)
-                    except:
+                    except Exception:
                         preferences = {}
                 elif preferences is None:
                     preferences = {}

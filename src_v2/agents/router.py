@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from loguru import logger
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import BaseTool
 
@@ -13,9 +13,9 @@ class CognitiveRouter:
     Implements 'Reasoning Transparency' by logging why a tool was chosen.
     """
     def __init__(self):
-        self.llm = create_llm(temperature=0.0) # Low temp for deterministic routing
+        self.llm = create_llm(temperature=0.0, mode="router") # Low temp for deterministic routing
 
-    async def route_and_retrieve(self, user_id: str, query: str) -> Dict[str, Any]:
+    async def route_and_retrieve(self, user_id: str, query: str, chat_history: Optional[List[BaseMessage]] = None) -> Dict[str, Any]:
         """
         Analyzes the query, selects tools, executes them, and returns the context.
         
@@ -49,13 +49,19 @@ RULES:
 1. If the user is just saying "hi" or small talk, DO NOT call any tools.
 2. If the user asks a question that requires memory, CALL the appropriate tool.
 3. You can call multiple tools if needed.
+4. Use the provided chat history to resolve pronouns (e.g., "he", "it", "that") to specific entities.
 
 Analyze the user's input and decide."""
 
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=query)
-        ]
+        messages = [SystemMessage(content=system_prompt)]
+        
+        # Add recent history (last 3 messages) to help with context resolution
+        if chat_history:
+            # We only need the last few messages to resolve context
+            recent_history = chat_history[-3:]
+            messages.extend(recent_history)
+
+        messages.append(HumanMessage(content=query))
         
         # 4. Invoke LLM
         try:
