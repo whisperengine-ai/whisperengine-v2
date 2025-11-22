@@ -2,6 +2,7 @@ from typing import List
 from fastembed import TextEmbedding
 from loguru import logger
 import threading
+import os
 
 class EmbeddingService:
     """
@@ -23,7 +24,15 @@ class EmbeddingService:
                 # Double-checked locking pattern to ensure thread safety
                 if self.model_name not in self._model_cache:
                     logger.info(f"Loading embedding model: {self.model_name}")
-                    model = TextEmbedding(model_name=self.model_name)
+                    
+                    # Check for cache path env var
+                    cache_dir = os.environ.get("FASTEMBED_CACHE_PATH")
+                    kwargs = {"model_name": self.model_name}
+                    if cache_dir:
+                        logger.info(f"Using FastEmbed cache: {cache_dir}")
+                        kwargs["cache_dir"] = cache_dir
+                        
+                    model = TextEmbedding(**kwargs)
                     self._model_cache[self.model_name] = (model, threading.Lock())
                     logger.info("Embedding model loaded successfully.")
         return self._model_cache[self.model_name]
