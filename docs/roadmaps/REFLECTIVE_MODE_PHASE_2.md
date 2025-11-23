@@ -60,6 +60,7 @@ Currently, reasoning steps are discarded. This feature allows the bot to "rememb
 
 *   **Why Last?**: We want to save traces *after* the reasoning logic (Native Tools, Parallelism) is stable, so we don't train the model on legacy/inefficient patterns.
 *   **Goal**: Save successful reasoning traces to a persistent store to solve similar future problems faster.
+*   **Status Update**: The "Capture" mechanism was implemented during the logging upgrades. The agent now returns full execution traces, currently saved to JSON logs.
 *   **Implementation**:
     1.  **Storage**: New PostgreSQL table `v2_reasoning_traces` (JSONB trace + Embedding).
     2.  **Capture**: Save `scratchpad` after successful `Final Answer`.
