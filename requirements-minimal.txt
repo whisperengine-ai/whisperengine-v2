@@ -1,0 +1,78 @@
+# WhisperEngine Minimal Dependencies for Pre-Bundled Models
+# Optimized for containers with pre-downloaded models
+# All versions locked for reproducible builds
+
+# Core utilities and environment management
+python-dotenv==1.1.1
+psutil==7.1.0  # Updated from 6.1.0
+aiofiles==24.1.0
+
+# HTTP Client Dependencies  
+aiohttp==3.12.15
+requests==2.32.5
+httpx==0.28.1
+
+# Database abstraction
+aiosqlite==0.21.0
+
+# MINIMAL AI/ML Stack (90% size reduction)
+# fastembed for embeddings (pre-bundled models from Qdrant team)
+fastembed>=0.7.0
+numpy==2.3.3  # Updated from 2.3.2
+
+# Lightweight alternatives to full transformers
+tokenizers==0.22.0              # Tokenization only (~50MB vs 2.5GB)
+# transformers==4.56.1          # REMOVED: Use only for model download stage
+
+# Fast local emotion analysis - REMOVED: Uses vector-native emotion analysis
+# REMOVED: vaderSentiment==3.3.2  # Only used in demos
+
+# Essential NLP - REMOVED: Replaced by vector-native approach  
+# REMOVED: spacy==3.8.7  # Superseded by vector-native memory system
+
+# Vector operations and scientific computing - REMOVED: Not used in main bot
+# REMOVED: scipy==1.16.2  # Not used in main bot source code
+# REMOVED: scikit-learn==1.7.2  # Not used in main bot source code  
+# REMOVED: faiss-cpu==1.9.0.post1  # Optional with fallback
+
+# Database and caching
+redis==6.4.0  # Updated from 5.2.1
+aioredis==2.0.1
+# chromadb==1.1.0  # REMOVED - Using Qdrant for vector memory system
+
+# Graph analysis (lightweight)
+networkx==3.5
+
+# Image processing
+Pillow==11.3.0
+
+# Discord Integration
+discord.py==2.6.3
+python-multipart==0.0.18
+
+# Development and testing
+pytest==8.4.2
+pytest-asyncio==1.1.0
+
+# Production optimization libraries
+prometheus-client==0.22.0
+
+# ONNX Runtime for optimized model inference (optional)
+# onnxruntime==1.22.1           # Uncomment for ONNX optimization
+
+# Environment-specific dependencies
+# PostgreSQL (production)
+asyncpg==0.30.0
+
+# Neo4j (REMOVED - Using vector memory system)  
+# neo4j==5.15.0  # REMOVED - Using Qdrant for vector memory system
+
+# Voice processing (optional)
+PyNaCl==1.5.0
+
+# Desktop app dependencies (minimal subset)
+fastapi==0.115.6
+uvicorn==0.34.0
+
+# Note: transformers library is only needed during Docker build stage
+# for model downloads, not in runtime environment with pre-bundled models

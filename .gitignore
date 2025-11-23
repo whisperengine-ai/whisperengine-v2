@@ -1,0 +1,180 @@
+# ===== PYTHON =====
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environment & Package Management
+.env
+.env.local
+.env.*.local
+.env.*.bak
+.env.bak
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
+
+# Multi-bot environment files (contain secrets)
+.env.dream
+.env.elena  
+.env.marcus
+.env.marcus-chen
+.env.marcus-thompson
+
+# Keep example files
+!.env.example
+
+# IDE & Editors
+.vscode/
+*.code-workspace
+.idea/
+.spyderproject
+.spyproject
+.ropeproject
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# ===== SYSTEM FILES =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ===== WEB UI =====
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build output
+.next/
+out/
+*.tsbuildinfo
+
+# Web UI environment files
+cdl-web-ui/.env
+cdl-web-ui/.env.local
+cdl-web-ui/.env.*.local
+
+# ===== PROJECT SPECIFIC =====
+# Bot data & configuration
+config.json
+secrets.json
+*.token
+*.key
+conversations.json
+user_profiles.json
+user_profiles.db
+system_prompt.txt
+
+# Data directories
+chromadb_data/
+logs/
+backups/
+models/
+checkpoints/
+synthetic_conversations/
+
+# Exception: Allow Python model classes in src/characters/models/
+!src/characters/models/
+
+# Logs
+*.log
+*.out
+*.err
+
+# Docker
+.env.docker
+docker-compose.override.yml
+docker-data/
+
+# AI/ML files
+*.pkl
+*.model
+*.h5
+*.ckpt
+
+# Model cache directories
+cache/
+fastembed_cache/
+huggingface_cache/
+.cache/
+
+# Temporary development files
+
+# Data and runtime files
+/data/
+.env.elena
+.gitignore
+.env.marcus
+.gitignore
+.setup_complete
+.env.marcus-chen
+.env.gabriel
+.env.ryan-chen
+.gitignore
+.env.jake
+.env.sophia
+characters/examples/gabriel.json
+.env.ryan
+.env.aethys
+.env.dotty
+.env.aetheris
+characters/examples/aetheris.json
+characters/examples_legacy_backup/aetheris.json
+.gitignore
+characters/examples_legacy_backup/gabriel.json
+character_intelligence_validation_results.json
+# Validation report directories
+*_validation_report.json/
+.env.nottaylor
+.env.assistant
+.env.aria

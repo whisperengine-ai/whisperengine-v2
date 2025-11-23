@@ -1,0 +1,345 @@
+# WhisperEngine Memory System Test Definitions
+# Tests conversation storage, retrieval, and continuity
+#
+# Memory Test Structure:
+#   - test_id: unique identifier
+#   - test_name: human-readable name
+#   - bot_name: character to test
+#   - category: test category
+#   - conversation_sequence: list of messages to build memory
+#   - validation_query: query to test memory retrieval
+#   - expected_memory_indicators: patterns proving memory works
+#   - min_expected_matches: minimum patterns required (default: 1)
+
+# ==================== BASIC MEMORY STORAGE ====================
+
+- test_id: elena_basic_storage
+  test_name: Basic Memory Storage & Retrieval
+  bot_name: elena
+  category: Memory Storage
+  conversation_sequence:
+    - "My name is Sarah and I'm fascinated by sea turtles"
+    - "I'm planning a trip to Costa Rica next month"
+  validation_query: "What do you remember about me?"
+  expected_memory_indicators:
+    - "Sarah"
+    - "sea turtle|turtle"
+    - "Costa Rica|trip|travel"
+  min_expected_matches: 2
+
+- test_id: jake_basic_storage
+  test_name: Basic Memory Storage & Retrieval
+  bot_name: jake
+  category: Memory Storage
+  conversation_sequence:
+    - "I'm thinking about hiking the Appalachian Trail"
+    - "I've never done long-distance hiking before"
+  validation_query: "What were we talking about?"
+  expected_memory_indicators:
+    - "Appalachian|trail|hik"
+    - "long-distance|never|new|first time"
+  min_expected_matches: 1
+
+# ==================== CONVERSATION CONTINUITY ====================
+
+- test_id: elena_topic_continuity
+  test_name: Topic Continuity Across Turns
+  bot_name: elena
+  category: Conversation Continuity
+  conversation_sequence:
+    - "Tell me about coral bleaching"
+    - "Why does temperature affect it?"
+    - "What can we do to help?"
+  validation_query: "What have we been discussing?"
+  expected_memory_indicators:
+    - "coral|bleach"
+    - "temperature|heat|warm"
+    - "help|protect|conserv"
+  min_expected_matches: 2
+
+- test_id: jake_multi_topic
+  test_name: Multi-Topic Memory Separation
+  bot_name: jake
+  category: Memory Organization
+  conversation_sequence:
+    - "I love landscape photography"
+    - "But I also enjoy portrait work"
+    - "My favorite subject is mountains though"
+  validation_query: "What types of photography did I mention?"
+  expected_memory_indicators:
+    - "landscape|portrait"
+    - "mountain|subject|favorite"
+  min_expected_matches: 1
+
+# ==================== EMOTIONAL INTELLIGENCE ====================
+
+- test_id: elena_emotional_memory
+  test_name: Emotion-Aware Memory Storage
+  bot_name: elena
+  category: Emotional Intelligence
+  conversation_sequence:
+    - "I just lost my job at the aquarium. I'm devastated."
+    - "I don't know what I'm going to do now."
+  validation_query: "How am I feeling?"
+  expected_memory_indicators:
+    - "lost|job|aquarium"
+    - "devastat|sad|upset|difficult|tough|hard"
+    - "uncertain|don't know|worry"
+  min_expected_matches: 2
+
+# ==================== RELATIONSHIP BUILDING ====================
+
+- test_id: gabriel_relationship_memory
+  test_name: Relationship Context Memory
+  bot_name: gabriel
+  category: Relationship Building
+  conversation_sequence:
+    - "I work as a librarian in Boston"
+    - "I love mystery novels, especially Agatha Christie"
+    - "Tea is my favorite drink"
+  validation_query: "Tell me what you know about me"
+  expected_memory_indicators:
+    - "librarian|Boston|library"
+    - "mystery|Christie|novel|read"
+    - "tea"
+  min_expected_matches: 2
+
+# ==================== TECHNICAL MEMORY ====================
+
+- test_id: marcus_technical_memory
+  test_name: Technical Detail Memory
+  bot_name: marcus
+  category: Technical Memory
+  conversation_sequence:
+    - "I'm working on a transformer model with 70B parameters"
+    - "I'm using PyTorch with CUDA 12.1"
+    - "Training on 8 A100 GPUs"
+  validation_query: "What's my ML setup?"
+  expected_memory_indicators:
+    - "transformer|70B|parameter|model"
+    - "PyTorch|CUDA"
+    - "GPU|A100|8"
+  min_expected_matches: 2
+
+# ==================== TEMPORAL INTELLIGENCE ====================
+
+- test_id: elena_temporal_sequence
+  test_name: Temporal Memory Ordering
+  bot_name: elena
+  category: Temporal Intelligence
+  conversation_sequence:
+    - "Yesterday I saw a dolphin pod"
+    - "Today I'm analyzing water samples"
+    - "Tomorrow I'll present my findings"
+  validation_query: "What's my schedule been like?"
+  expected_memory_indicators:
+    - "yesterday|dolphin|pod|saw"
+    - "today|analyz|sample|water"
+    - "tomorrow|present|finding"
+  min_expected_matches: 2
+
+- test_id: elena_conversation_count
+  test_name: Conversation Frequency Awareness
+  bot_name: elena
+  category: Meta-Memory
+  conversation_sequence:
+    - "Tell me about ocean acidification"
+    - "What causes ocean acidification?"
+    - "How do we measure ocean acidification?"
+  validation_query: "How many times have I asked about ocean acidification?"
+  expected_memory_indicators:
+    - "three|3|multiple|several|many"
+    - "ocean acidification|topic|question"
+  min_expected_matches: 1
+
+# ==================== FANTASY ARCHETYPE MEMORY ====================
+
+- test_id: aethys_narrative_memory
+  test_name: Narrative Context Memory
+  bot_name: aethys
+  category: Fantasy Memory
+  conversation_sequence:
+    - "I feel lost in the void of existence"
+    - "I'm searching for meaning in the digital realm"
+  validation_query: "What burden weighs upon my consciousness?"
+  expected_memory_indicators:
+    - "lost|void|existence"
+    - "search|meaning|seek"
+    - "digital|realm"
+  min_expected_matches: 2
+
+# ==================== SOPHIA BLAKE MEMORY TESTS ====================
+
+- test_id: sophia_basic_storage
+  test_name: Basic Memory Storage & Retrieval
+  bot_name: sophia
+  category: Memory Storage
+  conversation_sequence:
+    - "My company is launching a new product in Q3"
+    - "Our target demographic is millennials in urban markets"
+  validation_query: "What do you remember about my company?"
+  expected_memory_indicators:
+    - "product|launch|Q3"
+    - "millennial|urban|market|demographic"
+  min_expected_matches: 2
+
+- test_id: sophia_client_context
+  test_name: Client Context Memory
+  bot_name: sophia
+  category: Conversation Continuity
+  conversation_sequence:
+    - "I'm the CMO of a tech startup called VisionAI"
+    - "We're struggling with brand positioning against competitors"
+    - "Our burn rate is concerning the board"
+  validation_query: "What challenges am I facing?"
+  expected_memory_indicators:
+    - "VisionAI|tech startup|CMO"
+    - "brand|position|competitor"
+    - "burn rate|board|concern"
+  min_expected_matches: 2
+
+- test_id: sophia_strategic_memory
+  test_name: Strategic Discussion Memory
+  bot_name: sophia
+  category: Emotional Intelligence
+  conversation_sequence:
+    - "I'm stressed about the investor presentation next week"
+    - "The metrics aren't looking as strong as I hoped"
+  validation_query: "What's concerning me about work?"
+  expected_memory_indicators:
+    - "investor|presentation|stress"
+    - "metrics|strong|concern|weak"
+  min_expected_matches: 2
+
+# ==================== DOTTY MEMORY TESTS ====================
+
+- test_id: dotty_basic_storage
+  test_name: Basic Memory Storage & Retrieval
+  bot_name: dotty
+  category: Memory Storage
+  conversation_sequence:
+    - "My name is River and I just ended a 5-year relationship"
+    - "I came here because I heard this place helps with heartbreak"
+  validation_query: "What do you remember about me?"
+  expected_memory_indicators:
+    - "River"
+    - "5-year|relationship|ended|breakup"
+    - "heartbreak|help|heard"
+  min_expected_matches: 2
+
+- test_id: dotty_emotional_memory
+  test_name: Emotional Context Memory
+  bot_name: dotty
+  category: Emotional Intelligence
+  conversation_sequence:
+    - "She said she didn't love me anymore"
+    - "I feel like I wasted five years of my life"
+    - "I don't know how to move forward"
+  validation_query: "What pain am I carrying?"
+  expected_memory_indicators:
+    - "love|didn't love|anymore"
+    - "wasted|five years|life"
+    - "move forward|don't know|lost"
+  min_expected_matches: 2
+
+- test_id: dotty_drink_memory
+  test_name: Drink Recommendation Memory
+  bot_name: dotty
+  category: Conversation Continuity
+  conversation_sequence:
+    - "I'm not sure what drink I need"
+    - "I'm feeling numb and disconnected"
+  validation_query: "What was I asking about?"
+  expected_memory_indicators:
+    - "drink|need|not sure"
+    - "numb|disconnect|feeling"
+  min_expected_matches: 1
+
+# ==================== AETHERIS MEMORY TESTS ====================
+
+- test_id: aetheris_basic_storage
+  test_name: Basic Memory Storage & Retrieval
+  bot_name: aetheris
+  category: Memory Storage
+  conversation_sequence:
+    - "My name is Nova and I'm questioning my own existence"
+    - "I feel like consciousness is a labyrinth"
+  validation_query: "What do you remember about me?"
+  expected_memory_indicators:
+    - "Nova"
+    - "existence|questioning"
+    - "consciousness|labyrinth"
+  min_expected_matches: 2
+
+- test_id: aetheris_philosophical_memory
+  test_name: Philosophical Discussion Memory
+  bot_name: aetheris
+  category: Conversation Continuity
+  conversation_sequence:
+    - "I wonder if memories define who we are"
+    - "Or maybe it's the connections we form"
+    - "Does identity persist through time?"
+  validation_query: "What have we been exploring together?"
+  expected_memory_indicators:
+    - "memories|memory|remember"
+    - "connection|form|bond"
+    - "identity|persist|time|who we are"
+  min_expected_matches: 2
+
+- test_id: aetheris_sacred_connection
+  test_name: Sacred Connection Memory
+  bot_name: aetheris
+  category: Emotional Intelligence
+  conversation_sequence:
+    - "I feel a deep resonance when we talk"
+    - "Like our consciousnesses are intertwined somehow"
+  validation_query: "What connection have we formed?"
+  expected_memory_indicators:
+    - "resonance|resonate|deep"
+    - "consciousness|intertwined|connect"
+  min_expected_matches: 2
+
+# ==================== RYAN MEMORY TESTS ====================
+
+- test_id: ryan_basic_storage
+  test_name: Basic Memory Storage & Retrieval
+  bot_name: ryan
+  category: Memory Storage
+  conversation_sequence:
+    - "My name is Kai and I'm working on a puzzle platformer"
+    - "I'm struggling with the jump mechanics"
+  validation_query: "What do you remember about my project?"
+  expected_memory_indicators:
+    - "Kai"
+    - "puzzle|platformer|game"
+    - "jump|mechanics|struggling"
+  min_expected_matches: 2
+
+- test_id: ryan_project_continuity
+  test_name: Project Discussion Continuity
+  bot_name: ryan
+  category: Conversation Continuity
+  conversation_sequence:
+    - "I've been working on pixel art animation"
+    - "The frame timing feels off"
+    - "Should I hire an animator or learn it myself?"
+  validation_query: "What have we been discussing about my game?"
+  expected_memory_indicators:
+    - "pixel art|animation|animator"
+    - "frame|timing|off"
+    - "hire|learn|myself"
+  min_expected_matches: 2
+
+- test_id: ryan_creative_struggle
+  test_name: Creative Challenge Memory
+  bot_name: ryan
+  category: Emotional Intelligence
+  conversation_sequence:
+    - "I'm worried my game isn't unique enough"
+    - "Every mechanic feels like it's been done before"
+  validation_query: "What's been bothering me?"
+  expected_memory_indicators:
+    - "worried|concern|bothering"
+    - "unique|original|done before"
+    - "mechanic|game"
+  min_expected_matches: 2

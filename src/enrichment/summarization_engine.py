@@ -1,0 +1,350 @@
+"""
+High-quality conversation summarization for background enrichment
+
+Uses sophisticated LLM prompts and multi-step reasoning since we're NOT
+in the hot path and can take our time for better quality.
+"""
+
+import asyncio
+import logging
+import json
+from typing import List, Dict, Any
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+class SummarizationEngine:
+    """
+    Advanced summarization engine for async enrichment
+    
+    Key differences from real-time summarization:
+    - Higher quality models (Claude 3.5 Sonnet, GPT-4 Turbo)
+    - Multi-step reasoning (extract -> analyze -> synthesize)
+    - More comprehensive context analysis
+    - No time pressure - can use 1000+ token responses
+    """
+    
+    def __init__(self, llm_client, llm_model: str, preprocessor=None):
+        self.llm_client = llm_client
+        self.llm_model = llm_model
+        # Optional enrichment NLP preprocessor (spaCy-backed). May be None.
+        self.preprocessor = preprocessor
+        logger.info(f"Initialized SummarizationEngine with model: {llm_model}")
+    
+    async def generate_conversation_summary(
+        self,
+        messages: List[Dict],
+        user_id: str,
+        bot_name: str
+    ) -> Dict[str, Any]:
+        """
+        Generate comprehensive conversation summary
+        
+        Args:
+            messages: List of message dicts with content, timestamp, memory_type
+            user_id: User ID for context
+            bot_name: Bot name for context
+        
+        Returns:
+            {
+                'summary_text': str,
+                'key_topics': List[str],
+                'emotional_tone': str,
+                'compression_ratio': float,
+                'confidence_score': float
+            }
+        """
+        logger.debug(f"Generating summary for {user_id} with {len(messages)} messages...")
+        
+        # Build conversation context
+        conversation_text = self._format_messages_for_llm(messages, bot_name)
+        
+        # Optional: build structured scaffold from local NLP to reduce tokens
+        scaffold_text = ""
+        if (
+            getattr(self, "preprocessor", None) is not None
+            and self.preprocessor
+            and hasattr(self.preprocessor, "is_available")
+            and self.preprocessor.is_available()
+        ):
+            try:
+                scaffold = self.preprocessor.build_summary_scaffold(conversation_text)
+                scaffold_text = self.preprocessor.build_scaffold_string(scaffold)
+                if scaffold_text:
+                    logger.info("✅ SPACY SUMMARIZATION: Using spaCy scaffold (entities, actions, topics)")
+                else:
+                    logger.warning("⚠️  SPACY SUMMARIZATION: Preprocessor available but returned empty scaffold")
+            except (AttributeError, ValueError, TypeError) as e:
+                logger.warning("⚠️  SPACY SUMMARIZATION: Failed to build scaffold: %s", e)
+                scaffold_text = ""
+        else:
+            logger.info("ℹ️  SUMMARIZATION: Using pure LLM (no spaCy preprocessing)")
+        
+        # Generate summary with high-quality LLM
+        summary_text = await self._generate_summary_text(
+            conversation_text,
+            len(messages),
+            bot_name,
+            scaffold_text=scaffold_text
+        )
+        
+        # Extract key topics
+        key_topics = await self._extract_key_topics(conversation_text)
+        
+        # Analyze emotional tone
+        emotional_tone = self._analyze_emotional_tone(messages)
+        
+        # Calculate compression ratio
+        original_length = sum(len(m.get('content', '')) for m in messages)
+        compression_ratio = len(summary_text) / original_length if original_length > 0 else 0
+        
+        # Confidence score (simple heuristic - could be enhanced)
+        confidence_score = self._calculate_confidence(messages)
+        
+        # ✅ QUALITY VALIDATION: Check for issues and log structured warnings
+        quality_issues = []
+        
+        if len(summary_text) < 100:
+            quality_issues.append(f"summary_too_short:{len(summary_text)}")
+        
+        if compression_ratio < 0.05:
+            quality_issues.append(f"compression_too_aggressive:{compression_ratio:.3f}")
+        
+        if "general conversation" in key_topics:
+            quality_issues.append("generic_topic_fallback")
+        
+        if quality_issues:
+            logger.warning(
+                f"📊 SUMMARY QUALITY ISSUES | user={user_id} | bot={bot_name} | "
+                f"messages={len(messages)} | issues=[{', '.join(quality_issues)}]"
+            )
+        else:
+            logger.info(
+                f"✅ SUMMARY QUALITY GOOD | user={user_id} | bot={bot_name} | "
+                f"messages={len(messages)} | length={len(summary_text)} | "
+                f"compression={compression_ratio:.2%} | topics={len(key_topics)}"
+            )
+        
+        return {
+            'summary_text': summary_text,
+            'key_topics': key_topics,
+            'emotional_tone': emotional_tone,
+            'compression_ratio': compression_ratio,
+            'confidence_score': confidence_score
+        }
+    
+    async def _generate_summary_text(
+        self, 
+        conversation_text: str, 
+        message_count: int,
+        bot_name: str,
+        scaffold_text: str = ""
+    ) -> str:
+        """
+        Generate natural language summary using LLM
+        
+        DESIGN NOTE: 3rd Person Perspective for Prompt Injection Consistency
+        -----------------------------------------------------------------------
+        Summaries are written in 3rd person to match WhisperEngine's system
+        prompt style. The system prompt addresses the bot as "You are {name}"
+        but describes past interactions in 3rd person ("The user discussed...").
+        
+        This matches the memory injection format:
+        "User: {message content}\nBot: {bot response}"
+        
+        Example: "The user asked about marine biology and shared their passion
+        for ocean conservation. They expressed interest in research careers..."
+        
+        NOT "You asked..." (that would incorrectly address the bot)
+        """
+        extra_scaffold = f"\n\nStructured overview (spaCy):\n{scaffold_text}\n" if scaffold_text else ""
+        summary_prompt = f"""You are an expert conversation analyst. Summarize this conversation between a user and {bot_name} (an AI character).
+
+Focus on:
+1. Key topics discussed
+2. Important information the user shared about themselves
+3. Emotional tone and evolution
+4. Decisions made or plans discussed  
+5. Any personal details or preferences the user mentioned
+
+Conversation ({message_count} messages):
+{conversation_text}
+
+Provide a comprehensive 3-5 sentence summary in 3rd person perspective. Write about what "the user" did/said, what {bot_name} discussed, etc. Example: "The user asked about marine biology and shared their passion..." NOT "You asked about..."
+
+Be specific and preserve important details.{extra_scaffold}"""
+
+        # 🔄 RETRY LOGIC: Handle transient LLM failures with exponential backoff
+        max_retries = 3
+        min_summary_length = 100  # Quality threshold
+        
+        for attempt in range(max_retries):
+            try:
+                # Use get_chat_response for modern chat API (asyncio.to_thread for sync method)
+                response = await asyncio.to_thread(
+                    self.llm_client.get_chat_response,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert conversation analyst. Provide clear, detailed summaries."
+                        },
+                        {
+                            "role": "user",
+                            "content": summary_prompt
+                        }
+                    ],
+                    model=self.llm_model,
+                    temperature=0.5,
+                    max_tokens=500
+                )
+                
+                # get_chat_response returns a string directly
+                summary_text = response.strip() if response else ''
+                
+                # ✅ QUALITY VALIDATION: Check summary meets minimum standards
+                if summary_text and len(summary_text) >= min_summary_length:
+                    if attempt > 0:
+                        logger.info(f"✅ Summary generation succeeded on retry {attempt + 1}")
+                    return summary_text
+                
+                # Summary too short - retry if attempts remaining
+                logger.warning(
+                    f"⚠️  Summary quality issue (length={len(summary_text)} chars, min={min_summary_length}), "
+                    f"retry {attempt + 1}/{max_retries}"
+                )
+                
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff: 1s, 2s, 3s
+                
+            except Exception as e:
+                logger.warning(f"⚠️  Summary generation attempt {attempt + 1}/{max_retries} failed: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff
+        
+        # All retries exhausted - use fallback
+        logger.error(
+            f"❌ All {max_retries} summary generation attempts failed for {message_count} messages, "
+            f"using fallback template"
+        )
+        return self._generate_fallback_summary(message_count, bot_name)
+    
+    async def _extract_key_topics(self, conversation_text: str) -> List[str]:
+        """Extract 3-5 key topics from conversation"""
+        topics_prompt = f"""Extract the 3-5 main topics from this conversation. Return only a JSON array of topic strings.
+
+Conversation:
+{conversation_text[:2000]}
+
+Topics (JSON array):"""
+
+        try:
+            # Use get_chat_response for modern chat API
+            response_text = await asyncio.to_thread(
+                self.llm_client.get_chat_response,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a topic extraction specialist. Return ONLY valid JSON arrays."
+                    },
+                    {
+                        "role": "user",
+                        "content": topics_prompt
+                    }
+                ],
+                model=self.llm_model,
+                temperature=0.3,
+                max_tokens=100
+            )
+            
+            # get_chat_response returns string directly - parse JSON
+            # Handle markdown code blocks
+            if '```json' in response_text:
+                response_text = response_text.split('```json')[1].split('```')[0].strip()
+            elif '```' in response_text:
+                response_text = response_text.split('```')[1].split('```')[0].strip()
+            
+            # Try to parse as JSON
+            topics = json.loads(response_text)
+            if isinstance(topics, list):
+                return [str(t).strip() for t in topics[:5]]
+            
+            # Fallback: split by commas
+            return [t.strip() for t in response_text.split(',')[:5]]
+            
+        except Exception as e:
+            logger.debug(f"Topic extraction failed: {e}, using fallback")
+            return ["general conversation"]
+    
+    def _analyze_emotional_tone(self, messages: List[Dict]) -> str:
+        """Analyze overall emotional tone of conversation"""
+        # Use existing emotion labels if available
+        emotions = [m.get('emotion_label', 'neutral') for m in messages]
+        
+        if not emotions:
+            return 'neutral'
+        
+        # Simple majority vote
+        emotion_counts = {}
+        for emotion in emotions:
+            emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
+        
+        dominant_emotion = max(emotion_counts, key=emotion_counts.get)
+        
+        # Map to simple categories
+        if dominant_emotion in ['joy', 'excitement', 'love', 'happiness']:
+            return 'positive'
+        elif dominant_emotion in ['sadness', 'anger', 'fear', 'disgust']:
+            return 'negative'
+        elif dominant_emotion in ['neutral', 'curiosity']:
+            return 'neutral'
+        else:
+            return 'mixed'
+    
+    def _calculate_confidence(self, messages: List[Dict]) -> float:
+        """Calculate confidence score based on message characteristics"""
+        # More messages = higher confidence
+        if len(messages) >= 20:
+            return 0.9
+        elif len(messages) >= 10:
+            return 0.8
+        elif len(messages) >= 5:
+            return 0.6
+        else:
+            return 0.4
+    
+    def _format_messages_for_llm(self, messages: List[Dict], bot_name: str) -> str:
+        """Format messages for LLM context"""
+        formatted = []
+        
+        for msg in messages:
+            # CRITICAL FIX: Use 'role' field (user/bot) not 'memory_type' (conversation/fact/etc)
+            msg_role = msg.get('role', '')
+            
+            # Determine display name
+            if msg_role == 'user':
+                role = "User"
+            elif msg_role in ('bot', 'assistant'):
+                role = bot_name
+            # FALLBACK: Old memory_type field for backward compatibility
+            elif msg.get('memory_type') == 'user_message':
+                role = "User"
+            elif msg.get('memory_type') == 'bot_response':
+                role = bot_name
+            else:
+                role = bot_name  # Default to bot if unclear
+            
+            content = msg.get('content', '')[:2000]  # Discord limit: 2000 chars - preserve full fidelity
+            timestamp = msg.get('timestamp', '')
+            
+            # Format timestamp if it's a datetime object
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.strftime('%Y-%m-%d %H:%M')
+            
+            formatted.append(f"[{timestamp}] {role}: {content}")
+        
+        return "\n\n".join(formatted)
+    
+    def _generate_fallback_summary(self, message_count: int, bot_name: str) -> str:
+        """Generate simple fallback summary when LLM fails"""
+        return f"Conversation with {message_count} messages between user and {bot_name}. Topics and details discussed."

@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # Synthetic conversation generator
+  synthetic-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.synthetic
+    volumes:
+      - ./synthetic_conversations:/app/synthetic_conversations
+      - ./synthetic_validation_report.json:/app/synthetic_validation_report.json
+      - ./character_intelligence_validation_results.json:/app/character_intelligence_validation_results.json
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      # LM Studio Configuration (DISABLED - using reliable templates instead)
+      - LLM_CHAT_API_URL=http://host.docker.internal:1234/v1
+      - LLM_CLIENT_TYPE=lmstudio
+      - LLM_CHAT_MODEL=local-model  # Uses whatever model is loaded in LM Studio
+      - LLM_CHAT_API_KEY=
+      - SYNTHETIC_USE_LLM=false  # Disabled for consistent, deterministic results
+      - LLM_MAX_TOKENS_CHAT=2048  # Increased for better response generation
+      # Bot endpoints (using proper Docker container hostnames)
+      - ELENA_ENDPOINT=http://whisperengine-elena-bot:9091
+      - MARCUS_ENDPOINT=http://whisperengine-marcus-bot:9092
+      - RYAN_ENDPOINT=http://whisperengine-ryan-bot:9093
+      - DREAM_ENDPOINT=http://whisperengine-dream-bot:9094
+      - GABRIEL_ENDPOINT=http://whisperengine-gabriel-bot:9095
+      - SOPHIA_ENDPOINT=http://whisperengine-sophia-bot:9096
+      - JAKE_ENDPOINT=http://whisperengine-jake-bot:9097
+      - DOTTY_ENDPOINT=http://whisperengine-dotty-bot:9098
+      - AETHERIS_ENDPOINT=http://whisperengine-aetheris-bot:9099
+      - AETHYS_ENDPOINT=http://whisperengine-aethys-bot:3007
+      # Database connectivity for character intelligence testing
+      - POSTGRES_HOST=whisperengine-multi-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=whisperengine
+      - POSTGRES_PASSWORD=whisperengine_password
+      - POSTGRES_DB=whisperengine
+      # Qdrant for vector memory testing
+      - QDRANT_HOST=whisperengine-multi-qdrant
+      - QDRANT_PORT=6333
+      # InfluxDB integration (use existing WhisperEngine InfluxDB)
+      - INFLUXDB_URL=http://whisperengine-multi-influxdb:8086
+      - INFLUXDB_TOKEN=whisperengine-fidelity-first-metrics-token
+      - INFLUXDB_ORG=whisperengine
+      - INFLUXDB_BUCKET=performance_metrics
+    restart: unless-stopped
+    networks:
+      - whisperengine-multi_bot_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('Generator healthy')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # Validation metrics collector (enhanced for character intelligence)
+  synthetic-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.synthetic
+    command: ["sh", "-c", "while true; do python synthetic_validation_metrics.py && python character_intelligence_synthetic_validator.py; sleep 14400; done"]
+    volumes:
+      - ./synthetic_conversations:/app/synthetic_conversations
+      - ./character_intelligence_validation_results.json:/app/character_intelligence_validation_results.json
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      # LM Studio Configuration for Enhanced Synthetic Generation
+      - LLM_CHAT_API_URL=http://host.docker.internal:1234/v1
+      - LLM_CLIENT_TYPE=lmstudio
+      - LLM_CHAT_MODEL=local-model
+      - LLM_CHAT_API_KEY=
+      - SYNTHETIC_USE_LLM=true
+      - LLM_MAX_TOKENS_CHAT=1024
+      # Database connectivity for character intelligence validation
+      - POSTGRES_HOST=whisperengine-multi-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=whisperengine
+      - POSTGRES_PASSWORD=whisperengine_password
+      - POSTGRES_DB=whisperengine
+      # Qdrant for vector memory validation
+      - QDRANT_HOST=whisperengine-multi-qdrant
+      - QDRANT_PORT=6333
+      # InfluxDB integration (same as WhisperEngine)
+      - INFLUXDB_URL=http://whisperengine-multi-influxdb:8086
+      - INFLUXDB_TOKEN=whisperengine-fidelity-first-metrics-token
+      - INFLUXDB_ORG=whisperengine
+      - INFLUXDB_BUCKET=performance_metrics
+    restart: unless-stopped
+    networks:
+      - whisperengine-multi_bot_network
+
+networks:
+  whisperengine-multi_bot_network:
+    external: true

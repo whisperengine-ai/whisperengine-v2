@@ -1,0 +1,348 @@
+#!/usr/bin/env python3
+"""
+Template-Based Multi-Bot Configuration Generator
+
+This script auto-discovers bot configurations from .env.* files and character JSON files,
+then fills in a Docker Compose template with the discovered configurations.
+
+Usage:
+    python scripts/generate_multi_bot_config.py
+
+Requirements:
+    - .env.{bot_name} files for bot-specific configuration
+    - characters/examples/{character_name}.json files for CDL character definitions
+    - docker-compose.multi-bot.template.yml template file
+"""
+
+import os
+import yaml
+import re
+from pathlib import Path
+from typing import Dict, Optional
+import argparse
+
+class BotConfigDiscovery:
+    """Discovers and manages bot configurations dynamically."""
+    
+    def __init__(self, workspace_root: str = "."):
+        self.workspace_root = Path(workspace_root)
+        self.env_pattern = re.compile(r"^\.env\.(.+)$")
+        self.character_pattern = re.compile(r"^(.+)\.json$")
+        self.template_file = self.workspace_root / "docker-compose.multi-bot.template.yml"
+        self.output_file = self.workspace_root / "docker-compose.multi-bot.yml"
+        
+    def discover_bot_configs(self) -> Dict[str, Dict]:
+        """
+        Discover all bot configurations by scanning for .env.* files.
+        Returns mapping of bot_name -> config_info
+        """
+        bot_configs = {}
+        
+        # Scan for .env.* files (excluding .example, .template, and .local files)
+        for env_file in self.workspace_root.glob(".env.*"):
+            if env_file.name.endswith(".example") or env_file.name.endswith(".template") or env_file.name.endswith(".local"):
+                continue
+                
+            match = self.env_pattern.match(env_file.name)
+            if match:
+                bot_name = match.group(1)
+                
+                # Read health check port from env file
+                health_port = self._extract_health_port(env_file)
+                
+                # Read bot name and collection name from env file
+                discord_bot_name = self._extract_env_var(env_file, 'DISCORD_BOT_NAME') or bot_name
+                collection_name = self._extract_env_var(env_file, 'QDRANT_COLLECTION_NAME') or f"whisperengine_memory_{bot_name}"
+                
+                # WhisperEngine now uses database-based CDL storage - no JSON files required
+                # Character data is loaded dynamically from PostgreSQL database
+                
+                bot_configs[bot_name] = {
+                    "env_file": str(env_file),
+                    "health_port": health_port,
+                    "service_name": f"{bot_name}-bot",
+                    "container_name": f"{bot_name}-bot",
+                    "display_name": self._get_display_name(bot_name),
+                    "character_file": None,  # Database-based CDL - no character files needed
+                    "DISCORD_BOT_NAME": discord_bot_name,
+                    "QDRANT_COLLECTION_NAME": collection_name
+                }
+                
+        return bot_configs
+    
+    def _extract_health_port(self, env_file: Path) -> int:
+        """Extract HEALTH_CHECK_PORT from environment file."""
+        try:
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.startswith('HEALTH_CHECK_PORT='):
+                        return int(line.split('=')[1].strip())
+        except (IOError, ValueError, IndexError):
+            pass
+        
+        # Default port based on bot name hash for consistency
+        return 9000 + abs(hash(env_file.stem)) % 1000
+    
+    def _extract_env_var(self, env_file: Path, var_name: str) -> Optional[str]:
+        """Extract any environment variable from .env file."""
+        try:
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.startswith(f'{var_name}='):
+                        value = line.split('=', 1)[1].strip()
+                        # Remove quotes if present
+                        if value.startswith('"') and value.endswith('"'):
+                            value = value[1:-1]
+                        elif value.startswith("'") and value.endswith("'"):
+                            value = value[1:-1]
+                        return value if value else None
+        except (IOError, IndexError):
+            pass
+        return None
+    
+    def _find_character_file(self, bot_name: str) -> Optional[str]:
+        """
+        Get character JSON file path from CDL_DEFAULT_CHARACTER environment variable only.
+        No auto-discovery or fallback logic - explicit configuration required.
+        """
+        env_file = self.workspace_root / f".env.{bot_name}"
+        if not env_file.exists():
+            print(f"❌ Error: Environment file .env.{bot_name} not found")
+            return None
+        
+        try:
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.startswith('CDL_DEFAULT_CHARACTER='):
+                        char_file = line.split('=')[1].strip()
+                        if not char_file:
+                            print(f"❌ Error: CDL_DEFAULT_CHARACTER is empty in .env.{bot_name}")
+                            return None
+                        
+                        # Verify the character file exists
+                        char_file_path = self.workspace_root / char_file
+                        if not char_file_path.exists():
+                            print(f"❌ Error: Character file {char_file} not found (specified in .env.{bot_name})")
+                            return None
+                        
+                        return char_file
+        except (IOError, IndexError) as e:
+            print(f"❌ Error reading .env.{bot_name}: {e}")
+            return None
+        
+        print(f"❌ Error: CDL_DEFAULT_CHARACTER not specified in .env.{bot_name}")
+        return None
+    
+    def _get_display_name(self, bot_name: str) -> str:
+        """
+        Get the display name for a bot, handling special cases.
+        Special mapping for ryan-chen -> ryan migration.
+        """
+        # Special case for ryan-chen -> ryan migration
+        if bot_name == "ryan-chen":
+            return "ryan"
+        
+        # Default: convert dashes to spaces and title case
+        return bot_name.replace("-", " ").title()
+
+    def generate_bot_service_yaml(self, bot_name: str, config: Dict) -> str:
+        """Generate YAML for a single bot service."""
+        
+        environment_vars = [
+            f"DISCORD_BOT_NAME={bot_name}",  # Use lowercase bot_name, not display_name
+            "POSTGRES_HOST=postgres",
+            # "REDIS_HOST=redis",  # Commented out - using vector-native memory only
+            "QDRANT_HOST=qdrant",
+            "MODEL_CACHE_DIR=/app/models",
+            "DISABLE_MODEL_DOWNLOAD=true",
+            "HF_HUB_OFFLINE=false",
+            "TRANSFORMERS_OFFLINE=0",
+            # HuggingFace cache configuration - use pre-downloaded models from container
+            "HF_HOME=/app/cache/huggingface",
+            "TRANSFORMERS_CACHE=/app/cache/huggingface", 
+            "HF_DATASETS_CACHE=/app/cache/huggingface",
+            "HUGGINGFACE_HUB_CACHE=/app/cache/huggingface",
+            "FASTEMBED_CACHE_PATH=/app/cache/fastembed",
+            # Logging and debug
+            "LOG_LEVEL=${LOG_LEVEL:-INFO}",
+            "DEBUG_MODE=false",
+            "PYTHONUNBUFFERED=1",
+            f"HEALTH_CHECK_PORT={config['health_port']}",
+            "HEALTH_CHECK_HOST=0.0.0.0"
+            # Note: QDRANT_COLLECTION_NAME is loaded from .env.{bot_name} via env_file
+            # Note: Character data is loaded from PostgreSQL database via DISCORD_BOT_NAME
+        ]
+        
+        service_yaml = f"""  {config['service_name']}:
+    image: whisperengine-bot:${{VERSION:-latest}}
+    container_name: {config['container_name']}
+    restart: unless-stopped
+    entrypoint: []  # Override Docker entrypoint for direct Python execution
+    command: ["python", "run.py"]
+    env_file:
+      - {config['env_file']}
+    environment:"""
+        
+        for env_var in environment_vars:
+            service_yaml += f"\n      - {env_var}"
+            
+        service_yaml += f"""
+    ports:
+      - "{config['health_port']}:{config['health_port']}"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{bot_name}-{{.ImageName}}-{{.Name}}-{{.ID}}"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4.0"
+        reservations:
+          memory: 2G
+          cpus: "2.0"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:{config['health_port']}/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - {bot_name}_backups:/app/backups
+      - {bot_name}_privacy:/app/privacy
+      - {bot_name}_temp:/app/temp
+      - ./logs:/app/logs  # External mount for prompt/response logs
+      - ./sql:/app/sql:ro
+      # Shared Hugging Face cache (all bots share models)
+      - huggingface_cache:/app/cache/huggingface
+      # Live code mounting for development (no rebuild needed)
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./characters:/app/characters
+      - ./config:/app/config
+      - ./run.py:/app/run.py
+      - ./env_manager.py:/app/env_manager.py
+      # Note: Using external host mount for logs instead of Docker volumes
+    networks:
+      - bot_network
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      influxdb:
+        condition: service_healthy
+      # - redis  # Commented out - using vector-native memory only"""
+        
+        return service_yaml
+
+    def generate_bot_volumes_yaml(self, bot_configs: Dict[str, Dict]) -> str:
+        """Generate YAML for bot-specific volumes."""
+        volumes_yaml = ""
+        
+        for bot_name, config in bot_configs.items():
+            volumes_yaml += f"""  {bot_name}_backups:
+    name: whisperengine-multi_{bot_name}_backups
+  {bot_name}_privacy:
+    name: whisperengine-multi_{bot_name}_privacy
+  {bot_name}_temp:
+    name: whisperengine-multi_{bot_name}_temp
+  {bot_name}_logs:
+    name: whisperengine-multi_{bot_name}_logs
+"""
+        
+        return volumes_yaml.rstrip()
+
+    def generate_docker_compose_from_template(self, bot_configs: Dict[str, Dict]) -> str:
+        """Generate Docker Compose by filling template with discovered bot configurations."""
+        
+        if not self.template_file.exists():
+            raise FileNotFoundError(f"Template file not found: {self.template_file}")
+        
+        # Read template
+        with open(self.template_file, 'r') as f:
+            template_content = f.read()
+        
+        # Generate bot services YAML
+        bot_services_yaml = ""
+        for bot_name, config in bot_configs.items():
+            bot_services_yaml += self.generate_bot_service_yaml(bot_name, config) + "\n\n"
+        
+        # Generate bot volumes YAML
+        bot_volumes_yaml = self.generate_bot_volumes_yaml(bot_configs)
+        
+        # Replace placeholders in template
+        filled_content = template_content.replace(
+            "  # BOT_SERVICES_PLACEHOLDER", 
+            bot_services_yaml.rstrip()
+        ).replace(
+            "  # BOT_VOLUMES_PLACEHOLDER", 
+            bot_volumes_yaml
+        )
+        
+        return filled_content
+
+def main():
+    """Main execution function."""
+    parser = argparse.ArgumentParser(
+        description="Generate dynamic multi-bot configuration from discovered .env files"
+    )
+    parser.add_argument(
+        "--workspace", 
+        default=".", 
+        help="Workspace root directory (default: current directory)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Initialize discovery
+    discovery = BotConfigDiscovery(args.workspace)
+    
+    # Discover configurations
+    print("🔍 Discovering bot configurations...")
+    bot_configs = discovery.discover_bot_configs()
+    
+    if not bot_configs:
+        print("❌ No bot configurations found!")
+        print("   Create .env.{bot_name} files to get started")
+        return 1
+    
+    # Display discovered configurations
+    print(f"✅ Found {len(bot_configs)} bot configurations:")
+    for bot_name, config in bot_configs.items():
+        # WhisperEngine now uses database-based CDL - no character files needed
+        print(f"  ✓ {bot_name}: env={config['env_file']}, database CDL, port={config['health_port']}")
+    
+    try:
+        # Generate Docker Compose from template
+        print("\\n🐳 Generating Docker Compose configuration from template...")
+        compose_content = discovery.generate_docker_compose_from_template(bot_configs)
+        
+        # Write Docker Compose file
+        with open(discovery.output_file, 'w') as f:
+            f.write(compose_content)
+        print(f"✅ Generated: {discovery.output_file}")
+        
+        print("\\n🎉 Template-based multi-bot configuration complete!")
+        print("\\nNext steps:")
+        print("1. To add a new bot, copy .env.template to .env.{bot_name}")
+        print("2. Customize the template with bot-specific values")
+        print("3. Ensure corresponding character JSON exists in characters/examples/")
+        print("4. Regenerate config: python scripts/generate_multi_bot_config.py")
+        print("5. Start all bots: docker compose -p whisperengine-multi -f docker-compose.multi-bot.yml up -d")
+        print("6. Start specific bot: docker compose -p whisperengine-multi -f docker-compose.multi-bot.yml up -d [bot_name]-bot")
+        
+        return 0
+        
+    except Exception as e:
+        print(f"❌ Error generating configuration: {e}")
+        return 1
+
+if __name__ == "__main__":
+    exit(main())

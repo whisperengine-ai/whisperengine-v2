@@ -1,0 +1,34 @@
+# DEPRECATED: This file is being replaced by a multi-tier dependency system
+# Please use the new structure for clean cross-platform support:
+#
+# Core dependencies (shared):     requirements-core.txt
+# Platform optimizations:        requirements-platform.txt  
+# Discord bot specific:          requirements-discord.txt
+#
+# Installation:
+#   Discord Bot: ./scripts/install-discord.sh (or .bat for Windows)
+#
+# See DEPENDENCY_MANAGEMENT.md for full migration guide
+#
+# This file maintained for backward compatibility until migration complete
+
+# Minimal compatibility installation - use new structure instead
+# All versions locked for reproducible builds - UPDATED TO LATEST
+discord.py==2.6.3
+python-dotenv==1.1.1
+# chromadb==1.1.0  # REMOVED - Using Qdrant for vector memory system
+# REMOVED: spacy==3.8.7  # Replaced by vector-native approach
+textblob==0.18.0.post0  # Lightweight sentiment analysis (replaces RoBERTa)
+redis==6.4.0
+requests==2.32.5
+aiohttp==3.12.15
+fastembed>=0.7.0  # Fast, lightweight embeddings from Qdrant team (Python 3.13 compatible)
+numpy==2.3.3  # Updated from 2.3.2
+scikit-learn==1.7.2  # Machine learning algorithms for vector similarity and clustering
+pytest==8.4.2
+
+# InfluxDB for time series performance monitoring
+influxdb-client==1.49.0  # Time series database client for fidelity-first metrics
+
+# For new installations, use:
+# pip install -r requirements-core.txt
