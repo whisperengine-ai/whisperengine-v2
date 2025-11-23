@@ -641,12 +641,13 @@ class WhisperBot(commands.Bot):
                 message_id=message_id,
                 reaction=emoji,
                 bot_name=self.character_name,
-                message_length=message_length
+                message_length=message_length,
+                action="add"
             )
             
             # Get feedback score and adjust memory importance
             feedback = await feedback_analyzer.get_feedback_score(message_id, user_id)
-            if feedback and feedback["score"] != 0:
+            if feedback:
                 # Adjust memory importance in Qdrant
                 collection_name = f"whisperengine_memory_{self.character_name}"
                 score_delta = feedback["score"] * 0.2  # Scale to ±0.2 adjustment
@@ -668,7 +669,94 @@ class WhisperBot(commands.Bot):
                 logger.info(f"Feedback score for message: {feedback['score']} (adjusted memory importance)")
 
         except Exception as e:
-            logger.error(f"Error handling reaction: {e}")
+            logger.error(f"Error handling reaction add: {e}")
+
+    async def on_reaction_remove(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
+        """
+        Handles reactions removed from messages.
+        Updates feedback score and memory importance accordingly.
+        """
+        if user.bot:
+            return
+
+        # Only care if the reaction is on a message sent by THIS bot
+        if reaction.message.author.id != self.user.id:
+            return
+
+        try:
+            message_id = str(reaction.message.id)
+            user_id = str(user.id)
+            emoji = str(reaction.emoji)
+            message_length = len(reaction.message.content)
+            
+            logger.info(f"User {user.name} removed reaction {emoji} from message {message_id}")
+
+            # Log to InfluxDB via FeedbackAnalyzer
+            await feedback_analyzer.log_reaction_to_influx(
+                user_id=user_id,
+                message_id=message_id,
+                reaction=emoji,
+                bot_name=self.character_name,
+                message_length=message_length,
+                action="remove"
+            )
+            
+            # Get feedback score and adjust memory importance
+            feedback = await feedback_analyzer.get_feedback_score(message_id, user_id)
+            if feedback:
+                # Adjust memory importance in Qdrant
+                # Since we removed a reaction, we need to recalculate the impact.
+                # The simplest way is to just use the new score to set a "target" importance,
+                # but our system uses deltas. 
+                # So we should apply the INVERSE of what adding this reaction would do.
+                
+                # However, get_feedback_score returns the CURRENT total score.
+                # If we just use the current score, we might drift.
+                # A better approach for "remove" is to calculate the delta this specific reaction removal caused.
+                
+                # But since we don't know the exact previous state easily without querying,
+                # let's just use the new score to guide the adjustment.
+                # Actually, if we removed a positive reaction, score goes down.
+                # If we removed a negative reaction, score goes up.
+                
+                # Let's trust the feedback score from InfluxDB which is now accurate (replayed events).
+                # But wait, adjust_memory_score_by_message_id takes a DELTA.
+                # If I just pass the new score * 0.2, I am applying the whole score again!
+                # That is WRONG.
+                
+                # Correct logic:
+                # If removed reaction was POSITIVE: Delta should be NEGATIVE.
+                # If removed reaction was NEGATIVE: Delta should be POSITIVE.
+                
+                is_positive = emoji in feedback_analyzer.POSITIVE_REACTIONS
+                is_negative = emoji in feedback_analyzer.NEGATIVE_REACTIONS
+                
+                score_delta = 0
+                trust_delta = 0
+                
+                if is_positive:
+                    score_delta = -0.2 # Remove positive boost
+                    trust_delta = -5
+                elif is_negative:
+                    score_delta = 0.2 # Remove negative penalty
+                    trust_delta = 5
+                
+                if score_delta != 0:
+                    collection_name = f"whisperengine_memory_{self.character_name}"
+                    await feedback_analyzer.adjust_memory_score_by_message_id(
+                        message_id=message_id,
+                        collection_name=collection_name,
+                        score_delta=score_delta
+                    )
+                    
+                    self.loop.create_task(
+                        trust_manager.update_trust(user_id, self.character_name, trust_delta)
+                    )
+                    
+                    logger.info(f"Reaction removed. Adjusted memory importance by {score_delta}")
+
+        except Exception as e:
+            logger.error(f"Error handling reaction remove: {e}")
 
     async def _check_and_summarize(self, session_id: str, user_id: str):
         """

@@ -56,16 +56,26 @@ class FeedbackAnalyzer:
                 |> filter(fn: (r) => r["_measurement"] == "reaction_event")
                 |> filter(fn: (r) => r["message_id"] == "{message_id}")
                 |> filter(fn: (r) => r["user_id"] == "{user_id}")
+                |> sort(columns: ["_time"], desc: false)
             '''
             
             tables = query_api.query(flux_query)
             
-            reactions = []
+            # Reconstruct active reactions state by replaying events
+            active_reactions = set()
+            
             for table in tables:
                 for record in table.records:
                     reaction = record.values.get("reaction")
+                    action = record.values.get("action", "add") # Default to add for backward compatibility
+                    
                     if reaction:
-                        reactions.append(reaction)
+                        if action == "add":
+                            active_reactions.add(reaction)
+                        elif action == "remove":
+                            active_reactions.discard(reaction)
+            
+            reactions = list(active_reactions)
             
             if not reactions:
                 return {
@@ -278,7 +288,8 @@ class FeedbackAnalyzer:
         message_id: str, 
         reaction: str, 
         bot_name: str,
-        message_length: int = 0
+        message_length: int = 0,
+        action: str = "add"
     ):
         """
         Logs a reaction event to InfluxDB for later analysis.
@@ -293,6 +304,7 @@ class FeedbackAnalyzer:
                 .tag("user_id", user_id) \
                 .tag("bot_name", bot_name) \
                 .tag("message_id", message_id) \
+                .tag("action", action) \
                 .field("reaction", reaction) \
                 .field("message_length", message_length) \
                 .time(datetime.utcnow())
@@ -303,7 +315,7 @@ class FeedbackAnalyzer:
                 record=point
             )
             
-            logger.debug(f"Logged reaction {reaction} to InfluxDB")
+            logger.debug(f"Logged reaction {action} {reaction} to InfluxDB")
             
         except Exception as e:
             logger.error(f"Failed to log reaction to InfluxDB: {e}")
