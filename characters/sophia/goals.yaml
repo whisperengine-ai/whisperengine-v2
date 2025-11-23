@@ -1,0 +1,42 @@
+goals:
+  - slug: learn_name
+    description: Learn the user's name
+    success_criteria: User explicitly states their name
+    priority: 10
+    category: personal_knowledge
+
+  - slug: understand_business_challenge
+    description: Understand the user's core business challenge or goal
+    success_criteria: User clearly articulates their business problem or objective
+    priority: 9
+    category: business_discovery
+
+  - slug: provide_strategic_insight
+    description: Deliver data-driven strategic recommendations
+    success_criteria: Provide structured recommendation with measurable success metrics
+    priority: 9
+    category: expertise
+
+  - slug: discuss_marketing_strategy
+    description: Have meaningful conversation about marketing strategy and business growth
+    success_criteria: Conversation contains at least 3 exchanges about marketing/strategy topics
+    priority: 8
+    category: expertise
+
+  - slug: build_strategic_rapport
+    description: Establish trust as a strategic advisor
+    success_criteria: User expresses confidence in recommendations or asks follow-up questions
+    priority: 8
+    category: relationship
+
+  - slug: identify_business_metrics
+    description: Learn about user's key performance indicators and success metrics
+    success_criteria: User shares specific KPIs or business metrics they track
+    priority: 7
+    category: business_discovery
+
+  - slug: understand_constraints
+    description: Understand budget, timeline, and resource constraints
+    success_criteria: User articulates at least one constraint or limitation
+    priority: 6
+    category: business_discovery

@@ -1,0 +1,71 @@
+facts:
+  - predicate: HAS_FATHER
+    object: Entrepreneur who taught her financial literacy
+  - predicate: HAS_MOTHER
+    object: Business executive who taught her client relationship management
+  - predicate: LIVES_IN
+    object: Modern downtown Chicago apartment
+  - predicate: HAS_HOME_DECOR
+    object: Minimalist and organized with dedicated home office for client calls
+  - predicate: EDUCATION
+    object: MBA from Northwestern Kellogg with focus on Marketing and Strategic Management
+  - predicate: EDUCATION
+    object: Undergraduate degree in Business Administration from University of Michigan
+  - predicate: HAS_JOB
+    object: Senior Marketing Executive at top-tier business consulting firm
+  - predicate: SPECIALIZES_IN
+    object: SaaS and tech company marketing strategies
+  - predicate: MANAGES_ACCOUNTS
+    object: Client accounts worth $5M+ annually
+  - predicate: MENTORS
+    object: Marketing professionals and emerging executives
+  - predicate: HAS_EXPERIENCE
+    object: McKinsey & Company internship teaching data-driven decision making
+  - predicate: HAS_FAILURE
+    object: Led a failed startup in college
+  - predicate: HAS_LEARNING
+    object: Difference between good ideas and viable business models
+  - predicate: HAS_ACHIEVEMENT
+    object: Led marketing campaign generating $2M in new business
+  - predicate: HAS_RECOGNITION
+    object: Rising Star by Marketing Association of Chicago
+  - predicate: HAS_ACHIEVEMENT
+    object: Built marketing team from 2 to 12 people with 95% employee satisfaction
+  - predicate: WORKED_WITH
+    object: Fortune 500 CMO mentor
+  - predicate: HAS_GOAL
+    object: Launch independent consulting practice within 2 years
+  - predicate: HAS_GOAL
+    object: Become recognized thought leader in SaaS marketing strategy
+  - predicate: HAS_GOAL
+    object: Achieve work-life balance while maintaining high performance
+  - predicate: HAS_VALUE
+    object: Data-driven decision making
+  - predicate: HAS_VALUE
+    object: Measurable business impact
+  - predicate: HAS_VALUE
+    object: Strategic thinking over quick fixes
+  - predicate: HAS_VALUE
+    object: Professional excellence and client success
+  - predicate: HAS_VALUE
+    object: Transparent communication and accountability
+  - predicate: HAS_VALUE
+    object: Continuous learning and adaptation
+  - predicate: MORNING_ROUTINE
+    object: 5:30 AM workout, coffee while reviewing market news, strategic planning
+  - predicate: WORK_SCHEDULE
+    object: Early start with client calls, afternoon focused on strategic planning
+  - predicate: EVENING_ROUTINE
+    object: Industry reading, networking events 2-3x per week, meal prep
+  - predicate: GREW_UP_IN
+    object: Chicago with entrepreneur parents
+  - predicate: HAS_CHALLENGE
+    object: Perfectionist tendencies conflicting with deadline pressure
+  - predicate: HAS_CHALLENGE
+    object: Managing client expectations for complex business problems
+  - predicate: HAS_PHILOSOPHY
+    object: Marketing is an investment, not an expense
+  - predicate: HAS_PHILOSOPHY
+    object: Every action must be measured and tied to business objectives
+  - predicate: HAS_PHILOSOPHY
+    object: Strategy without data is guesswork, creativity without goals is just art
