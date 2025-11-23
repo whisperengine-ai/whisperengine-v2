@@ -196,8 +196,8 @@ def main():
         print(f"\n✅ Version bump complete!")
         print(f"\n📋 Next steps:")
         print(f"   1. Review changes: git show")
-        print(f"   2. Build Docker: ./push-to-dockerhub.sh whisperengine v{new_version}")
-        print(f"   3. Create GitHub release: https://github.com/whisperengine-ai/whisperengine/releases/new")
+        print(f"   2. Build Docker: ./scripts/push-to-dockerhub.sh whisperengine v{new_version}")
+        print(f"   3. Create GitHub release: https://github.com/whisperengine-ai/whisperengine-v2/releases/new")
         
     except Exception as e:
         print(f"❌ Error: {e}")
