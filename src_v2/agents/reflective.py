@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, Awaitable
 from loguru import logger
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
@@ -22,7 +22,7 @@ class ReflectiveAgent:
         self.llm = create_llm(temperature=0.1, mode="reflective")
         self.max_steps = settings.REFLECTIVE_MAX_STEPS
 
-    async def run(self, user_input: str, user_id: str, system_prompt: str) -> str:
+    async def run(self, user_input: str, user_id: str, system_prompt: str, callback: Optional[Callable[[str], Awaitable[None]]] = None) -> str:
         """
         Runs the ReAct loop and returns the final response.
         """
@@ -63,6 +63,17 @@ class ReflectiveAgent:
             
             # Log raw output for debugging
             logger.debug(f"Reflective Step {steps} raw output: {text[:300]}...")
+
+            # Streaming Callback (Thoughts & Actions)
+            if callback:
+                # Filter out Final Answer from the stream if it's there, 
+                # because that will be sent as the main message.
+                stream_text = text
+                if "Final Answer:" in stream_text:
+                    stream_text = stream_text.split("Final Answer:")[0].strip()
+                
+                if stream_text:
+                    await callback(stream_text)
             
             # Append to scratchpad (the LLM's output)
             scratchpad += text
@@ -88,6 +99,13 @@ class ReflectiveAgent:
                 else:
                     observation = f"Error: Tool '{action}' not found. Available tools: {tool_names}"
                 
+                # Streaming Callback (Observation Summary)
+                if callback:
+                    obs_preview = str(observation)
+                    if len(obs_preview) > 100:
+                        obs_preview = obs_preview[:100] + "..."
+                    await callback(f"Observation: {obs_preview}")
+
                 # Append Observation
                 scratchpad += f"\nObservation: {observation}\nThought:"
                 continue

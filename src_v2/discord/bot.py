@@ -426,13 +426,42 @@ class WhisperBot(commands.Bot):
                     import time
                     start_time = time.time()
                     
+                    # Prepare callback for Reflective Mode
+                    status_message = None
+                    status_content = "🧠 **Reflective Mode Activated**\n"
+                    
+                    async def reflective_callback(text: str):
+                        nonlocal status_message, status_content
+                        # Clean up text slightly
+                        clean_text = text.strip()
+                        if not clean_text:
+                            return
+                            
+                        # Format: Quote block for thoughts
+                        formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
+                        
+                        status_content += f"\n{formatted_text}"
+                        
+                        # Truncate if too long for Discord (2000 chars)
+                        if len(status_content) > 1900:
+                            status_content = status_content[:1900] + "\n... (truncated)"
+                        
+                        try:
+                            if status_message:
+                                await status_message.edit(content=status_content)
+                            else:
+                                status_message = await message.channel.send(status_content)
+                        except Exception as e:
+                            logger.error(f"Failed to update reflective status: {e}")
+
                     response = await self.agent_engine.generate_response(
                         character=character,
                         user_message=user_message,
                         chat_history=chat_history,
                         context_variables=context_vars,
                         user_id=user_id,
-                        image_urls=image_urls
+                        image_urls=image_urls,
+                        callback=reflective_callback
                     )
                     
                     processing_time_ms = (time.time() - start_time) * 1000
