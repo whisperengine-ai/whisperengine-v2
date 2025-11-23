@@ -23,7 +23,7 @@ aiofiles>=23.0.0
 
 # Voice functionality dependencies (optional)
 PyNaCl>=1.5.0
-audioop-lts>=0.2.0
+audioop-lts>=0.2.0; python_version >= "3.13"
 elevenlabs>=1.0.0
 
 # AI & Orchestration
