@@ -208,7 +208,7 @@ class MemoryManager:
             logger.error(f"Failed to search memories: {e}")
             return []
 
-    async def search_summaries(self, query: str, user_id: str, limit: int = 3) -> List[Dict[str, Any]]:
+    async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None) -> List[Dict[str, Any]]:
         """
         Searches for relevant summaries in Qdrant.
         """
@@ -220,29 +220,54 @@ class MemoryManager:
             logger.debug(f"Searching summaries for user {user_id} with query: {query}")
             embedding = await self.embedding_service.embed_query_async(query)
             
+            # Build Filter
+            must_conditions = [
+                FieldCondition(key="user_id", match=MatchValue(value=str(user_id))),
+                FieldCondition(key="type", match=MatchValue(value="summary"))
+            ]
+            
+            # Add Time Filter if provided
+            if start_timestamp:
+                # Assuming 'timestamp' field in Qdrant is stored as ISO string or float.
+                # Based on add_summary, it seems to be ISO string. Qdrant Range filter works on numbers.
+                # If it's a string, we can't easily range filter without converting schema.
+                # Let's check how it's stored. 
+                # If it's stored as string, we might need to filter in Python (post-retrieval) or rely on Qdrant's datetime support (if enabled).
+                # For safety/simplicity in this defensive pass, let's filter in Python if we can't be sure of Qdrant schema.
+                pass 
+
             search_result = await db_manager.qdrant_client.query_points(
                 collection_name=self.collection_name,
                 query=embedding,
-                query_filter=Filter(
-                    must=[
-                        FieldCondition(key="user_id", match=MatchValue(value=str(user_id))),
-                        FieldCondition(key="type", match=MatchValue(value="summary"))
-                    ]
-                ),
-                limit=limit
+                query_filter=Filter(must=must_conditions),
+                limit=limit * 2 if start_timestamp else limit # Fetch more if we plan to filter
             )
             
             logger.debug(f"Found {len(search_result.points)} summary results")
             
-            return [
-                {
+            results = []
+            for hit in search_result.points:
+                # Parse timestamp from payload
+                ts_str = hit.payload.get("timestamp")
+                
+                # Post-retrieval filtering for safety
+                if start_timestamp and ts_str:
+                    try:
+                        # Handle "2023-01-01T12:00:00" format
+                        dt = datetime.datetime.fromisoformat(str(ts_str))
+                        if dt.timestamp() < start_timestamp:
+                            continue
+                    except Exception:
+                        pass # If parsing fails, include it to be safe
+
+                results.append({
                     "content": hit.payload.get("content"),
                     "score": hit.score,
                     "meaningfulness": hit.payload.get("meaningfulness_score"),
-                    "timestamp": hit.payload.get("timestamp")
-                }
-                for hit in search_result.points
-            ]
+                    "timestamp": ts_str
+                })
+            
+            return results[:limit]
             
         except Exception as e:
             logger.error(f"Failed to search summaries: {e}")

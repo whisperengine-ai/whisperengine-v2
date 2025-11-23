@@ -24,11 +24,12 @@ SCHEMA:
     - (:User {{id: $user_id}})
     - (:Character {{name: $bot_name}})
     - (:Entity {{name: "..."}})
-- Relationships: [:FACT {{predicate: "..."}}] (e.g., predicate="LIKES", "OWNS", "LIVES_IN", "HAS_BACKGROUND")
+- Relationships: [:FACT {{predicate: "..."}}] 
+    - Common Predicates: "LIKES", "LOVES", "DISLIKES", "OWNS", "LIVES_IN", "HAS_JOB", "HAS_GOAL", "IS_A"
 
 EXAMPLES:
-1. Q: "What do I like?"
-   A: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'LIKES' RETURN o.name
+1. Q: "What do I like?" / "What are my hobbies?"
+   A: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate IN ['LIKES', 'LOVES', 'INTERESTED_IN', 'ENJOYS'] RETURN o.name, r.predicate
 
 2. Q: "Where do I live?"
    A: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'LIVES_IN' RETURN o.name
@@ -49,6 +50,7 @@ RULES:
 - Return the relevant properties (usually o.name or r.predicate).
 - Do NOT include markdown formatting (```cypher). Just the raw query.
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
+- For "hobbies" or "interests", ALWAYS check for 'LIKES', 'LOVES', 'ENJOYS'.
 """),
             ("human", "{question}")
         ])

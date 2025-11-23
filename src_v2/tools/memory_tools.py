@@ -1,3 +1,5 @@
+import re
+from datetime import datetime, timedelta
 from typing import Type, List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
@@ -23,7 +25,9 @@ class SearchSummariesTool(BaseTool):
 
     async def _arun(self, query: str, time_range: Optional[str] = None) -> str:
         try:
-            results = await memory_manager.search_summaries(query, self.user_id)
+            start_ts = self._parse_time_range(time_range) if time_range else None
+            
+            results = await memory_manager.search_summaries(query, self.user_id, start_timestamp=start_ts)
             if not results:
                 return "No relevant summaries found."
             
@@ -38,6 +42,49 @@ class SearchSummariesTool(BaseTool):
             return f"Found {len(results)} Summaries (top matches):\n{formatted}"
         except Exception as e:
             return f"Error searching summaries: {e}"
+
+    def _parse_time_range(self, time_range: str) -> Optional[float]:
+        """
+        Parses natural language time range into a start timestamp.
+        Supports: 'last X days', 'last X weeks', 'yesterday', 'last month'.
+        """
+        if not time_range:
+            return None
+            
+        now = datetime.now()
+        text = time_range.lower().strip()
+        
+        try:
+            if "yesterday" in text:
+                return (now - timedelta(days=1)).timestamp()
+            
+            if "last month" in text:
+                return (now - timedelta(days=30)).timestamp()
+                
+            if "last year" in text:
+                return (now - timedelta(days=365)).timestamp()
+
+            # Regex for "last X days/weeks"
+            match = re.search(r"last\s+(\d+)\s+(day|week|month)s?", text)
+            if match:
+                amount = int(match.group(1))
+                unit = match.group(2)
+                
+                if unit == "day":
+                    return (now - timedelta(days=amount)).timestamp()
+                elif unit == "week":
+                    return (now - timedelta(weeks=amount)).timestamp()
+                elif unit == "month":
+                    return (now - timedelta(days=amount * 30)).timestamp()
+                    
+            # Fallback for "last week" (singular)
+            if "last week" in text:
+                return (now - timedelta(weeks=1)).timestamp()
+
+        except Exception:
+            pass
+            
+        return None
 
 class SearchEpisodesInput(BaseModel):
     query: str = Field(description="The specific detail or quote to search for.")
