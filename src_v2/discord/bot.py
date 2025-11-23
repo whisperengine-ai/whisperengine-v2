@@ -130,7 +130,8 @@ class WhisperBot(commands.Bot):
                             activity=discord.Activity(
                                 type=discord.ActivityType.playing, 
                                 name=status_text
-                            )
+                            ),
+                            status=discord.Status.online
                         )
                         logger.debug(f"Updated status to: {status_text}")
                         status_index += 1
@@ -166,6 +167,7 @@ class WhisperBot(commands.Bot):
 
     async def on_ready(self):
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
+        await self.change_presence(status=discord.Status.online)
         
         # Preload character
         char = character_manager.get_character(self.character_name)
