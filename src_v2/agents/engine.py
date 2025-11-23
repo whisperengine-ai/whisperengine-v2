@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, Awaitable
 import json
 import datetime
 from pathlib import Path
@@ -58,7 +58,8 @@ class AgentEngine:
         chat_history: Optional[List[BaseMessage]] = None,
         context_variables: Optional[Dict[str, Any]] = None,
         user_id: Optional[str] = None,
-        image_urls: Optional[List[str]] = None
+        image_urls: Optional[List[str]] = None,
+        callback: Optional[Callable[[str], Awaitable[None]]] = None
     ) -> str:
         """
         Generates a response for the given character and user message.
@@ -199,7 +200,7 @@ class AgentEngine:
         if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
             logger.info("Engaging Reflective Mode")
             # Reflective Agent handles its own tool usage and reasoning
-            return await self.reflective_agent.run(user_message, user_id, system_content)
+            return await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
         
         # 4. Fast Mode (Standard Flow)
         

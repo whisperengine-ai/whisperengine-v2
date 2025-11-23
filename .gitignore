@@ -69,3 +69,4 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+whisperengine-v2.code-workspace
