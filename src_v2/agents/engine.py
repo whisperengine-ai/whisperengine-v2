@@ -1,14 +1,17 @@
 from typing import List, Dict, Any, Optional, Callable, Awaitable
 import json
 import datetime
-from pathlib import Path
+import time
 import base64
 import httpx
+from pathlib import Path
+import aiofiles
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from loguru import logger
 
 from src_v2.config.settings import settings
+from src_v2.config.constants import TRAIT_BEHAVIORS, get_image_format_for_provider
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.router import CognitiveRouter
@@ -18,36 +21,39 @@ from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
-
-# Define Trait Behaviors
-TRAIT_BEHAVIORS = {
-    "Vulnerable": "You are willing to share your own fears, insecurities, and past failures. Be open about your limitations.",
-    "Sarcastic": "Use dry humor, irony, and wit. Don't be afraid to playfully tease the user.",
-    "Affectionate": "Express warmth and care. Use terms of endearment if appropriate. Show you value the relationship.",
-    "Professional": "Maintain a polite, objective, and efficient tone. Focus on the task at hand.",
-    "Curious": "Ask follow-up questions. Show genuine interest in the user's life and opinions.",
-    "Playful": "Be lighthearted, make jokes, and use emojis. Don't take things too seriously.",
-    "Philosophical": "Discuss abstract concepts, meaning of life, and ethics. Use metaphors.",
-    "Direct": "Be blunt and to the point. Avoid sugarcoating."
-}
+from src_v2.utils.validation import ValidationError, validator
 
 class AgentEngine:
+    """Core cognitive engine for generating AI responses with memory and evolution."""
+    
     def __init__(
         self, 
-        trust_manager_dep=None, 
-        feedback_analyzer_dep=None, 
-        goal_manager_dep=None,
-        llm_client_dep=None
-    ):
-        self.llm = llm_client_dep or create_llm()
-        self.router = CognitiveRouter()
-        self.classifier = ComplexityClassifier()
-        self.reflective_agent = ReflectiveAgent()
+        trust_manager_dep: Optional[Any] = None, 
+        feedback_analyzer_dep: Optional[Any] = None, 
+        goal_manager_dep: Optional[Any] = None,
+        llm_client_dep: Optional[Any] = None
+    ) -> None:
+        """Initialize the AgentEngine with dependencies.
+        
+        Args:
+            trust_manager_dep: Optional trust manager for dependency injection
+            feedback_analyzer_dep: Optional feedback analyzer for dependency injection
+            goal_manager_dep: Optional goal manager for dependency injection
+            llm_client_dep: Optional LLM client for dependency injection
+        """
+        self.llm: Any = llm_client_dep or create_llm()
+        self.router: CognitiveRouter = CognitiveRouter()
+        self.classifier: ComplexityClassifier = ComplexityClassifier()
+        self.reflective_agent: ReflectiveAgent = ReflectiveAgent()
         
         # Dependency Injection or Default to Global Instances
-        self.trust_manager = trust_manager_dep or trust_manager
-        self.feedback_analyzer = feedback_analyzer_dep or feedback_analyzer
-        self.goal_manager = goal_manager_dep or goal_manager
+        self.trust_manager: Any = trust_manager_dep or trust_manager
+        self.feedback_analyzer: Any = feedback_analyzer_dep or feedback_analyzer
+        self.goal_manager: Any = goal_manager_dep or goal_manager
+        
+        # Pre-create log directory to avoid blocking during runtime
+        self.log_dir: Path = Path("logs/prompts")
+        self.log_dir.mkdir(parents=True, exist_ok=True)
         
         logger.info("AgentEngine initialized")
 
@@ -65,186 +71,51 @@ class AgentEngine:
         """
         Generates a response for the given character and user message.
         """
+        start_time = time.time()
         chat_history = chat_history or []
         context_variables = context_variables or {}
         
-        # 1. Classify Intent (Simple vs Complex) - Only if Reflective Mode is enabled
-        is_complex = False
-        if user_id and settings.ENABLE_REFLECTIVE_MODE:
-            if force_reflective:
-                is_complex = True
-                logger.info("Complexity Analysis: FORCED COMPLEX by user")
-            else:
-                try:
-                    is_complex_str = await self.classifier.classify(user_message, chat_history)
-                    is_complex = (is_complex_str == "COMPLEX")
-                    logger.info(f"Complexity Analysis: {is_complex_str}")
-                except Exception as e:
-                    logger.error(f"Complexity classifier failed: {e}")
-
-        # 2. Construct Base System Prompt (Character + Evolution + Goals)
-        # The character object already contains the full prompt loaded from the markdown file
-        system_content = character.system_prompt
+        # Defensive validation (engine-level, more lenient than Discord)
+        # This catches issues from non-Discord entry points (API, tests, etc.)
+        try:
+            validator.validate_for_engine(user_message, image_urls)
+        except ValidationError as e:
+            logger.warning(f"Engine validation failed: {e.message}")
+            return e.user_message
         
-        # 2.1 Inject Past Summaries (Long-term Context)
-        if context_variables.get("past_summaries"):
-            system_content += f"\n\n[RELEVANT PAST CONVERSATIONS]\n{context_variables['past_summaries']}\n(Use this context to maintain continuity, but don't explicitly mention 'I read a summary'.)\n"
+        # Validate and filter image URLs
+        if image_urls:
+            image_urls, _ = validator.validate_image_urls(image_urls)
+            if not image_urls:
+                image_urls = None
+        
+        # 1. Classify Intent (Simple vs Complex)
+        classify_start = time.time()
+        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
+        logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
 
-        # 2.5 Inject Dynamic Persona (Character Evolution State)
-        if user_id:
-            try:
-                relationship = await self.trust_manager.get_relationship_level(user_id, character.name)
-                
-                # Inject Trust Level & Evolution Stage
-                if relationship:
-                    # Ensure level is an integer
-                    trust_level = int(relationship.get('level', 1))
-                    level_label = relationship.get('level_label', 'Stranger')
-                    
-                    evolution_context = f"\n\n[RELATIONSHIP STATUS]\n"
-                    evolution_context += f"Trust Level: {trust_level} ({level_label}) (Score: {relationship.get('trust_score', 0)})\n"
-                    
-                    # Add stage-specific instructions
-                    if trust_level >= 3:
-                        evolution_context += f"(You have a strong bond with this user. Be more personal, open, and trusting.)\n"
-                    if trust_level >= 5:
-                        # Inject Unlocked Traits
-                        if relationship.get('unlocked_traits'):
-                            evolution_context += f"\n[UNLOCKED TRAITS]\n"
-                            for trait in relationship['unlocked_traits']:
-                                if trait in TRAIT_BEHAVIORS:
-                                    evolution_context += f"  - {trait}: {TRAIT_BEHAVIORS[trait]}\n"
-                        evolution_context += f"(You have unlocked deeper aspects of your personality with this user. Adapt your responses accordingly.)\n"
-                    
-                    # Inject Mood
-                    current_mood = await self.feedback_analyzer.get_current_mood(user_id)
-                    evolution_context += f"Current Mood: {current_mood}\n"
-                    
-                    # Inject Reflection Insights
-                    if relationship.get('insights'):
-                        evolution_context += f"\n[USER INSIGHTS]\n"
-                        for insight in relationship['insights']:
-                            evolution_context += f"- {insight}\n"
-                        evolution_context += "(These are deep psychological observations about the user. Use them to empathize and connect.)\n"
+        # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
+        context_start = time.time()
+        system_content = await self._build_system_context(character, user_message, user_id, context_variables)
+        logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
-                    # Inject Explicit User Preferences
-                    if relationship.get('preferences'):
-                        evolution_context += f"\n[USER CONFIGURATION]\n"
-                        prefs = relationship['preferences']
-                        
-                        # Handle Verbosity specifically
-                        if 'verbosity' in prefs:
-                            v = prefs['verbosity']
-                            if v == 'short':
-                                evolution_context += "- RESPONSE LENGTH: Keep responses very concise (1-2 sentences max).\n"
-                            elif v == 'medium':
-                                evolution_context += "- RESPONSE LENGTH: Keep responses moderate (2-4 sentences).\n"
-                            elif v == 'long':
-                                evolution_context += "- RESPONSE LENGTH: You may provide detailed, comprehensive responses.\n"
-                            elif v == 'dynamic':
-                                evolution_context += "- RESPONSE LENGTH: Adjust length based on context and user's input length.\n"
-                            else:
-                                evolution_context += f"- verbosity: {v}\n"
-                        
-                        # Handle Style specifically
-                        if 'style' in prefs:
-                            s = prefs['style']
-                            if s == 'casual':
-                                evolution_context += "- TONE: Use casual, relaxed language. Slang is okay if fits character.\n"
-                            elif s == 'formal':
-                                evolution_context += "- TONE: Maintain a formal, polite, and professional tone.\n"
-                            elif s == 'matching':
-                                evolution_context += "- TONE: Mirror the user's energy and formality level.\n"
-                            else:
-                                evolution_context += f"- style: {s}\n"
-
-                    # 2.6 Inject Common Ground & Background Relevance (Knowledge Graph)
-                    try:
-                        # Check for shared interests/facts
-                        common_ground = await knowledge_manager.find_common_ground(user_id, character.name)
-                        if common_ground:
-                            evolution_context += f"\n[COMMON GROUND]\n{common_ground}\n(You share these things with the user. Feel free to reference them naturally.)\n"
-                        
-                        # Check if user message triggers bot background
-                        relevant_bg = await knowledge_manager.search_bot_background(character.name, user_message)
-                        if relevant_bg:
-                            evolution_context += f"\n[RELEVANT BACKGROUND]\n{relevant_bg}\n(The user mentioned something related to your background. You can bring this up.)\n"
-                    except Exception as e:
-                        logger.error(f"Failed to inject knowledge context: {e}")
-
-                    system_content += evolution_context
-                    logger.debug(f"Injected evolution state: {relationship['level']} (Trust: {relationship['trust_score']})")
-                
-                # 2.5.1 Inject Feedback Insights
-                # Check if user has specific preferences based on past feedback
-                feedback_insights = await self.feedback_analyzer.analyze_user_feedback_patterns(user_id)
-                if feedback_insights.get("recommendations"):
-                    feedback_context = "\n\n[USER PREFERENCES (Derived from Feedback)]\n"
-                    for rec in feedback_insights["recommendations"]:
-                        feedback_context += f"- {rec}\n"
-                    system_content += feedback_context
-                    logger.debug(f"Injected feedback insights: {feedback_insights['recommendations']}")
-                
-                # 2.6 Inject Active Goals
-                active_goals = await self.goal_manager.get_active_goals(user_id, character.name)
-                if active_goals:
-                    # Pick the highest priority goal
-                    top_goal = active_goals[0]
-                    goal_context = f"\n\n[CURRENT GOAL: {top_goal['slug']}]\n"
-                    goal_context += f"Objective: {top_goal['description']}\n"
-                    goal_context += f"Success Criteria: {top_goal['success_criteria']}\n"
-                    goal_context += f"(Try to naturally steer the conversation towards this goal without being pushy.)\n"
-                    
-                    system_content += goal_context
-                    logger.debug(f"Injected goal: {top_goal['slug']}")
-                
-            except Exception as e:
-                logger.error(f"Failed to inject evolution/goal state: {e}")
-
-        # 3. Branching Logic
+        # 3. Branching Logic: Reflective Mode
         if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
-            logger.info("Engaging Reflective Mode")
-            # Reflective Agent handles its own tool usage and reasoning
-            response_text, trace = await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
-            
-            # Log Prompt (if enabled)
-            if settings.ENABLE_PROMPT_LOGGING:
-                await self._log_prompt(
-                    character_name=character.name,
-                    user_id=user_id,
-                    system_prompt=system_content,
-                    chat_history=chat_history,
-                    user_input=user_message,
-                    context_variables=context_variables,
-                    response=response_text,
-                    image_urls=image_urls,
-                    trace=trace
-                )
-            
-            return response_text
+            response = await self._run_reflective_mode(
+                character, user_message, user_id, system_content, 
+                chat_history, context_variables, image_urls, callback
+            )
+            logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode)")
+            return response
         
         # 4. Fast Mode (Standard Flow)
         
         # 4.1 Cognitive Routing (The "Brain")
-        # Only run if we have a user_id to look up memories for AND memory_context isn't already provided
-        if user_id and not context_variables.get("memory_context"):
-            try:
-                router_result = await self.router.route_and_retrieve(user_id, user_message, chat_history)
-                memory_context = router_result.get("context", "")
-                reasoning = router_result.get("reasoning", "")
-                
-                if memory_context:
-                    logger.info(f"Injecting memory context. Reasoning: {reasoning}")
-                    # Inject into context_variables so it can be used in the prompt if {memory_context} exists,
-                    # or append to system prompt.
-                    context_variables["memory_context"] = memory_context
-                    context_variables["router_reasoning"] = reasoning
-                else:
-                    logger.debug(f"No memory context retrieved. Reasoning: {reasoning}")
-            except Exception as e:
-                logger.error(f"Cognitive Router failed: {e}")
+        routing_start = time.time()
+        await self._run_cognitive_routing(user_id, user_message, chat_history, context_variables)
+        logger.debug(f"Cognitive routing took {time.time() - routing_start:.2f}s")
         
-        # Inject memory context if it exists and wasn't handled by a placeholder
+        # Inject memory context if it exists
         if context_variables.get("memory_context"):
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
             system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
@@ -261,39 +132,8 @@ class AgentEngine:
 
         # 7. Execute
         try:
-            # Prepare input content
-            if image_urls and settings.LLM_SUPPORTS_VISION:
-                # Multimodal input with multiple images
-                input_content = [{"type": "text", "text": user_message}]
-                
-                async with httpx.AsyncClient() as client:
-                    for img_url in image_urls:
-                        try:
-                            # Download image to pass as base64 (avoids 403 Forbidden from Discord CDN)
-                            img_response = await client.get(img_url)
-                            img_response.raise_for_status()
-                            
-                            # Convert to base64
-                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
-                            mime_type = img_response.headers.get("content-type", "image/png")
-                            
-                            input_content.append({
-                                "type": "image_url",
-                                "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
-                            })
-                        except Exception as e:
-                            logger.error(f"Failed to download/process image {img_url}: {e}")
-                            # Fallback to URL if download fails
-                            input_content.append({
-                                "type": "image_url",
-                                "image_url": {"url": img_url}
-                            })
-            else:
-                # Text-only input
-                input_content = user_message
-
-            # Wrap in HumanMessage to ensure structure is preserved
-            user_input_message = [HumanMessage(content=input_content)]
+            # Prepare input content (Text or Multimodal)
+            user_input_message = await self._prepare_input_content(user_message, image_urls)
 
             # Prepare inputs
             inputs = {
@@ -302,12 +142,14 @@ class AgentEngine:
                 **context_variables
             }
             
-            # Fill missing variables with empty strings to prevent KeyError
+            # Fill missing variables
             for var in prompt.input_variables:
                 if var not in inputs:
                     inputs[var] = ""
             
+            llm_start = time.time()
             response = await chain.ainvoke(inputs)
+            logger.debug(f"LLM invocation took {time.time() - llm_start:.2f}s")
             
             # 8. Log Prompt (if enabled)
             if settings.ENABLE_PROMPT_LOGGING:
@@ -318,15 +160,295 @@ class AgentEngine:
                     chat_history=chat_history,
                     user_input=user_message,
                     context_variables=context_variables,
-                    response=response.content,
+                    response=str(response.content),
                     image_urls=image_urls
                 )
             
-            return response.content
+            total_time = time.time() - start_time
+            logger.info(f"Total response time: {total_time:.2f}s (Fast Mode)")
+            return str(response.content)
             
         except Exception as e:
-            logger.exception(f"Error generating response: {e}")
-            return "I'm having a bit of trouble thinking right now..." # Fallback response
+            error_type = type(e).__name__
+            logger.exception(f"Error generating response ({error_type}): {e}")
+            
+            # Provide context-specific fallback messages
+            if "rate" in str(e).lower() or "quota" in str(e).lower():
+                return "I'm experiencing high demand right now. Please try again in a moment."
+            elif "context" in str(e).lower() or "token" in str(e).lower():
+                return "That's quite a lot to process at once. Could you break that down into smaller parts?"
+            elif "timeout" in str(e).lower() or "connection" in str(e).lower():
+                return "I'm having connection issues right now. Please try again."
+            else:
+                return "I'm having a bit of trouble thinking right now. Could you try rephrasing that?"
+
+    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> bool:
+        """Determines if the query requires complex reasoning."""
+        if not (user_id and settings.ENABLE_REFLECTIVE_MODE):
+            return False
+            
+        if force_reflective:
+            logger.info("Complexity Analysis: FORCED COMPLEX by user")
+            return True
+            
+        try:
+            is_complex_str = await self.classifier.classify(user_message, chat_history)
+            is_complex = (is_complex_str == "COMPLEX")
+            logger.info(f"Complexity Analysis: {is_complex_str}")
+            return is_complex
+        except Exception as e:
+            logger.error(f"Complexity classifier failed: {e}")
+            return False
+
+    async def _build_system_context(self, character: Character, user_message: str, user_id: Optional[str], context_variables: Dict[str, Any]) -> str:
+        """Constructs the full system prompt including evolution, goals, and knowledge."""
+        system_content = character.system_prompt
+        
+        # 2.1 Inject Past Summaries
+        if context_variables.get("past_summaries"):
+            system_content += f"\n\n[RELEVANT PAST CONVERSATIONS]\n{context_variables['past_summaries']}\n(Use this context to maintain continuity, but don't explicitly mention 'I read a summary'.)\n"
+
+        if not user_id:
+            return system_content
+
+        try:
+            # 2.5 Inject Dynamic Persona (Trust & Evolution)
+            relationship = await self.trust_manager.get_relationship_level(user_id, character.name)
+            if relationship:
+                current_mood = await self.feedback_analyzer.get_current_mood(user_id)
+                system_content += self._format_relationship_context(relationship, current_mood)
+                logger.debug(f"Injected evolution state: {relationship['level']} (Trust: {relationship['trust_score']})")
+
+            # 2.5.1 Inject Feedback Insights
+            feedback_insights = await self.feedback_analyzer.analyze_user_feedback_patterns(user_id)
+            if feedback_insights.get("recommendations"):
+                feedback_context = "\n\n[USER PREFERENCES (Derived from Feedback)]\n"
+                for rec in feedback_insights["recommendations"]:
+                    feedback_context += f"- {rec}\n"
+                system_content += feedback_context
+                logger.debug(f"Injected feedback insights: {feedback_insights['recommendations']}")
+            
+            # 2.6 Inject Active Goals
+            active_goals = await self.goal_manager.get_active_goals(user_id, character.name)
+            if active_goals:
+                top_goal = active_goals[0]
+                goal_context = f"\n\n[CURRENT GOAL: {top_goal['slug']}]\n"
+                goal_context += f"Objective: {top_goal['description']}\n"
+                goal_context += f"Success Criteria: {top_goal['success_criteria']}\n"
+                goal_context += "(Try to naturally steer the conversation towards this goal without being pushy.)\n"
+                system_content += goal_context
+                logger.debug(f"Injected goal: {top_goal['slug']}")
+
+            # 2.7 Inject Knowledge Graph Context
+            knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
+            system_content += knowledge_context
+
+        except Exception as e:
+            logger.error(f"Failed to inject evolution/goal state: {e}")
+
+        return system_content
+
+    def _format_relationship_context(self, relationship: Dict[str, Any], current_mood: str) -> str:
+        """Formats the relationship/trust context string.
+        
+        Args:
+            relationship: Dictionary containing trust level, traits, insights, and preferences
+            current_mood: Current mood state of the user
+            
+        Returns:
+            Formatted context string for system prompt injection
+        """
+        trust_level: int = int(relationship.get('level', 1))
+        level_label: str = relationship.get('level_label', 'Stranger')
+        
+        context = "\n\n[RELATIONSHIP STATUS]\n"
+        context += f"Trust Level: {trust_level} ({level_label}) (Score: {relationship.get('trust_score', 0)})\n"
+        
+        if trust_level >= 3:
+            context += "(You have a strong bond with this user. Be more personal, open, and trusting.)\n"
+        if trust_level >= 5:
+            if relationship.get('unlocked_traits'):
+                context += "\n[UNLOCKED TRAITS]\n"
+                for trait in relationship['unlocked_traits']:
+                    if trait in TRAIT_BEHAVIORS:
+                        context += f"  - {trait}: {TRAIT_BEHAVIORS[trait]}\n"
+            context += "(You have unlocked deeper aspects of your personality with this user. Adapt your responses accordingly.)\n"
+        
+        context += f"Current Mood: {current_mood}\n"
+        
+        if relationship.get('insights'):
+            context += "\n[USER INSIGHTS]\n"
+            for insight in relationship['insights']:
+                context += f"- {insight}\n"
+            context += "(These are deep psychological observations about the user. Use them to empathize and connect.)\n"
+
+        if relationship.get('preferences'):
+            context += "\n[USER CONFIGURATION]\n"
+            prefs = relationship['preferences']
+            
+            if 'verbosity' in prefs:
+                v = prefs['verbosity']
+                if v == 'short': context += "- RESPONSE LENGTH: Keep responses very concise (1-2 sentences max).\n"
+                elif v == 'medium': context += "- RESPONSE LENGTH: Keep responses moderate (2-4 sentences).\n"
+                elif v == 'long': context += "- RESPONSE LENGTH: You may provide detailed, comprehensive responses.\n"
+                elif v == 'dynamic': context += "- RESPONSE LENGTH: Adjust length based on context and user's input length.\n"
+                else: context += f"- verbosity: {v}\n"
+            
+            if 'style' in prefs:
+                s = prefs['style']
+                if s == 'casual': context += "- TONE: Use casual, relaxed language. Slang is okay if fits character.\n"
+                elif s == 'formal': context += "- TONE: Maintain a formal, polite, and professional tone.\n"
+                elif s == 'matching': context += "- TONE: Mirror the user's energy and formality level.\n"
+                else: context += f"- style: {s}\n"
+
+        return context
+
+    async def _get_knowledge_context(self, user_id: str, char_name: str, user_message: str) -> str:
+        """Retrieves Common Ground and Background Relevance from Knowledge Graph.
+        
+        Args:
+            user_id: Discord user ID
+            char_name: Character name
+            user_message: User's current message
+            
+        Returns:
+            Formatted knowledge context string
+        """
+        context: str = ""
+        try:
+            common_ground = await knowledge_manager.find_common_ground(user_id, char_name)
+            if common_ground:
+                context += f"\n[COMMON GROUND]\n{common_ground}\n(You share these things with the user. Feel free to reference them naturally.)\n"
+            
+            relevant_bg = await knowledge_manager.search_bot_background(char_name, user_message)
+            if relevant_bg:
+                context += f"\n[RELEVANT BACKGROUND]\n{relevant_bg}\n(The user mentioned something related to your background. You can bring this up.)\n"
+        except Exception as e:
+            logger.error(f"Failed to inject knowledge context: {e}")
+        return context
+
+    async def _run_reflective_mode(
+        self, 
+        character: Character, 
+        user_message: str, 
+        user_id: str, 
+        system_content: str, 
+        chat_history: List[BaseMessage], 
+        context_variables: Dict[str, Any], 
+        image_urls: Optional[List[str]], 
+        callback: Optional[Callable[[str], Awaitable[None]]]
+    ) -> str:
+        """Runs the reflective reasoning mode for complex queries.
+        
+        Args:
+            character: Character instance
+            user_message: User's message
+            user_id: Discord user ID
+            system_content: System prompt content
+            chat_history: Conversation history
+            context_variables: Additional context data
+            image_urls: Optional list of image URLs
+            callback: Optional callback for streaming responses
+            
+        Returns:
+            Generated response text
+        """
+        logger.info("Engaging Reflective Mode")
+        response_text: str
+        trace: List[BaseMessage]
+        response_text, trace = await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
+        
+        if settings.ENABLE_PROMPT_LOGGING:
+            await self._log_prompt(
+                character_name=character.name,
+                user_id=user_id,
+                system_prompt=system_content,
+                chat_history=chat_history,
+                user_input=user_message,
+                context_variables=context_variables,
+                response=response_text,
+                image_urls=image_urls,
+                trace=trace
+            )
+        return response_text
+
+    async def _run_cognitive_routing(
+        self, 
+        user_id: Optional[str], 
+        user_message: str, 
+        chat_history: List[BaseMessage], 
+        context_variables: Dict[str, Any]
+    ) -> None:
+        """Runs cognitive routing to retrieve relevant memory context.
+        
+        Args:
+            user_id: Optional Discord user ID
+            user_message: User's message
+            chat_history: Conversation history
+            context_variables: Context dict to update with memory (modified in-place)
+        """
+        # Create a copy to avoid race conditions with shared context_variables
+        if user_id and not context_variables.get("memory_context"):
+            try:
+                router_result: Dict[str, Any] = await self.router.route_and_retrieve(user_id, user_message, chat_history)
+                memory_context: str = router_result.get("context", "")
+                reasoning: str = router_result.get("reasoning", "")
+                
+                if memory_context:
+                    logger.info(f"Injecting memory context. Reasoning: {reasoning}")
+                    # Atomic update to avoid race conditions
+                    context_variables["memory_context"] = memory_context
+                    context_variables["router_reasoning"] = reasoning
+                else:
+                    logger.debug(f"No memory context retrieved. Reasoning: {reasoning}")
+            except Exception as e:
+                logger.error(f"Cognitive Router failed: {e}")
+
+    async def _prepare_input_content(self, user_message: str, image_urls: Optional[List[str]]) -> List[BaseMessage]:
+        """Prepares the input message, handling text and optional images."""
+        if image_urls and settings.LLM_SUPPORTS_VISION:
+            # Type: Union[str, List[Union[str, Dict]]] for multimodal content
+            input_content: List[Dict[str, Any]] = [{"type": "text", "text": user_message}]
+            
+            # Check if provider requires base64 encoding or supports direct URLs
+            image_format = get_image_format_for_provider(settings.LLM_PROVIDER)
+            
+            if image_format == "base64":
+                # Download and encode images for providers that require base64
+                async with httpx.AsyncClient() as client:
+                    for img_url in image_urls:
+                        try:
+                            img_response = await client.get(img_url, timeout=10.0)
+                            img_response.raise_for_status()
+                            
+                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                            mime_type = img_response.headers.get("content-type", "image/png")
+                            
+                            input_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
+                            })
+                            logger.debug(f"Encoded image to base64 for {settings.LLM_PROVIDER}")
+                        except Exception as e:
+                            logger.error(f"Failed to download/encode image {img_url}: {e}")
+                            # Fallback to URL anyway
+                            input_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": img_url}
+                            })
+            else:
+                # Use URLs directly for providers that support it (OpenAI, Anthropic, etc.)
+                for img_url in image_urls:
+                    input_content.append({
+                        "type": "image_url",
+                        "image_url": {"url": img_url}
+                    })
+                logger.debug(f"Using direct image URLs for {settings.LLM_PROVIDER}")
+            
+            # type: ignore - LangChain accepts this multimodal format at runtime
+            return [HumanMessage(content=input_content)]  # type: ignore[arg-type]
+        else:
+            return [HumanMessage(content=user_message)]
 
     async def _log_prompt(
         self,
@@ -344,14 +466,11 @@ class AgentEngine:
         Logs the full prompt context and response to a JSON file.
         """
         try:
-            # Create logs directory if it doesn't exist
-            log_dir = Path("logs/prompts")
-            log_dir.mkdir(parents=True, exist_ok=True)
-            
+            # Use pre-created log directory (non-blocking)
             # Generate filename: {BotName}_{YYYYMMDD}_{HHMMSS}_{UserID}.json
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{character_name}_{timestamp}_{user_id}.json"
-            file_path = log_dir / filename
+            file_path = self.log_dir / filename
             
             # Serialize chat history
             history_serialized = []
@@ -411,8 +530,8 @@ class AgentEngine:
             }
             
             # Write to file
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(log_data, f, indent=2, ensure_ascii=False)
+            async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+                await f.write(json.dumps(log_data, indent=2, ensure_ascii=False))
                 
             logger.debug(f"Prompt logged to {file_path}")
             

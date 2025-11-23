@@ -1,7 +1,7 @@
 from langchain_core.messages import HumanMessage
 import discord
 import asyncio
-from typing import Union, List, Tuple, Any
+from typing import Union, List, Tuple, Any, Optional
 from datetime import datetime
 from discord.ext import commands
 from loguru import logger
@@ -23,10 +23,19 @@ from src_v2.intelligence.reflection import reflection_engine
 from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
 from influxdb_client.client.write.point import Point
+from src_v2.utils.validation import ValidationError, validator
 
 class WhisperBot(commands.Bot):
-    def __init__(self):
-        intents = discord.Intents.default()
+    """Discord bot with AI character personality and memory systems."""
+    
+    agent_engine: AgentEngine
+    summary_manager: SummaryManager
+    scheduler: ProactiveScheduler
+    character_name: str
+    
+    def __init__(self) -> None:
+        """Initialize the WhisperBot with Discord intents and AI systems."""
+        intents: discord.Intents = discord.Intents.default()
         intents.message_content = True  # Required to read messages
         intents.members = True          # Required to see members
         intents.voice_states = True     # Required for voice
@@ -48,16 +57,23 @@ class WhisperBot(commands.Bot):
             
         self.character_name = settings.DISCORD_BOT_NAME
 
-    def _chunk_message(self, text: str, max_length: int = 2000) -> list[str]:
+    def _chunk_message(self, text: str, max_length: int = 2000) -> List[str]:
         """
         Splits a long message into chunks that fit Discord's character limit.
         Tries to split on sentence boundaries when possible.
+        
+        Args:
+            text: The text to split into chunks
+            max_length: Maximum length per chunk (Discord limit is 2000)
+            
+        Returns:
+            List of text chunks
         """
         if len(text) <= max_length:
             return [text]
         
-        chunks = []
-        current_chunk = ""
+        chunks: List[str] = []
+        current_chunk: str = ""
         
         # Split by sentences (basic approach)
         sentences = text.replace("\n\n", "\n\n<BREAK>").replace(". ", ".<BREAK>").split("<BREAK>")
@@ -93,26 +109,35 @@ class WhisperBot(commands.Bot):
     def _is_image(self, attachment: discord.Attachment) -> bool:
         """
         Determines if an attachment is an image based on content_type or filename extension.
+        
+        Args:
+            attachment: Discord attachment object
+            
+        Returns:
+            True if the attachment is an image, False otherwise
         """
         # 1. Check Content-Type (Reliable if present)
         if attachment.content_type and attachment.content_type.startswith("image/"):
             return True
             
         # 2. Fallback: Check Extension
-        valid_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff'}
+        valid_extensions: set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff'}
         import os
+        _: str
+        ext: str
         _, ext = os.path.splitext(attachment.filename)
         if ext.lower() in valid_extensions:
             return True
             
         return False
 
-    async def update_status_loop(self):
+    async def update_status_loop(self) -> None:
+        """Background task to periodically update bot status with statistics."""
         await self.wait_until_ready()
         # Initial status set
         await self.change_presence(status=discord.Status.online)
         
-        status_index = 0
+        status_index: int = 0
         while not self.is_closed():
             try:
                 if db_manager.postgres_pool:
@@ -161,7 +186,8 @@ class WhisperBot(commands.Bot):
             
             await asyncio.sleep(300) # Update every 5 minutes
 
-    async def setup_hook(self):
+    async def setup_hook(self) -> None:
+        """Called during bot startup to load extensions and sync commands."""
         # Load extensions
         try:
             await self.load_extension("src_v2.discord.commands")
@@ -186,12 +212,13 @@ class WhisperBot(commands.Bot):
         # Start status update loop
         self.loop.create_task(self.update_status_loop())
 
-    async def on_ready(self):
+    async def on_ready(self) -> None:
+        """Called when the bot has successfully connected to Discord."""
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
         await self.change_presence(status=discord.Status.online)
         
         # Preload character
-        char = character_manager.get_character(self.character_name)
+        char: Optional[Any] = character_manager.get_character(self.character_name)
         if char:
             logger.info(f"Character '{self.character_name}' loaded successfully.")
         else:
@@ -199,7 +226,12 @@ class WhisperBot(commands.Bot):
 
         logger.info("WhisperEngine is ready and listening.")
 
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> None:
+        """Handles incoming Discord messages and generates AI responses.
+        
+        Args:
+            message: Discord message object
+        """
         # Ignore messages from self and other bots to prevent loops
         if message.author.bot:
             return
@@ -208,7 +240,7 @@ class WhisperBot(commands.Bot):
         await self.process_commands(message)
         
         # Handle Stickers (Convert to text context)
-        sticker_text = ""
+        sticker_text: str = ""
         if message.stickers:
             sticker_names = [sticker.name for sticker in message.stickers]
             sticker_text = f"\n[User sent sticker(s): {', '.join(sticker_names)}]"
@@ -287,6 +319,11 @@ class WhisperBot(commands.Bot):
                     if sticker_text:
                         user_message += sticker_text
                     
+                    # Early validation: Check if message is empty after cleaning
+                    if not user_message and not message.attachments and not message.reference:
+                        await message.channel.send("I didn't catch that. Could you say that again?")
+                        return
+                    
                     # Check for Forced Reflective Mode
                     force_reflective = False
                     if user_message.startswith("!reflect"):
@@ -304,6 +341,13 @@ class WhisperBot(commands.Bot):
                         else:
                             await message.channel.send("⚠️ Reflective Mode is currently disabled in settings.")
                             return
+                    
+                    # Early validation: Check message length (Discord limit)
+                    try:
+                        validator.validate_for_discord(user_message)
+                    except ValidationError as e:
+                        await message.channel.send(e.user_message)
+                        return
 
                     # Initialize attachment containers
                     image_urls = []
@@ -374,6 +418,13 @@ class WhisperBot(commands.Bot):
                         
                         if processed_files:
                             file_content = "\n\n".join(processed_files)
+                    
+                    # Validate image URLs early
+                    if image_urls:
+                        valid_urls, invalid_urls = validator.validate_image_urls(image_urls)
+                        if invalid_urls:
+                            logger.warning(f"Removed {len(invalid_urls)} invalid image URLs")
+                        image_urls = valid_urls if valid_urls else None
                     
                     # 1. Retrieve Context (RAG & History) BEFORE saving current message
                     # This prevents "Echo Chamber" (finding current msg in vector search)
@@ -615,10 +666,14 @@ class WhisperBot(commands.Bot):
                     logger.exception(f"Critical error in on_message: {e}")
                     await message.channel.send("I'm having a bit of trouble processing that right now. Please try again later.")
 
-    async def on_reaction_add(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
+    async def on_reaction_add(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
         """
         Handles reactions added to messages.
         Used for user feedback (e.g., thumbs up/down) to adjust memory importance.
+        
+        Args:
+            reaction: Discord reaction object
+            user: User or Member who added the reaction
         """
         if user.bot:
             return
@@ -628,10 +683,10 @@ class WhisperBot(commands.Bot):
             return
 
         try:
-            message_id = str(reaction.message.id)
-            user_id = str(user.id)
-            emoji = str(reaction.emoji)
-            message_length = len(reaction.message.content)
+            message_id: str = str(reaction.message.id)
+            user_id: str = str(user.id)
+            emoji: str = str(reaction.emoji)
+            message_length: int = len(reaction.message.content)
             
             logger.info(f"User {user.name} reacted with {emoji} to message {message_id}")
 
@@ -671,10 +726,14 @@ class WhisperBot(commands.Bot):
         except Exception as e:
             logger.error(f"Error handling reaction add: {e}")
 
-    async def on_reaction_remove(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
+    async def on_reaction_remove(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
         """
         Handles reactions removed from messages.
         Updates feedback score and memory importance accordingly.
+        
+        Args:
+            reaction: Discord reaction object
+            user: User or Member who removed the reaction
         """
         if user.bot:
             return
@@ -684,10 +743,10 @@ class WhisperBot(commands.Bot):
             return
 
         try:
-            message_id = str(reaction.message.id)
-            user_id = str(user.id)
-            emoji = str(reaction.emoji)
-            message_length = len(reaction.message.content)
+            message_id: str = str(reaction.message.id)
+            user_id: str = str(user.id)
+            emoji: str = str(reaction.emoji)
+            message_length: int = len(reaction.message.content)
             
             logger.info(f"User {user.name} removed reaction {emoji} from message {message_id}")
 
@@ -805,7 +864,14 @@ class WhisperBot(commands.Bot):
     async def on_resumed(self):
         logger.info("Bot session resumed successfully.")
 
-    async def on_error(self, event_method: str, *args, **kwargs):
+    async def on_error(self, event_method: str, *args: Any, **kwargs: Any) -> None:
+        """Handles errors that occur during event processing.
+        
+        Args:
+            event_method: Name of the event method that caused the error
+            *args: Unused positional arguments
+            **kwargs: Unused keyword arguments
+        """
         logger.exception(f"Error in event {event_method}")
 
     async def _process_attachments(

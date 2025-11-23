@@ -91,28 +91,26 @@ Common facts extracted:
 - Likes, dislikes, interests, hobbies
 - Any factual statement about yourself
 
-### ⚠️ **User Preferences** - User-Global (Not Segmented)
+### ✅ **User Preferences** - Character-Specific (Segmented)
 
 **Storage**: PostgreSQL (`v2_user_relationships`)
 
-Behavioral preferences apply everywhere across all contexts:
+**Current Behavior**: Behavioral preferences are currently stored **per-bot**.
 
-- Setting "keep responses short" in a DM affects all servers and channels
-- Setting "don't use emojis" applies to every conversation
-- Setting "call me by my nickname" works everywhere
-- Preferences are tied to your Discord user ID, not specific channels or servers
+- If you tell **Elena** to "be concise", **NotTaylor** will NOT automatically be concise.
+- Preferences are tied to the specific relationship between you and the character.
+- However, if the *same bot* is in multiple servers, the preference still travels with that bot across servers.
 
 **Real-World Example**:
 ```
-Professional Work Discord DM:
-You: "Please keep responses formal and professional"
+You to Elena: "Call me Captain."
+Elena: "Aye aye, Captain!"
 
-Gaming Discord #memes (public channel):
-Friend: "@Bot what do you think of this meme?"
-Bot: *responds in formal, professional tone*
-Friend: "Dude why is the bot being so weird?"
+You to NotTaylor: "Hello."
+NotTaylor: "Hey there, buddy!" (Does not know to call you Captain)
 ```
-💥 **Your work preference made you look awkward in a casual gaming server.**
+
+**Note**: We are currently evaluating whether to make this global. See "Future Design Options" below.
 
 ### ⚠️ **Relationship & Trust Data** - User-Global (Not Segmented)
 
@@ -125,6 +123,28 @@ Your relationship with the bot is tracked globally:
 - Insights about your communication style apply everywhere
 
 **Example**: Building trust in DMs unlocks deeper personality traits that are also active in public channels.
+
+## 🔮 Future Design Options for Preferences
+
+We are currently soliciting feedback on how User Preferences (e.g., "be concise", "use emojis") should work.
+
+### Option A: Fully Global Preferences (Proposed)
+*   **Design:** Preferences are tied ONLY to your User ID.
+*   **Behavior:** If you tell Elena "be concise", NotTaylor and all other bots immediately become concise.
+*   **Pros:** Single source of truth; you don't have to configure every bot individually.
+*   **Cons:** You can't have different personas for different bots (e.g., Elena as a professional assistant, NotTaylor as a casual friend).
+
+### Option B: Hybrid (Global Default + Overrides)
+*   **Design:** A global set of preferences exists, but you can override them for specific bots.
+*   **Behavior:** Bots check specific preferences first; if none set, they use global defaults.
+*   **Pros:** Best of both worlds (convenience + flexibility).
+*   **Cons:** More complex to manage (did I set this globally or just for her?).
+
+### Option C: Character-Specific (Current Status)
+*   **Design:** Preferences are isolated to each bot.
+*   **Behavior:** You must configure each bot separately.
+*   **Pros:** Maximum control; allows distinct relationships with different characters.
+*   **Cons:** Tedious if you want the same behavior (e.g., "no emojis") everywhere.
 
 ## Privacy Implications
 
