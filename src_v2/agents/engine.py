@@ -4,7 +4,7 @@ import datetime
 from pathlib import Path
 import base64
 import httpx
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from loguru import logger
 
@@ -205,7 +205,7 @@ class AgentEngine:
         if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
             logger.info("Engaging Reflective Mode")
             # Reflective Agent handles its own tool usage and reasoning
-            response_text = await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
+            response_text, trace = await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
             
             # Log Prompt (if enabled)
             if settings.ENABLE_PROMPT_LOGGING:
@@ -217,7 +217,8 @@ class AgentEngine:
                     user_input=user_message,
                     context_variables=context_variables,
                     response=response_text,
-                    image_urls=image_urls
+                    image_urls=image_urls,
+                    trace=trace
                 )
             
             return response_text
@@ -336,7 +337,8 @@ class AgentEngine:
         user_input: str,
         context_variables: Dict[str, Any],
         response: str,
-        image_urls: Optional[List[str]] = None
+        image_urls: Optional[List[str]] = None,
+        trace: Optional[List[BaseMessage]] = None
     ):
         """
         Logs the full prompt context and response to a JSON file.
@@ -364,6 +366,34 @@ class AgentEngine:
                     "content": msg.content
                 })
             
+            # Serialize trace if present
+            trace_serialized = []
+            if trace:
+                for msg in trace:
+                    role = "unknown"
+                    content = msg.content
+                    tool_calls = []
+                    
+                    if isinstance(msg, HumanMessage): role = "human"
+                    elif isinstance(msg, AIMessage): 
+                        role = "ai"
+                        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                            tool_calls = [
+                                {"name": tc.get("name"), "args": tc.get("args"), "id": tc.get("id")} 
+                                for tc in msg.tool_calls
+                            ]
+                    elif isinstance(msg, SystemMessage): role = "system"
+                    elif isinstance(msg, ToolMessage): 
+                        role = "tool"
+                        # ToolMessage usually has 'name' or 'tool_call_id'
+                        tool_calls = [{"tool_call_id": msg.tool_call_id, "name": msg.name}]
+
+                    trace_serialized.append({
+                        "role": role,
+                        "content": content,
+                        "tool_calls": tool_calls if tool_calls else None
+                    })
+
             # Construct log data
             log_data = {
                 "timestamp": datetime.datetime.now().isoformat(),
@@ -376,7 +406,8 @@ class AgentEngine:
                     "user_input": user_input,
                     "image_urls": image_urls
                 },
-                "response": response
+                "response": response,
+                "trace": trace_serialized if trace_serialized else None
             }
             
             # Write to file

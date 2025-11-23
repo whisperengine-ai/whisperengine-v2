@@ -1,7 +1,7 @@
 import asyncio
-from typing import List, Optional, Callable, Awaitable
+from typing import List, Optional, Callable, Awaitable, Tuple
 from loguru import logger
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
@@ -23,9 +23,9 @@ class ReflectiveAgent:
         self.llm = create_llm(temperature=0.1, mode="reflective")
         self.max_steps = settings.REFLECTIVE_MAX_STEPS
 
-    async def run(self, user_input: str, user_id: str, system_prompt: str, callback: Optional[Callable[[str], Awaitable[None]]] = None) -> str:
+    async def run(self, user_input: str, user_id: str, system_prompt: str, callback: Optional[Callable[[str], Awaitable[None]]] = None) -> Tuple[str, List[BaseMessage]]:
         """
-        Runs the ReAct loop and returns the final response.
+        Runs the ReAct loop and returns the final response and the full execution trace.
         """
         # 1. Initialize Tools
         tools = self._get_tools(user_id)
@@ -85,12 +85,12 @@ class ReflectiveAgent:
                 # No tool calls -> Final Answer
                 # If content is empty (rare but possible with some models), return a fallback
                 if not content:
-                    return "I'm not sure how to answer that."
+                    return "I'm not sure how to answer that.", messages
                 
                 logger.info(f"Reflective Mode finished in {steps} steps using {tools_used} tools.")
-                return str(content)
+                return str(content), messages
         
-        return "I apologize, I reached my reasoning limit and couldn't finish."
+        return "I apologize, I reached my reasoning limit and couldn't finish.", messages
 
     async def _execute_tool_wrapper(self, tool_call: dict, tools: List[BaseTool], callback: Optional[Callable[[str], Awaitable[None]]]) -> ToolMessage:
         """
@@ -122,7 +122,8 @@ class ReflectiveAgent:
 
         return ToolMessage(
             content=str(observation),
-            tool_call_id=tool_call_id
+            tool_call_id=tool_call_id,
+            name=tool_name
         )
 
     def _get_tools(self, user_id: str) -> List[BaseTool]:
