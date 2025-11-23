@@ -399,8 +399,11 @@ The classifier is tuned to be **conservative**:
 
 ## Future Enhancements
 
-1. **Streaming ReAct**: Show reasoning steps in real-time as Discord messages
-2. **User Control**: Let users force Reflective Mode with a flag (`!reflect How has my mood changed?`)
+1. **Streaming ReAct** (Completed): Show reasoning steps in real-time as Discord messages
+2. **User Control** (Completed): Let users force Reflective Mode with a flag (`!reflect How has my mood changed?`)
+
+> **Note**: The following enhancements are now tracked in [Reflective Mode Phase 2 Roadmap](../roadmaps/REFLECTIVE_MODE_PHASE_2.md).
+
 3. **Adaptive Max Steps**: Learn optimal step count per user/query type
 4. **Tool Composition**: Allow tools to call other tools (hierarchical reasoning)
 5. **Memory of Reasoning**: Save successful reasoning traces for future reference
