@@ -22,8 +22,8 @@ TRAIT_BEHAVIORS: Dict[str, str] = {
 # Determines whether a provider accepts direct URLs or requires base64 encoding
 IMAGE_HANDLING_BY_PROVIDER: Dict[str, ImageFormat] = {
     "openai": "url",        # OpenAI (GPT-4o, GPT-4 Vision) supports direct URLs
-    "anthropic": "url",     # Anthropic (Claude 3+) supports direct URLs
-    "openrouter": "url",    # OpenRouter proxies to underlying models, most support URLs
+    "anthropic": "base64",  # Anthropic via API often has issues with Discord CDN links (403), safer to use base64
+    "openrouter": "base64", # OpenRouter: Discord CDN links often 403 when fetched by remote servers. Use base64.
     "google": "url",        # Google (Gemini) supports direct URLs
     "ollama": "base64",     # Ollama requires base64 encoding
     "lmstudio": "base64",   # LM Studio requires base64 encoding

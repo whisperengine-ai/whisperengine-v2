@@ -1,10 +1,13 @@
 import asyncio
-from typing import List, Optional, Callable, Awaitable, Tuple
+import base64
+import httpx
+from typing import List, Optional, Callable, Awaitable, Tuple, Dict, Any
 from loguru import logger
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
+from src_v2.config.constants import get_image_format_for_provider
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
@@ -23,7 +26,7 @@ class ReflectiveAgent:
         self.llm = create_llm(temperature=0.1, mode="reflective")
         self.max_steps = settings.REFLECTIVE_MAX_STEPS
 
-    async def run(self, user_input: str, user_id: str, system_prompt: str, callback: Optional[Callable[[str], Awaitable[None]]] = None) -> Tuple[str, List[BaseMessage]]:
+    async def run(self, user_input: str, user_id: str, system_prompt: str, callback: Optional[Callable[[str], Awaitable[None]]] = None, image_urls: Optional[List[str]] = None) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
         """
@@ -33,10 +36,48 @@ class ReflectiveAgent:
         # 2. Construct System Prompt
         full_prompt = self._construct_prompt(system_prompt)
 
-        # 3. Initialize Loop
+        # 3. Prepare User Message (Text or Multimodal)
+        user_message_content: Any = user_input
+        
+        if image_urls and settings.LLM_SUPPORTS_VISION:
+            user_message_content = [{"type": "text", "text": user_input}]
+            
+            # Check if provider requires base64 encoding or supports direct URLs
+            # Note: We use REFLECTIVE_LLM_PROVIDER if set, otherwise LLM_PROVIDER
+            provider = settings.REFLECTIVE_LLM_PROVIDER or settings.LLM_PROVIDER
+            image_format = get_image_format_for_provider(provider)
+            
+            if image_format == "base64":
+                async with httpx.AsyncClient() as client:
+                    for img_url in image_urls:
+                        try:
+                            img_response = await client.get(img_url, timeout=10.0)
+                            img_response.raise_for_status()
+                            
+                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                            mime_type = img_response.headers.get("content-type", "image/png")
+                            
+                            user_message_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
+                            })
+                        except Exception as e:
+                            logger.error(f"Failed to download/encode image {img_url}: {e}")
+                            user_message_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": img_url}
+                            })
+            else:
+                for img_url in image_urls:
+                    user_message_content.append({
+                        "type": "image_url",
+                        "image_url": {"url": img_url}
+                    })
+
+        # 4. Initialize Loop
         messages = [
             SystemMessage(content=full_prompt),
-            HumanMessage(content=user_input)
+            HumanMessage(content=user_message_content)
         ]
         
         # Bind tools to LLM

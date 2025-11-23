@@ -401,6 +401,43 @@ class WhisperBot(commands.Bot):
                         except Exception as e:
                             logger.warning(f"Failed to resolve reply reference: {e}")
 
+                    # Handle Forwarded Messages (Context Injection)
+                    if message.snapshots:
+                        try:
+                            for snapshot in message.snapshots:
+                                # 1. Text Context
+                                fwd_content = snapshot.content or ""
+                                
+                                # Handle Stickers in forward
+                                if snapshot.stickers:
+                                    sticker_names = [s.name for s in snapshot.stickers]
+                                    fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
+
+                                if fwd_content:
+                                    # Smart Truncation
+                                    if len(fwd_content) > 500:
+                                        fwd_text = fwd_content[:225] + " ... [middle truncated] ... " + fwd_content[-225:]
+                                    else:
+                                        fwd_text = fwd_content
+                                    
+                                    user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
+                                    logger.info(f"Injected forwarded context: {user_message}")
+                                
+                                # 2. Attachments
+                                if snapshot.attachments:
+                                    # Note: We enable trigger_vision=True because users often forward images to ask about them
+                                    fwd_images, fwd_texts = await self._process_attachments(
+                                        attachments=snapshot.attachments,
+                                        channel=message.channel,
+                                        user_id=user_id,
+                                        silent=True,
+                                        trigger_vision=True
+                                    )
+                                    image_urls.extend(fwd_images)
+                                    processed_files.extend(fwd_texts)
+                        except Exception as e:
+                            logger.warning(f"Failed to process forwarded message: {e}")
+
                     user_id = str(message.author.id)
                     channel_id = str(message.channel.id)
                     

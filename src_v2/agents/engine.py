@@ -356,7 +356,13 @@ class AgentEngine:
         logger.info("Engaging Reflective Mode")
         response_text: str
         trace: List[BaseMessage]
-        response_text, trace = await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
+        response_text, trace = await self.reflective_agent.run(
+            user_message, 
+            user_id, 
+            system_content, 
+            callback=callback,
+            image_urls=image_urls
+        )
         
         if settings.ENABLE_PROMPT_LOGGING:
             await self._log_prompt(
