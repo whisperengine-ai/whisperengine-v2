@@ -203,7 +203,7 @@ class WhisperBot(commands.Bot):
         # Privacy: Block DMs if enabled and user is not allowlisted
         if is_dm and settings.ENABLE_DM_BLOCK:
             user_id = str(message.author.id)
-            if user_id not in settings.DM_ALLOWED_USER_IDS:
+            if user_id not in settings.dm_allowed_user_ids_list:
                 logger.info(f"Blocked DM from user {user_id} (not in allowlist)")
                 embed = discord.Embed(
                     title="🚫 Direct Messages Disabled",
