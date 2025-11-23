@@ -200,6 +200,24 @@ class WhisperBot(commands.Bot):
         is_dm = isinstance(message.channel, discord.DMChannel)
         is_mentioned = self.user in message.mentions
         
+        # Privacy: Block DMs if enabled and user is not allowlisted
+        if is_dm and settings.ENABLE_DM_BLOCK:
+            user_id = str(message.author.id)
+            if user_id not in settings.DM_ALLOWED_USER_IDS:
+                logger.info(f"Blocked DM from user {user_id} (not in allowlist)")
+                embed = discord.Embed(
+                    title="🚫 Direct Messages Disabled",
+                    description=(
+                        "For privacy reasons, I do not accept Direct Messages.\n\n"
+                        "This ensures all interactions happen in visible server contexts "
+                        "and prevents accidental sharing of sensitive information.\n\n"
+                        "Please interact with me in a server channel instead."
+                    ),
+                    color=discord.Color.red()
+                )
+                await message.channel.send(embed=embed)
+                return
+
         if is_dm or is_mentioned:
             async with message.channel.typing():
                 try:
