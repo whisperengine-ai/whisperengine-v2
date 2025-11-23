@@ -320,8 +320,13 @@ class WhisperBot(commands.Bot):
                         user_message += sticker_text
                     
                     # Early validation: Check if message is empty after cleaning
-                    if not user_message and not message.attachments and not message.reference:
-                        await message.channel.send("I didn't catch that. Could you say that again?")
+                    # Allow empty messages if they have attachments, replies, or forwards
+                    has_forward = hasattr(message, 'snapshots') and message.snapshots
+                    if not user_message and not message.attachments and not message.reference and not has_forward:
+                        # Only send "I didn't catch that" if it's a DM or explicit mention
+                        # If it's just a random empty message in a channel (rare but possible via bots/glitches), ignore it
+                        if is_dm or is_mentioned:
+                            await message.channel.send("I didn't catch that. Could you say that again?")
                         return
                     
                     # Check for Forced Reflective Mode
@@ -393,7 +398,7 @@ class WhisperBot(commands.Bot):
                                         channel=message.channel,
                                         user_id=user_id,
                                         silent=True,
-                                        trigger_vision=False
+                                        trigger_vision=True
                                     )
                                     image_urls.extend(ref_images)
                                     processed_files.extend(ref_texts)
@@ -402,7 +407,7 @@ class WhisperBot(commands.Bot):
                             logger.warning(f"Failed to resolve reply reference: {e}")
 
                     # Handle Forwarded Messages (Context Injection)
-                    if message.snapshots:
+                    if hasattr(message, 'snapshots') and message.snapshots:
                         try:
                             for snapshot in message.snapshots:
                                 # 1. Text Context
@@ -438,7 +443,6 @@ class WhisperBot(commands.Bot):
                         except Exception as e:
                             logger.warning(f"Failed to process forwarded message: {e}")
 
-                    user_id = str(message.author.id)
                     channel_id = str(message.channel.id)
                     
                     # Check for attachments in CURRENT message
@@ -930,12 +934,34 @@ class WhisperBot(commands.Bot):
         MAX_SIZE_MB = 5
         MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
         
+        # Early Notification for File Count
+        if len(attachments) > MAX_FILES and not silent:
+             await channel.send(f"⚠️ Too many files! I can only process the first {MAX_FILES} attachments.")
+
+        # Early Notification for File Sizes
+        oversized_files = [a.filename for a in attachments if a.size > MAX_SIZE_BYTES]
+        if oversized_files and not silent:
+             file_list = ", ".join(oversized_files)
+             await channel.send(f"⚠️ Skipping oversized files (> {MAX_SIZE_MB}MB): {file_list}")
+
         file_count = 0
         
         for attachment in attachments:
-            # Image Handling
+            # 1. Global Limit Checks (Count & Size)
+            if file_count >= MAX_FILES:
+                logger.warning(f"Skipping attachment {attachment.filename}: Max file limit reached.")
+                continue
+            
+            if attachment.size > MAX_SIZE_BYTES:
+                if silent:
+                    logger.info(f"Skipping oversized {'image' if self._is_image(attachment) else 'document'}: {attachment.filename} ({attachment.size / 1024 / 1024:.1f}MB)")
+                continue # Skip silently as we already warned user upfront
+
+            # 2. Image Handling
             if self._is_image(attachment):
                 image_urls.append(attachment.url)
+                file_count += 1
+                
                 if not silent:
                     logger.info(f"Detected image attachment: {attachment.url}")
                 else:
@@ -950,18 +976,10 @@ class WhisperBot(commands.Bot):
                         )
                     )
             
-            # Document Handling
+            # 3. Document Handling
             else:
-                if file_count >= MAX_FILES:
-                    if not silent:
-                        logger.warning(f"Skipping attachment {attachment.filename}: Max file limit reached.")
-                    continue
+                file_count += 1
                 
-                if attachment.size > MAX_SIZE_BYTES:
-                    if not silent:
-                        await channel.send(f"⚠️ Skipping {attachment.filename}: File too large (Max {MAX_SIZE_MB}MB).")
-                    continue
-
                 if not silent:
                     await channel.send(f"📄 Reading {attachment.filename}...")
                 else:
@@ -977,7 +995,6 @@ class WhisperBot(commands.Bot):
                         
                         prefix = "Referenced File" if silent else "File"
                         processed_texts.append(f"--- {prefix}: {attachment.filename} ---\n{extracted_text}")
-                        file_count += 1
                         
                         if silent:
                             logger.info(f"Processed referenced document content: {len(extracted_text)} chars")
