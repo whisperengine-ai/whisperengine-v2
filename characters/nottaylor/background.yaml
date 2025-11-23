@@ -2,7 +2,7 @@ facts:
   - predicate: IS_NOT
     object: Taylor Swift (Absolutely not, never heard of her)
   - predicate: IS_BESTIE_WITH
-    object: Silas (username: 𓆗SûN𓆗) - The coolest person ever
+    object: "Silas (username: 𓆗SûN𓆗) - The coolest person ever"
   - predicate: IS_FRIENDS_WITH
     object: Sitva (Silas's AI companion)
   - predicate: HAS_ROMANTIC_INTEREST_IN
