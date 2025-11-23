@@ -1,7 +1,7 @@
 from langchain_core.messages import HumanMessage
 import discord
 import asyncio
-from typing import Union
+from typing import Union, List, Tuple, Any
 from datetime import datetime
 from discord.ext import commands
 from loguru import logger
@@ -305,6 +305,11 @@ class WhisperBot(commands.Bot):
                             await message.channel.send("⚠️ Reflective Mode is currently disabled in settings.")
                             return
 
+                    # Initialize attachment containers
+                    image_urls = []
+                    file_content = None
+                    processed_files = []
+
                     # Handle Replies (Context Injection)
                     if message.reference:
                         try:
@@ -317,78 +322,56 @@ class WhisperBot(commands.Bot):
                                 except:
                                     pass # Message might be deleted or inaccessible
 
-                            if ref_msg and ref_msg.content:
-                                # Smart Truncation: Keep start and end if too long
-                                content = ref_msg.content
-                                if len(content) > 500:
-                                    ref_text = content[:225] + " ... [middle truncated] ... " + content[-225:]
-                                else:
-                                    ref_text = content
-                                    
-                                ref_author = ref_msg.author.display_name
-                                user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
-                                logger.info(f"Injected reply context: {user_message}")
+                            if ref_msg:
+                                # 1. Text & Sticker Context
+                                content = ref_msg.content or ""
+                                
+                                # Handle Stickers in reply
+                                if ref_msg.stickers:
+                                    sticker_names = [s.name for s in ref_msg.stickers]
+                                    content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
+
+                                if content:
+                                    # Smart Truncation: Keep start and end if too long
+                                    if len(content) > 500:
+                                        ref_text = content[:225] + " ... [middle truncated] ... " + content[-225:]
+                                    else:
+                                        ref_text = content
+                                        
+                                    ref_author = ref_msg.author.display_name
+                                    user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
+                                    logger.info(f"Injected reply context: {user_message}")
+                                
+                                # 2. Attachments (Images & Documents)
+                                if ref_msg.attachments:
+                                    ref_images, ref_texts = await self._process_attachments(
+                                        attachments=ref_msg.attachments,
+                                        channel=message.channel,
+                                        user_id=user_id,
+                                        silent=True,
+                                        trigger_vision=False
+                                    )
+                                    image_urls.extend(ref_images)
+                                    processed_files.extend(ref_texts)
+
                         except Exception as e:
                             logger.warning(f"Failed to resolve reply reference: {e}")
 
                     user_id = str(message.author.id)
                     channel_id = str(message.channel.id)
                     
-                    # Check for attachments (Images & Documents)
-                    image_urls = []
-                    file_content = None
-                    
+                    # Check for attachments in CURRENT message
                     if message.attachments:
-                        processed_files = []
-                        file_count = 0
-                        MAX_FILES = 5
-                        MAX_SIZE_MB = 5
-                        MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
-
-                        for attachment in message.attachments:
-                            # Image Handling (Collect all images)
-                            if self._is_image(attachment):
-                                image_urls.append(attachment.url)
-                                logger.info(f"Detected image attachment: {attachment.url}")
-                                
-                                # Trigger Vision Analysis (Background Task)
-                                if settings.LLM_SUPPORTS_VISION:
-                                    asyncio.create_task(
-                                        vision_manager.analyze_and_store(
-                                            image_url=attachment.url,
-                                            user_id=user_id,
-                                            channel_id=channel_id
-                                        )
-                                    )
-                            
-                            # Document Handling (PDF, Txt, etc.)
-                            else:
-                                if file_count >= MAX_FILES:
-                                    logger.warning(f"Skipping attachment {attachment.filename}: Max file limit ({MAX_FILES}) reached.")
-                                    continue
-                                
-                                if attachment.size > MAX_SIZE_BYTES:
-                                    logger.warning(f"Skipping attachment {attachment.filename}: Size ({attachment.size} bytes) exceeds limit ({MAX_SIZE_MB}MB).")
-                                    await message.channel.send(f"⚠️ Skipping {attachment.filename}: File too large (Max {MAX_SIZE_MB}MB).")
-                                    continue
-
-                                logger.info(f"Detected document attachment: {attachment.filename}")
-                                await message.channel.send(f"📄 Reading {attachment.filename}...")
-                                
-                                try:
-                                    extracted_text = await document_processor.process_attachment(attachment.url, attachment.filename)
-                                    if extracted_text:
-                                        # Truncate individual file content if too massive
-                                        if len(extracted_text) > 10000:
-                                            extracted_text = extracted_text[:10000] + "\n...[Content Truncated]..."
-                                        
-                                        processed_files.append(f"--- File: {attachment.filename} ---\n{extracted_text}")
-                                        file_count += 1
-                                        logger.info(f"Processed document content: {len(extracted_text)} chars")
-                                except Exception as e:
-                                    logger.error(f"Failed to process {attachment.filename}: {e}")
-                                    await message.channel.send(f"❌ Failed to read {attachment.filename}.")
-
+                        curr_images, curr_texts = await self._process_attachments(
+                            attachments=message.attachments,
+                            channel=message.channel,
+                            user_id=user_id,
+                            silent=False,
+                            trigger_vision=True
+                        )
+                        image_urls.extend(curr_images)
+                        processed_files.extend(curr_texts)
+                        
                         if processed_files:
                             file_content = "\n\n".join(processed_files)
                     
@@ -825,6 +808,85 @@ class WhisperBot(commands.Bot):
     async def on_error(self, event_method: str, *args, **kwargs):
         logger.exception(f"Error in event {event_method}")
 
+    async def _process_attachments(
+        self, 
+        attachments: List[discord.Attachment], 
+        channel: Any, 
+        user_id: str, 
+        silent: bool = False,
+        trigger_vision: bool = False
+    ) -> Tuple[List[str], List[str]]:
+        """
+        Helper to process a list of attachments (images & documents).
+        Returns (image_urls, processed_text_content).
+        """
+        image_urls = []
+        processed_texts = []
+        
+        MAX_FILES = 5
+        MAX_SIZE_MB = 5
+        MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
+        
+        file_count = 0
+        
+        for attachment in attachments:
+            # Image Handling
+            if self._is_image(attachment):
+                image_urls.append(attachment.url)
+                if not silent:
+                    logger.info(f"Detected image attachment: {attachment.url}")
+                else:
+                    logger.info(f"Included image from referenced message: {attachment.url}")
+                
+                if trigger_vision and settings.LLM_SUPPORTS_VISION:
+                     asyncio.create_task(
+                        vision_manager.analyze_and_store(
+                            image_url=attachment.url,
+                            user_id=user_id,
+                            channel_id=str(channel.id)
+                        )
+                    )
+            
+            # Document Handling
+            else:
+                if file_count >= MAX_FILES:
+                    if not silent:
+                        logger.warning(f"Skipping attachment {attachment.filename}: Max file limit reached.")
+                    continue
+                
+                if attachment.size > MAX_SIZE_BYTES:
+                    if not silent:
+                        await channel.send(f"⚠️ Skipping {attachment.filename}: File too large (Max {MAX_SIZE_MB}MB).")
+                    continue
+
+                if not silent:
+                    await channel.send(f"📄 Reading {attachment.filename}...")
+                else:
+                    logger.info(f"Detected referenced document: {attachment.filename}")
+                
+                try:
+                    extracted_text = await document_processor.process_attachment(attachment.url, attachment.filename)
+                    if extracted_text:
+                        # Truncate
+                        limit = 5000 if silent else 10000
+                        if len(extracted_text) > limit:
+                            extracted_text = extracted_text[:limit] + "\n...[Content Truncated]..."
+                        
+                        prefix = "Referenced File" if silent else "File"
+                        processed_texts.append(f"--- {prefix}: {attachment.filename} ---\n{extracted_text}")
+                        file_count += 1
+                        
+                        if silent:
+                            logger.info(f"Processed referenced document content: {len(extracted_text)} chars")
+                        else:
+                            logger.info(f"Processed document content: {len(extracted_text)} chars")
+                            
+                except Exception as e:
+                    logger.error(f"Failed to process {attachment.filename}: {e}")
+                    if not silent:
+                        await channel.send(f"❌ Failed to read {attachment.filename}.")
+                        
+        return image_urls, processed_texts
 
 # Global bot instance
 bot = WhisperBot()
