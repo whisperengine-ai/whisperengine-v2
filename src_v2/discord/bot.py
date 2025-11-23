@@ -299,44 +299,52 @@ class WhisperBot(commands.Bot):
                     # This prevents "Echo Chamber" (finding current msg in vector search)
                     # and "Double Speak" (finding current msg in chat history)
                     
-                    # Retrieve relevant memories
-                    formatted_memories = "No relevant memories found."
-                    memories = []  # Initialize for stats footer
-                    try:
-                        memories = await memory_manager.search_memories(user_message, user_id)
-                        formatted_memories = "\n".join([f"- {m['content']}" for m in memories]) if memories else "No relevant memories found."
-                    except Exception as e:
-                        logger.error(f"Failed to search memories: {e}")
+                    # Parallel Context Retrieval
+                    async def get_memories():
+                        try:
+                            mems = await memory_manager.search_memories(user_message, user_id)
+                            fmt = "\n".join([f"- {m['content']}" for m in mems]) if mems else "No relevant memories found."
+                            return mems, fmt
+                        except Exception as e:
+                            logger.error(f"Failed to search memories: {e}")
+                            return [], "No relevant memories found."
 
-                    # Get History
-                    chat_history = []
-                    try:
-                        chat_history = await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id)
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve chat history: {e}")
+                    async def get_history():
+                        try:
+                            return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id)
+                        except Exception as e:
+                            logger.error(f"Failed to retrieve chat history: {e}")
+                            return []
 
-                    # Retrieve Knowledge Graph facts
-                    knowledge_facts = ""
-                    try:
-                        knowledge_facts = await knowledge_manager.get_user_knowledge(user_id)
-                        
-                        # Fallback: If name is not in knowledge graph, use Discord display name
-                        if "name" not in knowledge_facts.lower():
-                            display_name = message.author.display_name
-                            knowledge_facts += f"\n- User's Discord Display Name: {display_name}"
-                            logger.info(f"Using Discord display name as fallback: {display_name}")
+                    async def get_knowledge():
+                        try:
+                            facts = await knowledge_manager.get_user_knowledge(user_id)
+                            # Fallback: If name is not in knowledge graph, use Discord display name
+                            if "name" not in facts.lower():
+                                display_name = message.author.display_name
+                                facts += f"\n- User's Discord Display Name: {display_name}"
+                            return facts
+                        except Exception as e:
+                            logger.error(f"Failed to retrieve knowledge facts: {e}")
+                            return ""
 
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve knowledge facts: {e}")
+                    async def get_summaries():
+                        try:
+                            sums = await memory_manager.search_summaries(user_message, user_id, limit=3)
+                            if sums:
+                                return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']})" for s in sums])
+                            return ""
+                        except Exception as e:
+                            logger.error(f"Failed to retrieve summaries: {e}")
+                            return ""
 
-                    # Retrieve Past Summaries (Long-term Context)
-                    past_summaries = ""
-                    try:
-                        summaries = await memory_manager.search_summaries(user_message, user_id, limit=3)
-                        if summaries:
-                            past_summaries = "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']})" for s in summaries])
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve summaries: {e}")
+                    # Execute all context retrieval tasks in parallel
+                    (memories, formatted_memories), chat_history, knowledge_facts, past_summaries = await asyncio.gather(
+                        get_memories(),
+                        get_history(),
+                        get_knowledge(),
+                        get_summaries()
+                    )
 
                     # 2. Save User Message & Extract Knowledge
                     try:
