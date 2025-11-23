@@ -87,10 +87,9 @@ Analyze the user's input and decide."""
         if tool_calls:
             logger.info(f"Router decided to call {len(tool_calls)} tools: {[tc['name'] for tc in tool_calls]}")
             
-            for tc in tool_calls:
+            async def execute_tool(tc):
                 tool_name = tc['name']
                 tool_args = tc['args']
-                executed_tool_names.append(tool_name)
                 
                 # Find the matching tool instance
                 tool_instance = next((t for t in tools if t.name == tool_name), None)
@@ -100,12 +99,22 @@ Analyze the user's input and decide."""
                         logger.debug(f"Executing {tool_name} with args: {tool_args}")
                         # We use ainvoke directly. The user_id is already in the tool instance.
                         result = await tool_instance.ainvoke(tool_args)
-                        context_parts.append(f"--- Result from {tool_name} ---\n{result}")
+                        return tool_name, f"--- Result from {tool_name} ---\n{result}"
                     except Exception as e:
                         logger.error(f"Tool execution failed for {tool_name}: {e}")
-                        context_parts.append(f"Error executing {tool_name}: {e}")
+                        return tool_name, f"Error executing {tool_name}: {e}"
                 else:
                     logger.warning(f"LLM called unknown tool: {tool_name}")
+                    return tool_name, None
+
+            # Execute all tools in parallel
+            import asyncio
+            results = await asyncio.gather(*[execute_tool(tc) for tc in tool_calls])
+            
+            for tool_name, result in results:
+                executed_tool_names.append(tool_name)
+                if result:
+                    context_parts.append(result)
 
             reasoning = f"Decided to call: {', '.join(executed_tool_names)}"
         else:
