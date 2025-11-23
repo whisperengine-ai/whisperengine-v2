@@ -269,7 +269,13 @@ class WhisperBot(commands.Bot):
                                     pass # Message might be deleted or inaccessible
 
                             if ref_msg and ref_msg.content:
-                                ref_text = ref_msg.content[:100] + "..." if len(ref_msg.content) > 100 else ref_msg.content
+                                # Smart Truncation: Keep start and end if too long
+                                content = ref_msg.content
+                                if len(content) > 500:
+                                    ref_text = content[:225] + " ... [middle truncated] ... " + content[-225:]
+                                else:
+                                    ref_text = content
+                                    
                                 ref_author = ref_msg.author.display_name
                                 user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
                                 logger.info(f"Injected reply context: {user_message}")
