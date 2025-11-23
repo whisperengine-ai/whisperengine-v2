@@ -205,7 +205,22 @@ class AgentEngine:
         if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
             logger.info("Engaging Reflective Mode")
             # Reflective Agent handles its own tool usage and reasoning
-            return await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
+            response_text = await self.reflective_agent.run(user_message, user_id, system_content, callback=callback)
+            
+            # Log Prompt (if enabled)
+            if settings.ENABLE_PROMPT_LOGGING:
+                await self._log_prompt(
+                    character_name=character.name,
+                    user_id=user_id,
+                    system_prompt=system_content,
+                    chat_history=chat_history,
+                    user_input=user_message,
+                    context_variables=context_variables,
+                    response=response_text,
+                    image_urls=image_urls
+                )
+            
+            return response_text
         
         # 4. Fast Mode (Standard Flow)
         

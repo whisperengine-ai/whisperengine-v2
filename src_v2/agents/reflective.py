@@ -58,9 +58,12 @@ class ReflectiveAgent:
             content = response.content
             if content:
                 content_str = str(content)
-                # Streaming Callback
-                if callback:
+                
+                # Only stream if it's NOT the final answer (i.e., if there are tool calls)
+                # If there are no tool calls, this content IS the final answer, so we shouldn't stream it to the "thinking" block.
+                if response.tool_calls and callback:
                     await callback(content_str)
+                
                 logger.debug(f"Reflective Step {steps} content: {content_str[:100]}...")
 
             # 2. Handle Tool Calls
