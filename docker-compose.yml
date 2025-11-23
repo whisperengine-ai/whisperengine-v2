@@ -336,6 +336,42 @@ services:
     networks:
       - v2_network
 
+  marcus:
+    profiles: ["marcus", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whisperengine-v2-marcus
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.marcus
+    environment:
+      - DISCORD_BOT_NAME=marcus
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - v2_network
+
 volumes:
   postgres_data_v2:
   qdrant_data_v2:
