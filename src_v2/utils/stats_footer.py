@@ -185,7 +185,7 @@ class StatsFooter:
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 rows = await conn.fetch("""
-                    SELECT g.name, g.slug, p.progress_score
+                    SELECT g.slug as name, g.slug, p.progress_score
                     FROM v2_user_goal_progress p
                     JOIN v2_goals g ON p.goal_id = g.id
                     WHERE p.user_id = $1 
