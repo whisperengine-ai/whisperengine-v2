@@ -2,9 +2,11 @@
 
 This roadmap outlines the implementation plan for the next phase of Reflective Mode (System 2) enhancements. The features are ordered by implementation priority, starting with infrastructure upgrades that pave the way for advanced capabilities.
 
+> **Status Update (Nov 23, 2025)**: Phase 1 (Native Functions) and Phase 2.3 (Parallel Execution) are complete. The system is currently in **User Testing** to validate stability before proceeding with Adaptive Max Steps.
+
 ## Phase 1: Foundation & Infrastructure
 
-### 1. Native Function Calling (Infrastructure)
+### 1. Native Function Calling (Infrastructure) - ✅ Completed
 *   **Goal**: Replace fragile Regex parsing (`Action: ...`) with native LLM tool calling APIs (e.g., OpenAI Tools / Anthropic Tool Use).
 *   **Why First?**: Implementing this first prevents rewriting tool logic later. It provides structured outputs that make "Parallel Tool Execution" and "Tool Composition" significantly easier and more reliable.
 *   **Benefit**: Higher reliability, better handling of complex arguments, and fewer syntax errors from the LLM.
@@ -13,7 +15,7 @@ This roadmap outlines the implementation plan for the next phase of Reflective M
 
 ## Phase 2: Efficiency & Optimization
 
-### 2. Adaptive Max Steps (Heuristic-Based)
+### 2. Adaptive Max Steps (Heuristic-Based) - ⏸️ On Hold (Pending Testing)
 Currently, `REFLECTIVE_MAX_STEPS` is a static global setting (default: 10). This feature aims to dynamically adjust the step limit based on the complexity of the query.
 
 *   **Goal**: Reduce latency for "moderately complex" queries while allowing "deeply complex" queries enough runway.
@@ -22,7 +24,7 @@ Currently, `REFLECTIVE_MAX_STEPS` is a static global setting (default: 10). This
     2.  **Engine Update**: Pass `suggested_steps` to `ReflectiveAgent.run()`.
     3.  **User Override**: `!reflect` defaults to `COMPLEX_HIGH`.
 
-### 3. Parallel Tool Execution
+### 3. Parallel Tool Execution - ✅ Completed
 Currently, the ReAct loop executes tools sequentially. If the agent needs to search for "X" and "Y", it takes two full steps.
 
 *   **Goal**: Allow the agent to issue multiple tool calls in a single "Action" step.
