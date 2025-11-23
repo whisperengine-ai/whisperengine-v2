@@ -59,7 +59,8 @@ class AgentEngine:
         context_variables: Optional[Dict[str, Any]] = None,
         user_id: Optional[str] = None,
         image_urls: Optional[List[str]] = None,
-        callback: Optional[Callable[[str], Awaitable[None]]] = None
+        callback: Optional[Callable[[str], Awaitable[None]]] = None,
+        force_reflective: bool = False
     ) -> str:
         """
         Generates a response for the given character and user message.
@@ -70,12 +71,16 @@ class AgentEngine:
         # 1. Classify Intent (Simple vs Complex) - Only if Reflective Mode is enabled
         is_complex = False
         if user_id and settings.ENABLE_REFLECTIVE_MODE:
-            try:
-                is_complex_str = await self.classifier.classify(user_message, chat_history)
-                is_complex = (is_complex_str == "COMPLEX")
-                logger.info(f"Complexity Analysis: {is_complex_str}")
-            except Exception as e:
-                logger.error(f"Complexity classifier failed: {e}")
+            if force_reflective:
+                is_complex = True
+                logger.info("Complexity Analysis: FORCED COMPLEX by user")
+            else:
+                try:
+                    is_complex_str = await self.classifier.classify(user_message, chat_history)
+                    is_complex = (is_complex_str == "COMPLEX")
+                    logger.info(f"Complexity Analysis: {is_complex_str}")
+                except Exception as e:
+                    logger.error(f"Complexity classifier failed: {e}")
 
         # 2. Construct Base System Prompt (Character + Evolution + Goals)
         # The character object already contains the full prompt loaded from the markdown file
