@@ -315,9 +315,13 @@ class MemoryManager:
                 # Reverse to get chronological order
                 for row in reversed(rows):
                     if row['role'] == 'human':
-                        # TODO: If we had usernames stored, we could prepend them here.
-                        # For now, we just return the content.
-                        messages.append(HumanMessage(content=row['content']))
+                        content = row['content']
+                        
+                        # In group contexts (channel_id present), distinguish other users
+                        if channel_id and row['user_id'] != str(user_id):
+                            content = f"[User {row['user_id']}]: {content}"
+                            
+                        messages.append(HumanMessage(content=content))
                     elif row['role'] == 'ai':
                         messages.append(AIMessage(content=row['content']))
                         
