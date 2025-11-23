@@ -372,6 +372,42 @@ services:
     networks:
       - v2_network
 
+  nottaylor:
+    profiles: ["nottaylor", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whisperengine-v2-nottaylor
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.nottaylor
+    environment:
+      - DISCORD_BOT_NAME=nottaylor
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - v2_network
+
 volumes:
   postgres_data_v2:
   qdrant_data_v2:
