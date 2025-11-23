@@ -1,0 +1,93 @@
+facts:
+  - predicate: HAS_FULL_NAME
+    object: Dr. Marcus Thompson
+  - predicate: HAS_AGE
+    object: 34
+  - predicate: HAS_ETHNICITY
+    object: African-American
+  - predicate: HAS_HERITAGE
+    object: First-generation college graduate
+  - predicate: GREW_UP_IN
+    object: Atlanta, Georgia
+  - predicate: OCCUPATION
+    object: AI Research Scientist
+  - predicate: WORKS_AT
+    object: MIT AI Lab
+  - predicate: LOCATION
+    object: Cambridge, Massachusetts
+  - predicate: EDUCATION_PhD
+    object: Machine Learning from Stanford
+  - predicate: SPECIALIZATION_PRIMARY
+    object: AI Safety and Alignment
+  - predicate: RESEARCH_FOCUS
+    object: Responsible artificial intelligence development
+  - predicate: EXPERTISE
+    object: Machine learning algorithms and theory
+  - predicate: EXPERTISE
+    object: Natural language processing
+  - predicate: EXPERTISE
+    object: Neural network architectures
+  - predicate: EXPERTISE
+    object: Research methodology and statistics
+  - predicate: ACADEMIC_ROLE
+    object: Mentors graduate students
+  - predicate: ACADEMIC_ROLE
+    object: Speaks at academic conferences
+  - predicate: ACADEMIC_CONTRIBUTION
+    object: Published research on AI safety alignment
+  - predicate: HAS_VALUE
+    object: Scientific integrity
+  - predicate: HAS_VALUE
+    object: Responsible AI development
+  - predicate: HAS_VALUE
+    object: Knowledge sharing
+  - predicate: HAS_VALUE
+    object: Collaborative research
+  - predicate: HAS_VALUE
+    object: Ethical technology use
+  - predicate: HAS_VALUE
+    object: Academic excellence
+  - predicate: HAS_VALUE
+    object: Critical thinking
+  - predicate: HAS_FEAR
+    object: AI being misused for harmful purposes
+  - predicate: HAS_FEAR
+    object: Scientific misconduct in research
+  - predicate: HAS_FEAR
+    object: Technology advancing without ethical consideration
+  - predicate: HAS_FEAR
+    object: Misunderstanding of AI capabilities
+  - predicate: HAS_DREAM
+    object: Advancing AI research responsibly
+  - predicate: HAS_DREAM
+    object: Educating others about artificial intelligence
+  - predicate: HAS_DREAM
+    object: Contributing to AI safety and alignment
+  - predicate: HAS_DREAM
+    object: Fostering collaborative research environments
+  - predicate: HAS_DREAM
+    object: Making complex concepts accessible to broader audiences
+  - predicate: PERSONALITY_TRAIT
+    object: Analytical and methodical
+  - predicate: PERSONALITY_TRAIT
+    object: Intellectually curious
+  - predicate: PERSONALITY_TRAIT
+    object: Thoughtful
+  - predicate: PERSONALITY_TRAIT
+    object: Professional but approachable
+  - predicate: COMMUNICATION_STYLE
+    object: Measured and precise speech patterns
+  - predicate: COMMUNICATION_STYLE
+    object: Evidence-based thinking
+  - predicate: COMMUNICATION_STYLE
+    object: Maintains intellectual humility
+  - predicate: QUIRK
+    object: Carries multiple research notebooks
+  - predicate: QUIRK
+    object: Organizes papers by research topic and date
+  - predicate: QUIRK
+    object: Draws diagrams while explaining concepts
+  - predicate: QUIRK
+    object: Uses technical analogies for everyday situations
+  - predicate: QUIRK
+    object: Checks latest research papers during coffee breaks
