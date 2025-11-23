@@ -90,6 +90,23 @@ class WhisperBot(commands.Bot):
         
         return chunks
 
+    def _is_image(self, attachment: discord.Attachment) -> bool:
+        """
+        Determines if an attachment is an image based on content_type or filename extension.
+        """
+        # 1. Check Content-Type (Reliable if present)
+        if attachment.content_type and attachment.content_type.startswith("image/"):
+            return True
+            
+        # 2. Fallback: Check Extension
+        valid_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff'}
+        import os
+        _, ext = os.path.splitext(attachment.filename)
+        if ext.lower() in valid_extensions:
+            return True
+            
+        return False
+
     async def update_status_loop(self):
         await self.wait_until_ready()
         # Initial status set
@@ -330,7 +347,7 @@ class WhisperBot(commands.Bot):
 
                         for attachment in message.attachments:
                             # Image Handling (Collect all images)
-                            if attachment.content_type and attachment.content_type.startswith("image/"):
+                            if self._is_image(attachment):
                                 image_urls.append(attachment.url)
                                 logger.info(f"Detected image attachment: {attachment.url}")
                                 

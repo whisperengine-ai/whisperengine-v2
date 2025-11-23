@@ -1,41 +1,56 @@
 # WhisperEngine 2.0 Dependencies
+# Synchronized with pyproject.toml
 
-# Core
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-loguru>=0.7.0
-httpx>=0.25.0
+# Core Discord Bot Dependencies
+discord.py==2.6.3
+python-dotenv==1.1.1
 
-# Discord
-discord.py[voice]>=2.3.0
-PyNaCl>=1.5.0  # Required for voice
+# HTTP Client Dependencies
+aiohttp==3.12.15
+requests==2.32.5
 
-# Voice
-elevenlabs>=0.2.27
+# AI/ML and Memory System Dependencies
+qdrant-client>=1.16.0
+fastembed>=0.7.0
+numpy>=1.26.0
+redis>=5.0.0
+
+# Image Processing Dependencies
+Pillow>=10.0.0
+
+# Async File I/O Dependencies
+aiofiles>=23.0.0
+
+# Voice functionality dependencies (optional)
+PyNaCl>=1.5.0
+audioop-lts>=0.2.0
+elevenlabs>=1.0.0
 
 # AI & Orchestration
 langchain>=0.1.0
 langchain-community>=0.0.10
 langchain-openai>=0.0.5
-llama-index>=0.9.0
 openai>=1.0.0
 
-# Database Drivers
-psycopg2-binary>=2.9.0  # PostgreSQL adapter
-asyncpg>=0.29.0  # PostgreSQL
-qdrant-client>=1.16.0  # Qdrant
-neo4j>=5.15.0  # Neo4j
-influxdb-client>=1.39.0  # InfluxDB
+# Document Processing (LlamaIndex)
+llama-index>=0.10.0
+llama-index-readers-file>=0.1.0
+docx2txt>=0.8
+pypdf>=3.0.0
+pandas>=2.0.0
+openpyxl>=3.1.0
+python-pptx>=0.6.21
 
-# Embeddings
-fastembed>=0.2.0
+# Database Drivers
+psycopg2-binary>=2.9.0
+asyncpg>=0.29.0
+neo4j>=5.15.0
+influxdb-client==1.40.0
 
 # API
 fastapi>=0.109.0
 uvicorn>=0.27.0
 
 # Utilities
-alembic>=1.13.0  # Migrations
-tenacity>=8.2.0  # Retries
-aiofiles>=23.0.0  # Async File I/O
+alembic>=1.13.0
+tenacity>=8.2.0
