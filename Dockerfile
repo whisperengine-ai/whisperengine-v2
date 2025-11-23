@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     git \
     curl \
+    tzdata \
     ffmpeg \
     libsodium-dev \
     libffi-dev \

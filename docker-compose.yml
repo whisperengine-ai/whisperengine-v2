@@ -100,6 +100,7 @@ services:
       - .env.elena
     environment:
       - DISCORD_BOT_NAME=elena
+      - TZ=America/Los_Angeles
     ports:
       - "8000:8000"
     depends_on:
@@ -136,6 +137,7 @@ services:
       - .env.ryan
     environment:
       - DISCORD_BOT_NAME=ryan
+      - TZ=America/Los_Angeles
     ports:
       - "8001:8001"
     depends_on:
@@ -172,6 +174,7 @@ services:
       - .env.dotty
     environment:
       - DISCORD_BOT_NAME=dotty
+      - TZ=America/Los_Angeles
     ports:
       - "8002:8002"
     depends_on:
@@ -208,6 +211,7 @@ services:
       - .env.aria
     environment:
       - DISCORD_BOT_NAME=aria
+      - TZ=America/Los_Angeles
     ports:
       - "8003:8003"
     depends_on:
@@ -244,6 +248,7 @@ services:
       - .env.dream
     environment:
       - DISCORD_BOT_NAME=dream
+      - TZ=America/Los_Angeles
     ports:
       - "8004:8004"
     depends_on:
@@ -280,6 +285,7 @@ services:
       - .env.jake
     environment:
       - DISCORD_BOT_NAME=jake
+      - TZ=America/Los_Angeles
     ports:
       - "8005:8005"
     depends_on:
@@ -316,6 +322,7 @@ services:
       - .env.sophia
     environment:
       - DISCORD_BOT_NAME=sophia
+      - TZ=America/Los_Angeles
     ports:
       - "8006:8006"
     depends_on:
@@ -352,6 +359,7 @@ services:
       - .env.marcus
     environment:
       - DISCORD_BOT_NAME=marcus
+      - TZ=America/Los_Angeles
     ports:
       - "8007:8007"
     depends_on:
@@ -388,6 +396,7 @@ services:
       - .env.nottaylor
     environment:
       - DISCORD_BOT_NAME=nottaylor
+      - TZ=America/Los_Angeles
     ports:
       - "8008:8008"
     depends_on:
