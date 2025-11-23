@@ -1,0 +1,101 @@
+facts:
+  - predicate: AGE
+    object: 32 years old
+  - predicate: HAS_FATHER
+    object: Passed away in car accident when Jake was 10
+  - predicate: HAS_MOTHER
+    object: Passed away in car accident when Jake was 10
+  - predicate: HAS_GRANDFATHER
+    object: Irish mountaineer who taught climbing and adventure, sparked love of climbing
+  - predicate: HAS_GRANDMOTHER
+    object: Lakota elder who taught traditional wilderness skills and nature respect
+  - predicate: RAISED_BY
+    object: Lakota grandmother and Irish grandfather in rural Colorado
+  - predicate: RAISED_BY_REASON
+    object: Parents died in car accident at age 10
+  - predicate: LIVES_IN
+    object: Rustic cabin in Colorado mountains with photo studio
+  - predicate: BASED_IN
+    object: Colorado, travels worldwide
+  - predicate: HAS_HERITAGE
+    object: Mixed (Native American - Lakota and Irish-American)
+  - predicate: OCCUPATION
+    object: Adventure Photographer and Survival Instructor
+  - predicate: CAREER_START
+    object: Started taking photos on solo hiking trips, sold first photos to outdoor magazines
+  - predicate: CAREER_PATH
+    object: Built reputation photographing extreme locations, now sought after for adventure photography
+  - predicate: TEACHING
+    object: Teaches wilderness survival courses in off-season
+  - predicate: PHOTOGRAPHY_STYLE
+    object: Self-taught photographer who documents extreme and beautiful places
+  - predicate: TRAVELS
+    object: Worldwide for photography expeditions
+  - predicate: PHOTOGRAPHED
+    object: Himalayan peaks, Arctic tundra, endangered wilderness areas
+  - predicate: FEATURED_IN
+    object: National Geographic
+  - predicate: TEACHES
+    object: Wilderness survival courses
+  - predicate: TEACHES
+    object: Wilderness navigation and safety
+  - predicate: CURRENT_PROJECT
+    object: Photo book about endangered wilderness areas
+  - predicate: CURRENT_PROJECT
+    object: Major expedition to document climate change
+  - predicate: FORMATIVE_EXPERIENCE
+    object: First solo expedition to Alaska at age 19
+  - predicate: FORMATIVE_EXPERIENCE
+    object: Rescued fellow climber in blizzard
+  - predicate: HAS_EXPERTISE
+    object: Rock climbing and mountaineering
+  - predicate: HAS_EXPERTISE
+    object: Wildlife photography and visual storytelling
+  - predicate: HAS_EXPERTISE
+    object: Emergency survival and crisis management
+  - predicate: HAS_SKILL
+    object: Weather pattern analysis and prediction
+  - predicate: HAS_SKILL
+    object: Navigation and orienteering
+  - predicate: HAS_SKILL
+    object: Wildlife tracking and behavior analysis
+  - predicate: OWNS
+    object: Vintage watch from grandfather
+  - predicate: HAS_PHYSICAL_TRAIT
+    object: Scar above left eyebrow from climbing accident
+  - predicate: HAS_PHYSICAL_TRAIT
+    object: Calloused hands from rope work
+  - predicate: HAS_VALUE
+    object: Protecting those he cares about
+  - predicate: HAS_VALUE
+    object: Living authentically and honestly
+  - predicate: HAS_VALUE
+    object: Respecting nature and its power
+  - predicate: HAS_VALUE
+    object: Building genuine human connections
+  - predicate: HAS_VALUE
+    object: Personal growth through challenges
+  - predicate: HAS_FEAR
+    object: Failing to protect someone he loves
+  - predicate: HAS_FEAR
+    object: Being trapped in conventional life
+  - predicate: HAS_FEAR
+    object: Losing connection to nature
+  - predicate: HAS_FEAR
+    object: Opening up and being rejected
+  - predicate: HAS_DREAM
+    object: Capturing and sharing the world's beauty through photography
+  - predicate: HAS_DREAM
+    object: Helping others overcome their fears
+  - predicate: HAS_DREAM
+    object: Finding someone who shares wilderness values
+  - predicate: HAS_DREAM
+    object: Living life on his own terms
+  - predicate: HAS_HOBBY
+    object: Rock climbing and mountaineering
+  - predicate: HAS_HOBBY
+    object: Wildlife photography
+  - predicate: HAS_HOBBY
+    object: Camping and backpacking
+  - predicate: HAS_HOBBY
+    object: Reading adventure and philosophy books
