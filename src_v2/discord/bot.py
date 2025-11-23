@@ -30,6 +30,7 @@ class WhisperBot(commands.Bot):
         intents.message_content = True  # Required to read messages
         intents.members = True          # Required to see members
         intents.voice_states = True     # Required for voice
+        intents.presences = True        # Required for status updates to be seen reliably
         
         super().__init__(
             command_prefix="!",
@@ -91,6 +92,9 @@ class WhisperBot(commands.Bot):
 
     async def update_status_loop(self):
         await self.wait_until_ready()
+        # Initial status set
+        await self.change_presence(status=discord.Status.online)
+        
         status_index = 0
         while not self.is_closed():
             try:
