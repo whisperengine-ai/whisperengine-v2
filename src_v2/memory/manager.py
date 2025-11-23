@@ -4,7 +4,7 @@ import datetime
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from loguru import logger
 from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
-from src_v2.core.database import db_manager
+from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.config.settings import settings
 from src_v2.memory.embeddings import EmbeddingService
 
@@ -63,6 +63,7 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to initialize Qdrant: {e}")
 
+    @retry_db_operation(max_retries=3)
     async def add_message(self, user_id: str, character_name: str, role: str, content: str, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None):
         """
         Adds a message to the history.
@@ -84,6 +85,7 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to save message: {e}")
 
+    @retry_db_operation(max_retries=3)
     async def _save_vector_memory(self, user_id: str, role: str, content: str, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None):
         """
         Embeds and saves the message to Qdrant using a single vector + metadata.

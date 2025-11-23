@@ -6,7 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 from src_v2.config.settings import settings
-from src_v2.core.database import db_manager
+from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.knowledge.extractor import FactExtractor, Fact
 from src_v2.agents.llm_factory import create_llm
 
@@ -121,6 +121,7 @@ RULES:
         except Exception as e:
             logger.error(f"Failed to initialize Knowledge Graph schema: {e}")
 
+    @retry_db_operation(max_retries=3)
     async def ingest_character_background(self, bot_name: str):
         """
         Ingests character background facts from characters/<bot_name>/background.yaml
@@ -314,6 +315,7 @@ RULES:
             # logger.error(f"Background search failed: {e}") 
             return ""
 
+    @retry_db_operation(max_retries=3)
     async def process_user_message(self, user_id: str, message: str):
         """
         Extracts facts from the message and stores them in the Knowledge Graph.
