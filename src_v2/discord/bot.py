@@ -190,15 +190,43 @@ class WhisperBot(commands.Bot):
         # Process commands first
         await self.process_commands(message)
         
-        # Ignore empty messages or system messages
-        if not message.content or message.is_system():
+        # Handle Stickers (Convert to text context)
+        sticker_text = ""
+        if message.stickers:
+            sticker_names = [sticker.name for sticker in message.stickers]
+            sticker_text = f"\n[User sent sticker(s): {', '.join(sticker_names)}]"
+            logger.info(f"Detected stickers: {sticker_names}")
+        
+        # Ignore empty messages (unless they have stickers/attachments) or system messages
+        if (not message.content and not sticker_text and not message.attachments) or message.is_system():
             return
 
         # Determine if we should respond
         # 1. Direct Message (DM)
         # 2. Mentioned in a server
+        # 3. Replying to the bot (even without ping)
         is_dm = isinstance(message.channel, discord.DMChannel)
         is_mentioned = self.user in message.mentions
+        
+        # Check for Reply without Ping
+        if not is_mentioned and message.reference:
+            try:
+                # Check resolved reference first
+                if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
+                    if message.reference.resolved.author.id == self.user.id:
+                        is_mentioned = True
+                        logger.info("Detected reply to bot without ping.")
+                # Fallback: Fetch message if not resolved
+                elif message.reference.message_id:
+                    try:
+                        ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                        if ref_msg.author.id == self.user.id:
+                            is_mentioned = True
+                            logger.info("Detected reply to bot without ping (fetched).")
+                    except:
+                        pass
+            except Exception as e:
+                logger.warning(f"Failed to check reply reference: {e}")
         
         # Privacy: Block DMs if enabled and user is not allowlisted
         if is_dm and settings.ENABLE_DM_BLOCK:
@@ -237,6 +265,10 @@ class WhisperBot(commands.Bot):
 
                     # Clean the message (remove mention)
                     user_message = message.content.replace(f"<@{self.user.id}>", "").strip()
+                    
+                    # Append sticker text if present
+                    if sticker_text:
+                        user_message += sticker_text
                     
                     # Check for Forced Reflective Mode
                     force_reflective = False
