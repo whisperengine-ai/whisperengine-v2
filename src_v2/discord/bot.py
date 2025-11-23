@@ -220,6 +220,24 @@ class WhisperBot(commands.Bot):
                     # Clean the message (remove mention)
                     user_message = message.content.replace(f"<@{self.user.id}>", "").strip()
                     
+                    # Check for Forced Reflective Mode
+                    force_reflective = False
+                    if user_message.startswith("!reflect"):
+                        if settings.ENABLE_REFLECTIVE_MODE:
+                            cleaned_content = user_message.replace("!reflect", "", 1).strip()
+                            
+                            # Edge Case: User typed "!reflect" but no message and no reply
+                            if not cleaned_content and not message.reference:
+                                await message.channel.send("ℹ️ Usage: `!reflect <your question>` or reply to a message with `!reflect`.")
+                                return
+                                
+                            user_message = cleaned_content
+                            force_reflective = True
+                            logger.info(f"User {user_id} forced Reflective Mode")
+                        else:
+                            await message.channel.send("⚠️ Reflective Mode is currently disabled in settings.")
+                            return
+
                     # Handle Replies (Context Injection)
                     if message.reference:
                         try:
@@ -461,7 +479,8 @@ class WhisperBot(commands.Bot):
                         context_variables=context_vars,
                         user_id=user_id,
                         image_urls=image_urls,
-                        callback=reflective_callback
+                        callback=reflective_callback,
+                        force_reflective=force_reflective
                     )
                     
                     processing_time_ms = (time.time() - start_time) * 1000
