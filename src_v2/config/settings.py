@@ -5,7 +5,7 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from typing import Optional, Literal
-from pydantic import Field, SecretStr, AliasChoices
+from pydantic import Field, SecretStr, AliasChoices, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -105,6 +105,27 @@ class Settings(BaseSettings):
 
     # --- Debugging ---
     ENABLE_PROMPT_LOGGING: bool = False
+
+    # --- Privacy & Security ---
+    ENABLE_DM_BLOCK: bool = True
+    DM_ALLOWED_USER_IDS: list[str] = Field(default_factory=list, description="List of Discord User IDs allowed to DM the bot")
+
+    @field_validator("DM_ALLOWED_USER_IDS", mode="before")
+    @classmethod
+    def parse_dm_allowed_ids(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            # Support JSON format for backward compatibility
+            if v.strip().startswith("["):
+                import json
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Support comma-separated list
+            return [id.strip() for id in v.split(",") if id.strip()]
+        return v
 
     model_config = SettingsConfigDict(
         env_file=".env", 
