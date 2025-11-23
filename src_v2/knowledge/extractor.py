@@ -27,10 +27,16 @@ IMPORTANT: You MUST respond with ONLY valid JSON in the specified format. Do NOT
 
 Extract facts in the format: (Subject)-[PREDICATE]->(Object).
 - Subject should usually be 'User' if the user is talking about themselves.
-- Predicates should be UPPERCASE verbs (e.g., LIKES, OWNS, LIVES_IN, HAS_JOB).
+- Predicates should be UPPERCASE verbs (e.g., LIKES, OWNS, LIVES_IN, HAS_JOB, HAS_PET_NAMED, IS_A).
 - Objects should be specific entities.
 
-Only extract facts that are explicitly stated and have long-term value (e.g., names, pets, location, preferences).
+CRITICAL DISTINCTIONS:
+- If user says "my cat's name is Luna": Extract (User)-[HAS_PET_NAMED]->(Luna) AND (Luna)-[IS_A]->(Cat)
+  Do NOT extract (User)-[IS_A]->(Cat) - the user is not a cat, they own a cat.
+- If user says "I am a developer": Extract (User)-[IS_A]->(Developer)
+- If user says "I own a car": Extract (User)-[OWNS]->(Car)
+
+Only extract facts that are explicitly stated and have long-term value (e.g., names, pets, location, preferences, identity traits).
 Ignore transient states (e.g., "I am hungry", "I am walking").
 Ignore behavioral configuration preferences (e.g., "speak less", "use emojis", "change style") - these are handled by a separate system.
 
