@@ -603,6 +603,15 @@ class WhisperBot(commands.Bot):
         except Exception as e:
             logger.error(f"Error in _check_and_summarize: {e}")
 
+    async def on_disconnect(self):
+        logger.warning("Bot disconnected from Discord! Attempting to reconnect...")
+
+    async def on_resumed(self):
+        logger.info("Bot session resumed successfully.")
+
+    async def on_error(self, event_method: str, *args, **kwargs):
+        logger.exception(f"Error in event {event_method}")
+
 
 # Global bot instance
 bot = WhisperBot()

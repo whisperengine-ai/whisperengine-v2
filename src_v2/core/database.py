@@ -6,8 +6,28 @@ import asyncpg
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import WriteOptions
 from loguru import logger
+from functools import wraps
 
 from src_v2.config.settings import settings
+
+def retry_db_operation(max_retries: int = 3, delay: int = 1):
+    """
+    Decorator to retry async database operations.
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Operation {func.__name__} failed after {max_retries} attempts: {e}")
+                        raise
+                    logger.warning(f"Operation {func.__name__} failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay * (attempt + 1)}s...")
+                    await asyncio.sleep(delay * (attempt + 1))
+        return wrapper
+    return decorator
 
 class DatabaseManager:
     def __init__(self):
