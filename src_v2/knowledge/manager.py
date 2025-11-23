@@ -188,7 +188,8 @@ RULES:
                 formatted_results = []
                 for record in records:
                     # Flatten the record values
-                    values = [str(v) for v in record.values()]
+                    # Sanitize braces to prevent LangChain prompt formatting errors
+                    values = [str(v).replace("{", "(").replace("}", ")") for v in record.values()]
                     formatted_results.append(" ".join(values))
                 
                 return ", ".join(formatted_results)
