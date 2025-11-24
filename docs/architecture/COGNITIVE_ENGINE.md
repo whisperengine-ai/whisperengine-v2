@@ -31,13 +31,15 @@ The central coordinator. It does not contain business logic itself but orchestra
 *   **Response Generation**: Calls the LLM with the final prompt.
 
 ### 2. Complexity Classifier (`src_v2/agents/classifier.py`)
-A lightweight LLM call that analyzes the user's message to determine intent and complexity.
+A hybrid system that analyzes the user's message to determine intent and complexity.
 
 *   **Input**: User message + Recent history.
 *   **Output**: `SIMPLE` or `COMPLEX`.
-*   **Logic**:
-    *   `SIMPLE`: Greetings, small talk, factual questions. -> **Fast Mode**.
-    *   `COMPLEX`: Emotional venting, philosophical questions, multi-step reasoning. -> **Reflective Mode**.
+*   **Logic Cascade**:
+    1.  **Semantic Fast-Track (<50ms)**: Uses local embeddings (FastEmbed) to match user input against a cached list of simple intents (greetings, small talk, identity questions). If match > 0.82 similarity -> **Fast Mode**.
+    2.  **LLM Classifier (Fallback)**: If no semantic match, calls a lightweight LLM to analyze reasoning requirements.
+        *   `SIMPLE`: Factual questions, direct requests. -> **Fast Mode**.
+        *   `COMPLEX`: Emotional venting, philosophical questions, multi-step reasoning. -> **Reflective Mode**.
 
 ### 3. Cognitive Router (`src_v2/agents/router.py`)
 Used in **Fast Mode** to determine if external tools are needed.
@@ -60,22 +62,26 @@ Used in **Reflective Mode** for deep processing.
 
 ## Request Flow
 
+To minimize latency, the engine uses **Parallel Execution** for the Fast Mode pipeline.
+
 ```mermaid
 graph TD
-    User[User Message] --> Engine[AgentEngine]
+    User[User Message] --> ParallelStart((Start Parallel))
     
-    Engine --> Classifier{Complexity Classifier}
-    
-    Classifier -->|SIMPLE| FastMode[Fast Mode]
-    Classifier -->|COMPLEX| ReflectiveMode[Reflective Mode]
-    
-    subgraph "Fast Mode"
-        FastMode --> Router{Cognitive Router}
-        Router -->|Need Context?| Tools[Memory/Graph Tools]
-        Tools --> Context[Context Injection]
-        Router -->|No Context| Context
-        Context --> LLM[LLM Generation]
+    subgraph "Parallel Execution Block"
+        ParallelStart --> Classify{Complexity Classifier}
+        ParallelStart --> Route{Cognitive Router}
+        ParallelStart --> Build{Context Builder}
     end
+    
+    Classify -->|COMPLEX| Cancel[Cancel Router Task]
+    Cancel --> ReflectiveMode[Reflective Mode]
+    
+    Classify -->|SIMPLE| Join((Join Results))
+    Route --> Join
+    Build --> Join
+    
+    Join --> FastMode[Fast Mode Generation]
     
     subgraph "Reflective Mode"
         ReflectiveMode --> ReAct[ReAct Loop]
@@ -84,7 +90,7 @@ graph TD
         Execute --> Synthesize[Synthesize Response]
     end
     
-    LLM --> Response
+    FastMode --> Response
     Synthesize --> Response
 ```
 
