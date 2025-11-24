@@ -1,232 +1,226 @@
-# WhisperEngine v2 AI Agent Instructions
+# WhisperEngine v2 - AI Agent Development Guide
 
-**WhisperEngine v2 is a production multi-character Discord AI roleplay platform** using Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and a Dual-Process cognitive architecture.
+**Optimized for solo developer with AI-assisted tools** (Nov 24, 2025)
 
-## 🏗️ Architecture Overview
+WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture.
 
-### Entry Point & Runtime
-- **Entry**: `run_v2.py <bot_name>` sets `DISCORD_BOT_NAME` env var and loads `src_v2.main`
-- **Main**: `src_v2/main.py` initializes DB Manager → Memory System → Knowledge Graph → Discord Bot → FastAPI Server
-- **v2 Only**: Work in `src_v2/`, not legacy `src/` directory
+## ⚡ Quick Architecture
 
-### The "Four Pillars" Data Layer
-1. **PostgreSQL** (5432): Relational data, relationships, user preferences, sessions
-2. **Qdrant** (6333): Vector memory with 384D embeddings for semantic retrieval
-3. **Neo4j** (7687): Knowledge graph for facts, entities, relationships
-4. **InfluxDB** (8086): Time-series metrics for engagement analytics
+### Runtime Flow
+`run_v2.py elena` → `src_v2/main.py` → `db_manager.connect_all()` → Initialize Memory/Knowledge → Discord Bot + FastAPI
 
-Each bot has a dedicated Qdrant collection: `whisperengine_memory_{bot_name}`
+### The "Four Pillars"
+| System | Port | Pattern |
+|--------|------|---------|
+| PostgreSQL | 5432 | Chat history, users, trust scores (Alembic migrations) |
+| Qdrant | 6333 | Vector memory, `whisperengine_memory_{bot_name}` collection |
+| Neo4j | 7687 | Knowledge graph, Cypher queries, constraints on `User.id` |
+| InfluxDB | 8086 | Metrics/analytics (Flux queries in `evolution/feedback.py`) |
 
-### Manager Pattern
-All subsystems use async `Manager` classes with `async def initialize()`:
-- `DatabaseManager`: Connection pooling for all 4 databases with retry logic (`@retry_db_operation` decorator)
-- `MemoryManager`: Hybrid Postgres + Qdrant storage with bot-specific collections
-- `KnowledgeManager`: Neo4j graph operations with Cypher generation
-- `CharacterManager`: Loads from `characters/{bot_name}/character.md` + `goals.yaml`
-
-**Pattern**: Managers are initialized in `src_v2/main.py` startup sequence, then imported globally in modules.
-
-## 🚀 Deployment & Management
-
-### Docker Compose Profiles (Profile-Based Architecture)
-```bash
-# Infrastructure only (postgres, qdrant, neo4j, influxdb)
-./bot.sh infra up
-# Or: docker compose up -d
-
-# Start specific bot (uses profile)
-./bot.sh up elena
-# Or: docker compose --profile elena up -d --build
-
-# Start all bots
-./bot.sh up all
-# Or: docker compose --profile all up -d
-
-# Status & logs
-./bot.sh ps
-./bot.sh logs elena
-```
-
-**Key Pattern**: `docker-compose.yml` uses profiles (`elena`, `ryan`, `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `nottaylor`, `all`) for selective bot deployment. Infrastructure services have no profile (always available).
-
-### Local Development
-```bash
-source .venv/bin/activate
-python run_v2.py elena  # Loads .env.elena automatically
-```
-
-**Critical**: Always use `.venv` for Python commands. Never use system Python or assume global packages.
-
-### Environment Files Pattern
-- `.env.example`: Template with all settings documented
-- `.env.{bot_name}`: Bot-specific config (e.g., `.env.elena`, `.env.ryan`)
-- `run_v2.py` automatically loads correct env file based on bot name argument
-- Settings loaded via Pydantic `BaseSettings` in `src_v2/config/settings.py`
-
-## ⚙️ Feature Flags (Resource Management)
-
-Critical cost optimization via feature flags in `src_v2/config/settings.py`:
-
-- **`ENABLE_REFLECTIVE_MODE`** (default: false): Enables complexity classifier + ReAct reasoning loop. Cost: 1 extra LLM call per message + 3-10 calls for complex queries (~$0.02-0.03 vs $0.001-0.005)
-- **`ENABLE_RUNTIME_FACT_EXTRACTION`** (default: true): Extracts facts to Knowledge Graph. Cost: 1 LLM call per message
-- **`ENABLE_PREFERENCE_EXTRACTION`** (default: true): Detects user preferences ("be concise", "use emojis"). Cost: 1 LLM call per message
-- **`ENABLE_PROACTIVE_MESSAGING`** (default: false): Bot initiates conversations in DMs or public channels based on activity patterns. Requires trust_score >= 20.
-- **`LLM_SUPPORTS_VISION`** (default: false): Image analysis capability
-- **`ENABLE_PROMPT_LOGGING`** (default: false): Log full prompts to `logs/prompts/` for debugging
-
-**Pattern**: Check feature flags before expensive operations:
+### Manager Pattern (Every Subsystem)
 ```python
-if settings.ENABLE_REFLECTIVE_MODE:
-    complexity = await classifier.classify(message)
-    if complexity == "complex":
-        return await reflective_agent.process(message)
+class XManager:
+    async def initialize(self) -> None: pass  # Called in main.py
+    @retry_db_operation(max_retries=3)  # Auto-retry transients
+    async def method(...): pass
 ```
 
-## 🧠 Cognitive Architecture
+Key singletons: `db_manager`, `memory_manager`, `knowledge_manager`, `character_manager`, `trust_manager`, `AgentEngine` (imported globally after init)
 
-### Dual-Process System
-- **Fast Mode (System 1)**: Direct LLM response with memory context (`src_v2/agents/engine.py`)
-- **Reflective Mode (System 2)**: ReAct reasoning loop for complex queries (`src_v2/agents/reflective.py`)
-- **Complexity Classifier**: GPT-4o-mini classifies as `simple|moderate|complex` (gated by `ENABLE_REFLECTIVE_MODE`)
+## 🎯 Critical Code Patterns
 
-### LLM Configuration Pattern
-Three-tier LLM setup for cost optimization:
-1. **Main LLM**: Primary conversational model (e.g., `gpt-4o`, Claude Sonnet 4.5)
-2. **Router LLM**: Fast/cheap for tool selection (e.g., `gpt-4o-mini`) - optional
-3. **Reflective LLM**: High-capability for deep reasoning (e.g., `claude-3.5-sonnet`) - optional
-
-Configure via `LLM_PROVIDER`, `ROUTER_LLM_PROVIDER`, `REFLECTIVE_LLM_PROVIDER` in `.env.{bot}`
-
-## 🛠️ Critical Workflows
-
-### Database Migrations (Alembic)
-```bash
-source .venv/bin/activate
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+### 1. Async/Await + Type Hints (REQUIRED)
+All I/O is async; type hints on ALL function signatures:
+```python
+# GOOD - LangChain integration pattern
+async def generate_response(
+    self, 
+    user_message: str,
+    chat_history: Optional[List[BaseMessage]] = None,
+    image_urls: Optional[List[str]] = None
+) -> str:
+    """Docstring with type context."""
 ```
-**Location**: `migrations_v2/` (NOT `migrations/` from v1)
-**Auto-run**: Migrations automatically run on startup in `src_v2/main.py`
 
-### Adding a New Bot
-1. Copy `characters/elena/` → `characters/newbot/`
-2. Edit `character.md` (personality, background) and `goals.yaml` (learning objectives)
-3. Create `.env.newbot` (copy from `.env.example`, set `DISCORD_BOT_NAME=newbot`)
-4. Add to `docker-compose.yml`:
-```yaml
-newbot:
-  profiles: ["newbot", "all"]
-  container_name: whisperengine-v2-newbot
-  env_file: .env.newbot
-  environment:
-    - DISCORD_BOT_NAME=newbot
-  ports:
-    - "8009:8009"  # Unique port (increment from last bot)
-  depends_on:
-    postgres: {condition: service_healthy}
-    neo4j: {condition: service_healthy}
-    qdrant: {condition: service_started}
-    influxdb: {condition: service_healthy}
+### 2. Dependency Injection Pattern
+Engines accept dependencies for testability:
+```python
+# In AgentEngine.__init__
+self.trust_manager = trust_manager_dep or trust_manager  # Use injected or global
 ```
-5. Start with `./bot.sh up newbot`
 
-### Character Configuration
-- **`characters/{name}/character.md`**: Markdown file loaded as system prompt. Supports template variables: `{user_name}`, `{current_datetime}`, `{recent_memories}`, `{knowledge_context}`
-- **`characters/{name}/goals.yaml`**: Learning objectives with priority/category (see `characters/elena/goals.yaml` for format)
-- **`characters/{name}/background.yaml`**: Optional structured background data
+### 3. Error Handling with Logging
+Use `loguru` (not `logging`); log context:
+```python
+from loguru import logger
+try:
+    result = await some_operation()
+except Exception as e:
+    logger.error(f"Operation failed with user_id={user_id}, reason: {e}")
+    raise
+```
+
+### 4. Feature Flags (Cost Control)
+Check before expensive LLM calls:
+```python
+if settings.ENABLE_REFLECTIVE_MODE and complexity == "complex":
+    return await self.reflective_agent.process(message)
+return await self.direct_response()  # Fast path
+```
+
+### 5. Parallel Context Retrieval
+Use `asyncio.gather` to fetch from multiple DBs simultaneously:
+```python
+memories, facts, trust, goals = await asyncio.gather(
+    memory_manager.get_recent(user_id),
+    knowledge_manager.query_graph(user_id, msg),
+    trust_manager.get_relationship_level(user_id, char_name),
+    goal_manager.get_active_goals(user_id)
+)
+```
+
+## 📁 File Organization & Entry Points
+
+### Database Layer
+- `src_v2/core/database.py`: `DatabaseManager` with `@retry_db_operation` decorator for resilience
+- `migrations_v2/`: Alembic migration files. Always run: `alembic upgrade head` on startup (auto-run in `main.py`)
+
+### Memory System
+- `src_v2/memory/manager.py`: Hybrid Postgres + Qdrant. Collection name: `whisperengine_memory_{settings.DISCORD_BOT_NAME}`
+- `src_v2/memory/embeddings.py`: `EmbeddingService` (384D, auto-initialized)
+
+### Knowledge Graph
+- `src_v2/knowledge/manager.py`: Neo4j Cypher operations. Auto-initializes constraints on `User(id)`, `Entity(name)`
+- `src_v2/knowledge/extractor.py`: Pydantic `Fact` model for LLM-generated facts
+
+### Cognitive Engine
+- `src_v2/agents/engine.py`: `AgentEngine.generate_response()` - main entry for LLM responses
+- `src_v2/agents/classifier.py`: Fast complexity classification (simple/moderate/complex)
+- `src_v2/agents/reflective.py`: ReAct reasoning loop for complex queries (gated by `ENABLE_REFLECTIVE_MODE`)
+- `src_v2/agents/router.py`: Routes to appropriate tools (memory search, fact lookup, etc.)
+- `src_v2/agents/llm_factory.py`: Multi-model LLM setup (main + reflective + router)
+
+### Character & Evolution
+- `src_v2/core/character.py`: Loads `characters/{name}/character.md`, `.yaml` files
+- `characters/{name}/character.md`: System prompt (supports `{user_name}`, `{recent_memories}` template vars)
+- `src_v2/evolution/trust.py`: Trust scoring (5 levels: Stranger→Acquaintance→Friend→Close→Soulmate)
+- `src_v2/evolution/feedback.py`: Reaction analysis via InfluxDB metrics
+
+### Discord Integration
+- `src_v2/discord/bot.py`: Event handlers (`on_message`, `on_reaction_add`), message routing
+- `src_v2/discord/scheduler.py`: Proactive engagement (Phase 13 complete)
+- `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
+
+### API
+- `src_v2/api/app.py`: FastAPI app with Uvicorn
+- `src_v2/api/routes.py`: `/api/chat` endpoint for testing
+
+## 🔧 Development Workflows
 
 ### Testing
-- **Unit tests**: `pytest tests_v2/`
-- **Direct validation**: `python tests_v2/test_feature_direct_validation.py`
-- **HTTP API**: `curl -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" -d '{"user_id":"test","message":"Hello"}'`
+```bash
+# Unit tests (preferred for solo dev)
+pytest tests_v2/test_memory_manager.py -v
 
-## 📝 Code Conventions
+# Direct validation with real DB
+python tests_v2/test_feature_direct_validation.py
 
-- **Python environment**: ALWAYS use `.venv` for Python commands. Activate with `source .venv/bin/activate` before running any Python code.
-- **Type hints**: REQUIRED on all function signatures (arguments and return types). Use `typing` module or modern syntax (e.g., `list[str]`, `dict[str, Any]`, `Optional[int]`).
-- **Async-first**: All I/O uses `async/await` (database, HTTP, file operations)
-- **Logging**: `from loguru import logger` (NOT `import logging`). Configured in `src_v2/main.py` at startup
-- **Paths**: `from pathlib import Path` (NOT `os.path`)
-- **Database retries**: Use `@retry_db_operation()` decorator for DB methods (defaults to 3 retries)
-- **Imports**: `os.environ["TOKENIZERS_PARALLELISM"] = "false"` set in `run_v2.py` before imports
-- **Error handling**: Log with `logger.error(f"Context: {e}")`, not bare `except Exception: pass`
-
-### Type Hints Examples
-```python
-# Good - explicit type hints
-async def process_message(user_id: str, content: str, metadata: Optional[dict[str, Any]] = None) -> str:
-    ...
-
-# Good - return type for complex objects
-def get_character(name: str) -> Optional[Character]:
-    ...
-
-# Bad - no type hints
-async def process_message(user_id, content, metadata=None):
-    ...
+# HTTP API test
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"test","message":"Hello","metadata":{}}'
 ```
 
-### Python Version
-- **Target**: Python 3.12+ (specified in `pyproject.toml`)
-- **Async runtime**: Uses `asyncio.run()` in `run_v2.py` and `src_v2/main.py`
+### Database Migrations
+```bash
+source .venv/bin/activate
+# Generate: alembic revision --autogenerate -m "description"
+# Apply: alembic upgrade head
+# Rollback: alembic downgrade -1
+```
 
-## ⚠️ Common Pitfalls
+### Running Locally
+```bash
+./bot.sh infra up          # Infrastructure only
+python run_v2.py elena    # Start bot (loads .env.elena)
+./bot.sh logs elena -f    # Stream logs
+```
 
-- ❌ **Do NOT create docs** unless explicitly requested. Code is source of truth.
-- ❌ **Do NOT commit `.env` files**. Use `.env.example` for templates.
-- ❌ **Do NOT edit legacy `src/`**. Only work in `src_v2/`.
-- ❌ **Do NOT use `make`**. Use `./bot.sh` or direct `docker compose`.
-- ❌ **Do NOT add expensive LLM calls** without checking feature flags first.
-- ❌ **Do NOT assume hot-reload**. Restart bots after code changes: `./bot.sh restart elena`
-- ✅ **DO use profile-based deployment**: `./bot.sh up <bot_name>` (not `docker compose up <bot_name>`)
-- ✅ **DO check `@retry_db_operation` on new DB methods** for resilience.
-- ✅ **DO use async/await** for all I/O operations (no blocking calls).
+## ⚙️ Settings & Feature Flags
 
-## 🗂️ Key Files
-- `src_v2/config/settings.py`: Pydantic settings with feature flags and env file loading
-- `src_v2/agents/engine.py`: Main cognitive engine (`AgentEngine.generate_response()`)
-- `src_v2/agents/proactive.py`: Proactive message generation with privacy safeguards
-- `src_v2/discord/bot.py`: Discord integration with event handlers
-- `src_v2/discord/scheduler.py`: Proactive engagement scheduler with activity modeling
-- `src_v2/intelligence/activity.py`: User activity pattern analysis for optimal messaging times
-- `src_v2/knowledge/manager.py`: Knowledge Graph operations with Cypher generation
-- `src_v2/memory/manager.py`: Hybrid Postgres + Qdrant vector memory
-- `src_v2/core/database.py`: `DatabaseManager` with connection pooling and `@retry_db_operation`
-- `src_v2/core/character.py`: `CharacterManager` loads from `characters/{name}/`
-- `docker-compose.yml`: Profile-based multi-bot deployment with health checks
-- `bot.sh`: Bash management script (preferred over direct `docker compose`)
-- `run_v2.py`: Entry point that sets `DISCORD_BOT_NAME` and loads env files
+**Location**: `src_v2/config/settings.py` (Pydantic BaseSettings)
 
-## 🤖 Proactive Engagement System
+**Critical flags**:
+- `ENABLE_REFLECTIVE_MODE` (default: false): ReAct reasoning loop (~$0.02-0.03 per complex query)
+- `ENABLE_RUNTIME_FACT_EXTRACTION` (default: true): Extract facts to Neo4j ($0.001 per message)
+- `ENABLE_PREFERENCE_EXTRACTION` (default: true): Detect "be concise" style hints
+- `ENABLE_PROACTIVE_MESSAGING` (default: false): Bot initiates contact (requires trust ≥ 20)
 
-**Implementation**: Phase 13 (Completed)
+**Environment loading order**: Env vars → `.env.{DISCORD_BOT_NAME}` → `.env.example` defaults
 
-The bot can now initiate conversations based on user activity patterns:
+## 🚀 Deployment & Multi-Bot
 
-### How It Works
-1. **Activity Modeling**: Analyzes last 30 days of session history to build a 24x7 activity heatmap
-2. **Scheduler**: Checks every 60 minutes for users meeting criteria:
-   - Trust score >= 20 (Acquaintance or higher)
-   - 24+ hours since last message
-   - Current time matches user's typical activity pattern
-3. **Channel Selection**: Prefers last public channel over DMs (respects `ENABLE_DM_BLOCK`)
-4. **Context Generation**: Fetches channel-specific history and generates relevant opener
+### Docker Compose Profiles
+```bash
+./bot.sh up elena        # Start elena (uses --profile elena)
+./bot.sh up all          # Start all bots (uses --profile all)
+./bot.sh infra up        # Infrastructure only
+```
 
-### Privacy Protection (Multi-Layer)
-1. **Channel Detection**: Pings users in public channels when possible
-2. **DM Allowlist**: Respects `DM_ALLOWED_USER_IDS` setting
-3. **Knowledge Filtering**: Removes sensitive keywords (health, finance, relationships, etc.)
-4. **LLM Instructions**: Explicit privacy warnings for public messages
-5. **Safe Topics**: Uses channel-specific history as pre-approved topics
+**Key pattern**: `docker-compose.yml` uses profiles. Infrastructure (postgres, qdrant, neo4j, influxdb) has NO profile (always up). Each bot has profile `[name, "all"]`.
 
-### Key Features
-- **Unfinished Conversations**: Detects questions left unanswered or topics left hanging
-- **Channel-Specific Memory**: References conversations from the target channel
-- **Memory Persistence**: Saves sent messages so bot remembers initiating contact
+### Adding a New Bot
+1. Create `.env.newbot` (copy `.env.example`)
+2. Create `characters/newbot/` with `character.md`, `goals.yaml`
+3. Add to `docker-compose.yml` with unique port, profile `["newbot", "all"]`
+4. `./bot.sh up newbot`
 
-**Files**: `src_v2/discord/scheduler.py`, `src_v2/agents/proactive.py`, `src_v2/intelligence/activity.py`
-- `src_v2/core/database.py`: `DatabaseManager` with connection pooling and `@retry_db_operation`
-- `src_v2/core/character.py`: `CharacterManager` loads from `characters/{name}/`
-- `docker-compose.yml`: Profile-based multi-bot deployment with health checks
-- `bot.sh`: Bash management script (preferred over direct `docker compose`)
-- `run_v2.py`: Entry point that sets `DISCORD_BOT_NAME` and loads env files
+## ⚠️ Solo Developer Pitfalls
+
+- ❌ **Don't add LLM calls without feature flags** → Can 10x costs
+- ❌ **Don't use system Python** → Always `source .venv/bin/activate`
+- ❌ **Don't skip type hints** → Breaks AI code generation
+- ❌ **Don't assume hot-reload** → Restart after code changes
+- ❌ **Don't edit `src/` legacy code** → Only `src_v2/`
+- ✅ **DO use `asyncio.gather` for parallel DB calls** → 3-5x faster context retrieval
+- ✅ **DO log context in errors** → Speeds debugging with AI
+- ✅ **DO apply `@retry_db_operation` to all DB methods** → Handles transient failures
+- ✅ **DO test migrations locally first** → Alembic migrations are one-way
+
+## 🧠 Message Flow (For New Features)
+
+1. **Discord Input**: `on_message()` → Validate → Store to history
+2. **Context Retrieval**: Parallel gather from Qdrant (memories) + Neo4j (facts) + Postgres (trust/prefs)
+3. **Complexity Check**: Fast embeddings-based classifier (60% trivial, bypass LLM)
+4. **Response Generation**: 
+   - Simple: Direct LLM call with context
+   - Complex (reflective): ReAct loop with tools (search, lookup, etc.)
+5. **Post-Processing**: Extract facts/prefs (background), update trust, store response
+6. **Discord Output**: Send to channel, save to history
+
+## 📊 Performance Optimization (Solo Dev Edition)
+
+**Already implemented** (no new work needed):
+- ✅ Parallel context retrieval (3x faster)
+- ✅ Fast semantic classifier (bypass LLM 60% of time)
+- ✅ Native function calling (no regex parsing)
+- ✅ Parallel tool execution (ReAct)
+
+**Next phases** (from IMPLEMENTATION_ROADMAP_OVERVIEW.md):
+1. Redis caching layer (30-50% DB reduction)
+2. Streaming LLM responses (better UX)
+3. Reasoning traces (system learns from itself)
+4. Epiphanies (characters have spontaneous insights)
+
+## 📞 Key References
+
+- **Architecture Deep Dives**: `docs/architecture/` (COGNITIVE_ENGINE, DATA_MODELS, MESSAGE_FLOW, etc.)
+- **Roadmap**: `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` (prioritized by complexity for solo dev)
+- **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
+- **Character System**: `docs/architecture/WHISPERENGINE_2_DESIGN.md` (why polyglot, LLM-native design)
+
+---
+
+**Version**: 2.0 (Nov 24, 2025 - Solo dev optimized)  
+**Python Target**: 3.12+  
+**Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`
