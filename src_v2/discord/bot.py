@@ -694,9 +694,15 @@ class WhisperBot(commands.Bot):
                         
                         # 4.6 Trust Update (Engagement Reward)
                         # Small trust increase for every positive interaction
-                        self.loop.create_task(
-                            trust_manager.update_trust(user_id, character.name, 1)
-                        )
+                        async def handle_trust_update():
+                            try:
+                                milestone = await trust_manager.update_trust(user_id, character.name, 1)
+                                if milestone:
+                                    await message.channel.send(milestone)
+                            except Exception as e:
+                                logger.error(f"Failed to handle trust update: {e}")
+
+                        self.loop.create_task(handle_trust_update())
                         
                         # 5. Voice Playback (use full response, not chunked)
                         if message.guild and message.guild.voice_client:
@@ -770,9 +776,16 @@ class WhisperBot(commands.Bot):
                 # Positive feedback increases trust significantly
                 # Negative feedback decreases trust
                 trust_delta = 5 if feedback["score"] > 0 else -5
-                self.loop.create_task(
-                    trust_manager.update_trust(user_id, self.character_name, trust_delta)
-                )
+                
+                async def handle_reaction_trust():
+                    try:
+                        milestone = await trust_manager.update_trust(user_id, self.character_name, trust_delta)
+                        if milestone:
+                            await reaction.message.channel.send(milestone)
+                    except Exception as e:
+                        logger.error(f"Failed to handle reaction trust update: {e}")
+
+                self.loop.create_task(handle_reaction_trust())
                 
                 logger.info(f"Feedback score for message: {feedback['score']} (adjusted memory importance)")
 
@@ -861,9 +874,15 @@ class WhisperBot(commands.Bot):
                         score_delta=score_delta
                     )
                     
-                    self.loop.create_task(
-                        trust_manager.update_trust(user_id, self.character_name, trust_delta)
-                    )
+                    async def handle_reaction_remove_trust():
+                        try:
+                            milestone = await trust_manager.update_trust(user_id, self.character_name, trust_delta)
+                            if milestone:
+                                await reaction.message.channel.send(milestone)
+                        except Exception as e:
+                            logger.error(f"Failed to handle reaction remove trust update: {e}")
+
+                    self.loop.create_task(handle_reaction_remove_trust())
                     
                     logger.info(f"Reaction removed. Adjusted memory importance by {score_delta}")
 

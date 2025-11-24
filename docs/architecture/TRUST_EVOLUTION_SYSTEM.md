@@ -7,18 +7,24 @@ WhisperEngine v2's Trust & Evolution system creates dynamic, persistent characte
 ## Core Concepts
 
 ### Trust Level
-**Range**: 0-100  
+**Range**: -100 to 100  
 **Persistence**: Stored per-user in PostgreSQL `v2_relationships` table  
-**Initial**: 10 (strangers) or 30 (returning users)
+**Initial**: 0 (strangers) or 10 (returning users)
 
 ### Evolution Stage
-Characters evolve through **5 stages** as trust increases:
+Characters evolve through **8 stages** based on trust:
 
-1. **Stranger** (0-20): Polite but distant
-2. **Acquaintance** (21-40): Friendly, basic personal sharing
-3. **Friend** (41-60): Warm, emotionally supportive
-4. **Close Friend** (61-80): Deep trust, vulnerable sharing
-5. **Intimate** (81-100): Maximum openness, inside jokes
+**Negative Stages (Broken Trust)**
+1. **Hostile** (-100 to -51): Refuses to engage, defensive
+2. **Cold** (-50 to -21): Purely transactional, refuses personal topics
+3. **Wary** (-20 to -1): Guarded, short responses, suspicious
+
+**Positive Stages (Building Trust)**
+4. **Stranger** (0-20): Polite but distant
+5. **Acquaintance** (21-40): Friendly, basic personal sharing
+6. **Friend** (41-60): Warm, emotionally supportive
+7. **Close Friend** (61-80): Deep trust, vulnerable sharing
+8. **Intimate** (81-100): Maximum openness, inside jokes
 
 ### Unlockable Traits
 Each character has traits that activate at specific trust thresholds:
@@ -76,7 +82,13 @@ traits:
 │  PHASE 1: TRUST BASELINE INCREMENT                               │
 │  Location: src_v2/discord/bot.py:on_message()                    │
 │                                                                   │
-│  # Every message increases trust slightly                        │
+│  # 1. Velocity Check (Prevent Speedrunning)                      │
+│  if messages_last_hour > 20: return                              │
+│                                                                   │
+│  # 2. Meaningfulness Check                                       │
+│  if len(message) < 10: return                                    │
+│                                                                   │
+│  # 3. Update Trust                                               │
 │  await trust_manager.update_trust(                               │
 │      user_id=user_id,                                            │
 │      character_name=character.name,                              │
@@ -151,11 +163,18 @@ traits:
 │          unlocked_traits=["playful_teasing", "inside_jokes"]     │
 │      )                                                            │
 │                                                                   │
-│      # Send milestone message                                    │
+│      # 1. Send milestone message                                 │
 │      await channel.send(                                         │
 │          "✨ *Your relationship with Elena has deepened!*\n"     │
 │          "You are now **Friends**. Elena feels more comfortable  │
 │          sharing personal thoughts with you."                    │
+│      )                                                            │
+│                                                                   │
+│      # 2. Inject Synthetic Memory (Core Memory)                  │
+│      await memory_manager.add_synthetic_memory(                  │
+│          user_id=user_id,                                        │
+│          content="User and I became Friends today. I feel close.",│
+│          importance=1.0                                          │
 │      )                                                            │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -240,11 +259,13 @@ traits:
     unlock_at: 40
     description: "Gently teases in affectionate way"
     example: "Oh really? That sounds like something YOU would say 😏"
+    suppress_on_mood: ["sad", "anxious"]  # Don't tease if user is sad
     
   - name: "inside_jokes"
     unlock_at: 45
     description: "References shared experiences"
     example: "Just like that time with the coffee incident!"
+    suppress_on_mood: ["angry"]
   
   - name: "emotional_support"
     unlock_at: 50
@@ -499,6 +520,25 @@ point = Point("relationship") \
 2025-11-22 16:48:30 | INFO | Evolution stage changed: Acquaintance → Friend
 2025-11-22 16:48:30 | INFO | Traits unlocked: playful_teasing, inside_jokes
 2025-11-22 16:48:30 | INFO | Milestone reached: Trust 50
+```
+
+## Contextual Overrides (Read the Room)
+
+To prevent inappropriate behavior (e.g., teasing a grieving user), the system applies overrides based on user sentiment:
+
+```python
+# In src_v2/evolution/manager.py
+def get_active_traits(self, trust_level, user_sentiment):
+    unlocked = self.get_unlocked_traits(trust_level)
+    
+    # Filter out traits that conflict with current sentiment
+    active = []
+    for trait in unlocked:
+        if user_sentiment in trait.get('suppress_on_mood', []):
+            continue
+        active.append(trait)
+        
+    return active
 ```
 
 ## Future Enhancements

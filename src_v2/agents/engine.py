@@ -22,6 +22,7 @@ from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.utils.validation import ValidationError, validator
+from src_v2.evolution.manager import get_evolution_manager
 
 class AgentEngine:
     """Core cognitive engine for generating AI responses with memory and evolution."""
@@ -216,7 +217,7 @@ class AgentEngine:
             relationship = await self.trust_manager.get_relationship_level(user_id, character.name)
             if relationship:
                 current_mood = await self.feedback_analyzer.get_current_mood(user_id)
-                system_content += self._format_relationship_context(relationship, current_mood)
+                system_content += self._format_relationship_context(relationship, current_mood, character.name)
                 logger.debug(f"Injected evolution state: {relationship['level']} (Trust: {relationship['trust_score']})")
 
             # 2.5.1 Inject Feedback Insights
@@ -248,34 +249,31 @@ class AgentEngine:
 
         return system_content
 
-    def _format_relationship_context(self, relationship: Dict[str, Any], current_mood: str) -> str:
+    def _format_relationship_context(self, relationship: Dict[str, Any], current_mood: str, character_name: str) -> str:
         """Formats the relationship/trust context string.
         
         Args:
             relationship: Dictionary containing trust level, traits, insights, and preferences
             current_mood: Current mood state of the user
+            character_name: Name of the character
             
         Returns:
             Formatted context string for system prompt injection
         """
-        trust_level: int = int(relationship.get('level', 1))
-        level_label: str = relationship.get('level_label', 'Stranger')
+        trust_score = relationship.get('trust_score', 0)
         
-        context = "\n\n[RELATIONSHIP STATUS]\n"
-        context += f"Trust Level: {trust_level} ({level_label}) (Score: {relationship.get('trust_score', 0)})\n"
+        # Use EvolutionManager to build context
+        evo_manager = get_evolution_manager(character_name)
         
-        if trust_level >= 3:
-            context += "(You have a strong bond with this user. Be more personal, open, and trusting.)\n"
-        if trust_level >= 5:
-            if relationship.get('unlocked_traits'):
-                context += "\n[UNLOCKED TRAITS]\n"
-                for trait in relationship['unlocked_traits']:
-                    if trait in TRAIT_BEHAVIORS:
-                        context += f"  - {trait}: {TRAIT_BEHAVIORS[trait]}\n"
-            context += "(You have unlocked deeper aspects of your personality with this user. Adapt your responses accordingly.)\n"
+        # Map "current_mood" (which is user sentiment/mood towards bot) to sentiment for suppression
+        # FeedbackAnalyzer returns "Happy", "Neutral", "Annoyed", "Excited"
+        user_sentiment = "neutral"
+        if "Annoyed" in current_mood: user_sentiment = "angry"
+        elif "Happy" in current_mood or "Excited" in current_mood: user_sentiment = "happy"
         
-        context += f"Current Mood: {current_mood}\n"
+        context = evo_manager.build_evolution_context(trust_score, user_sentiment)
         
+        # Append Insights and Preferences (which are still in relationship dict)
         if relationship.get('insights'):
             context += "\n[USER INSIGHTS]\n"
             for insight in relationship['insights']:

@@ -5,10 +5,11 @@ Tracks the evolving relationship between user and character, including
 trust scores, relationship levels, and unlocked personality traits.
 """
 
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from loguru import logger
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
+from src_v2.evolution.manager import get_evolution_manager
 import json
 
 
@@ -16,15 +17,6 @@ class TrustManager:
     """
     Manages relationship depth and trust scores between users and characters.
     """
-    
-    # Relationship level thresholds
-    RELATIONSHIP_LEVELS = [
-        (0, "Stranger"),
-        (20, "Acquaintance"),
-        (50, "Friend"),
-        (80, "Close Friend"),
-        (100, "Confidant")
-    ]
     
     def __init__(self):
         logger.info("TrustManager initialized")
@@ -43,7 +35,7 @@ class TrustManager:
             async with db_manager.postgres_pool.acquire() as conn:
                 # Check if relationship exists
                 row = await conn.fetchrow("""
-                    SELECT trust_score, unlocked_traits, insights, preferences
+                    SELECT trust_score, unlocked_traits, insights, preferences, mood, mood_intensity
                     FROM v2_user_relationships
                     WHERE user_id = $1 AND character_name = $2
                 """, user_id, character_name)
@@ -54,18 +46,27 @@ class TrustManager:
                         INSERT INTO v2_user_relationships (user_id, character_name, trust_score, unlocked_traits, insights, preferences)
                         VALUES ($1, $2, 0, '[]'::jsonb, '[]'::jsonb, '{}'::jsonb)
                     """, user_id, character_name)
-                    return {"trust_score": 0, "level": 1, "level_label": "Stranger", "unlocked_traits": [], "insights": [], "preferences": {}}
+                    return {
+                        "trust_score": 0, 
+                        "level": 1, 
+                        "level_label": "Stranger", 
+                        "unlocked_traits": [], 
+                        "insights": [], 
+                        "preferences": {},
+                        "mood": "neutral",
+                        "mood_intensity": 0.5
+                    }
                 
                 trust_score = row['trust_score']
                 
-                unlocked_traits = row['unlocked_traits']
-                if isinstance(unlocked_traits, str):
-                    try:
-                        unlocked_traits = json.loads(unlocked_traits)
-                    except Exception:
-                        unlocked_traits = []
-                elif unlocked_traits is None:
-                    unlocked_traits = []
+                # Get Evolution Manager for this character
+                evo_manager = get_evolution_manager(character_name)
+                stage = evo_manager.get_current_stage(trust_score)
+                
+                # Get traits from config (dynamic) rather than DB (static)
+                # We can merge them if we want to support manual unlocks, but for now dynamic is better
+                active_traits = evo_manager.get_active_traits(trust_score)
+                trait_names = [t['name'] for t in active_traits]
 
                 insights = row['insights']
                 if isinstance(insights, str):
@@ -85,30 +86,23 @@ class TrustManager:
                 elif preferences is None:
                     preferences = {}
                 
-                # Determine level (integer 1-5)
+                # Determine level (integer 1-8 roughly mapping to stages)
+                # This is a bit arbitrary now that we have named stages, but useful for simple logic
                 level_int = 1
-                level_label = "Stranger"
-                
-                # Map score to level (1-5)
-                if trust_score >= 90: level_int = 5
-                elif trust_score >= 70: level_int = 4
-                elif trust_score >= 50: level_int = 3
+                if trust_score >= 80: level_int = 5
+                elif trust_score >= 60: level_int = 4
+                elif trust_score >= 40: level_int = 3
                 elif trust_score >= 20: level_int = 2
-                
-                # Map score to label
-                for threshold, label in self.RELATIONSHIP_LEVELS:
-                    if trust_score >= threshold:
-                        level_label = label
-                    else:
-                        break
                         
                 return {
                     "trust_score": trust_score, 
                     "level": level_int,
-                    "level_label": level_label,
-                    "unlocked_traits": unlocked_traits,
+                    "level_label": stage['name'],
+                    "unlocked_traits": trait_names,
                     "insights": insights,
-                    "preferences": preferences
+                    "preferences": preferences,
+                    "mood": row.get('mood', 'neutral'),
+                    "mood_intensity": row.get('mood_intensity', 0.5)
                 }
                 
         except Exception as e:
@@ -182,9 +176,10 @@ class TrustManager:
         except Exception as e:
             logger.error(f"Failed to clear preferences: {e}")
 
-    async def update_trust(self, user_id: str, character_name: str, delta: int):
+    async def update_trust(self, user_id: str, character_name: str, delta: int) -> Optional[str]:
         """
         Adjusts trust score by delta amount.
+        Returns a milestone message if a threshold was crossed, else None.
         
         Args:
             user_id: User ID
@@ -192,25 +187,55 @@ class TrustManager:
             delta: Amount to change trust by (can be negative)
         """
         if not db_manager.postgres_pool:
-            return
+            return None
             
         try:
             async with db_manager.postgres_pool.acquire() as conn:
-                # Ensure relationship exists
-                await self.get_relationship_level(user_id, character_name)
-                
-                # Update trust score (clamp between 0 and 150)
-                await conn.execute("""
-                    UPDATE v2_user_relationships
-                    SET trust_score = GREATEST(0, LEAST(150, trust_score + $3)),
-                        updated_at = NOW()
+                # Ensure relationship exists and get current score
+                row = await conn.fetchrow("""
+                    SELECT trust_score FROM v2_user_relationships
                     WHERE user_id = $1 AND character_name = $2
-                """, user_id, character_name, delta)
+                """, user_id, character_name)
                 
-                logger.info(f"Updated trust for {user_id} with {character_name}: {delta:+d}")
+                if not row:
+                    # Should have been created by get_relationship_level, but just in case
+                    await self.get_relationship_level(user_id, character_name)
+                    old_trust = 0
+                else:
+                    old_trust = row['trust_score']
+                
+                # Calculate new trust (clamp between -100 and 100)
+                # Note: Design changed to -100 to 100 range
+                new_trust = max(-100, min(100, old_trust + delta))
+                
+                if new_trust != old_trust:
+                    await conn.execute("""
+                        UPDATE v2_user_relationships
+                        SET trust_score = $3,
+                            updated_at = NOW()
+                        WHERE user_id = $1 AND character_name = $2
+                    """, user_id, character_name, new_trust)
+                    
+                    logger.info(f"Updated trust for {user_id} with {character_name}: {old_trust} -> {new_trust} (delta: {delta})")
+                    
+                    # Check for milestones
+                    evo_manager = get_evolution_manager(character_name)
+                    milestone_msg = evo_manager.check_milestone(old_trust, new_trust)
+                    
+                    if milestone_msg:
+                        # Update last_milestone_date
+                        await conn.execute("""
+                            UPDATE v2_user_relationships
+                            SET last_milestone_date = NOW()
+                            WHERE user_id = $1 AND character_name = $2
+                        """, user_id, character_name)
+                        return milestone_msg
+                        
+            return None
                 
         except Exception as e:
             logger.error(f"Failed to update trust: {e}")
+            return None
 
     async def unlock_trait(self, user_id: str, character_name: str, trait: str):
         """
