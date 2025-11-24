@@ -65,7 +65,7 @@ class MemoryManager:
             logger.error(f"Failed to initialize Qdrant: {e}")
 
     @retry_db_operation(max_retries=3)
-    async def add_message(self, user_id: str, character_name: str, role: str, content: str, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None):
+    async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None):
         """
         Adds a message to the history.
         role: 'human' or 'ai'
@@ -76,9 +76,9 @@ class MemoryManager:
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
-                    INSERT INTO v2_chat_history (user_id, character_name, role, content, channel_id, message_id)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                """, str(user_id), character_name, role, content, str(channel_id) if channel_id else None, str(message_id) if message_id else None)
+                    INSERT INTO v2_chat_history (user_id, character_name, role, content, user_name, channel_id, message_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """, str(user_id), character_name, role, content, user_name or "User", str(channel_id) if channel_id else None, str(message_id) if message_id else None)
             
             # Also save to vector memory
             await self._save_vector_memory(user_id, role, content, channel_id, message_id, metadata)
@@ -324,7 +324,7 @@ class MemoryManager:
                 if channel_id:
                     # Fetch by channel_id (Group Context)
                     rows = await conn.fetch("""
-                        SELECT role, content, user_id 
+                        SELECT role, content, user_id, user_name 
                         FROM v2_chat_history 
                         WHERE channel_id = $1 AND character_name = $2
                         ORDER BY timestamp DESC
@@ -333,7 +333,7 @@ class MemoryManager:
                 else:
                     # Fetch by user_id (DM Context)
                     rows = await conn.fetch("""
-                        SELECT role, content, user_id 
+                        SELECT role, content, user_id, user_name 
                         FROM v2_chat_history 
                         WHERE user_id = $1 AND character_name = $2
                         ORDER BY timestamp DESC
@@ -347,7 +347,8 @@ class MemoryManager:
                         
                         # In group contexts (channel_id present), distinguish other users
                         if channel_id and row['user_id'] != str(user_id):
-                            content = f"[User {row['user_id']}]: {content}"
+                            display_name = row['user_name'] or f"User {row['user_id']}"
+                            content = f"[{display_name}]: {content}"
                             
                         messages.append(HumanMessage(content=content))
                     elif row['role'] == 'ai':

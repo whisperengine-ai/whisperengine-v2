@@ -523,7 +523,15 @@ class WhisperBot(commands.Bot):
 
                     # 2. Save User Message & Extract Knowledge
                     try:
-                        await memory_manager.add_message(user_id, character.name, 'human', user_message, channel_id=channel_id, message_id=str(message.id))
+                        await memory_manager.add_message(
+                            user_id, 
+                            character.name, 
+                            'human', 
+                            user_message, 
+                            channel_id=channel_id, 
+                            message_id=str(message.id),
+                            user_name=message.author.display_name
+                        )
                         
                         # Log Message Event to InfluxDB
                         if db_manager.influxdb_write_api:

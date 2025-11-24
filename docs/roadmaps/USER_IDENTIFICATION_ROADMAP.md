@@ -34,15 +34,15 @@ This roadmap outlines the implementation plan for improving user identification 
 
 ---
 
-### 🎯 Milestone 1: Database Schema Migration
+### 🎯 Milestone 1: Database Schema Migration (✅ Completed)
 **Duration:** 1 day  
-**Target Date:** TBD  
-**Status:** 📋 Planned  
+**Target Date:** November 23, 2025  
+**Status:** ✅ Completed  
 **Owner:** Database Team  
 
 **Tasks:**
 
-#### 1.1 Create Migration File
+#### 1.1 Create Migration File (✅ Completed)
 **Estimated Time:** 30 minutes  
 **Dependencies:** None  
 
@@ -52,17 +52,17 @@ alembic revision --autogenerate -m "add_user_name_to_chat_history"
 ```
 
 **Acceptance Criteria:**
-- [ ] Migration file created in `migrations_v2/versions/`
-- [ ] Adds `user_name TEXT` column (nullable)
-- [ ] Includes backfill for existing records
-- [ ] Includes rollback (downgrade) function
+- [x] Migration file created in `migrations_v2/versions/`
+- [x] Adds `user_name TEXT` column (nullable)
+- [x] Includes backfill for existing records
+- [x] Includes rollback (downgrade) function
 
 **Files Changed:**
-- `migrations_v2/versions/20251123_XXXX_add_user_name_to_chat_history.py` (new)
+- `migrations_v2/versions/20251123_1400_add_user_name_to_chat_history.py` (new)
 
 ---
 
-#### 1.2 Test Migration on Staging
+#### 1.2 Test Migration on Staging (✅ Completed)
 **Estimated Time:** 1 hour  
 **Dependencies:** 1.1  
 
@@ -82,25 +82,25 @@ psql -c "SELECT COUNT(*) FROM v2_chat_history WHERE user_name IS NULL;"
 ```
 
 **Acceptance Criteria:**
-- [ ] Migration applies without errors
-- [ ] Column `user_name` exists with correct type (TEXT)
-- [ ] Existing records have "User" as default value
-- [ ] Rollback (downgrade) works correctly
-- [ ] No data loss during migration
+- [x] Migration applies without errors
+- [x] Column `user_name` exists with correct type (TEXT)
+- [x] Existing records have "User" as default value
+- [x] Rollback (downgrade) works correctly
+- [x] No data loss during migration
 
 ---
 
-#### 1.3 Production Migration
+#### 1.3 Production Migration (✅ Completed)
 **Estimated Time:** 30 minutes  
 **Dependencies:** 1.2  
 **Risk Level:** Medium  
 
 **Pre-Deployment Checklist:**
-- [ ] Staging migration successful
-- [ ] Database backup completed
-- [ ] Migration scheduled during low-traffic window (2-4 AM UTC)
-- [ ] Rollback plan documented
-- [ ] On-call engineer assigned
+- [x] Staging migration successful
+- [x] Database backup completed
+- [x] Migration scheduled during low-traffic window (2-4 AM UTC)
+- [x] Rollback plan documented
+- [x] On-call engineer assigned
 
 **Deployment Steps:**
 ```bash
@@ -119,10 +119,10 @@ tail -f logs/discord.log | grep -i "error\|fail"
 ```
 
 **Acceptance Criteria:**
-- [ ] Migration completes in < 5 minutes
-- [ ] No errors in application logs
-- [ ] Column accessible from application
-- [ ] Zero downtime for users
+- [x] Migration completes in < 5 minutes
+- [x] No errors in application logs
+- [x] Column accessible from application
+- [x] Zero downtime for users
 
 **Rollback Plan:**
 ```bash
@@ -134,15 +134,15 @@ psql whispengine_v2 < backup_pre_user_name_migration.sql
 
 ---
 
-### 🎯 Milestone 2: Update Memory Manager
+### 🎯 Milestone 2: Update Memory Manager (✅ Completed)
 **Duration:** 1 day  
-**Target Date:** TBD  
-**Status:** 📋 Planned  
+**Target Date:** November 23, 2025  
+**Status:** ✅ Completed  
 **Owner:** Backend Team  
 
 **Tasks:**
 
-#### 2.1 Update `add_message()` Method
+#### 2.1 Update `add_message()` Method (✅ Completed)
 **Estimated Time:** 1 hour  
 **Dependencies:** M1 complete  
 
@@ -185,19 +185,19 @@ await conn.execute("""
 ```
 
 **Acceptance Criteria:**
-- [ ] Method signature updated with `user_name` parameter
-- [ ] Parameter is optional (default: None)
-- [ ] SQL INSERT includes `user_name` column
-- [ ] Fallback value "User" used if name not provided
-- [ ] Type hints correct (`Optional[str]`)
-- [ ] Docstring updated
+- [x] Method signature updated with `user_name` parameter
+- [x] Parameter is optional (default: None)
+- [x] SQL INSERT includes `user_name` column
+- [x] Fallback value "User" used if name not provided
+- [x] Type hints correct (`Optional[str]`)
+- [x] Docstring updated
 
 **Files Changed:**
 - `src_v2/memory/manager.py` (modified)
 
 ---
 
-#### 2.2 Update `_save_vector_memory()` Method
+#### 2.2 Update `_save_vector_memory()` Method (✅ Completed)
 **Estimated Time:** 15 minutes  
 **Dependencies:** 2.1  
 
@@ -223,16 +223,16 @@ async def _save_vector_memory(
 **Note:** Not immediately used in Qdrant, but included for API consistency.
 
 **Acceptance Criteria:**
-- [ ] Method signature updated
-- [ ] Parameter documented in docstring
-- [ ] No functional changes to Qdrant storage (yet)
+- [x] Method signature updated
+- [x] Parameter documented in docstring
+- [x] No functional changes to Qdrant storage (yet)
 
 **Files Changed:**
 - `src_v2/memory/manager.py` (modified)
 
 ---
 
-#### 2.3 Update `get_recent_history()` Method
+#### 2.3 Update `get_recent_history()` Method (✅ Completed)
 **Estimated Time:** 2 hours  
 **Dependencies:** 2.1  
 
@@ -280,27 +280,27 @@ for row in reversed(rows):
 ```
 
 **Acceptance Criteria:**
-- [ ] SQL queries fetch `user_name` column
-- [ ] Group chat messages show `[Name]: content` for other users
-- [ ] Current user's messages have no prefix (as before)
-- [ ] Fallback to `User {user_id}` if name is NULL
-- [ ] DM conversations remain unchanged (no prefixes)
-- [ ] AI messages remain unchanged
+- [x] SQL queries fetch `user_name` column
+- [x] Group chat messages show `[Name]: content` for other users
+- [x] Current user's messages have no prefix (as before)
+- [x] Fallback to `User {user_id}` if name is NULL
+- [x] DM conversations remain unchanged (no prefixes)
+- [x] AI messages remain unchanged
 
 **Files Changed:**
 - `src_v2/memory/manager.py` (modified)
 
 ---
 
-### 🎯 Milestone 3: Update Discord Bot Integration
+### 🎯 Milestone 3: Update Discord Bot Integration (✅ Completed)
 **Duration:** 0.5 day  
-**Target Date:** TBD  
-**Status:** 📋 Planned  
+**Target Date:** November 23, 2025  
+**Status:** ✅ Completed  
 **Owner:** Discord Team  
 
 **Tasks:**
 
-#### 3.1 Update User Message Storage
+#### 3.1 Update User Message Storage (✅ Completed)
 **Estimated Time:** 30 minutes  
 **Dependencies:** M2 complete  
 
@@ -333,16 +333,16 @@ await memory_manager.add_message(
 ```
 
 **Acceptance Criteria:**
-- [ ] `user_name` parameter passed with Discord display name
-- [ ] Uses `message.author.display_name` (not `message.author.name`)
-- [ ] Handles all message types (text, replies, forwards)
+- [x] `user_name` parameter passed with Discord display name
+- [x] Uses `message.author.display_name` (not `message.author.name`)
+- [x] Handles all message types (text, replies, forwards)
 
 **Files Changed:**
 - `src_v2/discord/bot.py` (modified)
 
 ---
 
-#### 3.2 Update AI Response Storage
+#### 3.2 Update AI Response Storage (✅ Completed)
 **Estimated Time:** 15 minutes  
 **Dependencies:** 3.1  
 
@@ -378,9 +378,9 @@ await memory_manager.add_message(
 ```
 
 **Acceptance Criteria:**
-- [ ] `user_name=None` explicitly passed for AI messages
-- [ ] No functional change to AI message storage
-- [ ] Maintains API consistency
+- [x] `user_name=None` explicitly passed for AI messages
+- [x] No functional change to AI message storage
+- [x] Maintains API consistency
 
 **Files Changed:**
 - `src_v2/discord/bot.py` (modified)
