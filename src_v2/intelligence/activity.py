@@ -8,7 +8,7 @@ class ActivityModeler:
     Analyzes user activity patterns to determine the best time to engage.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     async def get_user_activity_heatmap(self, user_id: str) -> Dict[str, float]:
@@ -39,8 +39,8 @@ class ActivityModeler:
                     return {}
 
                 # Initialize grid (7 days * 24 hours)
-                activity_counts = {}
-                total_sessions = len(rows)
+                activity_counts: Dict[str, int] = {}
+                total_sessions: int = len(rows)
 
                 for row in rows:
                     start_time: datetime = row['start_time']
@@ -52,14 +52,14 @@ class ActivityModeler:
                     # Ideally yes, but we don't store user timezone yet.
                     # We will assume the bot operates in UTC or server time for now.
                     
-                    weekday = start_time.weekday() # 0-6
-                    hour = start_time.hour # 0-23
-                    key = f"{weekday}_{hour}"
+                    weekday: int = start_time.weekday() # 0-6
+                    hour: int = start_time.hour # 0-23
+                    key: str = f"{weekday}_{hour}"
                     
                     activity_counts[key] = activity_counts.get(key, 0) + 1
 
                 # Normalize to probabilities
-                heatmap = {k: v / total_sessions for k, v in activity_counts.items()}
+                heatmap: Dict[str, float] = {k: v / total_sessions for k, v in activity_counts.items()}
                 return heatmap
 
         except Exception as e:
@@ -76,25 +76,25 @@ class ActivityModeler:
             # No data, assume it's NOT a good time to avoid spamming new users
             return False, 0.0
 
-        now = datetime.now(timezone.utc)
-        weekday = now.weekday()
-        hour = now.hour
-        key = f"{weekday}_{hour}"
+        now: datetime = datetime.now(timezone.utc)
+        weekday: int = now.weekday()
+        hour: int = now.hour
+        key: str = f"{weekday}_{hour}"
         
-        probability = heatmap.get(key, 0.0)
+        probability: float = heatmap.get(key, 0.0)
         
         # Also check adjacent hours (smoothing)
         # If user is usually active at 5 PM, 4 PM might also be okay.
-        prev_hour = (hour - 1) % 24
-        next_hour = (hour + 1) % 24
+        prev_hour: int = (hour - 1) % 24
+        next_hour: int = (hour + 1) % 24
         
-        prob_prev = heatmap.get(f"{weekday}_{prev_hour}", 0.0)
-        prob_next = heatmap.get(f"{weekday}_{next_hour}", 0.0)
+        prob_prev: float = heatmap.get(f"{weekday}_{prev_hour}", 0.0)
+        prob_next: float = heatmap.get(f"{weekday}_{next_hour}", 0.0)
         
         # Weighted score
-        score = (probability * 0.6) + (prob_prev * 0.2) + (prob_next * 0.2)
+        score: float = (probability * 0.6) + (prob_prev * 0.2) + (prob_next * 0.2)
         
-        is_good = score >= threshold
+        is_good: bool = score >= threshold
         return is_good, score
 
 activity_modeler = ActivityModeler()

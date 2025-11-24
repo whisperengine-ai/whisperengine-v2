@@ -1,7 +1,8 @@
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.core.character import character_manager
@@ -14,12 +15,18 @@ class ProactiveAgent:
     """
     Generates context-aware opening messages to initiate conversation with the user.
     """
-    def __init__(self):
-        self.llm = create_llm(temperature=0.8) # Higher temp for creativity
+    def __init__(self) -> None:
+        self.llm: BaseChatModel = create_llm(temperature=0.8) # Higher temp for creativity
 
-    async def generate_opener(self, user_id: str, character_name: str) -> Optional[str]:
+    async def generate_opener(self, user_id: str, character_name: str, is_public: bool = False, channel_id: Optional[str] = None) -> Optional[str]:
         """
         Generates a proactive opening message based on recent memories and knowledge.
+        
+        Args:
+            user_id: Discord user ID
+            character_name: Bot character name
+            is_public: If True, generates a privacy-safe message for public channels
+            channel_id: If provided, retrieves channel-specific conversation history
         """
         try:
             # 1. Load Character
@@ -30,15 +37,63 @@ class ProactiveAgent:
 
             # 2. Gather Context
             # We want recent memories to know what we last talked about
-            recent_history = await memory_manager.get_recent_history(user_id, character_name, limit=5)
+            # If channel_id provided, get channel-specific history (more relevant for public channels)
+            recent_history: List[BaseMessage]
+            if channel_id:
+                recent_history = await memory_manager.get_recent_history(
+                    user_id, character_name, channel_id=channel_id, limit=5
+                )
+            else:
+                recent_history = await memory_manager.get_recent_history(user_id, character_name, limit=5)
             
             # We want knowledge facts to ask about specific things (e.g., "How is your cat?")
-            knowledge_facts = await knowledge_manager.get_user_knowledge(user_id)
+            knowledge_facts: str = await knowledge_manager.get_user_knowledge(user_id)
+            
+            # If public message, sanitize knowledge to remove sensitive topics
+            if is_public and knowledge_facts:
+                # Filter out potentially sensitive information
+                sensitive_keywords: List[str] = [
+                    "health", "medical", "doctor", "therapy", "medication",
+                    "finance", "money", "debt", "salary", "income",
+                    "secret", "private", "confidential",
+                    "relationship", "dating", "partner", "divorce",
+                    "legal", "lawsuit", "arrest", "crime"
+                ]
+                
+                lines: List[str] = knowledge_facts.split("\n")
+                safe_lines: List[str] = []
+                for line in lines:
+                    line_lower: str = line.lower()
+                    if not any(keyword in line_lower for keyword in sensitive_keywords):
+                        safe_lines.append(line)
+                
+                knowledge_facts = "\n".join(safe_lines) if safe_lines else "(Using general knowledge only for public message)"
             
             # We want relationship status to know the tone
-            relationship = await trust_manager.get_relationship_level(user_id, character_name)
+            relationship: Dict[str, Any] = await trust_manager.get_relationship_level(user_id, character_name)
 
             # 3. Construct Prompt
+            privacy_instruction: str = ""
+            channel_context: str = ""
+            
+            if is_public:
+                privacy_instruction = """
+⚠️ PRIVACY WARNING: This message will be sent in a PUBLIC CHANNEL where others can see it.
+- Do NOT mention sensitive personal details (health, finances, relationships, secrets, etc.)
+- Keep it light, friendly, and appropriate for a group setting
+- If you can't find a safe topic, use a generic friendly greeting instead
+"""
+                if channel_id and recent_history:
+                    # Public channel with history - these topics are safe since they were already discussed publicly
+                    channel_context = """
+✅ SAFE CONTEXT: The recent conversation topics below were already discussed in THIS PUBLIC CHANNEL.
+You CAN reference these topics safely since they were public conversations.
+Look for unfinished discussions or topics the user didn't respond to - this is your chance to follow up!
+"""
+            else:
+                # Private DM - all topics are fair game
+                channel_context = "(Private conversation - all known topics are available)"
+            
             system_prompt = f"""You are {character.name}.
 {character.system_prompt}
 
@@ -50,6 +105,15 @@ Reference a specific topic from the past or a fact you know about them.
 Keep it short (1-2 sentences).
 Be natural, like a friend texting another friend.
 
+Look for:
+- Unfinished conversations where the user stopped responding
+- Questions you asked that weren't answered
+- Topics that were left hanging without closure
+- Things they mentioned wanting to do or work on
+
+{privacy_instruction}
+{channel_context}
+
 [RELATIONSHIP STATUS]
 Level: {relationship.get('level', 'Stranger')}
 Trust: {relationship.get('trust_score', 0)}
@@ -57,7 +121,7 @@ Trust: {relationship.get('trust_score', 0)}
 [KNOWN FACTS]
 {knowledge_facts}
 
-[RECENT CONVERSATION TOPICS]
+[RECENT CONVERSATION TOPICS{' IN THIS CHANNEL' if channel_id and is_public else ''}]
 """
             # Add summary of recent history if available
             if recent_history:
@@ -68,7 +132,7 @@ Trust: {relationship.get('trust_score', 0)}
             else:
                 system_prompt += "(No recent history available)\n"
 
-            prompt = ChatPromptTemplate.from_messages([
+            prompt: ChatPromptTemplate = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
                 ("human", "Generate a proactive opening message now.")
             ])
@@ -78,6 +142,7 @@ Trust: {relationship.get('trust_score', 0)}
             response = await chain.ainvoke({})
             
             content = response.content
+            opener: str
             if isinstance(content, str):
                 opener = content.strip()
             else:

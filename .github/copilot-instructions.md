@@ -70,7 +70,7 @@ Critical cost optimization via feature flags in `src_v2/config/settings.py`:
 - **`ENABLE_REFLECTIVE_MODE`** (default: false): Enables complexity classifier + ReAct reasoning loop. Cost: 1 extra LLM call per message + 3-10 calls for complex queries (~$0.02-0.03 vs $0.001-0.005)
 - **`ENABLE_RUNTIME_FACT_EXTRACTION`** (default: true): Extracts facts to Knowledge Graph. Cost: 1 LLM call per message
 - **`ENABLE_PREFERENCE_EXTRACTION`** (default: true): Detects user preferences ("be concise", "use emojis"). Cost: 1 LLM call per message
-- **`ENABLE_PROACTIVE_MESSAGING`** (default: false): Bot initiates conversations
+- **`ENABLE_PROACTIVE_MESSAGING`** (default: false): Bot initiates conversations in DMs or public channels based on activity patterns. Requires trust_score >= 20.
 - **`LLM_SUPPORTS_VISION`** (default: false): Image analysis capability
 - **`ENABLE_PROMPT_LOGGING`** (default: false): Log full prompts to `logs/prompts/` for debugging
 
@@ -185,9 +185,46 @@ async def process_message(user_id, content, metadata=None):
 ## 🗂️ Key Files
 - `src_v2/config/settings.py`: Pydantic settings with feature flags and env file loading
 - `src_v2/agents/engine.py`: Main cognitive engine (`AgentEngine.generate_response()`)
+- `src_v2/agents/proactive.py`: Proactive message generation with privacy safeguards
 - `src_v2/discord/bot.py`: Discord integration with event handlers
+- `src_v2/discord/scheduler.py`: Proactive engagement scheduler with activity modeling
+- `src_v2/intelligence/activity.py`: User activity pattern analysis for optimal messaging times
 - `src_v2/knowledge/manager.py`: Knowledge Graph operations with Cypher generation
 - `src_v2/memory/manager.py`: Hybrid Postgres + Qdrant vector memory
+- `src_v2/core/database.py`: `DatabaseManager` with connection pooling and `@retry_db_operation`
+- `src_v2/core/character.py`: `CharacterManager` loads from `characters/{name}/`
+- `docker-compose.yml`: Profile-based multi-bot deployment with health checks
+- `bot.sh`: Bash management script (preferred over direct `docker compose`)
+- `run_v2.py`: Entry point that sets `DISCORD_BOT_NAME` and loads env files
+
+## 🤖 Proactive Engagement System
+
+**Implementation**: Phase 13 (Completed)
+
+The bot can now initiate conversations based on user activity patterns:
+
+### How It Works
+1. **Activity Modeling**: Analyzes last 30 days of session history to build a 24x7 activity heatmap
+2. **Scheduler**: Checks every 60 minutes for users meeting criteria:
+   - Trust score >= 20 (Acquaintance or higher)
+   - 24+ hours since last message
+   - Current time matches user's typical activity pattern
+3. **Channel Selection**: Prefers last public channel over DMs (respects `ENABLE_DM_BLOCK`)
+4. **Context Generation**: Fetches channel-specific history and generates relevant opener
+
+### Privacy Protection (Multi-Layer)
+1. **Channel Detection**: Pings users in public channels when possible
+2. **DM Allowlist**: Respects `DM_ALLOWED_USER_IDS` setting
+3. **Knowledge Filtering**: Removes sensitive keywords (health, finance, relationships, etc.)
+4. **LLM Instructions**: Explicit privacy warnings for public messages
+5. **Safe Topics**: Uses channel-specific history as pre-approved topics
+
+### Key Features
+- **Unfinished Conversations**: Detects questions left unanswered or topics left hanging
+- **Channel-Specific Memory**: References conversations from the target channel
+- **Memory Persistence**: Saves sent messages so bot remembers initiating contact
+
+**Files**: `src_v2/discord/scheduler.py`, `src_v2/agents/proactive.py`, `src_v2/intelligence/activity.py`
 - `src_v2/core/database.py`: `DatabaseManager` with connection pooling and `@retry_db_operation`
 - `src_v2/core/character.py`: `CharacterManager` loads from `characters/{name}/`
 - `docker-compose.yml`: Profile-based multi-bot deployment with health checks
