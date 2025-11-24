@@ -137,4 +137,4 @@ bot_name = os.getenv("DISCORD_BOT_NAME")
 env_file = f".env.{bot_name}" if bot_name else ".env"
 
 # Global settings instance
-settings = Settings(_env_file=env_file)
+settings = Settings(_env_file=env_file)  # type: ignore[call-arg]

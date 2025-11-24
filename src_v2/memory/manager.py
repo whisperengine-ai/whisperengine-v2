@@ -197,11 +197,11 @@ class MemoryManager:
             
             return [
                 {
-                    "content": hit.payload.get("content"),
-                    "role": hit.payload.get("role"),
+                    "content": hit.payload.get("content") if hit.payload else None,
+                    "role": hit.payload.get("role") if hit.payload else None,
                     "score": hit.score,
-                    "timestamp": hit.payload.get("timestamp"),
-                    "relative_time": get_relative_time(hit.payload.get("timestamp")) if hit.payload.get("timestamp") else "unknown time"
+                    "timestamp": hit.payload.get("timestamp") if hit.payload else None,
+                    "relative_time": get_relative_time(hit.payload.get("timestamp")) if (hit.payload and hit.payload.get("timestamp")) else "unknown time"  # type: ignore[arg-type]
                 }
                 for hit in search_result.points
             ]

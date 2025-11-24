@@ -265,7 +265,7 @@ class FeedbackAnalyzer:
                 )
                 if long_negative / len(long_messages) > 0.6:
                     insights["verbosity_preference"] = "concise"
-                    insights["recommendations"].append("User prefers shorter responses")
+                    insights["recommendations"].append("User prefers shorter responses")  # type: ignore[union-attr]
             
             if short_messages:
                 short_positive = sum(
@@ -274,7 +274,7 @@ class FeedbackAnalyzer:
                 )
                 if short_positive / len(short_messages) > 0.6:
                     insights["verbosity_preference"] = "concise"
-                    insights["recommendations"].append("User appreciates concise communication")
+                    insights["recommendations"].append("User appreciates concise communication")  # type: ignore[union-attr]
             
             return insights
             

@@ -214,7 +214,10 @@ class WhisperBot(commands.Bot):
 
     async def on_ready(self) -> None:
         """Called when the bot has successfully connected to Discord."""
-        logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
+        if self.user:
+            logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
+        else:
+            logger.warning("Bot connected but user is not set")
         await self.change_presence(status=discord.Status.online)
         
         # Preload character
@@ -262,14 +265,14 @@ class WhisperBot(commands.Bot):
             try:
                 # Check resolved reference first
                 if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
-                    if message.reference.resolved.author.id == self.user.id:
+                    if message.reference.resolved.author.id == (self.user.id if self.user else None):
                         is_mentioned = True
                         logger.info("Detected reply to bot without ping.")
                 # Fallback: Fetch message if not resolved
                 elif message.reference.message_id:
                     try:
                         ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                        if ref_msg.author.id == self.user.id:
+                        if ref_msg.author.id == (self.user.id if self.user else None):
                             is_mentioned = True
                             logger.info("Detected reply to bot without ping (fetched).")
                     except:
@@ -355,9 +358,9 @@ class WhisperBot(commands.Bot):
                         return
 
                     # Initialize attachment containers
-                    image_urls = []
-                    file_content = None
-                    processed_files = []
+                    image_urls: List[str] = []
+                    file_content: Optional[str] = None
+                    processed_files: List[str] = []
 
                     # Handle Replies (Context Injection)
                     if message.reference:
@@ -576,13 +579,13 @@ class WhisperBot(commands.Bot):
                         self.loop.create_task(self._check_and_summarize(session_id, user_id))
 
                     # Determine Location Context
-                    location_context = "Direct Message"
+                    location_context: str = "Direct Message"
                     if message.guild:
                         if isinstance(message.channel, discord.Thread):
-                            parent_name = message.channel.parent.name if message.channel.parent else "unknown"
+                            parent_name: str = message.channel.parent.name if message.channel.parent else "unknown"  # type: ignore[union-attr]
                             location_context = f"Thread '{message.channel.name}' (in #{parent_name})"
                         else:
-                            location_context = f"Channel #{message.channel.name}"
+                            location_context = f"Channel #{message.channel.name}"  # type: ignore[union-attr]
 
                     # 3. Generate response
                     now = datetime.now()
@@ -605,8 +608,8 @@ class WhisperBot(commands.Bot):
                     start_time = time.time()
                     
                     # Prepare callback for Reflective Mode
-                    status_message = None
-                    status_content = "🧠 **Reflective Mode Activated**\n"
+                    status_message: Optional[discord.Message] = None
+                    status_content: str = "🧠 **Reflective Mode Activated**\n"
                     
                     async def reflective_callback(text: str):
                         nonlocal status_message, status_content
@@ -643,7 +646,7 @@ class WhisperBot(commands.Bot):
                         force_reflective=force_reflective
                     )
                     
-                    processing_time_ms = (time.time() - start_time) * 1000
+                    processing_time_ms: float = (time.time() - start_time) * 1000
                     
                     # 3.5 Generate Stats Footer (if enabled for user)
                     from src_v2.utils.stats_footer import stats_footer
@@ -707,10 +710,11 @@ class WhisperBot(commands.Bot):
                         # 5. Voice Playback (use full response, not chunked)
                         if message.guild and message.guild.voice_client:
                             vc = message.guild.voice_client
-                            if vc.is_connected():
+                            # Check if voice client is connected
+                            if hasattr(vc, 'is_connected') and vc.is_connected():
                                 logger.info(f"Voice connected in {message.guild.name}. Attempting to speak response...")
                                 try:
-                                    await play_text(vc, response)
+                                    await play_text(vc, response)  # type: ignore[arg-type]
                                 except Exception as e:
                                     logger.error(f"Failed to play voice: {e}")
                             else:
