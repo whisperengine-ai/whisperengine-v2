@@ -3,10 +3,10 @@
 This phase transforms the bot from a reactive responder into a proactive companion. It will analyze user activity patterns and initiate conversations at appropriate times.
 
 ## Goals
-- [ ] **Activity Modeling**: Analyze session history to determine "active hours" for each user.
-- [ ] **Proactive Scheduler**: Implement a background task to check for engagement opportunities.
-- [ ] **Engagement Triggers**: Define rules for *when* and *why* to message first (e.g., "Haven't spoken in 24h", "User usually active now").
-- [ ] **Topic Selection**: Use the Knowledge Graph to pick a relevant topic for the opening message.
+- [x] **Activity Modeling**: Analyze session history to determine "active hours" for each user.
+- [x] **Proactive Scheduler**: Implement a background task to check for engagement opportunities.
+- [x] **Engagement Triggers**: Define rules for *when* and *why* to message first (e.g., "Haven't spoken in 24h", "User usually active now").
+- [x] **Topic Selection**: Use the Knowledge Graph to pick a relevant topic for the opening message.
 
 ## Tasks
 
