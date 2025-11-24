@@ -13,12 +13,12 @@ The classic three-stage memory model informs our storage hierarchy:
 *   **Sensory Memory** → **Short-Term (Working) Memory** → **Long-Term Memory**
 *   *In WhisperEngine*: **Recent History** (Postgres) → **Session Context** (Active Summaries) → **Archived Memories** (Qdrant Vectors + Neo4j Facts)
 
-### Tulving's Episodic vs. Semantic Memory
+### Conversational vs. Factual Memory
 We distinguish between two types of long-term memory:
 
-*   **Episodic Memory**: Specific events and experiences ("User told me about their dog last Tuesday").
+*   **Conversational Memory**: Specific events and experiences ("User told me about their dog last Tuesday").
     *   *Implementation*: **Qdrant Vector Store** with timestamped conversation embeddings.
-*   **Semantic Memory**: General facts and knowledge ("User owns a dog named Rex").
+*   **Factual Memory**: General facts and knowledge ("User owns a dog named Rex").
     *   *Implementation*: **Neo4j Knowledge Graph** with structured entity relationships.
 
 ### Design Choice: Hybrid Memory Architecture
@@ -27,8 +27,8 @@ Traditional chatbots use either:
 2.  **Pure Relational/Graph**: Precise but brittle. Requires exact schema matches, struggles with natural language variability.
 
 WhisperEngine v2 uses **both**, routing queries to the appropriate store based on the question type:
-*   "What did we talk about last week?" → Vector (Episodic)
-*   "What's my favorite food?" → Graph (Semantic)
+*   "What did we talk about last week?" → Vector (Conversational)
+*   "What's my favorite food?" → Graph (Factual)
 *   "How do I feel about X?" → Both (Context + Facts)
 
 ## Core Concept: "The Living Memory"
@@ -84,8 +84,8 @@ graph TB
     end
     
     subgraph LongTerm["Long-Term Memory"]
-        Episodic[(Episodic<br/>Specific Events<br/>Qdrant Vectors)]
-        Semantic[(Semantic<br/>Facts & Knowledge<br/>Neo4j Graph)]
+        Episodic[(Conversational<br/>Specific Events<br/>Qdrant Vectors)]
+        Semantic[(Factual<br/>Facts & Knowledge<br/>Neo4j Graph)]
     end
     
     Router -->|Default| Recent
@@ -113,14 +113,14 @@ graph TB
     *   Pure text summaries lose affective context. "User talked about their job" doesn't capture whether they were complaining or celebrating.
     *   Emotion tags enable empathetic continuity: "Last time you mentioned work, you seemed stressed. How's it going now?"
 
-### 3. `search_specific_memories` (Episodic Search)
+### 3. `search_specific_memories` (Conversational Search)
 *   **Source**: Qdrant (Collection: `whisperengine_memory_{bot_name}`)
 *   **Usage**: Finding specific details or quotes.
 *   **Mechanism**: **Dense Vector Search** (Current).
     *   *Planned*: Hybrid Search (Dense + Sparse) for better keyword matching.
 *   **Aging**: Uses a "Recency Decay" formula (Planned).
 
-### 4. `manage_user_facts` (Semantic, Correction & Preferences)
+### 4. `manage_user_facts` (Factual, Correction & Preferences)
 *   **Source**: Neo4j (Knowledge Graph)
 *   **Usage**: Reading/Writing facts AND User Preferences.
 *   **Nodes**: `(User)`, `(Entity)`, `(Preference)`.
@@ -220,7 +220,7 @@ Should the system overwrite old facts or keep historical versions?
 **Why?**
 *   Users expect the character to "remember" their current state correctly (not say "You live in LA" after being corrected).
 *   But historical context matters: "How's the adjustment to NY after leaving LA?"
-*   This mirrors episodic (what happened) vs. semantic (what's true now) memory in humans.
+*   This mirrors conversational (what happened) vs. factual (what's true now) memory.
 
 ## Implementation Strategy
 
