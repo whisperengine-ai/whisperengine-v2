@@ -4,6 +4,7 @@ from typing import Optional, Union
 from loguru import logger
 import discord
 from discord.ext import commands
+from discord import abc
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.intelligence.activity import activity_modeler
@@ -124,7 +125,8 @@ class ProactiveScheduler:
             character_name: str = settings.DISCORD_BOT_NAME or "default"
             
             # 1. Determine Target Channel
-            target_channel: Optional[Union[discord.TextChannel, discord.User]] = None
+            # Can be a guild channel, DM channel, or User object
+            target_channel: Optional[Union[discord.abc.GuildChannel, discord.DMChannel, discord.User]] = None
             is_dm: bool = False
             
             # Try to find last channel from history
@@ -140,7 +142,7 @@ class ProactiveScheduler:
                     
                     if last_channel_id:
                         try:
-                            target_channel = await self.bot.fetch_channel(int(last_channel_id))
+                            target_channel = await self.bot.fetch_channel(int(last_channel_id))  # type: ignore[assignment]
                         except Exception as e:
                             logger.warning(f"Could not fetch last channel {last_channel_id}: {e}")
 
@@ -150,8 +152,8 @@ class ProactiveScheduler:
                 is_dm = True
             else:
                 # Check if the found channel is actually a DM channel
-                if isinstance(target_channel, (discord.DMChannel, discord.GroupChannel)):
-                    is_dm = True
+                # Use hasattr to check for guild attribute instead of isinstance
+                is_dm = not hasattr(target_channel, 'guild') or target_channel.guild is None
 
             # 2. Check Privacy if DM
             if is_dm and settings.ENABLE_DM_BLOCK:
@@ -164,7 +166,7 @@ class ProactiveScheduler:
                 user_id, 
                 character_name, 
                 is_public=not is_dm,
-                channel_id=str(target_channel.id) if target_channel else None
+                channel_id=str(target_channel.id) if target_channel and hasattr(target_channel, 'id') else None
             )
             
             if opener:
@@ -175,11 +177,12 @@ class ProactiveScheduler:
                     content: str = f"<@{user_id}> {opener}"
                     channel_name: str = getattr(target_channel, 'name', 'unknown')
                     logger.info(f"Sending proactive ping to {user.name} in #{channel_name}: {opener}")
-                    sent_msg = await target_channel.send(content)
+                    # Type assertion: we know it's messageable if we got here
+                    sent_msg = await target_channel.send(content)  # type: ignore[union-attr]
                 else:
                     # DM
                     logger.info(f"Sending proactive DM to {user.name}: {opener}")
-                    sent_msg = await target_channel.send(opener)
+                    sent_msg = await target_channel.send(opener)  # type: ignore[union-attr]
                 
                 # 5. Log to Memory
                 await memory_manager.add_message(
