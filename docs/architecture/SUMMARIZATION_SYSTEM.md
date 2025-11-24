@@ -111,9 +111,14 @@ SUMMARY_OVERLAP=5              # Messages to overlap between summaries
 │  │  - Preserve important details (names, dates, numbers)      │ │
 │  │  - Note relationship developments or mood shifts          │ │
 │  │  - Identify topics discussed                               │ │
+│  │  - Rate conversation meaningfulness (1-5)                  │ │
 │  │  - Keep summary under 500 words                            │ │
 │  │                                                             │ │
 │  │  Format:                                                   │ │
+│  │  ## Metadata                                               │ │
+│  │  - Meaningfulness: [1-5]                                   │ │
+│  │  - Emotions: [Emotion 1], [Emotion 2]                      │ │
+│  │                                                             │ │
 │  │  ## Topics                                                 │ │
 │  │  - [Topic 1]                                               │ │
 │  │  - [Topic 2]                                               │ │
@@ -161,9 +166,12 @@ SUMMARY_OVERLAP=5              # Messages to overlap between summaries
 │  │ key_facts = extract_key_facts(summary_text)                │ │
 │  │ # Example: ["User got new job", "User has cat named        │ │
 │  │ #            Whiskers", "User planning trip to Japan"]     │ │
-│  │                                                             │ │
-│  │ sentiment = analyze_sentiment(summary_text)                │ │
-│  │ # Example: "positive" | "neutral" | "negative"             │ │
+│                                                             │
+│  meaningfulness = extract_score(summary_text)               │
+│  # 1 (Small talk) -> 5 (Deep/Life-changing)                 │
+│                                                             │
+│  emotions = extract_emotions(summary_text)                  │
+│  # ["excited", "nervous", "hopeful"]                        │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                        │                                          │
 │                        ▼                                          │
@@ -223,6 +231,8 @@ SUMMARY_OVERLAP=5              # Messages to overlap between summaries
 │  │             "summary_text": summary_text,                  │ │
 │  │             "topics": topics,                              │ │
 │  │             "key_facts": key_facts,                        │ │
+│  │             "meaningfulness_score": meaningfulness,        │ │
+│  │             "emotions": emotions,                          │ │
 │  │             "time_range": {                                │ │
 │  │                 "start": start_time.isoformat(),           │ │
 │  │                 "end": end_time.isoformat()                │ │
@@ -353,7 +363,8 @@ CREATE TABLE v2_conversation_summaries (
     message_count INTEGER NOT NULL,
     topics JSONB,           -- ["work", "hobbies", "relationships"]
     key_facts JSONB,        -- ["User got promotion", "Managing 5 people"]
-    sentiment TEXT,         -- "positive" | "neutral" | "negative"
+    meaningfulness_score INTEGER, -- 1-5 score (1=Small talk, 5=Deep)
+    emotions JSONB,         -- ["excited", "nervous"]
     time_range_start TIMESTAMP NOT NULL,
     time_range_end TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -376,6 +387,8 @@ CREATE TABLE v2_conversation_summaries (
         "user_id": "123456",
         "summary_text": "...",
         "topics": ["work", "hobbies"],
+        "meaningfulness_score": 4,
+        "emotions": ["excited", "nervous"],
         "time_range": {
             "start": "2025-10-15T10:00:00",
             "end": "2025-10-15T12:30:00"
