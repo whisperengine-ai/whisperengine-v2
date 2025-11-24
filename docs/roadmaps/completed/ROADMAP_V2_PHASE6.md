@@ -3,7 +3,7 @@
 This phase focuses on implementing an "Agentic" memory system where the bot actively decides which memory tools to use based on user intent.
 
 ## Goals
-- [ ] **Tool Infrastructure**: Create LangChain tools for searching Summaries, Episodes, and Facts.
+- [ ] **Tool Infrastructure**: Create tools for searching Summaries, Episodes, and Facts.
 - [ ] **Cognitive Router**: Implement a "Thought" step to select tools before generating a response.
 - [ ] **Background Summarization**: Maintain a compressed history of "Mid-Term" memory.
 
@@ -46,7 +46,7 @@ This phase focuses on implementing an "Agentic" memory system where the bot acti
 - [x] **Reply Handling**: Injected reply context.
 - [x] **Thread Support**: Injected thread location context.
 - [x] **Reaction Logging**: Logged emoji feedback to InfluxDB.
-- [x] **File Uploads**: Integrated LlamaIndex for document reading.
+- [x] **File Uploads**: Read PDF/TXT attachments via custom Python parsing into Qdrant.
 
 ### 7. Testing
 - [ ] Unit tests for `SummaryManager`.

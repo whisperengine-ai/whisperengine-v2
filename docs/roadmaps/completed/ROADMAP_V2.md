@@ -76,7 +76,7 @@ This document tracks the progress of the "Back to Basics" rewrite.
     - **Reply Handling**: Resolves replies and injects `[Replying to User: ...]` context.
 - [x] **Input Handling**:
     - **Reaction Logging**: Logs emoji reactions to InfluxDB for feedback analysis.
-    - **File Uploads**: Integrated LlamaIndex to read PDF/TXT attachments.
+    - **File Uploads**: Read PDF/TXT attachments via custom Python parsing into Qdrant.
 - [x] **Cognitive Router**:
     - Implemented `src_v2/agents/router.py` to classify intent (Memory vs Knowledge vs Chat).
     - Integrated into `AgentEngine` to dynamically select context.

@@ -16,7 +16,7 @@ WhisperEngine v2 is built on principles from multiple domains:
 *   **Constructivist Learning**: Characters "learn" through interaction, updating their mental models based on new information (Piaget's accommodation/assimilation).
 *   **Narrative Psychology**: Identity is constructed through storytelling. Characters maintain coherent "life stories" that evolve but remain consistent with their core traits.
 
-**Design Philosophy**: "Simplify the code, sophisticate the architecture." Instead of complex custom pipelines, we use industry-standard tools (LangChain, Neo4j) but orchestrate them in novel ways to create emergent intelligence.
+**Design Philosophy**: "Simplify the code, sophisticate the architecture." Instead of complex custom pipelines, we leverage industry-standard infrastructure (Neo4j, Qdrant) with custom Python orchestration to create emergent intelligence.
 
 ### Core Mission: Uncompromised Authenticity
 The primary goal remains unchanged: **create AI characters that feel alive**.
@@ -55,8 +55,8 @@ The primary goal remains unchanged: **create AI characters that feel alive**.
 *   **New (WE2)**: **Pure Text Files**.
     *   *Solution*: The "Database" for character personality is now just a folder of text files.
     *   *Format*: Use Markdown (`.md`) for system prompts and character definitions.
-    *   *Templating*: **LangChain Dynamic Variables**.
-        *   *Mechanism*: Files can contain placeholders like `{user_name}`, `{time_of_day}`, `{recent_memories}` which are injected at runtime via LangChain's `PromptTemplate`.
+    *   *Templating*: **Runtime variable injection** with template placeholders.
+        *   *Mechanism*: Files can contain placeholders like `{user_name}`, `{time_of_day}`, `{recent_memories}` which are injected at runtime.
     *   *Benefit*: Zero database management for character traits. Users edit a file, restart the bot (or hot-reload), and the personality changes.
     *   *Structure*: `characters/{name}/character.md` (The core CDL), `characters/{name}/knowledge/`.
 
@@ -67,19 +67,21 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
 *   **Old Flow**: `MessageProcessor` -> `MemoryFactory` -> `VectorMemoryAdapter` -> `QdrantClient`.
 *   **New Flow**: `Engine` -> `Agent` -> `MemoryStore` (Direct Postgres Calls).
 
-### B. LangChain & LlamaIndex Integration
-*   **LangChain**: Use for **Dynamic Prompt Management**.
-    *   Replace custom Jinja2/String formatting with LangChain's `PromptTemplate`.
-    *   Standardize chat history management.
-*   **LlamaIndex**: Use for **RAG (Retrieval-Augmented Generation)**.
-    *   *New Feature*: Support **File Uploads**. Users can upload PDFs/Docs, and LlamaIndex will ingest them into the character's knowledge base.
-    *   Replace custom Qdrant adapter with LlamaIndex's `VectorStoreIndex` (backed by Postgres/pgvector).
+### B. Custom Python Orchestration & RAG
+*   **LLM Orchestration**: Custom Python implementation of agentic patterns.
+    *   Replace complex factory patterns with direct agent logic.
+    *   Native support for tool use, memory management, and context flow.
+    *   Full control over latency, retry logic, and error handling.
+*   **RAG (Retrieval-Augmented Generation)**: Custom implementation backed by Qdrant.
+    *   *Pattern*: Query vector store directly, construct context, pass to LLM.
+    *   *Benefit*: No framework overhead, predictable behavior, easy debugging.
+    *   *File Uploads*: Support PDF/Doc ingestion via custom chunking pipeline into Qdrant.
 
 ### C. LLM-Native Intelligence (No More spaCy) ✅ IMPLEMENTED
 *   **Current (WE1)**: Heavy NLP pipeline using `spaCy`, `RoBERTa` models, and custom regex for intent detection and entity extraction.
 *   **New (WE2)**: **LLM Tool Use / Function Calling**.
-    *   *Solution*: Use the LLM (via LangChain Tools) to decide what to do.
-    *   *Mechanism*: Define tools like `search_memories`, `query_graph`, `get_current_time`.
+    *   *Solution*: Use the LLM with function calling to decide what to do.
+    *   *Mechanism*: Define tools like `search_memories`, `query_graph`, `get_current_time` exposed as OpenAI-compatible tool schemas.
     *   *Benefit*: Removes heavy ML dependencies, improves accuracy on complex queries, and allows natural handling of edge cases.
     *   *Flow*: User Message -> LLM -> [Decides to Call Tool] -> Tool Execution -> LLM Final Response.
 
@@ -98,7 +100,7 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
 ### E. Discord Capabilities
 *   **Voice Chat (Retained)**:
     *   **Decision**: Keep the existing voice architecture (Discord voice client + STT/TTS pipelines).
-    *   *Integration*: Ensure the voice input is transcribed and fed into the standard LangChain agent loop, and the text response is sent to TTS.
+    *   *Integration*: Ensure the voice input is transcribed and fed into the standard agent loop, and the text response is sent to TTS.
 *   **Channel Context (New)**:
     *   *Current (WE1)*: Bots mostly responded to direct mentions or DMs, often ignoring surrounding context or other users' messages.
     *   *New (WE2)*: **Full Channel Awareness**.
@@ -156,20 +158,21 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
 3.  **Code**: Start a fresh `src_v2/` directory to avoid entanglement with legacy code during the transition.
 
 ## 5. Proposed Stack
-*   **Language**: Python 3.13
-*   **Frameworks**: **LangChain** (Orchestration), **LlamaIndex** (Data/RAG), **FastAPI** (HTTP API).
+*   **Language**: Python 3.12+
+*   **Frameworks**: **FastAPI** (HTTP API), **discord.py** (Discord Bot).
 *   **Databases**:
-    *   **PostgreSQL**: Relational data (Users, Chat Logs).
+    *   **PostgreSQL**: Relational data (Users, Chat Logs, Facts).
     *   **Qdrant**: Vector Memory.
     *   **Neo4j**: Knowledge Graph.
     *   **InfluxDB**: Metrics.
-    *   **Redis**: Caching/PubSub.
-*   **Discord Lib**: `discord.py`.
+    *   **Redis**: Caching/PubSub (optional).
 *   **Key Libraries**:
     *   **Configuration**: `pydantic-settings` (Type-safe config management).
-    *   **Background Tasks**: `arq` (Async Redis Queue for the "Reflector" agent).
+    *   **Database ORM**: `asyncpg` (PostgreSQL), `qdrant-client`, `neo4j` (direct driver).
+    *   **Background Tasks**: `asyncio` with background workers for reflection/consolidation.
     *   **Migrations**: `alembic` (Database schema management).
     *   **Logging**: `loguru` (Structured, simplified logging).
-    *   **HTTP Client**: `httpx` (Modern async HTTP client).
-*   **Removed**: `spaCy`, `RoBERTa`, custom NLP pipelines (replaced by LLM Tool Calling & Prompt Engineering).
+    *   **HTTP Client**: `httpx` (Modern async HTTP client for LLM APIs).
+    *   **Embeddings**: `sentence-transformers` (Local embedding generation).
+*   **Removed**: `spaCy`, `RoBERTa`, `LangChain`, `LlamaIndex` (replaced by custom Python + LLM native function calling).
 *   **Deployment**: `docker-compose.yml` with individual services per bot and shared infrastructure containers.
