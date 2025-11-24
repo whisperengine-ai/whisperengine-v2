@@ -475,7 +475,10 @@ class WhisperBot(commands.Bot):
                     async def get_memories():
                         try:
                             mems = await memory_manager.search_memories(user_message, user_id)
-                            fmt = "\n".join([f"- {m['content']}" for m in mems]) if mems else "No relevant memories found."
+                            if mems:
+                                fmt = "\n".join([f"- {m['content']} ({m.get('relative_time', 'unknown time')})" for m in mems])
+                            else:
+                                fmt = "No relevant memories found."
                             return mems, fmt
                         except Exception as e:
                             logger.error(f"Failed to search memories: {e}")
@@ -504,7 +507,7 @@ class WhisperBot(commands.Bot):
                         try:
                             sums = await memory_manager.search_summaries(user_message, user_id, limit=3)
                             if sums:
-                                return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']})" for s in sums])
+                                return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']}, {s.get('relative_time', 'unknown time')})" for s in sums])
                             return ""
                         except Exception as e:
                             logger.error(f"Failed to retrieve summaries: {e}")
@@ -574,9 +577,10 @@ class WhisperBot(commands.Bot):
                             location_context = f"Channel #{message.channel.name}"
 
                     # 3. Generate response
+                    now = datetime.now()
                     context_vars = {
                         "user_name": message.author.display_name,
-                        "time_of_day": datetime.now().strftime("%H:%M"),
+                        "current_datetime": now.strftime("%A, %B %d, %Y at %H:%M"),
                         "location": location_context,
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,

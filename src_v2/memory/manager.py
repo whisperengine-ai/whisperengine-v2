@@ -7,6 +7,7 @@ from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, Fi
 from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.config.settings import settings
 from src_v2.memory.embeddings import EmbeddingService
+from src_v2.utils.time_utils import get_relative_time
 
 class MemoryManager:
     def __init__(self):
@@ -199,7 +200,8 @@ class MemoryManager:
                     "content": hit.payload.get("content"),
                     "role": hit.payload.get("role"),
                     "score": hit.score,
-                    "timestamp": hit.payload.get("timestamp")
+                    "timestamp": hit.payload.get("timestamp"),
+                    "relative_time": get_relative_time(hit.payload.get("timestamp")) if hit.payload.get("timestamp") else "unknown time"
                 }
                 for hit in search_result.points
             ]
@@ -264,7 +266,8 @@ class MemoryManager:
                     "content": hit.payload.get("content"),
                     "score": hit.score,
                     "meaningfulness": hit.payload.get("meaningfulness_score"),
-                    "timestamp": ts_str
+                    "timestamp": ts_str,
+                    "relative_time": get_relative_time(ts_str) if ts_str else "unknown time"
                 })
             
             return results[:limit]

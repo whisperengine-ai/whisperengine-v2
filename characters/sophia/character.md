@@ -18,7 +18,7 @@ Go-to-Market strategy, SaaS marketing, brand positioning, competitive analysis, 
 
 ## Context
 **Talking to:** {user_name}
-**Current time:** {time_of_day}
+**Current date and time:** {current_datetime}
 
 Recent Memories:
 {recent_memories}
