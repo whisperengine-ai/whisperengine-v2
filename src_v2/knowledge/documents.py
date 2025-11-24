@@ -4,7 +4,7 @@ import aiofiles
 from pathlib import Path
 from typing import List, Optional
 from loguru import logger
-from llama_index.core import SimpleDirectoryReader, Document
+from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
 
 class DocumentProcessor:
     def __init__(self, temp_dir: str = "temp_downloads"):
@@ -13,31 +13,38 @@ class DocumentProcessor:
 
     async def process_local_file(self, file_path: Path) -> str:
         """
-        Extracts text from a local file using LlamaIndex.
+        Extracts text from a local file using LangChain loaders.
         """
         try:
-            # 2. Parse with LlamaIndex
-            # SimpleDirectoryReader supports many formats (pdf, txt, docx, etc.)
-            # We point it to the specific file
-            reader = SimpleDirectoryReader(input_files=[str(file_path)])
+            ext = file_path.suffix.lower()
+            loader = None
+            
+            if ext == ".pdf":
+                loader = PyPDFLoader(str(file_path))
+            elif ext in [".docx", ".doc"]:
+                loader = Docx2txtLoader(str(file_path))
+            else:
+                # Default to TextLoader for .txt, .md, .json, etc.
+                # This might fail for binary files not handled above
+                loader = TextLoader(str(file_path))
             
             # Run in executor to avoid blocking the event loop
             import asyncio
             loop = asyncio.get_running_loop()
-            documents = await loop.run_in_executor(None, reader.load_data)
+            documents = await loop.run_in_executor(None, loader.load)
             
             # 3. Combine text
-            full_text = "\n\n".join([doc.text for doc in documents])
+            full_text = "\n\n".join([doc.page_content for doc in documents])
             
             logger.info(f"Extracted {len(full_text)} characters from {file_path.name}")
             return full_text
         except Exception as e:
-            logger.error(f"LlamaIndex extraction failed for {file_path.name}: {e}")
+            logger.error(f"Document extraction failed for {file_path.name}: {e}")
             raise e
 
     async def process_attachment(self, attachment_url: str, filename: str) -> str:
         """
-        Downloads a file from a URL and extracts its text content using LlamaIndex.
+        Downloads a file from a URL and extracts its text content using LangChain.
         """
         file_path = self.temp_dir / filename
         

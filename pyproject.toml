@@ -54,14 +54,9 @@ dependencies = [
     "langchain-openai>=0.0.5",
     "openai>=1.0.0",
 
-    # Document Processing (LlamaIndex)
-    "llama-index>=0.10.0",
-    "llama-index-readers-file>=0.1.0",
+    # Document Processing
     "docx2txt>=0.8",  # Word Documents
     "pypdf>=3.0.0",  # PDF Documents
-    "pandas>=2.0.0",  # CSV & Excel
-    "openpyxl>=3.1.0",  # Excel (.xlsx)
-    "python-pptx>=0.6.21",  # PowerPoint
 
     # Database Drivers
     "psycopg2-binary>=2.9.0",  # PostgreSQL adapter
