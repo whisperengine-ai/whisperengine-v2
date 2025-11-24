@@ -17,12 +17,21 @@
 
 Each bot has a dedicated Qdrant collection: `whisperengine_memory_{bot_name}`
 
+### Manager Pattern
+All subsystems use async `Manager` classes with `async def initialize()`:
+- `DatabaseManager`: Connection pooling for all 4 databases with retry logic (`@retry_db_operation` decorator)
+- `MemoryManager`: Hybrid Postgres + Qdrant storage with bot-specific collections
+- `KnowledgeManager`: Neo4j graph operations with Cypher generation
+- `CharacterManager`: Loads from `characters/{bot_name}/character.md` + `goals.yaml`
+
+**Pattern**: Managers are initialized in `src_v2/main.py` startup sequence, then imported globally in modules.
+
 ## 🚀 Deployment & Management
 
 ### Docker Compose Profiles (Profile-Based Architecture)
 ```bash
 # Infrastructure only (postgres, qdrant, neo4j, influxdb)
-./bot.sh infra
+./bot.sh infra up
 # Or: docker compose up -d
 
 # Start specific bot (uses profile)
@@ -38,13 +47,21 @@ Each bot has a dedicated Qdrant collection: `whisperengine_memory_{bot_name}`
 ./bot.sh logs elena
 ```
 
-**Key Pattern**: `docker-compose.yml` uses profiles (`elena`, `ryan`, `dotty`, `aria`, `dream`, `all`) for selective bot deployment. Infrastructure services have no profile (always available).
+**Key Pattern**: `docker-compose.yml` uses profiles (`elena`, `ryan`, `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `nottaylor`, `all`) for selective bot deployment. Infrastructure services have no profile (always available).
 
 ### Local Development
 ```bash
 source .venv/bin/activate
 python run_v2.py elena  # Loads .env.elena automatically
 ```
+
+**Critical**: Always use `.venv` for Python commands. Never use system Python or assume global packages.
+
+### Environment Files Pattern
+- `.env.example`: Template with all settings documented
+- `.env.{bot_name}`: Bot-specific config (e.g., `.env.elena`, `.env.ryan`)
+- `run_v2.py` automatically loads correct env file based on bot name argument
+- Settings loaded via Pydantic `BaseSettings` in `src_v2/config/settings.py`
 
 ## ⚙️ Feature Flags (Resource Management)
 
@@ -55,6 +72,7 @@ Critical cost optimization via feature flags in `src_v2/config/settings.py`:
 - **`ENABLE_PREFERENCE_EXTRACTION`** (default: true): Detects user preferences ("be concise", "use emojis"). Cost: 1 LLM call per message
 - **`ENABLE_PROACTIVE_MESSAGING`** (default: false): Bot initiates conversations
 - **`LLM_SUPPORTS_VISION`** (default: false): Image analysis capability
+- **`ENABLE_PROMPT_LOGGING`** (default: false): Log full prompts to `logs/prompts/` for debugging
 
 **Pattern**: Check feature flags before expensive operations:
 ```python
@@ -79,7 +97,7 @@ Three-tier LLM setup for cost optimization:
 
 Configure via `LLM_PROVIDER`, `ROUTER_LLM_PROVIDER`, `REFLECTIVE_LLM_PROVIDER` in `.env.{bot}`
 
-## �� Critical Workflows
+## 🛠️ Critical Workflows
 
 ### Database Migrations (Alembic)
 ```bash
@@ -88,11 +106,13 @@ alembic revision --autogenerate -m "description"
 alembic upgrade head
 ```
 **Location**: `migrations_v2/` (NOT `migrations/` from v1)
+**Auto-run**: Migrations automatically run on startup in `src_v2/main.py`
 
 ### Adding a New Bot
 1. Copy `characters/elena/` → `characters/newbot/`
-2. Create `.env.newbot` (copy from `.env.example`)
-3. Add to `docker-compose.yml`:
+2. Edit `character.md` (personality, background) and `goals.yaml` (learning objectives)
+3. Create `.env.newbot` (copy from `.env.example`, set `DISCORD_BOT_NAME=newbot`)
+4. Add to `docker-compose.yml`:
 ```yaml
 newbot:
   profiles: ["newbot", "all"]
@@ -101,24 +121,54 @@ newbot:
   environment:
     - DISCORD_BOT_NAME=newbot
   ports:
-    - "8005:8005"  # Unique port
+    - "8009:8009"  # Unique port (increment from last bot)
   depends_on:
     postgres: {condition: service_healthy}
     neo4j: {condition: service_healthy}
+    qdrant: {condition: service_started}
+    influxdb: {condition: service_healthy}
 ```
+5. Start with `./bot.sh up newbot`
+
+### Character Configuration
+- **`characters/{name}/character.md`**: Markdown file loaded as system prompt. Supports template variables: `{user_name}`, `{current_datetime}`, `{recent_memories}`, `{knowledge_context}`
+- **`characters/{name}/goals.yaml`**: Learning objectives with priority/category (see `characters/elena/goals.yaml` for format)
+- **`characters/{name}/background.yaml`**: Optional structured background data
 
 ### Testing
 - **Unit tests**: `pytest tests_v2/`
 - **Direct validation**: `python tests_v2/test_feature_direct_validation.py`
-- **HTTP API**: POST to `http://localhost:8000/api/chat`
+- **HTTP API**: `curl -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" -d '{"user_id":"test","message":"Hello"}'`
 
 ## 📝 Code Conventions
 
-- **Async-first**: All I/O uses `async/await`
-- **Logging**: `from loguru import logger` (NOT `import logging`)
-- **Type hints**: Use Pydantic models for validation
+- **Python environment**: ALWAYS use `.venv` for Python commands. Activate with `source .venv/bin/activate` before running any Python code.
+- **Type hints**: REQUIRED on all function signatures (arguments and return types). Use `typing` module or modern syntax (e.g., `list[str]`, `dict[str, Any]`, `Optional[int]`).
+- **Async-first**: All I/O uses `async/await` (database, HTTP, file operations)
+- **Logging**: `from loguru import logger` (NOT `import logging`). Configured in `src_v2/main.py` at startup
 - **Paths**: `from pathlib import Path` (NOT `os.path`)
-- **Imports**: Set `os.environ["TOKENIZERS_PARALLELISM"] = "false"` before imports (already done in `run_v2.py`)
+- **Database retries**: Use `@retry_db_operation()` decorator for DB methods (defaults to 3 retries)
+- **Imports**: `os.environ["TOKENIZERS_PARALLELISM"] = "false"` set in `run_v2.py` before imports
+- **Error handling**: Log with `logger.error(f"Context: {e}")`, not bare `except Exception: pass`
+
+### Type Hints Examples
+```python
+# Good - explicit type hints
+async def process_message(user_id: str, content: str, metadata: Optional[dict[str, Any]] = None) -> str:
+    ...
+
+# Good - return type for complex objects
+def get_character(name: str) -> Optional[Character]:
+    ...
+
+# Bad - no type hints
+async def process_message(user_id, content, metadata=None):
+    ...
+```
+
+### Python Version
+- **Target**: Python 3.12+ (specified in `pyproject.toml`)
+- **Async runtime**: Uses `asyncio.run()` in `run_v2.py` and `src_v2/main.py`
 
 ## ⚠️ Common Pitfalls
 
@@ -126,14 +176,20 @@ newbot:
 - ❌ **Do NOT commit `.env` files**. Use `.env.example` for templates.
 - ❌ **Do NOT edit legacy `src/`**. Only work in `src_v2/`.
 - ❌ **Do NOT use `make`**. Use `./bot.sh` or direct `docker compose`.
-- ✅ **DO check feature flags** before adding expensive LLM calls.
-- ✅ **DO restart bots** after code changes (no hot-reload for Python).
+- ❌ **Do NOT add expensive LLM calls** without checking feature flags first.
+- ❌ **Do NOT assume hot-reload**. Restart bots after code changes: `./bot.sh restart elena`
+- ✅ **DO use profile-based deployment**: `./bot.sh up <bot_name>` (not `docker compose up <bot_name>`)
+- ✅ **DO check `@retry_db_operation` on new DB methods** for resilience.
+- ✅ **DO use async/await** for all I/O operations (no blocking calls).
 
 ## 🗂️ Key Files
-- `src_v2/config/settings.py`: Pydantic settings with feature flags
-- `src_v2/agents/engine.py`: Main cognitive engine with feature flag gates
-- `src_v2/discord/bot.py`: Discord integration with InfluxDB metrics
-- `src_v2/knowledge/manager.py`: Knowledge Graph operations
-- `src_v2/memory/manager.py`: Vector memory with Qdrant
-- `docker-compose.yml`: Profile-based multi-bot deployment
-- `bot.sh`: Bash management script for deployment
+- `src_v2/config/settings.py`: Pydantic settings with feature flags and env file loading
+- `src_v2/agents/engine.py`: Main cognitive engine (`AgentEngine.generate_response()`)
+- `src_v2/discord/bot.py`: Discord integration with event handlers
+- `src_v2/knowledge/manager.py`: Knowledge Graph operations with Cypher generation
+- `src_v2/memory/manager.py`: Hybrid Postgres + Qdrant vector memory
+- `src_v2/core/database.py`: `DatabaseManager` with connection pooling and `@retry_db_operation`
+- `src_v2/core/character.py`: `CharacterManager` loads from `characters/{name}/`
+- `docker-compose.yml`: Profile-based multi-bot deployment with health checks
+- `bot.sh`: Bash management script (preferred over direct `docker compose`)
+- `run_v2.py`: Entry point that sets `DISCORD_BOT_NAME` and loads env files
