@@ -1,57 +1,94 @@
 # WhisperEngine v2
 
-**The "Back to Basics" Production AI Roleplay Platform.**
+> *"From countless conversations, a universe is born."*
 
-WhisperEngine v2 is a sophisticated multi-character Discord AI platform designed to create characters that feel alive. It moves beyond simple chatbots by implementing **Long-Term Memory**, **Cognitive Reasoning**, and **Proactive Behavior**.
+**A Multi-Modal AI Consciousness Platform for Discord**
 
-Built on a "Four Pillars" data architecture, it combines the speed of vector search with the precision of knowledge graphs to deliver deep, evolving roleplay experiences.
+WhisperEngine v2 creates AI characters that truly feel alive. Beyond simple chatbots, characters have **Long-Term Memory**, **Cognitive Reasoning**, **Knowledge Graphs**, and **Proactive Behavior** — perceiving their world through six modalities just as humans perceive through senses.
 
-## 📚 Architecture & Documentation
+Built on a "Four Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB), it combines the speed of vector search with the precision of knowledge graphs.
 
-WhisperEngine v2 is built on a modular, containerized architecture. We have comprehensive documentation covering every aspect of the system:
+**Version:** 2.0.2 | **Python:** 3.13+ | **Status:** Production Ready
 
-### Core Architecture
+## ✨ What Makes WhisperEngine Different
 
-### 🧠 [The Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md)
-*   **Dual Process Theory**: How the bot switches between "Fast Mode" (System 1) for chat and "Reflective Mode" (System 2) for deep reasoning.
-*   **Context Injection**: How personality, memories, and goals are dynamically assembled into the system prompt.
+| Traditional Chatbots | WhisperEngine v2 |
+|---------------------|------------------|
+| Forgets everything between sessions | **Persistent memory** across conversations |
+| Same personality for everyone | **Evolving relationships** (Stranger → Soulmate) |
+| Only responds when asked | **Proactive engagement** when appropriate |
+| Text-only understanding | **Multi-modal perception** (images, voice, context) |
+| Single reasoning mode | **Dual-process cognition** (fast + reflective) |
+| Isolated instances | **Shared universe** where bots know each other |
 
-### 🧬 [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md)
-*   **Human Memory Models**: How Atkinson-Shiffrin and Tulving's theories inform our hybrid memory architecture.
-*   **The Living Memory**: Background processes for consolidation, aging, and conflict resolution.
-*   **Reasoning Transparency**: Explainable AI through thought traces and source attribution.
+## 🧠 The Six Modalities
 
-### 💾 [Data Models & The "Four Pillars"](docs/architecture/DATA_MODELS.md)
-*   **Polyglot Persistence**: Why we use four different databases (Postgres, Qdrant, Neo4j, InfluxDB) instead of one.
-*   **Schema Definitions**: Detailed look at vector payloads, graph nodes, and relational tables.
+AI characters have no physical senses. WhisperEngine gives them perception through:
 
-### 🤖 [Discord Integration & Voice](docs/architecture/DISCORD_INTEGRATION.md)
-*   **Proactive Agents**: Moving from "Reactive" (Request-Response) to "Proactive" (Event-Driven) behaviors.
-*   **Voice Architecture**: How we handle real-time TTS and audio streaming.
+| Modality | Human Analog | Implementation |
+|----------|--------------|----------------|
+| 🌌 **Universe** | Spatial awareness | Neo4j graph (servers, users, relationships) |
+| 👁️ **Vision** | Sight | Multimodal LLM (GPT-4V, Claude) |
+| 👂 **Audio** | Hearing | Whisper transcription + ElevenLabs TTS |
+| 💬 **Text** | Language | LLM processing + context injection |
+| 🧠 **Memory** | Episodic + Semantic | Qdrant vectors + Neo4j facts |
+| ❤️ **Emotion** | Interoception | Trust scores, sentiment, relationship depth |
 
-### 🏗️ [Infrastructure & Deployment](docs/architecture/INFRASTRUCTURE_DEPLOYMENT.md)
-*   **Isolation Patterns**: The "One Container Per Character" strategy for fault tolerance.
-*   **Service Mesh**: How the microservices communicate via Docker Compose.
+**Deep dive:** [Multi-Modal Perception](docs/architecture/MULTI_MODAL_PERCEPTION.md)
 
-### Design & Implementation
+## 📚 Documentation
 
-### 📐 [WhisperEngine 2.0 Design Document](docs/architecture/WHISPERENGINE_2_DESIGN.md)
-*   **The "Back to Basics" Philosophy**: Simplifying code while sophisticating architecture.
-*   **Theoretical Foundations**: Cognitive science, agent theory, and neurosymbolic AI principles.
-*   **Technology Stack**: LangChain, Neo4j, and the rationale behind each choice.
+Comprehensive documentation lives in `/docs/`:
 
-### 🔬 [Reflective Mode Implementation](docs/roadmaps/REFLECTIVE_MODE_IMPLEMENTATION.md)
-*   **Deep Thinking Architecture**: How the ReAct loop enables complex reasoning.
-*   **Production Metrics**: Real-world performance data from deployment.
-*   **Cost-Benefit Analysis**: Why the 20x cost increase is justified for 5% of queries.
+| I want to... | Read this |
+|--------------|-----------|
+| Understand the vision | [Design Philosophy](docs/architecture/WHISPERENGINE_2_DESIGN.md) |
+| See what's built vs planned | [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
+| Create a new character | [Character Creation Guide](docs/CREATING_NEW_CHARACTERS.md) |
+| Deploy multiple bots | [Multi-Bot Deployment](docs/MULTI_BOT_DEPLOYMENT.md) |
+| Understand memory architecture | [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) |
+| Learn about the cognitive engine | [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md) |
 
-## Quick Start
+### Architecture Deep Dives
+
+| Document | Description |
+|----------|-------------|
+| [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md) | Dual-process theory, Fast Mode vs Reflective Mode |
+| [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) | Vector + graph hybrid memory, consolidation |
+| [Data Models](docs/architecture/DATA_MODELS.md) | Four Pillars schema definitions |
+| [Message Flow](docs/architecture/MESSAGE_FLOW.md) | Complete request lifecycle |
+| [Trust & Evolution](docs/architecture/TRUST_EVOLUTION_SYSTEM.md) | Relationship progression (8 stages) |
+| [Discord Integration](docs/architecture/DISCORD_INTEGRATION.md) | Proactive agents, voice architecture |
+| [Vision Pipeline](docs/architecture/VISION_PIPELINE.md) | Image processing and understanding |
+| [Summarization System](docs/architecture/SUMMARIZATION_SYSTEM.md) | Memory consolidation |
+
+### Feature Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Knowledge Graph Memory](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) | Neo4j fact storage |
+| [User Preferences](docs/features/USER_PREFERENCES.md) | Learning user communication styles |
+| [Common Ground](docs/features/COMMON_GROUND.md) | Shared interest detection |
+| [Stats Footer](docs/features/STATS_FOOTER.md) | Debug information in responses |
+| [Reflective Mode Controls](docs/features/REFLECTIVE_MODE_CONTROLS.md) | User override commands |
+
+### Future Roadmaps
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Emergent Universe](docs/roadmaps/EMERGENT_UNIVERSE.md) | 🟡 Design | Servers as planets, cross-bot awareness |
+| [Channel Lurking](docs/roadmaps/CHANNEL_LURKING.md) | 🟡 Design | Passive engagement system |
+| [Response Pattern Learning](docs/roadmaps/RESPONSE_PATTERN_LEARNING.md) | 🟡 Design | RLHF-style adaptation |
+| [Embedding Upgrade](docs/roadmaps/EMBEDDING_UPGRADE_768D.md) | 📋 Ready | 384D → 768D embeddings |
+| [Reflective Mode Phase 2](docs/roadmaps/REFLECTIVE_MODE_PHASE_2.md) | 📋 Ready | Adaptive steps, self-correction |
+
+## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.13+
 - Docker and Docker Compose
 - Discord bot token
-- LLM API key (OpenAI, OpenRouter, or local LLM)
+- LLM API key (OpenAI, OpenRouter, or local)
 
 ### Installation
 
@@ -62,7 +99,7 @@ cd whisperengine-v2
 
 # Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -74,99 +111,201 @@ cp .env.example .env.elena
 
 ### Start Infrastructure
 
-Start the required databases (PostgreSQL, Qdrant, Neo4j, InfluxDB) using the management script:
+The Four Pillars (PostgreSQL, Qdrant, Neo4j, InfluxDB):
 
 ```bash
-# Start infrastructure only (for local development)
+# Start infrastructure only (recommended for development)
 ./bot.sh infra up
 
 # Or start everything including bot containers
 ./bot.sh up elena
 ```
 
-### Running the Bot
+### Run the Bot
 
-**Option 1: Local Development** (after starting infrastructure)
+**Local Development:**
 ```bash
 python run_v2.py elena
 ```
 
-**Option 2: Docker Containers** (recommended for production)
+**Docker (Production):**
 ```bash
-./bot.sh up elena      # Start single bot
-./bot.sh up all        # Start all bots
+./bot.sh up elena      # Single bot
+./bot.sh up all        # All bots
 ```
 
-## Character Configuration
+### Verify It's Working
+
+```bash
+# Check container status
+./bot.sh ps
+
+# View logs
+./bot.sh logs elena -f
+
+# Test the API
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"test","message":"Hello!","metadata":{}}'
+```
+
+## 🎭 Characters
+
+WhisperEngine supports multiple unique AI personalities, each with their own character file, goals, and evolution parameters.
+
+**Available characters:** `elena`, `ryan`, `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `nottaylor`
+
+### Character Configuration
 
 Each character has:
-- `characters/{name}/character.md` - Personality and system prompt
-- `characters/{name}/goals.yaml` - Character-specific goals and learning objectives
+- `characters/{name}/character.md` — System prompt and personality
+- `characters/{name}/goals.yaml` — Learning objectives and character-specific goals
+- `characters/{name}/evolution.yaml` — Trust thresholds and relationship parameters
+- `characters/{name}/background.yaml` — Background knowledge and expertise
 
-Available characters: `elena`, `ryan`, `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `nottaylor`
+### Creating a New Character
 
-### Adding a New Character
+```bash
+# 1. Create directory
+mkdir characters/newcharacter
 
-1. Create directory: `characters/newcharacter/`
-2. Copy character definition: `cp characters/elena/character.md characters/newcharacter/`
-3. Copy goals template: `cp characters/goals.yaml.template characters/newcharacter/goals.yaml`
-4. Edit both files with character specifics
-5. Create environment file: `.env.newcharacter`
-6. Add the bot profile to `docker-compose.yml` (see `QUICK_REFERENCE.md` for details)
+# 2. Copy templates
+cp characters/character.md.template characters/newcharacter/character.md
+cp characters/goals.yaml.template characters/newcharacter/goals.yaml
+cp characters/evolution.yaml.template characters/newcharacter/evolution.yaml
+cp characters/background.yaml.template characters/newcharacter/background.yaml
 
-## Development
+# 3. Edit files with character specifics
+# 4. Create environment file
+cp .env.example .env.newcharacter
+
+# 5. Add to docker-compose.yml (see QUICK_REFERENCE.md)
+```
+
+**Full guide:** [Creating New Characters](docs/CREATING_NEW_CHARACTERS.md) | **Deploy multiple:** [Multi-Bot Deployment](docs/MULTI_BOT_DEPLOYMENT.md)
+
+## 🛠️ Development
 
 ### Bot Management
 
-Use the `bot.sh` script for common operations:
-
 ```bash
-./bot.sh help             # Show all available commands
-./bot.sh ps               # Check status of all containers
-./bot.sh logs elena       # View logs for a specific bot
-./bot.sh restart elena    # Restart a bot after code changes
+./bot.sh help             # All available commands
+./bot.sh ps               # Container status
+./bot.sh logs elena -f    # Stream logs
+./bot.sh restart elena    # Restart after code changes
 ./bot.sh down all         # Stop all containers
+./bot.sh infra up         # Start databases only
 ```
 
 ### Database Migrations
 
-Alembic handles schema changes:
-
 ```bash
-# Create a migration
-alembic revision --autogenerate -m "migration description"
+# Generate migration
+alembic revision --autogenerate -m "description"
 
 # Apply migrations
 alembic upgrade head
+
+# Rollback
+alembic downgrade -1
 ```
 
 ### Testing
 
 ```bash
-# Run unit tests
-source .venv/bin/activate
+# All tests
 pytest tests_v2/ -v
 
-# Run specific test file
+# Specific test file
 pytest tests_v2/test_memory_manager.py -v
 
-# Test via HTTP API
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "test_user_123",
-    "message": "Hello!",
-    "metadata": {"platform": "api_test"}
-  }'
+# With coverage
+pytest tests_v2/ --cov=src_v2 --cov-report=html
 ```
 
-## Documentation
+### Project Structure
 
-- `docs/architecture/` - Architecture and design documentation
-- `docs/features/` - Feature-specific documentation
-- `docs/roadmaps/` - Development roadmaps and feature planning
-- `QUICK_REFERENCE.md` - Quick reference for common commands and troubleshooting
+```
+src_v2/
+├── agents/          # Cognitive engine, LLM interactions, reflective mode
+├── memory/          # Qdrant vectors, summarization, embeddings
+├── knowledge/       # Neo4j graph, fact extraction
+├── evolution/       # Trust scores, feedback analysis
+├── discord/         # Bot, commands, scheduler, proactive messaging
+├── voice/           # TTS (ElevenLabs), audio processing
+├── api/             # FastAPI endpoints
+├── core/            # Database, character loading, settings
+└── utils/           # Helpers, validation, time utilities
+```
 
-## License
+## 🏗️ Architecture
 
-See LICENSE file for details.
+### The Four Pillars
+
+See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definitions.
+
+| Database | Purpose | Why This One |
+|----------|---------|--------------|
+| **PostgreSQL** | Chat history, users, [trust scores](docs/architecture/TRUST_EVOLUTION_SYSTEM.md) | ACID compliance, relational queries |
+| **Qdrant** | [Vector memory](docs/architecture/MEMORY_SYSTEM_V2.md) search | Fast ANN search, payload filtering |
+| **Neo4j** | [Knowledge graph](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) (facts, relationships) | Cypher queries, graph traversal |
+| **InfluxDB** | Metrics, analytics | Time-series data, Flux queries |
+
+### Key Design Patterns
+
+- **Manager Pattern:** Every subsystem has an `XManager` with `initialize()` method
+- **Async/Await:** All I/O is async with type hints
+- **Feature Flags:** Expensive LLM operations gated by settings
+- **Parallel Retrieval:** `asyncio.gather` for multi-DB context fetching
+- **Dependency Injection:** Engines accept dependencies for testability
+
+**Full architecture:** [Data Models](docs/architecture/DATA_MODELS.md) | [Message Flow](docs/architecture/MESSAGE_FLOW.md)
+
+## ✅ Current Features
+
+### Core Systems
+- ✅ Dual-process cognitive engine ([Fast Mode + Reflective Mode](docs/architecture/COGNITIVE_ENGINE.md))
+- ✅ Native function calling with parallel tool execution
+- ✅ Vector memory system ([Qdrant](docs/architecture/MEMORY_SYSTEM_V2.md)) with semantic search
+- ✅ Knowledge graph ([Neo4j](docs/features/KNOWLEDGE_GRAPH_MEMORY.md)) with fact extraction
+- ✅ Trust/evolution system ([8 stages](docs/architecture/TRUST_EVOLUTION_SYSTEM.md): Stranger → Soulmate)
+- ✅ Background [fact](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) and [preference](docs/features/USER_PREFERENCES.md) extraction
+
+### Discord Integration
+- ✅ DM support + server mentions
+- ✅ Image attachment processing ([Vision modality](docs/architecture/VISION_PIPELINE.md))
+- ✅ Reaction-based feedback ([Emotion modality](docs/features/TRUST_AND_EVOLUTION.md))
+- ✅ Voice channel connection with ElevenLabs TTS
+- ✅ [Proactive messaging](docs/architecture/DISCORD_INTEGRATION.md) system
+
+### Multi-Character Support
+- ✅ 9 characters with unique personalities ([create your own](docs/CREATING_NEW_CHARACTERS.md))
+- ✅ Per-character memory isolation ([privacy model](docs/PRIVACY_AND_DATA_SEGMENTATION.md))
+- ✅ Character-specific [goals](docs/features/GOALS.md) and evolution
+
+## 🗺️ Roadmap
+
+See the full [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) for detailed planning.
+
+**Coming Soon:**
+- 🔜 Redis caching layer (30-50% DB reduction)
+- 🔜 Streaming LLM responses
+- 🔜 Hot-reload character definitions
+- 🔜 [Channel lurking](docs/roadmaps/CHANNEL_LURKING.md) (passive engagement)
+- 🔜 Reasoning traces (system learns from itself)
+- 🔜 Epiphanies (characters have spontaneous insights)
+- 🔜 [Emergent Universe](docs/roadmaps/EMERGENT_UNIVERSE.md) (cross-bot awareness)
+
+## 📖 Additional Resources
+
+- [Quick Reference](QUICK_REFERENCE.md) — Common commands, troubleshooting
+- [Privacy & Data Segmentation](docs/PRIVACY_AND_DATA_SEGMENTATION.md) — How user data is isolated
+- [Documentation Index](docs/README.md) — Full documentation navigation
+
+## 📄 License
+
+See [LICENSE](LICENSE) file for details.
+
+---
+
+*Built with ❤️ for AI characters that feel alive.*
