@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "whisperengine"
-version = "2.0.2"
+version = "2.0.3"
 description = "WhisperEngine - Privacy-first AI conversation and roleplay platform"
 authors = [{name = "whisperengine-ai", email = "contact@whisperengine.ai"}]
 license = {text = "GPL-3.0-or-later"}
@@ -24,77 +24,77 @@ classifiers = [
 
 dependencies = [
     # Core Discord Bot Dependencies
-    "discord.py==2.6.3",  # Updated from 2.4.0
-    "python-dotenv==1.1.1",  # Updated from 1.0.1
+    "discord.py>=2.6.4",  # Updated Nov 2025
+    "python-dotenv>=1.1.1",
     
     # HTTP Client Dependencies  
-    "aiohttp==3.12.15",  # Updated from 3.10.5
-    "requests==2.32.5",  # Updated from 2.32.3
+    "aiohttp>=3.12.15",
+    "requests>=2.32.5",
     
     # AI/ML and Memory System Dependencies
     "qdrant-client>=1.16.0",  # Local vector database (Docker)
-    "fastembed>=0.7.0",  # Local embeddings (Python 3.13 compatible)
-    "numpy>=1.26.0",  # Essential vector operations
-    "redis>=5.0.0",  # Session cache only (not memory storage)
+    "fastembed>=0.7.3",  # Local embeddings (Python 3.13 compatible)
+    "numpy>=1.26.0,<3.0.0",  # Essential vector operations (2.x breaking)
+    "redis>=5.0.0,<7.0.0",  # Session cache only (6.x is major bump)
     
     # Image Processing Dependencies
-    "Pillow>=10.0.0",  # Updated from 10.4.0
+    "Pillow>=11.0.0",  # Updated Nov 2025
     
     # Async File I/O Dependencies
-    "aiofiles>=23.0.0",
+    "aiofiles>=24.1.0",  # Updated Nov 2025
     
     # Voice functionality dependencies (optional)
-    "PyNaCl>=1.5.0",  # Updated from 1.5.0
+    "PyNaCl>=1.5.0",
     "audioop-lts>=0.2.0; python_version >= '3.13'",
-    "elevenlabs>=1.0.0",  # Updated from 1.8.2
+    "elevenlabs>=1.50.0",  # Updated Nov 2025
 
-    # AI & Orchestration
-    "langchain>=0.1.0",
-    "langchain-community>=0.0.10",
-    "langchain-openai>=0.0.5",
-    "openai>=1.0.0",
+    # AI & Orchestration - pinned to 0.3.x for stability
+    "langchain>=0.3.0,<0.4.0",  # Updated Nov 2025
+    "langchain-community>=0.3.0,<0.4.0",  # Updated Nov 2025
+    "langchain-openai>=0.3.0,<0.4.0",  # Updated Nov 2025
+    "openai>=1.82.0",  # Updated Nov 2025
 
     # Document Processing
     "docx2txt>=0.8",  # Word Documents
-    "pypdf>=3.0.0",  # PDF Documents
+    "pypdf>=5.0.0",  # Updated Nov 2025
 
     # Database Drivers
-    "psycopg2-binary>=2.9.0",  # PostgreSQL adapter
-    "asyncpg>=0.29.0",  # PostgreSQL
-    "neo4j>=5.15.0",  # Neo4j
-    "influxdb-client==1.40.0",  # InfluxDB
+    "psycopg2-binary>=2.9.10",  # PostgreSQL adapter
+    "asyncpg>=0.30.0",  # PostgreSQL - Updated Nov 2025
+    "neo4j>=5.28.0",  # Neo4j - Updated Nov 2025
+    "influxdb-client>=1.49.0",  # InfluxDB - Updated Nov 2025
 
     # API
-    "fastapi>=0.109.0",
-    "uvicorn>=0.27.0",
+    "fastapi>=0.115.0",  # Updated Nov 2025
+    "uvicorn>=0.34.0",  # Updated Nov 2025
 
     # Utilities
-    "alembic>=1.13.0",  # Migrations
-    "tenacity>=8.2.0",  # Retries
+    "alembic>=1.14.0",  # Migrations - Updated Nov 2025
+    "tenacity>=9.0.0",  # Retries - Updated Nov 2025
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest==8.4.2",  # Updated from 8.3.3
-    "pytest-asyncio==1.2.0",  # Updated from 0.24.0
-    "pytest-cov==5.0.0",
-    "pytest-xdist==3.6.0",
-    "pytest-mock==3.12.0",  # Updated from 3.14.0
-    "pytest-benchmark==4.0.0",
-    "pytest-timeout==2.3.1",
-    "pytest-html==4.1.1",
-    "coverage[toml]==7.6.0",
-    "psutil==7.1.0",  # Updated from 6.0.0 - For performance testing
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",  # Updated Nov 2025
+    "pytest-cov>=6.0.0",  # Updated Nov 2025
+    "pytest-xdist>=3.6.0",
+    "pytest-mock>=3.14.0",  # Updated Nov 2025
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout>=2.3.1",
+    "pytest-html>=4.1.1",
+    "coverage[toml]>=7.6.9",  # Updated Nov 2025
+    "psutil>=7.1.0",
 ]
 dev = [
-    "black==25.1.0",  # Updated from 24.8.0
-    "flake8==7.1.1",
-    "mypy==1.13.0",  # Updated from 1.11.2
-    "pre-commit==3.8.0",
-    "debugpy==1.8.6",
-    "ipython==8.27.0",
-    "jupyter==1.1.1",
-    "ruff==0.13.1",  # Updated from 0.6.4
+    "black>=25.1.0",
+    "flake8>=7.1.1",
+    "mypy>=1.14.0",  # Updated Nov 2025
+    "pre-commit>=4.0.0",  # Updated Nov 2025
+    "debugpy>=1.8.9",  # Updated Nov 2025
+    "ipython>=8.30.0",  # Updated Nov 2025
+    "jupyter>=1.1.1",
+    "ruff>=0.8.0",  # Updated Nov 2025
 ]
 
 [project.urls]
