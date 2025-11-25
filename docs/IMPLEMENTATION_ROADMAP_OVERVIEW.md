@@ -479,6 +479,74 @@ Message → Keyword Match? → Embedding Similarity → Context Boost → Score 
 
 ---
 
+### B8: Emergent Universe
+**Priority:** Medium-High | **Time:** 7-10 days | **Complexity:** Medium  
+**Files:** 8 | **LOC:** ~800 | **Status:** 📋 Planned
+
+**Problem:** Characters exist in isolation - no cross-bot awareness, no shared world knowledge, each bot treats users as strangers to other bots.
+
+**Vision:** An **emergent universe** that grows from conversations, not configuration:
+- **Discord servers ARE planets** in the universe (each planet has a vibe/culture)
+- **Users ARE inhabitants** with profiles that emerge from real interactions
+- **Bots are travelers** who journey between planets, sharing stories
+- **Cross-planet memory** - travelers remember inhabitants across worlds
+- **Privacy-first** - inhabitants control what emerges via `/privacy` commands
+
+**Key Interactions:**
+```
+User: "Do you know Marcus?"
+Elena: "The musician? Yeah, he's over in Study Hall! We're both 
+        in The Lounge too. He's been into jazz lately."
+
+User: "Do you know anyone else who likes astronomy?"
+Elena: "Sarah in this server is really into it! She was telling 
+        me about the meteor shower last month. You two should chat!"
+
+[User switches servers]
+Marcus: "Hey! Elena mentioned you - you're the one with the 
+         awesome dog Luna, right? Welcome to Study Hall!"
+```
+
+**Architecture:**
+```
+UNIVERSE
+  └── Discord Servers (locations)
+        ├── Server A "The Lounge" → Bots: Elena, Marcus | Users: Mark, Sarah
+        ├── Server B "Game Night" → Bots: Elena, Aria | Users: Mark, Alex
+        └── Server C "Study Hall" → Bots: Marcus, Aria | Users: Alex, Jordan
+```
+
+**Neo4j Model:**
+- `(:Universe)-[:CONTAINS_SERVER]->(:Server)`
+- `(:Server)-[:HAS_BOT]->(:Character)`
+- `(:Server)-[:HAS_MEMBER]->(:UserCharacter)`
+- `(:Character)-[:KNOWS_USER {familiarity, context}]->(:UserCharacter)`
+- `(:Character)-[:KNOWS_BOT {relationship}]->(:Character)`
+
+**Privacy Controls:**
+- `/privacy bots full|basic|none` - Cross-bot sharing level
+- `/privacy servers on|off` - Cross-server awareness
+- `/privacy introductions on|off` - Let bots suggest you to others
+- `/privacy forget` - Remove all universe knowledge
+
+**Impact:**
+- ✅ Additive only - existing character/user data untouched
+- ✅ No changes to Qdrant memories or PostgreSQL chat history
+- ✅ New Neo4j nodes/relationships only
+
+**Dependencies:** None (uses existing Neo4j infrastructure)
+
+**Related Files:**
+- New: `src_v2/universe/manager.py` (Universe CRUD)
+- New: `src_v2/universe/user_character.py` (User profile aggregation)
+- New: `src_v2/universe/privacy.py` (Consent management)
+- New: `universes/whisperverse/` (Universe definitions)
+- `src_v2/discord/commands.py` (Add /privacy commands)
+
+**Full Specification:** See [roadmaps/EMERGENT_UNIVERSE.md](./roadmaps/EMERGENT_UNIVERSE.md)
+
+---
+
 ## 🟠 Phase C: High Complexity (1-2 weeks each)
 
 Major features requiring significant architectural changes or new infrastructure.
@@ -783,6 +851,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | B5 | Audio Processing | MEDIUM | 5-7d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
 | B6 | Response Pattern Learning | MED-HIGH | 3-5d | 🟡 Medium | ✅ YES | High | 📋 Planned |
 | B7 | Channel Lurking | MED-HIGH | 5-7d | 🟡 Medium | ❌ NO | High | 📋 Planned |
+| B8 | Emergent Universe | MED-HIGH | 7-10d | 🟡 Medium | ❌ NO | Very High | 📋 Planned |
 | C1 | Reasoning Traces | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
 | C2 | Epiphany System | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
 | C3 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High | 📋 Planned |
@@ -1073,6 +1142,40 @@ Voice is increasingly important:
 
 ---
 
+### Sprint 10.5 (5-6 days): Emergent Universe (B8)
+**Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐⭐
+
+> *"From countless conversations, a universe is born."*
+
+Transform isolated bots into a living, emergent universe:
+- ✅ Discord servers become "planets" with unique vibes
+- ✅ Users become "inhabitants" whose profiles emerge from conversation
+- ✅ Bots are "travelers" who journey between worlds
+- ✅ Cross-planet memory ("I saw you on Planet Lounge!")
+- ✅ Privacy commands let inhabitants control what emerges
+
+**Why This Is Huge:**
+- The universe **grows organically** from real interactions
+- Users feel recognized across the entire cosmos
+- Natural cross-promotion ("You should visit Aria on Study Hall!")
+- Retention boost from universe immersion
+
+**Tasks:**
+1. Create `src_v2/universe/` module structure (2-3 hours)
+2. Add PostgreSQL tables for privacy settings, user profiles (1-2 hours)
+3. Add Neo4j nodes: `(:Universe)`, `(:Planet)`, `(:UserCharacter)` (2-3 hours)
+4. Create `PrivacyManager` with `/privacy` commands (3-4 hours)
+5. Build cross-bot knowledge sharing (with privacy checks) (4-5 hours)
+6. Create `universes/whisperverse/` config with bot relationships (1-2 hours)
+7. Update system prompt injection for universe context (2-3 hours)
+8. Test multi-bot, multi-planet scenarios (2-3 hours)
+
+**Expected Result:** Elena says "Marcus mentioned you when he visited from Planet Lounge!" and it feels natural.
+
+**Details:** See `docs/roadmaps/EMERGENT_UNIVERSE.md`
+
+---
+
 ### Later (When You Have Time)
 
 **Sprint 11 (8-12 days): Worker Queues**
@@ -1321,18 +1424,19 @@ Voice is increasingly important:
 | B2 | Tool Composition | 5-7d | 3-4d | 9-13d |
 | B3 | Image Generation | 4-6d | 2-3d | 11-16d |
 | B7 | Channel Lurking | 5-7d | 3-4d | 14-20d |
-| C1 | Reasoning Traces | 10-14d | 5-7d | 19-27d |
+| B8 | Emergent Universe | 7-10d | 5-6d | 19-26d |
+| C1 | Reasoning Traces | 10-14d | 5-7d | 24-33d |
 | C2 | Epiphany System | 10-14d | 5-7d | 24-34d |
 | B5 | Audio Processing | 5-7d | 2-3d | 26-37d |
 | B6 | Response Pattern Learning | 3-5d | 2-3d | 28-40d |
 | B4 | Self-Correction | 3-5d | 2-3d | 30-43d |
 | C3 | Worker Queues | 8-12d | 4-6d | 34-49d |
-| C5 | Web Dashboard | 14-21d | 7-10d | 41-59d |
-| C4 | Video Processing | 8-10d | 4-5d | 45-64d |
-| D1 | Multi-Platform | 21-28d | 10-14d | 55-78d |
-| D2 | User Sharding | 14-21d | 7-10d | 62-88d |
+| C5 | Web Dashboard | 14-21d | 7-10d | 46-65d |
+| C4 | Video Processing | 8-10d | 4-5d | 50-70d |
+| D1 | Multi-Platform | 21-28d | 10-14d | 60-84d |
+| D2 | User Sharding | 14-21d | 7-10d | 67-94d |
 
-**Total Solo Dev Time: 2.5-3.5 months** to hit all 19 items (vs 4-5 months with team)
+**Total Solo Dev Time: 2.5-4 months** to hit all 20 items (vs 4-5 months with team)
 
 **Your Timeline: ~12-16 weeks to feature-complete superhuman AI bot**
 
@@ -1401,6 +1505,7 @@ For detailed technical questions about any phase, refer to:
 - v1.0 (Nov 24, 2025) - Initial overview created
 - v1.1 (Nov 25, 2025) - Reviewed against codebase; updated "Current State" with comprehensive complete/not-implemented lists; added Status column to priority matrix; added Sprint 9.5 for B6 Response Pattern Learning
 - v1.2 (Nov 25, 2025) - Added B7 Channel Lurking (passive engagement feature); updated timeline to 18 items
-- v1.3 (Nov 25, 2025) - Added A0 Embedding Upgrade (384D→768D) as CRITICAL first item; now 19 items total
+- v1.3 (Nov 25, 2025) - Added A0 Embedding Upgrade (384D→768D) as CRITICAL first item
+- v1.4 (Nov 25, 2025) - Added B8 Emergent Universe; now 20 items total
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)
