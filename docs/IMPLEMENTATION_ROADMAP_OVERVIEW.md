@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Created:** November 24, 2025  
-**Last Updated:** November 24, 2025  
+**Last Updated:** November 25, 2025  
 **Status:** Active Planning
 
 ---
@@ -20,12 +20,40 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - **Strategy:** Prioritize high-impact items first; skip low-impact infrastructure
 - **Risk:** Fewer features in parallel to maintain code quality
 
-**Current State:**
+**Current State (Updated Nov 25, 2025):**
+
+**Core Systems (COMPLETE):**
 - ✅ Core cognitive engine operational
 - ✅ Vector memory system (Qdrant) + Knowledge Graph (Neo4j) integrated
-- ✅ Proactive messaging system deployed (Phase 13)
-- ✅ User identification in group chats 80% complete
-- ⏳ Next focus: High-impact features that move the needle
+- ✅ PostgreSQL chat history, trust scores, user preferences
+- ✅ InfluxDB metrics/analytics pipeline
+
+**Cognitive Features (COMPLETE):**
+- ✅ Dual-process architecture (Fast Mode + Reflective Mode)
+- ✅ Native function calling (no regex parsing)
+- ✅ Parallel tool execution in ReAct loop
+- ✅ Complexity classifier (SIMPLE/COMPLEX routing)
+- ✅ 5 memory tools (search summaries, episodes, facts, update facts/prefs)
+
+**Character & Engagement (COMPLETE):**
+- ✅ Multi-character support (10 characters defined)
+- ✅ Trust/evolution system (8 stages, -100 to +100 scale)
+- ✅ Proactive messaging system (Phase 13)
+- ✅ Background fact/preference extraction
+
+**Discord Integration (COMPLETE):**
+- ✅ DM support + server mentions
+- ✅ Image attachment processing (vision)
+- ✅ Reaction-based feedback (trust delta ±5)
+- ✅ Voice channel connection (ElevenLabs TTS)
+
+**NOT YET IMPLEMENTED:**
+- ⏳ Phase A: Hot-reload, Redis caching, streaming, Grafana
+- ⏳ Phase B: Adaptive steps, tool composition, image gen, self-correction, audio, response patterns
+- ⏳ Phase C: Reasoning traces, epiphanies, worker queues, video, dashboard
+- ⏳ Phase D: Multi-platform, user sharding
+
+**Next focus:** Phase A (developer velocity + performance)
 
 ---
 
@@ -320,6 +348,42 @@ Discord Audio Attachment → Whisper Transcription → Message Handler → Memor
 
 ---
 
+### Phase B6: Response Pattern Learning (RLHF-Style)
+**Priority:** Medium-High | **Time:** 3-5 days | **Complexity:** Medium  
+**Files:** 4 | **LOC:** ~400 | **Status:** 📋 Planned
+
+**Problem:** Bot doesn't learn what response STYLES work for each user (length, tone, structure)
+
+**Solution:**
+- Store successful (message, response, feedback_score) tuples when users react positively
+- Embed user messages for semantic search
+- Retrieve high-scoring past responses for similar queries
+- Inject as few-shot examples: "Responses like these worked well for this user..."
+
+**Implementation:**
+```
+User Reacts 👍 → Store Pattern (message + response + score) → Embed for Search
+Future Similar Query → Retrieve High-Score Patterns → Inject as Few-Shot Examples
+```
+
+**Benefit:**
+- Bot learns what resonates with each user
+- RLHF-style adaptation without fine-tuning
+- Works with hosted LLMs (no model access needed)
+- Per-user personalization at scale
+
+**Dependencies:** FeedbackAnalyzer (exists), pgvector (exists)
+
+**Related Files:**
+- New: `src_v2/evolution/pattern_store.py`
+- `src_v2/discord/bot.py` (hook on_reaction_add)
+- `src_v2/agents/engine.py` (inject patterns)
+- New: `migrations_v2/versions/add_response_patterns_table.py`
+
+**Full Specification:** See [roadmaps/RESPONSE_PATTERN_LEARNING.md](./roadmaps/RESPONSE_PATTERN_LEARNING.md)
+
+---
+
 ## 🟠 Phase C: High Complexity (1-2 weeks each)
 
 Major features requiring significant architectural changes or new infrastructure.
@@ -608,24 +672,27 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 
 ## 📊 Master Priority Matrix
 
-| Phase | Feature | Priority | Time | Complexity | Quick Win? | Impact |
-|-------|---------|----------|------|-----------|-----------|--------|
-| A1 | Hot-Reload Characters | HIGH | 1-2d | 🟢 Low | ✅ YES | Medium |
-| A2 | Redis Caching | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High |
-| A3 | Streaming Responses | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High |
-| A4 | Grafana Dashboards | MEDIUM | 1d | 🟢 Low | ✅ YES | Medium |
-| B1 | Adaptive Max Steps | HIGH | 3-5d | 🟡 Medium | ⚠️ MAYBE | High |
-| B2 | Tool Composition | HIGH | 5-7d | 🟡 Medium | ❌ NO | High |
-| B3 | Image Generation | MEDIUM | 4-6d | 🟡 Medium | ❌ NO | Medium |
-| B4 | Self-Correction | MEDIUM | 3-5d | 🟡 Medium | ❌ NO | Medium |
-| B5 | Audio Processing | MEDIUM | 5-7d | 🟡 Medium | ❌ NO | Medium |
-| C1 | Reasoning Traces | HIGH | 10-14d | 🟠 High | ❌ NO | Very High |
-| C2 | Epiphany System | HIGH | 10-14d | 🟠 High | ❌ NO | Very High |
-| C3 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High |
-| C4 | Video Processing | MEDIUM | 8-10d | 🟠 High | ❌ NO | Medium |
-| C5 | Web Dashboard | HIGH | 14-21d | 🟠 High | ❌ NO | High |
-| D1 | Multi-Platform | MEDIUM | 21-28d | 🔴 Very High | ❌ NO | Very High |
-| D2 | User Sharding | HIGH | 14-21d | 🔴 Very High | ❌ NO | Very High |
+**Legend:** 📋 Planned | ⏸️ On Hold | 🔄 In Progress | ✅ Complete
+
+| Phase | Feature | Priority | Time | Complexity | Quick Win? | Impact | Status |
+|-------|---------|----------|------|-----------|-----------|--------|--------|
+| A1 | Hot-Reload Characters | HIGH | 1-2d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
+| A2 | Redis Caching | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | 📋 Planned |
+| A3 | Streaming Responses | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | 📋 Planned |
+| A4 | Grafana Dashboards | MEDIUM | 1d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
+| B1 | Adaptive Max Steps | HIGH | 3-5d | 🟡 Medium | ⚠️ MAYBE | High | ⏸️ On Hold |
+| B2 | Tool Composition | HIGH | 5-7d | 🟡 Medium | ❌ NO | High | 📋 Planned |
+| B3 | Image Generation | MEDIUM | 4-6d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
+| B4 | Self-Correction | MEDIUM | 3-5d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
+| B5 | Audio Processing | MEDIUM | 5-7d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
+| B6 | Response Pattern Learning | MED-HIGH | 3-5d | 🟡 Medium | ✅ YES | High | 📋 Planned |
+| C1 | Reasoning Traces | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
+| C2 | Epiphany System | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
+| C3 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High | 📋 Planned |
+| C4 | Video Processing | MEDIUM | 8-10d | 🟠 High | ❌ NO | Medium | 📋 Planned |
+| C5 | Web Dashboard | HIGH | 14-21d | 🟠 High | ❌ NO | High | 📋 Planned |
+| D1 | Multi-Platform | MEDIUM | 21-28d | 🔴 Very High | ❌ NO | Very High | 📋 Planned |
+| D2 | User Sharding | HIGH | 14-21d | 🔴 Very High | ❌ NO | Very High | 📋 Planned |
 
 ---
 
@@ -812,6 +879,32 @@ This is the breakthrough in authenticity:
 
 ---
 
+### Sprint 9.5 (3-5 days): Response Pattern Learning (B6)
+**Priority:** HIGH | **Solo Impact:** ⭐⭐⭐⭐
+
+Build on reasoning traces to learn optimal response patterns:
+- ✅ Uses existing feedback data (reactions, trust changes)
+- ✅ Simple extension to reasoning traces infrastructure
+- ✅ Improves response quality without model fine-tuning
+- ✅ Quick win since infrastructure already exists from Sprint 8
+
+**Synergy with Sprint 8:**
+- Shares `v2_reasoning_traces` storage pattern
+- Uses same embedding + similarity search
+- Low incremental effort after Reasoning Traces
+
+**Tasks:**
+1. Create `v2_response_patterns` table (1-2 hours)
+2. Add success scoring from reactions/trust (2-3 hours)
+3. Inject high-performing patterns into prompts (2-3 hours)
+4. Test pattern recall accuracy (1-2 hours)
+
+**Expected Result:** Bot learns which response styles resonate with each user
+
+**Details:** See `docs/roadmaps/RESPONSE_PATTERN_LEARNING.md`
+
+---
+
 ### Sprint 10 (5-7 days): Audio Processing (Voice Messages)
 **Priority:** MEDIUM | **Solo Impact:** ⭐⭐⭐
 
@@ -863,12 +956,15 @@ Voice is increasingly important:
 ## 💡 Key Dependencies & Blockers
 
 ### Already Completed ✅
-- Native function calling (Reflective Phase 1)
-- Parallel tool execution (Reflective Phase 2.3)
-- User identification in group chats (80% done)
+- ✅ Native function calling (Reflective Phase 1)
+- ✅ Parallel tool execution (Reflective Phase 2.3)
+- ✅ Proactive messaging system (Phase 13)
+- ✅ Complexity classifier (SIMPLE/COMPLEX routing)
+- ✅ Trust/evolution system with reaction feedback
+- ✅ Background fact/preference extraction
 
 ### On Hold ⏸️
-- Adaptive Max Steps (waiting for Reflective Mode user testing)
+- Adaptive Max Steps (B1) - waiting for Reflective Mode user testing
 
 ### No Blockers 🟢
 - All Phase A items can start immediately
@@ -1077,7 +1173,8 @@ Voice is increasingly important:
 | C1 | Reasoning Traces | 10-14d | 5-7d | 16-23d |
 | C2 | Epiphany System | 10-14d | 5-7d | 21-30d |
 | B5 | Audio Processing | 5-7d | 2-3d | 23-33d |
-| B4 | Self-Correction | 3-5d | 2-3d | 25-36d |
+| B6 | Response Pattern Learning | 3-5d | 2-3d | 25-36d |
+| B4 | Self-Correction | 3-5d | 2-3d | 27-39d |
 | C3 | Worker Queues | 8-12d | 4-6d | 29-42d |
 | C5 | Web Dashboard | 14-21d | 7-10d | 36-52d |
 | C4 | Video Processing | 8-10d | 4-5d | 40-57d |
@@ -1146,5 +1243,6 @@ For detailed technical questions about any phase, refer to:
 
 **Version History:**
 - v1.0 (Nov 24, 2025) - Initial overview created
+- v1.1 (Nov 25, 2025) - Reviewed against codebase; updated "Current State" with comprehensive complete/not-implemented lists; added Status column to priority matrix; added Sprint 9.5 for B6 Response Pattern Learning
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)
