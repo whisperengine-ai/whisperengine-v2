@@ -322,8 +322,12 @@ class FeedbackAnalyzer:
 
     async def get_current_mood(self, user_id: str) -> str:
         """
-        Determines the bot's current mood based on recent user interactions (last 1 hour).
-        Returns: "Happy", "Neutral", "Annoyed", "Excited"
+        Determines the user's recent sentiment toward the bot based on their reactions (last 1 hour).
+        
+        This measures how the USER feels about the bot's responses, NOT the bot's mood.
+        Used to suppress inappropriate traits (e.g., don't be playful if user is frustrated).
+        
+        Returns: "Happy", "Neutral", "Annoyed (User has been reacting negatively)", "Excited (User is very engaged)"
         """
         if not self.influx_client:
             return "Neutral"

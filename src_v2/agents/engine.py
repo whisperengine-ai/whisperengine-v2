@@ -265,8 +265,9 @@ class AgentEngine:
         # Use EvolutionManager to build context
         evo_manager = get_evolution_manager(character_name)
         
-        # Map "current_mood" (which is user sentiment/mood towards bot) to sentiment for suppression
-        # FeedbackAnalyzer returns "Happy", "Neutral", "Annoyed", "Excited"
+        # current_mood represents USER's sentiment toward the bot (based on recent reactions)
+        # NOT the bot's mood. Used to suppress traits (e.g., don't tease if user is frustrated)
+        # FeedbackAnalyzer.get_current_mood() returns: "Happy", "Neutral", "Annoyed", "Excited"
         user_sentiment = "neutral"
         if "Annoyed" in current_mood: user_sentiment = "angry"
         elif "Happy" in current_mood or "Excited" in current_mood: user_sentiment = "happy"
