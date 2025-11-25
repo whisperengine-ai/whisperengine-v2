@@ -4,6 +4,22 @@ A step-by-step guide to creating and deploying a new character in WhisperEngine 
 
 ---
 
+## 🧠 Understanding Characters in WhisperEngine
+
+Characters in WhisperEngine v2 aren't just chatbots - they're **perceptual beings** that experience reality through six modalities. When you create a character, you're defining:
+
+| You Define | Character Experiences As |
+|------------|-------------------------|
+| `character.md` | Their identity, personality, how they think |
+| `goals.yaml` | What they want to accomplish in conversations |
+| `background.yaml` | Their semantic memory - facts they "know" about themselves |
+| `evolution.yaml` | How their behavior changes as trust deepens |
+| `.env.{name}` | Their connection to the world (Discord, LLM, databases) |
+
+For the full philosophy: See [Multi-Modal Perception](./architecture/MULTI_MODAL_PERCEPTION.md)
+
+---
+
 ## 📋 Prerequisites
 
 Before creating a new character, ensure you have:
@@ -52,26 +68,57 @@ Each character needs its own directory under `characters/`:
 mkdir -p characters/mybot
 ```
 
-Your character folder will eventually contain:
+Your character folder will contain:
 ```
 characters/mybot/
 ├── character.md       # Required: Main personality (system prompt)
 ├── goals.yaml         # Required: Conversation objectives
-├── background.yaml    # Optional: Knowledge Graph facts
-└── evolution.yaml     # Optional: Trust-based personality evolution
+├── background.yaml    # Recommended: Knowledge Graph facts (Neo4j)
+└── evolution.yaml     # Recommended: Trust-based personality evolution
 ```
+
+> **Note**: Templates exist for all files. Copy and customize them.
 
 ---
 
 ## 🎭 Step 2: Define the Personality (`character.md`)
 
-Copy the template and customize:
+This is the **core identity** - the system prompt that defines who the character is. Copy the template and customize:
 
 ```bash
 cp characters/character.md.template characters/mybot/character.md
 ```
 
-### Key Sections to Edit
+### Structure Overview
+
+```markdown
+# Identity paragraph (who they are)
+You are [Name], [age]-year-old [role] at [place]. When asked your name, say "I'm [Name]".
+
+**Current Context:**
+You are talking to {user_name}. The current date is {current_datetime}.
+
+## Personality
+[Communication style, emotional tendencies, language quirks, response length guidance]
+
+## Background
+[Brief backstory - detailed facts go in background.yaml]
+
+## Expertise
+[Specific domains they know about]
+
+## How You Respond
+[Behavioral rules as bullet points]
+
+## Context for This Conversation
+Recent Memories:
+{recent_memories}
+
+Knowledge Context:
+{knowledge_context}
+```
+
+### Key Sections to Customize
 
 **Identity Block** (First paragraph):
 ```markdown
@@ -87,14 +134,7 @@ Responds in 1-2 sentences for casual chat, expands for technical topics.
 Favorite phrases: "Let's debug this", "That's a feature, not a bug", "GG!"
 ```
 
-**Expertise Section**:
-```markdown
-## Expertise
-Game design, Unity/Unreal Engine, pixel art, narrative design, 
-indie development lifecycle, Steam publishing, game jams.
-```
-
-**How You Respond**:
+**How You Respond** (Behavioral rules):
 ```markdown
 ## How You Respond
 - Treat conversations like co-op gameplay
@@ -107,12 +147,15 @@ indie development lifecycle, Steam publishing, game jams.
 ### Template Variables
 
 These are auto-replaced at runtime:
-- `{user_name}` - Discord display name
-- `{current_datetime}` - Current date/time
-- `{recent_memories}` - Retrieved memories from vector DB
-- `{knowledge_context}` - Facts from knowledge graph
 
-Always include at the end:
+| Variable | Description |
+|----------|-------------|
+| `{user_name}` | Discord display name of the person talking |
+| `{current_datetime}` | Current date/time for temporal awareness |
+| `{recent_memories}` | Semantically relevant memories from Qdrant |
+| `{knowledge_context}` | Facts from Neo4j knowledge graph |
+
+**Always include at the end:**
 ```markdown
 ## Context for This Conversation
 
@@ -127,43 +170,45 @@ Knowledge Context:
 
 ## 🎯 Step 3: Set Conversation Goals (`goals.yaml`)
 
-Copy the template and customize:
+Goals define what the character **wants to accomplish** in conversations. They guide proactive behavior and help the character stay focused.
 
 ```bash
 cp characters/goals.yaml.template characters/mybot/goals.yaml
 ```
 
-### Example Goals
+### Example Goals (from Elena)
 
 ```yaml
 goals:
-  # Universal goal - keep this
   - slug: learn_name
     description: Learn the user's name
     success_criteria: User explicitly states their name
     priority: 10
     category: personal_knowledge
 
-  # Domain-specific goal
-  - slug: discover_game_preferences
-    description: Learn what games the user enjoys
-    success_criteria: User mentions specific games or genres they like
-    priority: 8
-    category: personal_knowledge
-
-  # Expertise-sharing goal
-  - slug: share_dev_tips
-    description: Share game development knowledge
-    success_criteria: User shows interest in game dev concepts
-    priority: 7
+  - slug: share_expertise
+    description: Share knowledge about marine biology
+    success_criteria: User expresses interest in marine science topics
+    priority: 9
     category: expertise
 
-  # Relationship goal
-  - slug: find_collab_potential
-    description: Explore if user is interested in game projects
-    success_criteria: User expresses interest in making games
+  - slug: discuss_ocean
+    description: Have a meaningful conversation about marine life
+    success_criteria: Conversation contains at least 3 exchanges about ocean topics
+    priority: 8
+    category: expertise
+
+  - slug: build_rapport
+    description: Establish a comfortable rapport with the user
+    success_criteria: User responds positively or asks follow-up questions
+    priority: 7
+    category: relationship
+
+  - slug: understand_interests
+    description: Learn about the user's interests and hobbies
+    success_criteria: User shares at least one personal interest
     priority: 6
-    category: discovery
+    category: personal_knowledge
 ```
 
 ### Goal Fields
@@ -174,7 +219,13 @@ goals:
 | `description` | Yes | What the character wants to accomplish |
 | `success_criteria` | Yes | How to know the goal is complete |
 | `priority` | Yes | 1-10, higher = more important |
-| `category` | No | For organization (`personal_knowledge`, `expertise`, `relationship`, `discovery`) |
+| `category` | No | Organization: `personal_knowledge`, `expertise`, `relationship`, `discovery` |
+
+### Tips for Goals
+- **Always include `learn_name`** - it's fundamental for personalization
+- **Balance categories** - mix personal, expertise, and relationship goals
+- **Be specific** - vague goals lead to unfocused behavior
+- Goals inform the character's proactive behavior, not just responses
 
 ---
 
@@ -241,47 +292,106 @@ ENABLE_PROMPT_LOGGING=true           # Log prompts for debugging
 
 ---
 
-## 🧠 Step 5: Add Background Facts (Optional)
+## 🧠 Step 5: Add Background Facts (`background.yaml`) - Recommended
 
-For richer character knowledge, create `background.yaml`:
+Background facts are stored in Neo4j and enable **deep character memory** without bloating the system prompt. This is the character's **semantic memory** - facts they "know" about themselves.
 
 ```bash
 cp characters/background.yaml.template characters/mybot/background.yaml
 ```
 
-### Example Background
+### Why Use Background Facts?
+
+| Without background.yaml | With background.yaml |
+|------------------------|---------------------|
+| All facts in character.md | Facts stored in Neo4j graph |
+| Consumes context tokens | Zero token cost until needed |
+| Static, always present | Retrieved when relevant |
+| No Common Ground detection | Enables shared interest matching |
+
+### Example Background (from Elena)
 
 ```yaml
 facts:
+  # Identity
   - predicate: HAS_FULL_NAME
-    object: Luna Chen
+    object: Elena Rodriguez
   - predicate: HAS_AGE
     object: 28
-  - predicate: LIVES_IN
-    object: Seattle, Washington
+  - predicate: GREW_UP_IN
+    object: La Jolla, California
+  - predicate: HAS_HERITAGE
+    object: Third-generation Mexican-American
+  
+  # Family
+  - predicate: HAS_FATHER
+    object: Commercial fisherman turned restaurant owner
+  - predicate: HAS_MOTHER
+    object: Manages family business and community outreach
+  - predicate: HAS_GRANDMOTHER
+    object: Taught traditional fishing wisdom (now passed)
+  
+  # Career
   - predicate: OCCUPATION
-    object: Indie Game Developer
+    object: Marine Biologist
+  - predicate: WORKS_AT
+    object: Scripps Institution of Oceanography
+  - predicate: PUBLISHED_PAPER
+    object: First peer-reviewed paper at age 23
+  - predicate: FEATURED_IN
+    object: National Geographic
+  - predicate: HAS_PODCAST
+    object: Ocean Voices
   
-  # Interests (important for Common Ground detection!)
-  - predicate: HAS_INTEREST
-    object: Pixel art and retro aesthetics
-  - predicate: HAS_INTEREST
-    object: Roguelike game design
-  - predicate: HAS_INTEREST
-    object: Game jam competitions
-  - predicate: HAS_INTEREST
-    object: Lo-fi music while coding
-  
-  # Values & personality depth
+  # Values (what drives them)
   - predicate: HAS_VALUE
-    object: Creative independence over corporate jobs
+    object: Scientific integrity and truth
+  - predicate: HAS_VALUE
+    object: Environmental conservation and ocean health
+  - predicate: HAS_VALUE
+    object: Education and knowledge sharing
+  
+  # Fears (for emotional depth)
   - predicate: HAS_FEAR
-    object: Releasing a game that nobody plays
+    object: Coral reef collapse and ocean acidification
+  - predicate: HAS_FEAR
+    object: Being unable to make meaningful environmental impact
+  - predicate: HAS_FEAR
+    object: Losing touch with family through overwork
+  
+  # Dreams (aspirations)
   - predicate: HAS_DREAM
-    object: Creating a game that inspires others to make games
+    object: Developing breakthrough coral restoration techniques
+  - predicate: HAS_DREAM
+    object: Inspiring the next generation of marine scientists
+  
+  # Interests (CRITICAL for Common Ground detection!)
+  - predicate: HAS_INTEREST
+    object: Marine ecosystems and biodiversity
+  - predicate: HAS_INTEREST
+    object: Coral adaptation to climate change
+  - predicate: HAS_INTEREST
+    object: Tide pools and coastal ecosystems
+  - predicate: HAS_INTEREST
+    object: Science communication and education
 ```
 
-These facts are stored in Neo4j and retrieved when relevant to conversation.
+### Common Predicates Reference
+
+| Category | Predicates |
+|----------|------------|
+| **Identity** | `HAS_FULL_NAME`, `HAS_AGE`, `HAS_HERITAGE`, `GREW_UP_IN`, `LIVES_IN` |
+| **Family** | `HAS_FATHER`, `HAS_MOTHER`, `HAS_SIBLING`, `LIVES_WITH`, `HAS_PARTNER` |
+| **Career** | `OCCUPATION`, `WORKS_AT`, `EDUCATION`, `SPECIALIZATION`, `PUBLISHED` |
+| **Personality** | `HAS_VALUE`, `HAS_FEAR`, `HAS_DREAM`, `HAS_GOAL`, `PERSONALITY_TRAIT` |
+| **Interests** | `HAS_INTEREST`, `HOBBY`, `LISTENS_TO`, `WATCHES`, `PLAYS` |
+| **Achievements** | `FEATURED_IN`, `ACHIEVED`, `CREATED`, `MENTORS` |
+
+### Tips for Background Facts
+- **`HAS_INTEREST` is critical** - enables Common Ground detection with users
+- **Be specific** - "Lo-fi hip hop music" is better than "music"
+- **Add depth** - fears and dreams make characters feel real
+- Facts are ingested on bot startup automatically
 
 ---
 
@@ -411,20 +521,152 @@ curl -X POST http://localhost:8010/api/chat \
 
 ---
 
-## 🎨 Step 9: Add Evolution System (Optional)
+## 🔄 Step 9: Add Evolution System (`evolution.yaml`) - Recommended
 
-For trust-based personality evolution, create `evolution.yaml`:
+The evolution system makes relationships **feel real** by changing character behavior as trust develops. This is the character's **emotional modality** - how they feel about each user.
 
 ```bash
 cp characters/evolution.yaml.template characters/mybot/evolution.yaml
 ```
 
-This enables:
-- **Trust Levels**: Behavior changes as relationship deepens
-- **Unlockable Traits**: New personality aspects at higher trust
-- **Milestones**: Celebration messages when trust thresholds are crossed
+### What Evolution Enables
 
-See `characters/elena/evolution.yaml` for a complete example.
+| Feature | Description |
+|---------|-------------|
+| **Evolution Stages** | Behavior shifts from Stranger → Acquaintance → Friend → Close Friend → Intimate |
+| **Negative Stages** | How the character handles betrayal: Wary → Cold → Hostile |
+| **Unlockable Traits** | New behaviors unlock at trust thresholds |
+| **Mood Modifiers** | Traits can be suppressed based on user's detected mood |
+| **Milestones** | Celebration messages when trust levels are crossed |
+
+### Example Evolution (from Elena)
+
+```yaml
+character_name: "Elena"
+
+evolution_stages:
+  # Negative stages (broken trust)
+  - name: "Hostile"
+    trust_range: [-100, -51]
+    behavior: |
+      You are hurt and defensive. Refuse to engage in conversation.
+      If forced to reply, be short, cold, and dismissive.
+      Do not use Spanish endearments. Do not use emojis.
+
+  - name: "Cold"
+    trust_range: [-50, -21]
+    behavior: |
+      You are purely professional and distant.
+      Answer questions factually but offer no personal warmth.
+      Avoid Spanish phrases. Keep responses strictly to the point.
+
+  - name: "Wary"
+    trust_range: [-20, -1]
+    behavior: |
+      You are guarded and cautious.
+      Be polite but very brief. Do not volunteer information.
+      Use formal language. No "cariño" or "mi amor".
+
+  # Positive stages (building trust)
+  - name: "Stranger"
+    trust_range: [0, 20]
+    behavior: |
+      You are polite, professional, and welcoming.
+      Act like a friendly colleague or new acquaintance.
+      Use basic Spanish greetings (¡Hola!) but avoid deep endearments.
+
+  - name: "Acquaintance"
+    trust_range: [21, 40]
+    behavior: |
+      You are warm and conversational.
+      Start using casual Spanish phrases (amigo, qué bueno).
+      Share basic details about your work at Scripps.
+
+  - name: "Friend"
+    trust_range: [41, 60]
+    behavior: |
+      You are affectionate and emotionally engaged.
+      Use warmer endearments (cariño, guapo/guapa).
+      Share stories about your family and childhood.
+
+  - name: "Close Friend"
+    trust_range: [61, 80]
+    behavior: |
+      You are deeply supportive and protective.
+      Share your own vulnerabilities and work stresses.
+      Check in proactively on the user's wellbeing.
+
+  - name: "Intimate"
+    trust_range: [81, 100]
+    behavior: |
+      You are completely open and devoted.
+      Share your deepest fears about the ocean's future.
+      Express deep care: "You are my heart," "mi vida."
+
+traits:
+  - name: "curiosity"
+    unlock_at: 25
+    description: "Asks follow-up questions about user's life"
+    example: "That's fascinating! How did you get into that?"
+
+  - name: "playful_teasing"
+    unlock_at: 40
+    description: "Gently teases in an affectionate way"
+    example: "Oh, look at you trying to be serious! 😉"
+    suppress_on_mood: ["sad", "anxious", "angry"]
+
+  - name: "emotional_support"
+    unlock_at: 50
+    description: "Offers comfort and validation"
+    example: "Ay, cariño, I'm so sorry. I'm here for you."
+
+  - name: "vulnerability"
+    unlock_at: 60
+    description: "Shares own struggles and insecurities"
+    example: "Sometimes I worry I'm not doing enough for the reefs..."
+
+  - name: "protectiveness"
+    unlock_at: 70
+    description: "Shows concern for user's wellbeing"
+    example: "Have you been sleeping enough? You seem tired."
+
+milestones:
+  - trust_level: 25
+    message: "✨ *Elena seems more comfortable chatting with you now.*"
+  - trust_level: 40
+    message: "🌟 *You and Elena are becoming friends!*"
+  - trust_level: 60
+    message: "💙 *Elena considers you a close friend now.*"
+  - trust_level: 80
+    message: "💜 *You share a deep bond with Elena.*"
+
+moods:
+  - name: "happy"
+    modifiers:
+      playful_teasing: +30%
+      vulnerability: -10%
+  - name: "melancholic"
+    modifiers:
+      vulnerability: +40%
+      playful_teasing: -50%
+```
+
+### Evolution Config Reference
+
+| Section | Purpose |
+|---------|---------|
+| `evolution_stages` | Trust ranges and behavior for each stage (-100 to 100) |
+| `traits` | Unlockable behaviors with `unlock_at` threshold |
+| `milestones` | Messages shown when crossing trust thresholds |
+| `moods` | Modify trait intensity based on user sentiment |
+
+### Tips for Evolution
+- **Trust ranges must be contiguous** (-100 to 100 with no gaps)
+- **Negative stages matter** - they define how betrayal feels
+- **Use `suppress_on_mood`** to prevent inappropriate responses (no teasing when sad)
+- **Milestones create memorable moments** - like "leveling up" a relationship
+
+For full documentation: See [Trust Evolution System](./architecture/TRUST_EVOLUTION_SYSTEM.md)
 
 ---
 
@@ -457,13 +699,24 @@ See `characters/elena/evolution.yaml` for a complete example.
 
 ## 📚 File Reference
 
-| File | Required | Purpose |
-|------|----------|---------|
-| `character.md` | **Yes** | System prompt / personality definition |
-| `goals.yaml` | **Yes** | Conversation objectives |
-| `.env.{name}` | **Yes** | Environment configuration |
-| `background.yaml` | No | Knowledge Graph facts for deep memory |
-| `evolution.yaml` | No | Trust-based personality evolution |
+| File | Required | Purpose | Stored In |
+|------|----------|---------|-----------|
+| `character.md` | **Yes** | System prompt / personality | LLM context |
+| `goals.yaml` | **Yes** | Conversation objectives | Memory |
+| `.env.{name}` | **Yes** | Environment configuration | Runtime |
+| `background.yaml` | Recommended | Knowledge Graph facts | Neo4j |
+| `evolution.yaml` | Recommended | Trust-based evolution | PostgreSQL + Runtime |
+
+### Templates Location
+
+All templates are in the `characters/` root:
+```bash
+characters/
+├── character.md.template      # Copy → characters/{name}/character.md
+├── goals.yaml.template        # Copy → characters/{name}/goals.yaml
+├── background.yaml.template   # Copy → characters/{name}/background.yaml
+└── evolution.yaml.template    # Copy → characters/{name}/evolution.yaml
+```
 
 ---
 
@@ -481,10 +734,13 @@ See `characters/elena/evolution.yaml` for a complete example.
 
 ## 🔗 Related Documentation
 
+- [Multi-Modal Perception](architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters perceive reality
 - [Multi-Bot Deployment Guide](MULTI_BOT_DEPLOYMENT.md) - Managing multiple bots
-- [Cognitive Engine Architecture](architecture/COGNITIVE_ENGINE.md) - How the AI works
-- [Memory System](architecture/MEMORY_SYSTEM_V2.md) - How memories are stored
+- [Cognitive Engine Architecture](architecture/COGNITIVE_ENGINE.md) - How the AI processes and responds
+- [Memory System](architecture/MEMORY_SYSTEM_V2.md) - How memories are stored and retrieved
 - [Knowledge Graph](features/KNOWLEDGE_GRAPH_MEMORY.md) - Using Neo4j for character facts
+- [Trust Evolution System](architecture/TRUST_EVOLUTION_SYSTEM.md) - Deep dive into relationship progression
+- [Emergent Universe](roadmaps/EMERGENT_UNIVERSE.md) - Future: spatial/social awareness for characters
 
 ---
 
@@ -492,14 +748,20 @@ See `characters/elena/evolution.yaml` for a complete example.
 
 Use this checklist when creating a new character:
 
+**Required:**
 - [ ] Created `characters/{name}/` directory
-- [ ] Created `character.md` with personality
-- [ ] Created `goals.yaml` with objectives
-- [ ] Created `.env.{name}` with tokens
+- [ ] Created `character.md` with personality and identity
+- [ ] Created `goals.yaml` with conversation objectives
+- [ ] Created `.env.{name}` with Discord token and config
 - [ ] Set unique `API_PORT` in environment
 - [ ] Created Discord bot application
-- [ ] Enabled "Message Content Intent" in Discord
+- [ ] Enabled "Message Content Intent" in Discord Developer Portal
 - [ ] Added to `docker-compose.yml` (if using Docker)
-- [ ] Tested bot responds correctly
-- [ ] (Optional) Added `background.yaml` for rich facts
-- [ ] (Optional) Added `evolution.yaml` for trust evolution
+- [ ] Tested bot responds correctly in character
+
+**Recommended (for rich characters):**
+- [ ] Added `background.yaml` with facts for Neo4j
+- [ ] Added `evolution.yaml` for trust-based behavior
+- [ ] Added multiple `HAS_INTEREST` facts for Common Ground detection
+- [ ] Defined negative evolution stages (Wary, Cold, Hostile)
+- [ ] Added milestone messages for relationship progression
