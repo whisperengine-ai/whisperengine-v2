@@ -48,7 +48,7 @@ WhisperEngine v2 is built on a modular, containerized architecture. We have comp
 ## Quick Start
 
 ### Prerequisites
-- Python 3.12+
+- Python 3.13+
 - Docker and Docker Compose
 - Discord bot token
 - LLM API key (OpenAI, OpenRouter, or local LLM)
