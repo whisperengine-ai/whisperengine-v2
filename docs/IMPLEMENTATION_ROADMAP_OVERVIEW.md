@@ -1,6 +1,6 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 1.6  
+**Document Version:** 1.7  
 **Created:** November 24, 2025  
 **Last Updated:** November 25, 2025  
 **Status:** Active Planning
@@ -44,7 +44,9 @@ For deep dive: See [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architectur
 
 ## Executive Summary
 
-This document provides a high-level overview of the next **19 implementation items** for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
+This document provides a high-level overview of the next **17 implementation items** for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
+
+**Key Consolidation (v1.7):** The Insight Agent (C1) now unifies Reasoning Traces, Epiphanies, and Response Pattern Learning into a single agentic background system, reducing total items from 19 to 17 and saving 15-21 days of development time.
 
 **⚡ Solo Developer Mode (with AI Assistance)**
 
@@ -85,8 +87,11 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 **NOT YET IMPLEMENTED:**
 - ⏳ Phase A: Hot-reload, Redis caching, streaming, Grafana
 - ⏳ Phase B: Adaptive steps, tool composition, image gen, lurking (👂 ambient hearing), response patterns
-- ⏳ Phase C: Reasoning traces, epiphanies, worker queues, video, dashboard
+- ⏳ Phase C: Insight Agent (reasoning traces + epiphanies + patterns), worker queues, video, dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
+
+**Under Analysis:**
+- 🔬 Character Agency (Tier 2 tool-augmented responses) - See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
 
 **Next focus:** Phase A (developer velocity + performance)
 
@@ -586,108 +591,76 @@ THE WHISPERVERSE
 
 Major features requiring significant architectural changes or new infrastructure.
 
-### Phase C1: Reasoning Traces / Memory of Reasoning
-**Priority:** High | **Time:** 10-14 days | **Complexity:** High  
-**Files:** 7 | **LOC:** ~700 | **Status:** 📋 Planned
-
-**Problem:** System solves complex problems but doesn't remember the reasoning for next time
-
-**Solution:**
-- Create `v2_reasoning_traces` PostgreSQL table (JSONB + embedding)
-- Capture successful reasoning traces from reflective loops
-- Embed traces for semantic search
-- Inject relevant past traces as "few-shot examples" before new reasoning
-- Learn patterns: similar problems get solved 50-60% faster
-
-**Implementation:**
-```
-Reasoning Loop → Successful Answer → Save Trace (JSONB + Embedding) → Store in Postgres
-Next Similar Query → Search Past Traces → Inject as Few-Shot → Faster Reasoning
-```
-
-**Benefit:**
-- 50-60% speed boost on recurring complex patterns
-- System learns from its own reasoning
-- Better answers on repeat problem types
-- Emergent "expertise" in certain domains
-
-**Dependencies:** PostgreSQL (exists), embeddings model (exists)
-
-**Related Files:**
-- `src_v2/memory/manager.py` (trace storage/retrieval)
-- `src_v2/agents/reflective.py` (trace capture)
-- New: `migrations_v2/versions/add_reasoning_traces_table.py`
-- New: `src_v2/memory/reasoning_store.py`
-
-**Data Model:**
-```sql
-CREATE TABLE v2_reasoning_traces (
-  id SERIAL PRIMARY KEY,
-  user_id VARCHAR,
-  character_name VARCHAR,
-  question TEXT,
-  scratchpad JSONB,
-  final_answer TEXT,
-  embedding VECTOR(768),
-  similarity_score FLOAT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  INDEX ON embedding USING HNSW
-);
-```
-
----
-
-### Phase C2: Advanced Reflection System (Epiphanies)
-**Priority:** High | **Time:** 10-14 days | **Complexity:** High  
+### Phase C1: Insight Agent (Background Agentic Processing)
+**Priority:** High | **Time:** 5-7 days | **Complexity:** Medium-High  
 **Files:** 8 | **LOC:** ~800 | **Status:** 📋 Planned
 
-**Problem:** Characters only react to messages; they don't have internal thoughts or realizations
+**Consolidates:** C1 Reasoning Traces + C2 Epiphanies + B6 Response Pattern Learning
+
+**Problem:** Three separate roadmap items (reasoning traces, epiphanies, response patterns) all require background analysis of user conversations. Building them separately creates redundant infrastructure.
 
 **Solution:**
-- Background process analyzes user conversation history offline
-- Generate "epiphanies" - sudden insights about user patterns
-- Example: "I just realized you always talk about space when you're sad"
-- Store epiphanies as special memory entries
-- Characters reference epiphanies spontaneously in future messages
+A unified **Insight Agent** that runs periodically in the background using a ReAct loop with specialized introspection tools. Unlike simple fire-and-forget tasks, this agent can:
+- Decide what's worth analyzing (not brute-force every message)
+- Connect patterns across memories, facts, and sessions
+- Generate multiple artifact types in a single analysis run
 
-**Implementation:**
+**Architecture:**
 ```
-Background Worker → Analyze Conversation History → Detect Patterns → Generate Epiphany
-→ Store in Memory → Integrate into Future Responses
+┌─────────────────────────────────────────────────────────────────────┐
+│                     INSIGHT AGENT                                   │
+│  (Runs every 30 min OR after 10+ messages from user)               │
+├─────────────────────────────────────────────────────────────────────┤
+│  Priority Queue (Redis) → InsightAgent (ReAct Loop)                │
+│                                  ↓                                  │
+│  Tools: analyze_patterns, detect_themes, find_topics,              │
+│         generate_epiphany, store_trace, learn_pattern              │
+│                                  ↓                                  │
+│  Outputs: v2_epiphanies, v2_reasoning_traces, v2_response_patterns │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+**Trigger Conditions:**
+| Trigger | Condition |
+|---------|-----------|
+| Time-based | 30-60 min since last analysis |
+| Volume-based | 10+ messages in session |
+| Session-end | After summarization |
+| Feedback-based | 3+ reactions from user |
+
+**Subsumed Features:**
+
+**C1a: Reasoning Traces** - Store successful ReAct reasoning for future reuse
+- 50-60% speed boost on recurring problem patterns
+- Stored as embeddings for similarity search
+
+**C1b: Epiphanies** - Spontaneous realizations about users
+- "I just realized you always talk about space when sad"
+- Characters reference insights in future conversations
+
+**C1c: Response Pattern Learning** - Learn which styles resonate
+- RLHF-style adaptation without fine-tuning
+- Inject successful patterns as few-shot examples
 
 **Benefit:**
-- Breakthrough in character depth and authenticity
-- Spontaneous realizations feel organic and surprising
-- Characters demonstrate genuine understanding
-- Massive engagement boost
+- Single coherent system instead of three separate ones
+- Shared infrastructure (tools, queue, storage)
+- Cross-domain synthesis (epiphany + trace + pattern in one run)
+- Cost-effective (~$0.002-0.008 per analysis run)
 
-**Dependencies:** Worker Queues (C3) for reliable background processing; can use asyncio for MVP
+**Dependencies:** Redis (for queue), PostgreSQL with pgvector (exists)
 
 **Related Files:**
-- New: `src_v2/agents/epiphany.py` (epiphany generator)
-- `src_v2/discord/scheduler.py` (background processing)
-- `src_v2/memory/manager.py` (epiphany storage)
-- New: `migrations_v2/versions/add_epiphanies_table.py`
+- New: `src_v2/agents/insight_agent.py` (core agent)
+- New: `src_v2/tools/insight_tools.py` (introspection tools)
+- New: `migrations_v2/versions/add_insight_tables.py`
+- `src_v2/discord/scheduler.py` (trigger integration)
 
-**Data Model:**
-```sql
-CREATE TABLE v2_epiphanies (
-  id SERIAL PRIMARY KEY,
-  user_id VARCHAR,
-  character_name VARCHAR,
-  insight TEXT,
-  confidence FLOAT (0-1),
-  supporting_evidence JSONB,
-  triggered_at TIMESTAMP,
-  referenced_count INT DEFAULT 0,
-  INDEX ON user_id, character_name
-);
-```
+**Full Specification:** See [roadmaps/INSIGHT_AGENT.md](./roadmaps/INSIGHT_AGENT.md)
 
 ---
 
-### Phase C3: Worker Queues for Background Tasks
+### Phase C2: Worker Queues for Background Tasks
 **Priority:** High | **Time:** 8-12 days | **Complexity:** High  
 **Files:** 7 | **LOC:** ~600 | **Status:** 📋 Planned
 
@@ -721,7 +694,7 @@ Main Process → Task Enqueue (Redis) → Worker Pool → Task Execution → Res
 
 ---
 
-### Phase C4: Video Processing (Clip Analysis)
+### Phase C3: Video Processing (Clip Analysis)
 **Priority:** Medium | **Time:** 8-10 days | **Complexity:** High  
 **Files:** 6 | **LOC:** ~500 | **Status:** 📋 Planned
 
@@ -753,7 +726,7 @@ Discord Video Attachment → Frame Extraction → Multimodal LLM → Character R
 
 ---
 
-### Phase C5: Web API / Dashboard
+### Phase C4: Web API / Dashboard
 **Priority:** High | **Time:** 14-21 days | **Complexity:** High  
 **Files:** 12 | **LOC:** ~1500 | **Status:** 📋 Planned
 
@@ -854,14 +827,16 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | B3 | Image Generation | MEDIUM | 4-6d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
 | B4 | Self-Correction | MEDIUM | 3-5d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
 | B5 | Audio Processing | MEDIUM | 5-7d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
-| B6 | Response Pattern Learning | MED-HIGH | 3-5d | 🟡 Medium | ✅ YES | High | 📋 Planned |
+| B6 | Response Pattern Learning | MED-HIGH | 3-5d | 🟡 Medium | ✅ YES | High | 🔄 Merged → C1 |
 | B7 | Channel Lurking | MED-HIGH | 5-7d | 🟡 Medium | ❌ NO | High | 📋 Planned |
 | B8 | Emergent Universe | MED-HIGH | 7-10d | 🟡 Medium | ❌ NO | Very High | 📋 Planned |
-| C1 | Reasoning Traces | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
-| C2 | Epiphany System | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
-| C3 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High | 📋 Planned |
-| C4 | Video Processing | MEDIUM | 8-10d | 🟠 High | ❌ NO | Medium | 📋 Planned |
-| C5 | Web Dashboard | HIGH | 14-21d | 🟠 High | ❌ NO | High | 📋 Planned |
+| **C1** | **Insight Agent** | **HIGH** | **5-7d** | **🟡 Medium** | **❌ NO** | **Very High** | **📋 Planned** |
+| C1a | ↳ Reasoning Traces | - | - | - | - | Subsumed | 🔄 Part of C1 |
+| C1b | ↳ Epiphanies | - | - | - | - | Subsumed | 🔄 Part of C1 |
+| C1c | ↳ Response Patterns | - | - | - | - | Subsumed | 🔄 Part of C1 |
+| C2 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High | 📋 Planned |
+| C3 | Video Processing | MEDIUM | 8-10d | 🟠 High | ❌ NO | Medium | 📋 Planned |
+| C4 | Web Dashboard | HIGH | 14-21d | 🟠 High | ❌ NO | High | 📋 Planned |
 | D1 | User Sharding | HIGH | 14-21d | 🔴 Very High | ❌ NO | Very High | 📋 Planned |
 
 ---
@@ -1078,79 +1053,76 @@ Make bots feel like active community members:
 
 ---
 
-### Sprint 9 (10-14 days): Reasoning Traces - The Game Changer
+### Sprint 9 (5-7 days): Insight Agent - The Game Changer
 **Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
 
-This is the one that separates your system from every other AI bot:
-- ✅ 50-60% speed boost on recurring problem patterns
-- ✅ System learns from its own thinking
-- ✅ Emergent expertise in character domains
-- ✅ Massive differentiator in marketing/word-of-mouth
+This is the one that separates your system from every other AI bot. The **Insight Agent** consolidates three features into one coherent agentic system:
+
+- **Reasoning Traces**: 50-60% speed boost on recurring problem patterns
+- **Epiphanies**: "I just realized you always talk about space when sad"
+- **Response Patterns**: Learn which styles resonate with each user
+
+**Why Agentic (Not Fire-and-Forget)?**
+- Agent can **prioritize** which users/conversations need analysis
+- Agent can **connect dots** across memories, facts, reactions, and goals
+- Agent mirrors how humans reflect - not constantly, but when there's something worth thinking about
+
+**Architecture:**
+```
+Trigger (time/volume/feedback) → Priority Queue → InsightAgent (ReAct)
+                                                       ↓
+                              Tools: analyze_patterns, detect_themes, 
+                                     generate_epiphany, store_trace, learn_pattern
+                                                       ↓
+                              Outputs: v2_epiphanies, v2_reasoning_traces, 
+                                       v2_response_patterns
+```
 
 **Recommended Approach for Solo Dev:**
-- Focus on *successful traces only* initially (skip failed attempts)
-- Start with simple embedding + cosine similarity search
-- Don't optimize prematurely; rough implementation works fine
+- Start with `asyncio.create_task` scheduling (migrate to Worker Queue later)
+- Focus on epiphanies first (most visible to users)
+- Add reasoning traces second (improves reflective mode)
+- Add response patterns last (requires feedback data)
 
 **Tasks:**
-1. Create migration for `v2_reasoning_traces` table (1-2 hours)
-2. Build trace capture logic in `ReflectiveAgent` (3-4 hours)
-3. Create `ReasoningStore` with embedding + search (4-5 hours)
-4. Inject few-shot examples into prompts (2-3 hours)
-5. Test with repeated problem types (2-3 hours)
+1. Create `InsightAgent` class with ReAct loop (2-3 hours)
+2. Implement data gathering tools (2-3 hours)
+3. Implement action tools (epiphany, trace, pattern) (3-4 hours)
+4. Create database migrations (1-2 hours)
+5. Wire triggers in bot.py/scheduler.py (2-3 hours)
+6. Test with real conversations (1-2 hours)
 
-**Expected Result:** Similar problems solved 50-60% faster, bot gets "smarter"
+**Expected Result:** 
+- Characters reference insights spontaneously
+- Similar problems solved 50-60% faster
+- Bot learns which response styles work for each user
+
+**Details:** See `docs/roadmaps/INSIGHT_AGENT.md`
 
 ---
 
-### Sprint 10 (10-14 days): Advanced Reflection System (Epiphanies)
-**Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
+### Sprint 10 (5-7 days): Channel Lurking (B7)
+**Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐
 
-This is the breakthrough in authenticity:
-- ✅ Characters have spontaneous realizations
-- ✅ "I just realized you always talk about space when sad" type moments
-- ✅ Massive engagement, users feel genuinely understood
-- ✅ Differentiates you from basic chatbots
+Make bots feel like active community members:
+- ✅ Organic engagement without requiring @mentions
+- ✅ Cost-effective (local detection, no LLM until response)
+- ✅ Entertainment value for servers
+- ✅ Character-appropriate triggers (marine biology for Elena, etc.)
 
-**MVP Approach for Solo Dev:**
-- Start simple: pattern detection on conversation keywords
-- Uses Worker Queues (Sprint 7) for reliable background processing
-- Don't overthink; good enough beats perfect
+**Key Constraint:** NO LLM calls for detection - all local processing!
 
 **Tasks:**
-1. Create `src_v2/agents/epiphany.py` (4-5 hours)
-2. Implement pattern detection logic (4-5 hours)
-3. Add epiphany storage to memory (2-3 hours)
-4. Integrate into character responses (2-3 hours)
-5. Test with real conversations (1-2 hours)
+1. Create `lurk_detector.py` with keyword + embedding scoring (3-4 hours)
+2. Create `lurk_triggers.yaml` for each character (2-3 hours)
+3. Add cooldown manager and rate limiting (1-2 hours)
+4. Wire into `on_message()` for non-mentioned messages (1-2 hours)
+5. Add `/lurk` admin commands and opt-out (2-3 hours)
+6. Test and tune threshold (start conservative at 0.8) (1-2 hours)
 
-**Expected Result:** Characters reference insights spontaneously; users amazed
+**Expected Result:** Bots occasionally chime in on relevant topics naturally
 
----
-
-### Sprint 10.5 (3-5 days): Response Pattern Learning (B6)
-**Priority:** HIGH | **Solo Impact:** ⭐⭐⭐⭐
-
-Build on reasoning traces to learn optimal response patterns:
-- ✅ Uses existing feedback data (reactions, trust changes)
-- ✅ Simple extension to reasoning traces infrastructure
-- ✅ Improves response quality without model fine-tuning
-- ✅ Quick win since infrastructure already exists from Sprint 9
-
-**Synergy with Sprint 9:**
-- Shares `v2_reasoning_traces` storage pattern
-- Uses same embedding + similarity search
-- Low incremental effort after Reasoning Traces
-
-**Tasks:**
-1. Create `v2_response_patterns` table (1-2 hours)
-2. Add success scoring from reactions/trust (2-3 hours)
-3. Inject high-performing patterns into prompts (2-3 hours)
-4. Test pattern recall accuracy (1-2 hours)
-
-**Expected Result:** Bot learns which response styles resonate with each user
-
-**Details:** See `docs/roadmaps/RESPONSE_PATTERN_LEARNING.md`
+**Details:** See `docs/roadmaps/CHANNEL_LURKING.md`
 
 ---
 
@@ -1250,7 +1222,7 @@ Transform isolated bots into a living, emergent universe:
 - Most Phase C items depend only on Phase A/B completion
 
 ### Future Dependencies 🔵
-- User Sharding (Phase D1) requires stable Worker Queues (C3)
+- User Sharding (Phase D1) requires stable Worker Queues (C2)
 - Discord-native deepening prioritizes feature integration over platform abstraction
 
 ---
@@ -1298,13 +1270,13 @@ Transform isolated bots into a living, emergent universe:
 - [ ] Character depth perception increase (Phase C2)
 
 ### Scale
-- [ ] Support 5,000+ concurrent users (Phase C3)
+- [ ] Support 5,000+ concurrent users (Phase C2)
 - [ ] Support 10,000+ concurrent users (Phase D1)
 - [ ] Deep Discord integration (threads, forums, stages, commands)
 
 ### Reliability
 - [ ] 99.9% uptime
-- [ ] Zero data loss on restarts (Phase C3)
+- [ ] Zero data loss on restarts (Phase C2)
 - [ ] Graceful degradation when services down
 
 ---
@@ -1450,20 +1422,23 @@ Transform isolated bots into a living, emergent universe:
 | B2 | Tool Composition | 5-7d | 3-4d | 9-13d |
 | B3 | Image Generation | 4-6d | 2-3d | 11-16d |
 | B7 | Channel Lurking | 5-7d | 3-4d | 14-20d |
-| B8 | Emergent Universe | 7-10d | 5-6d | 19-26d |
-| C1 | Reasoning Traces | 10-14d | 5-7d | 24-33d |
-| C2 | Epiphany System | 10-14d | 5-7d | 24-34d |
-| B5 | Audio Processing | 5-7d | 2-3d | 26-37d |
-| B6 | Response Pattern Learning | 3-5d | 2-3d | 28-40d |
-| B4 | Self-Correction | 3-5d | 2-3d | 30-43d |
-| C3 | Worker Queues | 8-12d | 4-6d | 34-49d |
-| C5 | Web Dashboard | 14-21d | 7-10d | 46-65d |
-| C4 | Video Processing | 8-10d | 4-5d | 50-70d |
-| D1 | User Sharding | 14-21d | 7-10d | 57-80d |
+| **C1** | **Insight Agent** | **20-28d** | **5-7d** | **19-27d** |
+| - | ↳ (Reasoning Traces) | - | - | (subsumed) |
+| - | ↳ (Epiphanies) | - | - | (subsumed) |
+| - | ↳ (Response Patterns) | - | - | (subsumed) |
+| B8 | Emergent Universe | 7-10d | 5-6d | 24-33d |
+| B5 | Audio Processing | 5-7d | 2-3d | 26-36d |
+| B4 | Self-Correction | 3-5d | 2-3d | 28-39d |
+| C2 | Worker Queues | 8-12d | 4-6d | 32-45d |
+| C4 | Web Dashboard | 14-21d | 7-10d | 39-55d |
+| C3 | Video Processing | 8-10d | 4-5d | 43-60d |
+| D1 | User Sharding | 14-21d | 7-10d | 50-70d |
 
-**Total Solo Dev Time: 2.5-4 months** to hit all 19 items (vs 4-5 months with traditional team)
+**Total Solo Dev Time: 2-3 months** to hit all items (vs 4-5 months without consolidation)
 
-**Your Timeline: ~12-16 weeks to feature-complete superhuman AI bot**
+**Key Win:** The Insight Agent consolidation saves 15-21 days by unifying C1+C2+B6 into one coherent system!
+
+**Your Timeline: ~10-14 weeks to feature-complete superhuman AI bot**
 
 ---
 
@@ -1479,16 +1454,17 @@ Transform isolated bots into a living, emergent universe:
 - Streaming means you're not watching loading bars
 - By Sprint 4 you're moving 2x faster than today
 
-**Sprints 5-7.5 (3-4 weeks):** Cost optimization + creativity + engagement
+**Sprints 5-8 (3-4 weeks):** Cost optimization + creativity + engagement
 - Adaptive max steps = cheaper
 - Tool composition = smarter reasoning
 - Image generation = wow factor for users
 - Channel lurking = organic community engagement
 
-**Sprints 8-9 (2-3 weeks):** The breakthroughs
+**Sprint 9 (1 week):** The breakthrough - Insight Agent
 - Reasoning traces = system learns from itself
 - Epiphanies = characters feel alive
-- This is what separates you from ChatGPT
+- Response patterns = personalized styles
+- **All three in one coherent agentic system!**
 
 **Sprints 10-14 (3-4 weeks):** Polish + scale
 - Audio, video, dashboards, worker queues
@@ -1533,5 +1509,6 @@ For detailed technical questions about any phase, refer to:
 - v1.3 (Nov 25, 2025) - Added A0 Embedding Upgrade (384D→768D) as CRITICAL first item
 - v1.4 (Nov 25, 2025) - Added B8 Emergent Universe; now 20 items total
 - v1.5 (Nov 25, 2025) - Removed Phase D1 Multi-Platform Support; committed to Discord-native deepening. Renumbered D2→D1 User Sharding. Focus on Discord-specific features rather than abstraction. Back to 19 items.
+- v1.6 (Nov 25, 2025) - **Major consolidation:** Created Insight Agent (C1) to unify Reasoning Traces + Epiphanies + Response Pattern Learning into single agentic system. Saves 15-21 days of development. Renumbered C3→C2, C4→C3, C5→C4. Added `docs/roadmaps/INSIGHT_AGENT.md` specification. Timeline reduced to 10-14 weeks.
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)
