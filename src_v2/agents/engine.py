@@ -244,6 +244,10 @@ class AgentEngine:
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
             system_content += knowledge_context
 
+            # 2.8 Identity Reinforcement
+            if context_variables.get("user_name"):
+                system_content += f"\n\nIMPORTANT: You are talking to {context_variables['user_name']}. Do NOT confuse them with anyone mentioned in the chat history or reply context."
+
         except Exception as e:
             logger.error(f"Failed to inject evolution/goal state: {e}")
 

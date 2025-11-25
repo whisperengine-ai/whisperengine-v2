@@ -357,6 +357,10 @@ class WhisperBot(commands.Bot):
                         await message.channel.send(e.user_message)
                         return
 
+                    # Capture raw message for fact extraction (before context injection)
+                    # This prevents the bot from extracting facts from replied-to messages or forwarded content
+                    raw_user_message = user_message
+
                     # Initialize attachment containers
                     image_urls: List[str] = []
                     file_content: Optional[str] = None
@@ -553,13 +557,10 @@ class WhisperBot(commands.Bot):
                     except Exception as e:
                         logger.error(f"Failed to save user message to memory: {e}")
 
-                    # Store original message for fact extraction (before appending file content)
-                    original_message = user_message
-
-                    # Fire-and-forget knowledge extraction (only from user's actual message, not file content)
+                    # Fire-and-forget knowledge extraction (only from user's actual message, not file content or reply context)
                     if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
                         try:
-                            await knowledge_manager.process_user_message(user_id, original_message)
+                            await knowledge_manager.process_user_message(user_id, raw_user_message)
                         except Exception as e:
                             logger.error(f"Failed to process knowledge extraction: {e}")
 
@@ -572,7 +573,7 @@ class WhisperBot(commands.Bot):
                                 for key, value in prefs.items():
                                     await trust_manager.update_preference(uid, char_name, key, value)
                                     
-                        self.loop.create_task(process_preferences(user_id, original_message, self.character_name))
+                        self.loop.create_task(process_preferences(user_id, raw_user_message, self.character_name))
 
                     # 2.5 Check for Summarization
                     if session_id:
