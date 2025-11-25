@@ -109,15 +109,21 @@ class ReflectiveAgent:
 
             # 2. Handle Tool Calls
             if response.tool_calls:
+                # Update stats
+                tools_used += len(response.tool_calls)
+                
                 # Create tasks for all tools to run in parallel
                 tasks = []
                 for tool_call in response.tool_calls:
                     tasks.append(self._execute_tool_wrapper(tool_call, tools, callback))
                 
-                # Execute in parallel and process as they complete (Streaming)
-                for task in asyncio.as_completed(tasks):
-                    tool_message = await task
-                    messages.append(tool_message)
+                # Execute in parallel
+                # We use gather to ensure we get results in the same order as tool_calls
+                # The callbacks inside _execute_tool_wrapper will still fire as they complete (streaming)
+                tool_messages = await asyncio.gather(*tasks)
+                
+                # Append all tool outputs to history
+                messages.extend(tool_messages)
                 
                 # Loop continues to let LLM process observations
                 continue

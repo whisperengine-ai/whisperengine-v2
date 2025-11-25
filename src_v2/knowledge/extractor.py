@@ -1,6 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from loguru import logger
 from src_v2.agents.llm_factory import create_llm
 
@@ -16,7 +17,8 @@ class FactExtractionResult(BaseModel):
 class FactExtractor:
     def __init__(self):
         base_llm = create_llm(temperature=0.0)  # Low temp for extraction
-        self.llm = base_llm.with_structured_output(FactExtractionResult)
+        
+        parser = JsonOutputParser(pydantic_object=FactExtractionResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Knowledge Graph Engineer. 
@@ -38,16 +40,18 @@ Ignore transient states (e.g., "I am hungry", "I am walking").
 Ignore behavioral configuration preferences (e.g., "speak less", "use emojis", "change style") - these are handled by a separate system.
 
 If no extractable facts are found, return an empty facts list.
+
+{format_instructions}
 """),
             ("human", "{input}")
         ])
         
-        self.chain = self.prompt | self.llm
+        self.chain = self.prompt.partial(format_instructions=parser.get_format_instructions()) | base_llm | parser
 
     async def extract_facts(self, text: str) -> List[Fact]:
         try:
             result = await self.chain.ainvoke({"input": text})
-            return result.facts
+            return FactExtractionResult(**result).facts
         except Exception as e:
             logger.error(f"Fact extraction failed: {e}")
             return []

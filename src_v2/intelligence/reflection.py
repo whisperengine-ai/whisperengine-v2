@@ -2,11 +2,11 @@ from typing import List, Dict, Any, Optional
 import json
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
 from src_v2.core.database import db_manager
 from src_v2.agents.llm_factory import create_llm
-from src_v2.memory.manager import memory_manager
 
 class ReflectionResult(BaseModel):
     insights: List[str] = Field(description="List of high-level insights about the user (e.g., 'Values honesty', 'Stressed about work').")
@@ -15,7 +15,8 @@ class ReflectionResult(BaseModel):
 class ReflectionEngine:
     def __init__(self):
         base_llm = create_llm(temperature=0.4)
-        self.llm = base_llm.with_structured_output(ReflectionResult)
+        
+        parser = JsonOutputParser(pydantic_object=ReflectionResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert psychologist AI.
@@ -32,11 +33,13 @@ RULES:
 - Be specific but concise.
 - Focus on patterns across multiple sessions if possible.
 - Ignore trivial details.
+
+{format_instructions}
 """),
             ("human", "Recent Summaries:\n{summaries_text}")
         ])
         
-        self.chain = self.prompt | self.llm
+        self.chain = self.prompt.partial(format_instructions=parser.get_format_instructions()) | base_llm | parser
 
     async def analyze_user_patterns(self, user_id: str, character_name: str) -> Optional[ReflectionResult]:
         """
@@ -67,7 +70,8 @@ RULES:
                     summaries_text += f"- [{row['start_time']}] (Score: {row['meaningfulness_score']}): {row['content']}\n"
 
             # 2. Generate Reflection
-            result = await self.chain.ainvoke({"summaries_text": summaries_text})
+            result_dict = await self.chain.ainvoke({"summaries_text": summaries_text})
+            result = ReflectionResult(**result_dict)
             
             # 3. Update Database
             await self._update_user_insights(user_id, character_name, result)

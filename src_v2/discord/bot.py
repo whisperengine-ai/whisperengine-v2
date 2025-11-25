@@ -610,30 +610,32 @@ class WhisperBot(commands.Bot):
                     # Prepare callback for Reflective Mode
                     status_message: Optional[discord.Message] = None
                     status_content: str = "🧠 **Reflective Mode Activated**\n"
+                    status_lock = asyncio.Lock()
                     
                     async def reflective_callback(text: str):
                         nonlocal status_message, status_content
-                        # Clean up text slightly
-                        clean_text = text.strip()
-                        if not clean_text:
-                            return
+                        async with status_lock:
+                            # Clean up text slightly
+                            clean_text = text.strip()
+                            if not clean_text:
+                                return
+                                
+                            # Format: Quote block for thoughts
+                            formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
                             
-                        # Format: Quote block for thoughts
-                        formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
-                        
-                        status_content += f"\n{formatted_text}"
-                        
-                        # Truncate if too long for Discord (2000 chars)
-                        if len(status_content) > 1900:
-                            status_content = status_content[:1900] + "\n... (truncated)"
-                        
-                        try:
-                            if status_message:
-                                await status_message.edit(content=status_content)
-                            else:
-                                status_message = await message.channel.send(status_content)
-                        except Exception as e:
-                            logger.error(f"Failed to update reflective status: {e}")
+                            status_content += f"\n{formatted_text}"
+                            
+                            # Truncate if too long for Discord (2000 chars)
+                            if len(status_content) > 1900:
+                                status_content = status_content[:1900] + "\n... (truncated)"
+                            
+                            try:
+                                if status_message:
+                                    await status_message.edit(content=status_content)
+                                else:
+                                    status_message = await message.channel.send(status_content)
+                            except Exception as e:
+                                logger.error(f"Failed to update reflective status: {e}")
 
                     response = await self.agent_engine.generate_response(
                         character=character,

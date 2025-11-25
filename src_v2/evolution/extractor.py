@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from loguru import logger
 from src_v2.agents.llm_factory import create_llm
 
@@ -13,7 +14,8 @@ class PreferenceResult(BaseModel):
 class PreferenceExtractor:
     def __init__(self):
         base_llm = create_llm(temperature=0.0)
-        self.llm = base_llm.with_structured_output(PreferenceResult)
+        
+        parser = JsonOutputParser(pydantic_object=PreferenceResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert User Preference Analyst.
@@ -45,11 +47,13 @@ Result: {{ "preferences": {{ "use_emojis": false }} }}
 
 User: "I like pizza."
 Result: {{ "preferences": {{}} }} (This is a fact, not a preference)
+
+{format_instructions}
 """),
             ("human", "{input}")
         ])
         
-        self.chain = self.prompt | self.llm
+        self.chain = self.prompt.partial(format_instructions=parser.get_format_instructions()) | base_llm | parser
 
     async def extract_preferences(self, text: str) -> Dict[str, Any]:
         """
@@ -57,7 +61,7 @@ Result: {{ "preferences": {{}} }} (This is a fact, not a preference)
         """
         try:
             result = await self.chain.ainvoke({"input": text})
-            return result.preferences
+            return PreferenceResult(**result).preferences
         except Exception as e:
             logger.error(f"Preference extraction failed: {e}")
             return {}

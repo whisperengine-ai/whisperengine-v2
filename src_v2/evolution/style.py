@@ -1,5 +1,6 @@
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
 from src_v2.agents.llm_factory import create_llm
@@ -14,7 +15,8 @@ class StyleAnalysisResult(BaseModel):
 class StyleAnalyzer:
     def __init__(self):
         base_llm = create_llm(temperature=0.0)
-        self.llm = base_llm.with_structured_output(StyleAnalysisResult)
+        
+        parser = JsonOutputParser(pydantic_object=StyleAnalysisResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Creative Writing Editor and Character Acting Coach.
@@ -36,10 +38,12 @@ Evaluate the response based on:
 4. Knowledge Usage: Did the bot use the CONTEXT AVAILABLE naturally? (If context is provided, the bot SHOULD use it).
 
 Provide scores (1-10) and constructive critique.
+
+{format_instructions}
 """),
         ])
         
-        self.chain = self.prompt | self.llm
+        self.chain = self.prompt.partial(format_instructions=parser.get_format_instructions()) | base_llm | parser
 
     async def analyze_style(self, response: str, character_def: str, context_used: str = "") -> StyleAnalysisResult:
         """
@@ -51,17 +55,14 @@ Provide scores (1-10) and constructive critique.
                 "context_used": context_used,
                 "response": response
             })
-            return result
+            return StyleAnalysisResult(**result)
         except Exception as e:
             logger.error(f"Style analysis failed: {e}")
-            # Return a neutral result on failure
+            # Return a dummy result so we don't crash
             return StyleAnalysisResult(
                 consistency_score=5,
                 tone_score=5,
                 formatting_score=5,
-                critique="Analysis failed.",
+                critique="Analysis failed",
                 suggestion="None"
             )
-
-# Global instance
-style_analyzer = StyleAnalyzer()
