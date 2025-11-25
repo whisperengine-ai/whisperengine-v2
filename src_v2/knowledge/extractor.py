@@ -1,7 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from loguru import logger
 from src_v2.agents.llm_factory import create_llm
 
@@ -16,14 +15,12 @@ class FactExtractionResult(BaseModel):
 
 class FactExtractor:
     def __init__(self):
-        self.llm = create_llm(temperature=0.0) # Low temp for extraction
-        self.parser = PydanticOutputParser(pydantic_object=FactExtractionResult)
+        base_llm = create_llm(temperature=0.0)  # Low temp for extraction
+        self.llm = base_llm.with_structured_output(FactExtractionResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Knowledge Graph Engineer. 
 Your task is to extract structured facts from user messages to build a knowledge graph about the user.
-
-IMPORTANT: You MUST respond with ONLY valid JSON in the specified format. Do NOT add any explanatory text, questions, or conversational responses.
 
 Extract facts in the format: (Subject)-[PREDICATE]->(Object).
 - Subject should usually be 'User' if the user is talking about themselves.
@@ -40,21 +37,16 @@ Only extract facts that are explicitly stated and have long-term value (e.g., na
 Ignore transient states (e.g., "I am hungry", "I am walking").
 Ignore behavioral configuration preferences (e.g., "speak less", "use emojis", "change style") - these are handled by a separate system.
 
-If no extractable facts are found, return an empty facts list: {{"facts": []}}
-
-{format_instructions}
+If no extractable facts are found, return an empty facts list.
 """),
             ("human", "{input}")
         ])
         
-        self.chain = self.prompt | self.llm | self.parser
+        self.chain = self.prompt | self.llm
 
     async def extract_facts(self, text: str) -> List[Fact]:
         try:
-            result = await self.chain.ainvoke({
-                "input": text,
-                "format_instructions": self.parser.get_format_instructions()
-            })
+            result = await self.chain.ainvoke({"input": text})
             return result.facts
         except Exception as e:
             logger.error(f"Fact extraction failed: {e}")

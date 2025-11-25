@@ -1,7 +1,5 @@
-from typing import Dict, Any, Optional
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
 from src_v2.agents.llm_factory import create_llm
@@ -15,8 +13,8 @@ class StyleAnalysisResult(BaseModel):
 
 class StyleAnalyzer:
     def __init__(self):
-        self.llm = create_llm(temperature=0.0)
-        self.parser = JsonOutputParser(pydantic_object=StyleAnalysisResult)
+        base_llm = create_llm(temperature=0.0)
+        self.llm = base_llm.with_structured_output(StyleAnalysisResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Creative Writing Editor and Character Acting Coach.
@@ -37,12 +35,11 @@ Evaluate the response based on:
 3. Formatting: Are emojis used correctly? Is the length appropriate?
 4. Knowledge Usage: Did the bot use the CONTEXT AVAILABLE naturally? (If context is provided, the bot SHOULD use it).
 
-Return a JSON object with scores (1-10) and constructive critique.
-{format_instructions}
+Provide scores (1-10) and constructive critique.
 """),
         ])
         
-        self.chain = self.prompt | self.llm | self.parser
+        self.chain = self.prompt | self.llm
 
     async def analyze_style(self, response: str, character_def: str, context_used: str = "") -> StyleAnalysisResult:
         """
@@ -52,11 +49,9 @@ Return a JSON object with scores (1-10) and constructive critique.
             result = await self.chain.ainvoke({
                 "character_def": character_def,
                 "context_used": context_used,
-                "response": response,
-                "format_instructions": self.parser.get_format_instructions()
+                "response": response
             })
-            # Convert dict to Pydantic model if needed, though JsonOutputParser usually returns dict
-            return StyleAnalysisResult(**result)
+            return result
         except Exception as e:
             logger.error(f"Style analysis failed: {e}")
             # Return a neutral result on failure

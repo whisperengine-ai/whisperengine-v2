@@ -2,7 +2,6 @@ from typing import List, Dict, Any, Optional
 import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from src_v2.core.database import db_manager
@@ -16,9 +15,9 @@ class SummaryResult(BaseModel):
 
 class SummaryManager:
     def __init__(self):
-        self.llm = create_llm(temperature=0.3, mode="utility")
+        base_llm = create_llm(temperature=0.3, mode="utility")
+        self.llm = base_llm.with_structured_output(SummaryResult)
         self.memory_manager = MemoryManager()
-        self.parser = PydanticOutputParser(pydantic_object=SummaryResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert conversation summarizer for an AI companion.
@@ -32,11 +31,11 @@ RULES:
    - 3: Hobbies, daily events, opinions.
    - 5: Deep emotional sharing, philosophy, life goals, trauma.
 4. Detect Emotions: List 2-3 dominant emotions.
-
-{format_instructions}
 """),
             ("human", "Conversation to summarize:\n{conversation_text}")
         ])
+        
+        self.chain = self.prompt | self.llm
 
     async def generate_summary(self, messages: List[Dict[str, Any]]) -> Optional[SummaryResult]:
         """
@@ -54,11 +53,7 @@ RULES:
             conversation_text += f"{role}: {content}\n"
 
         try:
-            chain = self.prompt | self.llm | self.parser
-            result = await chain.ainvoke({
-                "conversation_text": conversation_text,
-                "format_instructions": self.parser.get_format_instructions()
-            })
+            result = await self.chain.ainvoke({"conversation_text": conversation_text})
             return result
         except Exception as e:
             logger.error(f"Failed to generate summary: {e}")

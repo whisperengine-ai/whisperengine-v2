@@ -18,24 +18,24 @@ async def test_fact_extractor():
     # ---------------------------------------------------------
     logger.info("Test 1: Extract facts from simple statement (Mocked)")
     
-    extractor = FactExtractor()
-    
-    # Mock the LLM response
     mock_result = FactExtractionResult(facts=[
         Fact(subject="User", predicate="LIVES_IN", object="Seattle", confidence=0.95),
         Fact(subject="User", predicate="HAS_PET_NAMED", object="Max", confidence=0.9),
         Fact(subject="Max", predicate="IS_A", object="Dog", confidence=1.0)
     ])
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = FactExtractor()
         facts = await extractor.extract_facts("I live in Seattle and my dog's name is Max.")
         
         if len(facts) == 3:
             logger.info(f"✅ Extracted {len(facts)} facts")
-            
-            # Verify fact content
             subjects = [f.subject for f in facts]
             predicates = [f.predicate for f in facts]
             objects = [f.object for f in facts]
@@ -64,9 +64,14 @@ async def test_fact_extractor():
     
     mock_empty_result = FactExtractionResult(facts=[])
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_empty_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_empty_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = FactExtractor()
         facts = await extractor.extract_facts("How are you today?")
         
         if len(facts) == 0:
@@ -85,16 +90,20 @@ async def test_fact_extractor():
         Fact(subject="User", predicate="STUDIES_AT", object="MIT", confidence=0.95)
     ])
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_complex_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_complex_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = FactExtractor()
         facts = await extractor.extract_facts(
             "I'm a software engineer who studied at MIT and I love pizza."
         )
         
         if len(facts) == 3:
             logger.info(f"✅ Extracted {len(facts)} complex facts")
-            
             predicates = [f.predicate for f in facts]
             if "LIKES" in predicates and "WORKS_AS" in predicates and "STUDIES_AT" in predicates:
                 logger.info("✅ All predicates extracted correctly")
@@ -108,9 +117,14 @@ async def test_fact_extractor():
     # ---------------------------------------------------------
     logger.info("Test 4: Error handling when LLM fails")
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.side_effect = Exception("LLM API Error")
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("LLM API Error"))
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = FactExtractor()
         facts = await extractor.extract_facts("This should fail gracefully")
         
         if len(facts) == 0:
@@ -128,9 +142,14 @@ async def test_fact_extractor():
         Fact(subject="User", predicate="MIGHT_LIKE", object="Vanilla", confidence=0.5)
     ])
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_confidence_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_confidence_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = FactExtractor()
         facts = await extractor.extract_facts("I definitely like chocolate, maybe vanilla too.")
         
         if len(facts) == 2:

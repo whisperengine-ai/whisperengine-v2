@@ -1,7 +1,6 @@
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from loguru import logger
 from src_v2.agents.llm_factory import create_llm
 
@@ -13,8 +12,8 @@ class PreferenceResult(BaseModel):
 
 class PreferenceExtractor:
     def __init__(self):
-        self.llm = create_llm(temperature=0.0)
-        self.parser = PydanticOutputParser(pydantic_object=PreferenceResult)
+        base_llm = create_llm(temperature=0.0)
+        self.llm = base_llm.with_structured_output(PreferenceResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert User Preference Analyst.
@@ -46,23 +45,18 @@ Result: {{ "preferences": {{ "use_emojis": false }} }}
 
 User: "I like pizza."
 Result: {{ "preferences": {{}} }} (This is a fact, not a preference)
-
-{format_instructions}
 """),
             ("human", "{input}")
         ])
         
-        self.chain = self.prompt | self.llm | self.parser
+        self.chain = self.prompt | self.llm
 
     async def extract_preferences(self, text: str) -> Dict[str, Any]:
         """
         Extracts preferences from text. Returns a dictionary of key-value pairs.
         """
         try:
-            result = await self.chain.ainvoke({
-                "input": text,
-                "format_instructions": self.parser.get_format_instructions()
-            })
+            result = await self.chain.ainvoke({"input": text})
             return result.preferences
         except Exception as e:
             logger.error(f"Preference extraction failed: {e}")

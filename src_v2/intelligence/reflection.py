@@ -2,7 +2,6 @@ from typing import List, Dict, Any, Optional
 import json
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from src_v2.core.database import db_manager
@@ -15,8 +14,8 @@ class ReflectionResult(BaseModel):
 
 class ReflectionEngine:
     def __init__(self):
-        self.llm = create_llm(temperature=0.4)
-        self.parser = PydanticOutputParser(pydantic_object=ReflectionResult)
+        base_llm = create_llm(temperature=0.4)
+        self.llm = base_llm.with_structured_output(ReflectionResult)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert psychologist AI.
@@ -33,11 +32,11 @@ RULES:
 - Be specific but concise.
 - Focus on patterns across multiple sessions if possible.
 - Ignore trivial details.
-
-{format_instructions}
 """),
             ("human", "Recent Summaries:\n{summaries_text}")
         ])
+        
+        self.chain = self.prompt | self.llm
 
     async def analyze_user_patterns(self, user_id: str, character_name: str) -> Optional[ReflectionResult]:
         """
@@ -68,11 +67,7 @@ RULES:
                     summaries_text += f"- [{row['start_time']}] (Score: {row['meaningfulness_score']}): {row['content']}\n"
 
             # 2. Generate Reflection
-            chain = self.prompt | self.llm | self.parser
-            result = await chain.ainvoke({
-                "summaries_text": summaries_text,
-                "format_instructions": self.parser.get_format_instructions()
-            })
+            result = await self.chain.ainvoke({"summaries_text": summaries_text})
             
             # 3. Update Database
             await self._update_user_insights(user_id, character_name, result)

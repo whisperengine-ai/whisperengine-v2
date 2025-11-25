@@ -13,8 +13,6 @@ from src_v2.evolution.extractor import PreferenceExtractor, PreferenceResult
 async def test_preference_extractor():
     logger.info("Starting Preference Extractor Test...")
     
-    extractor = PreferenceExtractor()
-    
     # ---------------------------------------------------------
     # Test 1: Extract Verbosity Preference
     # ---------------------------------------------------------
@@ -22,9 +20,14 @@ async def test_preference_extractor():
     
     mock_result = PreferenceResult(preferences={"verbosity": "short"})
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences("Please keep your answers short.")
         
         if prefs.get("verbosity") == "short":
@@ -39,9 +42,14 @@ async def test_preference_extractor():
     
     mock_result = PreferenceResult(preferences={"nickname": "Captain"})
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences("Call me Captain from now on.")
         
         if prefs.get("nickname") == "Captain":
@@ -56,9 +64,14 @@ async def test_preference_extractor():
     
     mock_result = PreferenceResult(preferences={"use_emojis": False})
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences("I hate it when you use emojis.")
         
         if prefs.get("use_emojis") == False:
@@ -73,9 +86,14 @@ async def test_preference_extractor():
     
     mock_result = PreferenceResult(preferences={"style": "formal"})
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences("Please be more professional in your responses.")
         
         if prefs.get("style") == "formal":
@@ -90,9 +108,14 @@ async def test_preference_extractor():
     
     mock_result = PreferenceResult(preferences={})
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences("I like pizza.")
         
         if len(prefs) == 0:
@@ -111,9 +134,14 @@ async def test_preference_extractor():
         "style": "casual"
     })
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences(
             "Keep it short and fun, and feel free to use emojis!"
         )
@@ -128,9 +156,14 @@ async def test_preference_extractor():
     # ---------------------------------------------------------
     logger.info("Test 7: Error handling when LLM fails")
     
-    with patch.object(extractor.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.side_effect = Exception("LLM API Error")
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("LLM API Error"))
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        extractor = PreferenceExtractor()
         prefs = await extractor.extract_preferences("This should fail gracefully")
         
         if len(prefs) == 0:

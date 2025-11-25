@@ -13,8 +13,6 @@ from src_v2.memory.summarizer import SummaryManager, SummaryResult
 async def test_summarizer():
     logger.info("Starting Summarizer Test...")
     
-    summarizer = SummaryManager()
-    
     # ---------------------------------------------------------
     # Test 1: Generate Summary from Simple Conversation
     # ---------------------------------------------------------
@@ -32,9 +30,14 @@ async def test_summarizer():
         emotions=["excited", "happy"]
     )
     
-    with patch.object(summarizer.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        summarizer = SummaryManager()
         result = await summarizer.generate_summary(messages)
         
         if result and result.summary:
@@ -61,9 +64,14 @@ async def test_summarizer():
         emotions=["contemplative", "uncertain", "anxious"]
     )
     
-    with patch.object(summarizer.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        summarizer = SummaryManager()
         result = await summarizer.generate_summary(messages)
         
         if result and result.meaningfulness_score >= 4:
@@ -88,9 +96,14 @@ async def test_summarizer():
         emotions=["friendly", "neutral"]
     )
     
-    with patch.object(summarizer.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        summarizer = SummaryManager()
         result = await summarizer.generate_summary(messages)
         
         if result and result.meaningfulness_score <= 2:
@@ -103,12 +116,18 @@ async def test_summarizer():
     # ---------------------------------------------------------
     logger.info("Test 4: Handle empty message list")
     
-    result = await summarizer.generate_summary([])
-    
-    if result is None:
-        logger.info("✅ Correctly returned None for empty messages")
-    else:
-        logger.error(f"❌ Should return None for empty messages, got {result}")
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_base_llm.with_structured_output.return_value = AsyncMock()
+        mock_create_llm.return_value = mock_base_llm
+        
+        summarizer = SummaryManager()
+        result = await summarizer.generate_summary([])
+        
+        if result is None:
+            logger.info("✅ Correctly returned None for empty messages")
+        else:
+            logger.error(f"❌ Should return None for empty messages, got {result}")
     
     # ---------------------------------------------------------
     # Test 5: Emotion Detection
@@ -126,9 +145,14 @@ async def test_summarizer():
         emotions=["frustrated", "stressed"]
     )
     
-    with patch.object(summarizer.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.return_value = mock_result
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        summarizer = SummaryManager()
         result = await summarizer.generate_summary(messages)
         
         if result and "frustrated" in result.emotions:
@@ -141,9 +165,14 @@ async def test_summarizer():
     # ---------------------------------------------------------
     logger.info("Test 6: Error handling when summarization fails")
     
-    with patch.object(summarizer.chain, 'ainvoke', new_callable=AsyncMock) as mock_chain:
-        mock_chain.side_effect = Exception("LLM API Error")
+    with patch('src_v2.agents.llm_factory.create_llm') as mock_create_llm:
+        mock_base_llm = AsyncMock()
+        mock_structured_llm = AsyncMock()
+        mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("LLM API Error"))
+        mock_base_llm.with_structured_output.return_value = mock_structured_llm
+        mock_create_llm.return_value = mock_base_llm
         
+        summarizer = SummaryManager()
         result = await summarizer.generate_summary(messages)
         
         if result is None:
