@@ -57,6 +57,49 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 
 ---
 
+## 🔴 Phase A0: Critical Pre-Production (Do First!)
+
+Items that MUST be done before any production data exists.
+
+### Phase A0: Embedding Dimension Upgrade (384D → 768D)
+**Priority:** 🔴 CRITICAL | **Time:** 45-75 minutes | **Complexity:** Low  
+**Files:** 4 | **LOC:** ~200 | **Status:** 📋 Ready to Implement
+
+**Problem:** Current 384D embeddings (all-MiniLM-L6-v2) have lower semantic resolution and 256 token context limit
+
+**Solution:**
+- Upgrade to `BAAI/bge-base-en-v1.5` (768D, 512 token context)
+- Update settings, embeddings.py, manager.py
+- Run migration script to re-embed existing user memories
+- Delete old 384D collections after verification
+
+**Why Now?**
+- Easier now with low data volume
+- Harder later: More memories = longer migration time
+- ~10-15% improvement in retrieval quality
+
+**Implementation:**
+```
+Update Settings → Delete Dev Collections → Restart → Done
+```
+
+**Benefit:**
+- 2x semantic resolution (better similarity matching)
+- 2x context window (256 → 512 tokens)
+- Better memory retrieval, lurk detection, reasoning traces
+- Future-proofs all vector-based features
+
+**Dependencies:** None
+
+**Related Files:**
+- `src_v2/config/settings.py` (add EMBEDDING_MODEL, EMBEDDING_DIMENSIONS)
+- `src_v2/memory/embeddings.py` (use settings)
+- `src_v2/memory/manager.py` (use settings for vector size)
+
+**Full Specification:** See [roadmaps/EMBEDDING_UPGRADE_768D.md](./roadmaps/EMBEDDING_UPGRADE_768D.md)
+
+---
+
 ## 🟢 Phase A: Low Complexity (1-3 days each)
 
 Quick wins that deliver immediate value with minimal code changes.
@@ -728,6 +771,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 
 | Phase | Feature | Priority | Time | Complexity | Quick Win? | Impact | Status |
 |-------|---------|----------|------|-----------|-----------|--------|--------|
+| **A0** | **Embedding Upgrade 768D** | **🔴 CRITICAL** | **45-75m** | **🟢 Low** | **✅ YES** | **High** | **📋 Ready** |
 | A1 | Hot-Reload Characters | HIGH | 1-2d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
 | A2 | Redis Caching | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | 📋 Planned |
 | A3 | Streaming Responses | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | 📋 Planned |
@@ -750,6 +794,31 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 ---
 
 ## 🎯 Recommended Sequencing
+
+### 🔴 Sprint 0 (45-75 minutes): Embedding Upgrade - DO THIS FIRST
+**Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
+
+**⚠️ Best done while data volume is still low!**
+
+Why first:
+- ✅ 45-75 min now vs hours of re-embedding with more data later
+- ✅ 10-15% better retrieval quality for ALL vector features
+- ✅ 2x context window (256 → 512 tokens)
+- ✅ Migration script preserves all existing user memories
+
+**Tasks:**
+1. Add `EMBEDDING_MODEL` and `EMBEDDING_DIMENSIONS` to settings.py (2 min)
+2. Update embeddings.py to use settings (2 min)
+3. Update manager.py to use settings for vector size (2 min)
+4. Create and run migration script for existing data (20-40 min)
+5. Verify migrated collections, delete old ones (10 min)
+6. Restart bot, verify 768D working (5 min)
+
+**Expected Result:** All embeddings (old + new) use 768D with better quality
+
+**Details:** See `docs/roadmaps/EMBEDDING_UPGRADE_768D.md`
+
+---
 
 ### Sprint 1 (3-4 days): Redis Caching - The Force Multiplier
 **Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐
@@ -1243,6 +1312,7 @@ Voice is increasingly important:
 
 | Phase | Feature | Original | Solo Dev | Cumulative |
 |-------|---------|----------|----------|-----------|
+| **A0** | **Embedding Upgrade 768D** | **45-75m** | **45-75m** | **45-75m** |
 | A2 | Redis Caching | 2-3d | 1-2d | 1-2d |
 | A3 | Streaming Responses | 2-3d | 1-2d | 2-4d |
 | A1 | Hot-Reload Characters | 1-2d | 1d | 3-5d |
@@ -1262,13 +1332,17 @@ Voice is increasingly important:
 | D1 | Multi-Platform | 21-28d | 10-14d | 55-78d |
 | D2 | User Sharding | 14-21d | 7-10d | 62-88d |
 
-**Total Solo Dev Time: 2.5-3.5 months** to hit all 18 items (vs 4-5 months with team)
+**Total Solo Dev Time: 2.5-3.5 months** to hit all 19 items (vs 4-5 months with team)
 
 **Your Timeline: ~12-16 weeks to feature-complete superhuman AI bot**
 
 ---
 
 ## 🚀 Why This Order For Solo Dev?
+
+**Sprint 0 (30 min):** Foundation
+- Embedding upgrade MUST happen before production data
+- 10-15% better retrieval for everything that follows
 
 **Sprints 1-4 (2 weeks):** Build velocity
 - Redis caching means everything else is faster
@@ -1327,5 +1401,6 @@ For detailed technical questions about any phase, refer to:
 - v1.0 (Nov 24, 2025) - Initial overview created
 - v1.1 (Nov 25, 2025) - Reviewed against codebase; updated "Current State" with comprehensive complete/not-implemented lists; added Status column to priority matrix; added Sprint 9.5 for B6 Response Pattern Learning
 - v1.2 (Nov 25, 2025) - Added B7 Channel Lurking (passive engagement feature); updated timeline to 18 items
+- v1.3 (Nov 25, 2025) - Added A0 Embedding Upgrade (384D→768D) as CRITICAL first item; now 19 items total
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)
