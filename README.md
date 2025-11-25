@@ -48,12 +48,10 @@ WhisperEngine v2 is built on a modular, containerized architecture. We have comp
 ## Quick Start
 
 ### Prerequisites
-- Python 3.11+
-- PostgreSQL 16+
-- Qdrant vector database
-- Neo4j graph database
-- InfluxDB time-series database
+- Python 3.13+
+- Docker and Docker Compose
 - Discord bot token
+- LLM API key (OpenAI, OpenRouter, or local LLM)
 
 ### Installation
 
@@ -76,23 +74,36 @@ cp .env.example .env.elena
 
 ### Start Infrastructure
 
-Start the required databases (PostgreSQL, Qdrant, Neo4j, InfluxDB) using Docker Compose:
+Start the required databases (PostgreSQL, Qdrant, Neo4j, InfluxDB) using the management script:
 
 ```bash
-docker compose -f docker-compose.v2.yml up -d
+# Start infrastructure only (for local development)
+./bot.sh infra up
+
+# Or start everything including bot containers
+./bot.sh up elena
 ```
 
 ### Running the Bot
 
+**Option 1: Local Development** (after starting infrastructure)
 ```bash
 python run_v2.py elena
+```
+
+**Option 2: Docker Containers** (recommended for production)
+```bash
+./bot.sh up elena      # Start single bot
+./bot.sh up all        # Start all bots
 ```
 
 ## Character Configuration
 
 Each character has:
-- `characters/{name}/character.md` - Personality and metadata
+- `characters/{name}/character.md` - Personality and system prompt
 - `characters/{name}/goals.yaml` - Character-specific goals and learning objectives
+
+Available characters: `elena`, `ryan`, `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `nottaylor`
 
 ### Adding a New Character
 
@@ -101,8 +112,21 @@ Each character has:
 3. Copy goals template: `cp characters/goals.yaml.template characters/newcharacter/goals.yaml`
 4. Edit both files with character specifics
 5. Create environment file: `.env.newcharacter`
+6. Add the bot profile to `docker-compose.yml` (see `QUICK_REFERENCE.md` for details)
 
 ## Development
+
+### Bot Management
+
+Use the `bot.sh` script for common operations:
+
+```bash
+./bot.sh help             # Show all available commands
+./bot.sh ps               # Check status of all containers
+./bot.sh logs elena       # View logs for a specific bot
+./bot.sh restart elena    # Restart a bot after code changes
+./bot.sh down all         # Stop all containers
+```
 
 ### Database Migrations
 
@@ -119,9 +143,12 @@ alembic upgrade head
 ### Testing
 
 ```bash
-# Run direct Python validation (preferred)
+# Run unit tests
 source .venv/bin/activate
-python tests/automated/test_feature_direct_validation.py
+pytest tests_v2/ -v
+
+# Run specific test file
+pytest tests_v2/test_memory_manager.py -v
 
 # Test via HTTP API
 curl -X POST http://localhost:8000/api/chat \
@@ -135,8 +162,10 @@ curl -X POST http://localhost:8000/api/chat \
 
 ## Documentation
 
-- `docs/` - Architecture and design documentation
+- `docs/architecture/` - Architecture and design documentation
+- `docs/features/` - Feature-specific documentation
 - `docs/roadmaps/` - Development roadmaps and feature planning
+- `QUICK_REFERENCE.md` - Quick reference for common commands and troubleshooting
 
 ## License
 
