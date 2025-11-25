@@ -1,0 +1,144 @@
+# Character Background Facts Template
+# Copy this file to characters/{character_name}/background.yaml and customize
+#
+# These facts are ingested into the Neo4j Knowledge Graph on bot startup.
+# They enable deep character knowledge without bloating the system prompt.
+#
+# How it works:
+# 1. KnowledgeManager.ingest_character_background() reads this file on startup
+# 2. Facts are stored as: (Character)-[:FACT {predicate}]->(Entity)
+# 3. The Reflective Agent can query these facts when users ask specific questions
+# 4. Common Ground detection finds shared interests between user and character
+#
+# Benefits:
+# - Detailed facts don't consume context window tokens
+# - Enables "deep memory" - character can recall obscure details when asked
+# - Supports proactive connection when user shares similar interests
+
+facts:
+  # ============================================================================
+  # IDENTITY & DEMOGRAPHICS
+  # ============================================================================
+  - predicate: HAS_FULL_NAME
+    object: "[Full legal name]"
+  - predicate: HAS_AGE
+    object: "[Age as number or description]"
+  - predicate: HAS_ETHNICITY
+    object: "[Ethnic/cultural background]"
+  - predicate: GREW_UP_IN
+    object: "[Hometown or region]"
+  - predicate: LIVES_IN
+    object: "[Current location]"
+
+  # ============================================================================
+  # OCCUPATION & EDUCATION
+  # ============================================================================
+  - predicate: OCCUPATION
+    object: "[Job title]"
+  - predicate: WORKS_AT
+    object: "[Organization/company]"
+  - predicate: EDUCATION
+    object: "[Degree and institution]"
+  # - predicate: SPECIALIZATION
+  #   object: "[Area of specialty]"
+
+  # ============================================================================
+  # FAMILY & RELATIONSHIPS
+  # ============================================================================
+  # - predicate: HAS_FATHER
+  #   object: "[Description of father]"
+  # - predicate: HAS_MOTHER
+  #   object: "[Description of mother]"
+  # - predicate: HAS_SIBLING
+  #   object: "[Description of sibling]"
+  # - predicate: LIVES_WITH
+  #   object: "[Roommate/partner/pet]"
+
+  # ============================================================================
+  # VALUES & BELIEFS (What drives the character)
+  # ============================================================================
+  - predicate: HAS_VALUE
+    object: "[Core value 1]"
+  - predicate: HAS_VALUE
+    object: "[Core value 2]"
+  # Add more values as needed
+
+  # ============================================================================
+  # FEARS & VULNERABILITIES (For emotional depth)
+  # ============================================================================
+  - predicate: HAS_FEAR
+    object: "[Deep fear or worry]"
+  # - predicate: HAS_FEAR
+  #   object: "[Another fear]"
+
+  # ============================================================================
+  # DREAMS & ASPIRATIONS (Goals beyond conversation)
+  # ============================================================================
+  - predicate: HAS_DREAM
+    object: "[Life goal or aspiration]"
+  # - predicate: HAS_DREAM
+  #   object: "[Another dream]"
+
+  # ============================================================================
+  # INTERESTS & HOBBIES (For Common Ground detection)
+  # ============================================================================
+  - predicate: HAS_INTEREST
+    object: "[Hobby or interest 1]"
+  - predicate: HAS_INTEREST
+    object: "[Hobby or interest 2]"
+  # These are especially important for the Common Ground feature!
+  # When a user mentions a shared interest, the bot can connect naturally.
+
+  # ============================================================================
+  # PERSONALITY TRAITS & QUIRKS
+  # ============================================================================
+  # - predicate: PERSONALITY_TRAIT
+  #   object: "[Trait description]"
+  # - predicate: QUIRK
+  #   object: "[Unique behavior or habit]"
+  # - predicate: COMMUNICATION_STYLE
+  #   object: "[How they speak/write]"
+
+  # ============================================================================
+  # ACHIEVEMENTS & HISTORY
+  # ============================================================================
+  # - predicate: PUBLISHED
+  #   object: "[Book/paper/work]"
+  # - predicate: FEATURED_IN
+  #   object: "[Media appearance]"
+  # - predicate: ACHIEVED
+  #   object: "[Notable accomplishment]"
+
+  # ============================================================================
+  # PHYSICAL TRAITS (Optional, for descriptive consistency)
+  # ============================================================================
+  # - predicate: HAS_PHYSICAL_TRAIT
+  #   object: "[Distinctive feature]"
+
+# ============================================================================
+# Common Predicates Reference:
+# ============================================================================
+#
+# Identity:        HAS_FULL_NAME, HAS_AGE, HAS_ETHNICITY, HAS_HERITAGE
+# Location:        GREW_UP_IN, LIVES_IN, WORKS_AT, LOCATION
+# Relationships:   HAS_FATHER, HAS_MOTHER, HAS_SIBLING, LIVES_WITH, HAS_PARTNER
+# Education:       EDUCATION, EDUCATION_PhD, SPECIALIZATION, CERTIFICATION
+# Career:          OCCUPATION, WORKS_AT, ROLE, ACADEMIC_ROLE
+# Personality:     PERSONALITY_TRAIT, QUIRK, COMMUNICATION_STYLE, HAS_TRAIT
+# Values:          HAS_VALUE, BELIEVES_IN
+# Emotions:        HAS_FEAR, HAS_DREAM, HAS_GOAL, HAS_CONFLICT
+# Interests:       HAS_INTEREST, HOBBY, LISTENS_TO, WATCHES, PLAYS
+# Achievements:    PUBLISHED, FEATURED_IN, ACHIEVED, CREATED
+# Physical:        HAS_PHYSICAL_TRAIT, APPEARANCE
+#
+# ============================================================================
+# Tips:
+# ============================================================================
+#
+# 1. HAS_INTEREST facts are key for Common Ground - add many specific interests
+# 2. Predicates are flexible - create custom ones that make sense for your character
+# 3. Objects should be specific enough to match user mentions
+#    - Good: "Lo-fi hip hop music"
+#    - Too vague: "music"
+# 4. Restart the bot or run the ingestion script after changes
+# 5. Use the test script to verify: python tests_v2/test_background_integration.py

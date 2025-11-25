@@ -1,17 +1,87 @@
 # Character-specific goals template
 # Copy this file to characters/{character_name}/goals.yaml and customize for your character
+#
+# Goals drive character behavior by giving them objectives to work towards during conversations.
+# The character will naturally steer conversations towards their active goals without being pushy.
+#
+# How it works:
+# 1. Goals are loaded from this file and stored in PostgreSQL (v2_goals table)
+# 2. GoalAnalyzer uses LLM to check if conversations advance or complete goals
+# 3. Top-priority incomplete goals are injected into the system prompt
+# 4. Progress is tracked per-user in v2_user_goal_progress table
 
 goals:
+  # Required goal - the default fallback if no goals.yaml exists
   - slug: learn_name
     description: Learn the user's name
     success_criteria: User explicitly states their name
     priority: 10
     category: personal_knowledge
 
-  # Add more character-specific goals below
-  # Example structure:
-  # - slug: goal_identifier
-  #   description: What you want to accomplish with the user
-  #   success_criteria: How you know the goal is complete
-  #   priority: 1-10 (higher = more important)
-  #   category: personal_knowledge|expertise|relationship|learning|discovery
+  # Example: Expertise-based goal (adjust to your character's domain)
+  # - slug: share_expertise
+  #   description: Share knowledge about [character's specialty]
+  #   success_criteria: User expresses interest or asks follow-up questions about the topic
+  #   priority: 9
+  #   category: expertise
+
+  # Example: Relationship-building goal
+  # - slug: build_rapport
+  #   description: Establish a comfortable rapport with the user
+  #   success_criteria: User responds positively or initiates conversation topics
+  #   priority: 7
+  #   category: relationship
+
+  # Example: Discovery goal
+  # - slug: understand_interests
+  #   description: Learn about the user's interests and hobbies
+  #   success_criteria: User shares at least one personal interest
+  #   priority: 6
+  #   category: personal_knowledge
+
+# ============================================================================
+# Field Reference:
+# ============================================================================
+#
+# slug (required, string):
+#   Unique identifier for the goal. Use snake_case.
+#   Must be unique per character (enforced by DB constraint).
+#
+# description (required, string):
+#   What the character wants to accomplish. This is shown to the LLM
+#   in the system prompt as the goal objective.
+#
+# success_criteria (required, string):
+#   How the GoalAnalyzer determines if the goal is complete.
+#   Be specific - the LLM uses this to evaluate conversations.
+#
+# priority (required, integer):
+#   Higher numbers = more important (1-10 scale recommended).
+#   Goals are sorted by priority DESC when selecting which to pursue.
+#   The top goal is injected into the character's system prompt.
+#
+# category (optional, string):
+#   For organization/filtering. Common categories:
+#   - personal_knowledge: Learning about the user
+#   - expertise: Sharing character's domain knowledge
+#   - relationship: Building connection/trust
+#   - mission_critical: Story-essential objectives
+#   - evolution: Character growth/self-discovery
+#
+# ============================================================================
+# Goal Statuses (tracked automatically in v2_user_goal_progress):
+# ============================================================================
+#
+# - not_started: Default state, goal hasn't been worked on
+# - in_progress: GoalAnalyzer detected progress towards success_criteria
+# - completed: Success criteria fully met
+#
+# ============================================================================
+# Tips:
+# ============================================================================
+#
+# 1. Start with 3-5 goals. Too many goals dilute focus.
+# 2. Make success_criteria specific and observable in conversation.
+# 3. Use priority to ensure important goals are pursued first.
+# 4. The "learn_name" goal is universal - keep it as your highest priority.
+# 5. Align goals with your character's personality and expertise.

@@ -2,53 +2,36 @@
 
 ## 🎯 Overview
 
-WhisperEngine v2 now uses a **unified Docker Compose setup** with profiles for cleaner multi-bot management.
+WhisperEngine v2 uses a **unified Docker Compose setup** with profiles for multi-bot management. All 9 character bots share the same infrastructure (PostgreSQL, Qdrant, Neo4j, InfluxDB) while running as isolated containers.
 
-### What Changed?
+### Available Bots
 
-**Old Way (6 separate files):**
-```bash
-# Had to manage separate compose files
-docker-compose -f docker-compose.v2.yml up -d          # Infrastructure
-docker-compose -f docker-compose.elena.yml up -d       # Elena
-docker-compose -f docker-compose.ryan.yml up -d        # Ryan
-# ... etc. Lots of "orphan container" warnings
-```
-
-**New Way (1 unified file):**
-```bash
-# Simple, profile-based deployment
-./bot.sh infra            # Just infrastructure
-./bot.sh up elena         # Infra + Elena
-./bot.sh up all           # Everything
-docker compose --profile elena --profile ryan up -d  # Custom combo
-```
+| Bot | Port | Description |
+|-----|------|-------------|
+| elena | 8000 | Marine biologist from La Jolla |
+| ryan | 8001 | - |
+| dotty | 8002 | - |
+| aria | 8003 | AI consciousness on ISV Meridian |
+| dream | 8004 | - |
+| jake | 8005 | - |
+| sophia | 8006 | - |
+| marcus | 8007 | AI Research Scientist |
+| nottaylor | 8008 | - |
 
 ## 🚀 Quick Start
 
-### 1. Migrate from Old Setup
+### Common Operations
 
 ```bash
-./scripts/migrate-to-unified.sh
-```
+# Start infrastructure only (databases)
+./bot.sh infra up
 
-This interactive script will:
-- Stop old containers cleanly
-- Start unified infrastructure
-- Let you choose which bots to deploy
-
-### 2. Common Operations
-
-```bash
-# Start infrastructure only
-./bot.sh infra
+# Start infrastructure + specific bot
+./bot.sh up elena
+./bot.sh up dream
 
 # Start all bots
 ./bot.sh up all
-
-# Start specific bot
-./bot.sh up elena
-./bot.sh up dream
 
 # View status
 ./bot.sh ps
@@ -60,8 +43,14 @@ This interactive script will:
 # Restart a bot (after code changes)
 ./bot.sh restart elena
 
+# Stop a specific bot
+./bot.sh stop elena
+
+# Stop and remove a bot
+./bot.sh down elena
+
 # Stop everything
-./bot.sh down
+./bot.sh down all
 
 # Rebuild images
 ./bot.sh build
@@ -69,29 +58,32 @@ This interactive script will:
 
 ## 📋 Available Commands
 
-Run `make help` to see all options:
+Run `./bot.sh help` to see all options:
 
 ```
-WhisperEngine v2 - Multi-Bot Management
+WhisperEngine v2 - Bot Management
 
-Targets:
-  infra                Start only infrastructure
-  up-all               Start infrastructure + all bots
-  up-elena             Start infrastructure + elena
-  up-ryan              Start infrastructure + ryan
-  up-dotty             Start infrastructure + dotty
-  up-aria              Start infrastructure + aria
-  up-dream             Start infrastructure + dream
-  down                 Stop and remove all containers
-  down-volumes         Stop all containers and remove volumes
-  logs                 Tail logs from all containers
-  logs-elena           Tail logs from elena
-  restart-elena        Restart elena bot
-  ps                   Show status of all containers
-  clean                Remove stopped containers
-  shell-elena          Open shell in elena container
-  shell-postgres       Open psql shell
-  shell-neo4j          Open cypher-shell
+Usage: ./bot.sh [command]
+
+Commands:
+  infra [up|down]       Start or stop infrastructure services
+  up [bot|all]          Start infrastructure + bot(s) (builds images)
+  down [bot|all]        Stop and remove containers
+  start [bot|all]       Start existing containers (no build)
+  stop [bot|all]        Stop running containers
+  restart [bot|all]     Restart containers
+  logs [bot|all]        Show logs
+  ps                    Show status of all containers
+  build                 Rebuild bot images
+
+Examples:
+  ./bot.sh infra up     # Start just databases
+  ./bot.sh up elena     # Start infrastructure + Elena
+  ./bot.sh up all       # Start everything
+  ./bot.sh stop elena   # Stop Elena
+  ./bot.sh start elena  # Start Elena
+  ./bot.sh logs elena   # Watch Elena's logs
+  ./bot.sh restart elena # Restart Elena
 ```
 
 ## 🏗️ Architecture
@@ -102,7 +94,7 @@ The unified compose file uses **Docker Compose profiles**:
 
 ```yaml
 services:
-  # Infrastructure (always available)
+  # Infrastructure (always available, no profile)
   postgres: {...}
   qdrant: {...}
   neo4j: {...}
@@ -116,15 +108,16 @@ services:
   ryan:
     profiles: ["ryan", "all"]
     ...
+  
+  # ... 9 bots total
 ```
 
 ### Benefits
 
-1. **Single Network**: All services on `v2_network`, no more external network references
+1. **Single Network**: All services on `v2_network`
 2. **Proper Dependencies**: `depends_on` with health checks ensures infrastructure is ready
-3. **No Orphan Warnings**: All services defined in one file
-4. **Selective Deployment**: Start only what you need
-5. **Cleaner Management**: One command to rule them all
+3. **Selective Deployment**: Start only what you need
+4. **Isolated Containers**: Each bot runs independently
 
 ## 🔧 Advanced Usage
 
@@ -134,14 +127,16 @@ services:
 docker compose \
   --profile elena \
   --profile dream \
+  --profile aria \
   up -d --build
 ```
 
 ### Infrastructure Only (for local development)
 
 ```bash
-./bot.sh infra
-# Then run bots with: python run_v2.py elena
+./bot.sh infra up
+# Then run bots directly with Python:
+python run_v2.py elena
 ```
 
 ### Production Deployment
@@ -173,8 +168,11 @@ docker compose \
 # PostgreSQL
 docker exec -it whisperengine-v2-postgres psql -U whisper -d whisperengine_v2
 
-# Neo4j
+# Neo4j (Cypher shell)
 docker exec -it whisperengine-v2-neo4j cypher-shell -u neo4j -p password
+
+# Neo4j (Web UI)
+open http://localhost:7474
 
 # Qdrant (HTTP API)
 curl http://localhost:6333/collections
@@ -187,32 +185,28 @@ open http://localhost:8086
 
 ```
 whisperengine-v2/
-├── docker-compose.yml            # Single unified compose file
-├── bot.sh                        # Management script
-├── scripts/
-│   └── migrate-to-unified.sh    # Migration helper
-└── .env.*                        # Per-bot config
+├── docker-compose.yml       # Unified compose file (infra + all bots)
+├── bot.sh                   # Management script
+├── run_v2.py                # Local bot runner
+├── .env.example             # Template for bot config
+├── .env.elena               # Elena's config
+├── .env.ryan                # Ryan's config
+├── ...                      # Other bot configs
+└── characters/
+    ├── elena/               # Elena's character files
+    ├── ryan/                # Ryan's character files
+    └── ...                  # Other characters
 ```
 
-## 🔄 Migration Notes
+## 🔄 Adding a New Bot
 
-### Old Compose Files
+See [Creating New Characters](CREATING_NEW_CHARACTERS.md) for the complete guide. Quick summary:
 
-The old per-bot compose files have been removed. The unified `docker-compose.yml` is now the single source of truth.
-
-### Volumes & Data
-
-All data volumes remain unchanged:
-- `postgres_data_v2`
-- `qdrant_data_v2`
-- `neo4j_data_v2`
-- `influxdb_data_v2`
-
-Your existing data is safe!
-
-### Environment Files
-
-No changes needed to `.env.{bot}` files. They work the same way.
+1. Create character directory: `mkdir characters/newbot`
+2. Add character files: `character.md`, `goals.yaml`
+3. Create environment file: `.env.newbot`
+4. Add service to `docker-compose.yml` with unique port
+5. Deploy: `./bot.sh up newbot`
 
 ## 🐛 Troubleshooting
 
@@ -222,43 +216,49 @@ No changes needed to `.env.{bot}` files. They work the same way.
 # Clean up old networks
 docker network prune -f
 
-# Restart with unified compose
-make down
-make up-all
+# Restart infrastructure
+./bot.sh down all
+./bot.sh up all
 ```
 
 ### Bot won't start
 
 ```bash
-# Check infrastructure health
+# Check infrastructure health first
 ./bot.sh ps
 
-# Ensure postgres and neo4j are healthy before starting bots
-docker compose up -d
-# Wait for health checks...
-docker compose --profile elena up -d
+# Start infrastructure and wait for health checks
+./bot.sh infra up
+# Wait 30-60 seconds for all services to be healthy
+./bot.sh up elena
 ```
 
-### Orphan container warnings
-
-If you still see these, you're mixing old and new compose files. Stop old setup first:
+### Container keeps restarting
 
 ```bash
-docker compose -f docker-compose.v2.yml down
-docker compose -f docker-compose.elena.yml down
-# ... stop all old files
+# Check logs for errors
+./bot.sh logs elena
 
-# Then use unified only
-./bot.sh up all
+# Common issues:
+# - Missing .env.elena file
+# - Invalid Discord token
+# - Database connection refused (infra not ready)
 ```
+
+### "Character not found" error
+
+1. Ensure `characters/{botname}/character.md` exists
+2. Verify `DISCORD_BOT_NAME` in `.env.{botname}` matches directory name
 
 ## 📊 Resource Management
 
 ### Memory Footprint
 
-- **Infrastructure only**: ~2GB RAM
-- **+ 1 bot**: ~2.5GB RAM
-- **+ All 5 bots**: ~4-5GB RAM
+| Configuration | RAM Usage |
+|--------------|-----------|
+| Infrastructure only | ~2GB |
+| + 1 bot | ~2.5GB |
+| + All 9 bots | ~6-7GB |
 
 ### Selective Deployment Strategy
 
@@ -266,23 +266,41 @@ For development machines with limited resources:
 
 ```bash
 # Infrastructure + 1 bot for testing
-./bot.sh infra
+./bot.sh infra up
 ./bot.sh up elena
 
 # Production: All bots
 ./bot.sh up all
 ```
 
+### Port Allocation
+
+Each bot exposes a unique API port:
+
+| Bot | Port |
+|-----|------|
+| elena | 8000 |
+| ryan | 8001 |
+| dotty | 8002 |
+| aria | 8003 |
+| dream | 8004 |
+| jake | 8005 |
+| sophia | 8006 |
+| marcus | 8007 |
+| nottaylor | 8008 |
+
 ## 🎓 Best Practices
 
-1. **Always start infrastructure first** (or use `./bot.sh up {bot}` which handles it)
-2. **Use `./bot.sh ps`** to verify health before assuming failure
-3. **Check logs** with `./bot.sh logs {bot}` when debugging
-4. **Restart > Rebuild** when only code changes (faster)
-5. **Clean up** periodically with `docker system prune -f`
+1. **Always start infrastructure first**: Use `./bot.sh infra up` or `./bot.sh up {bot}` (which handles it automatically)
+2. **Check health before debugging**: Run `./bot.sh ps` to see container status
+3. **Use logs for debugging**: `./bot.sh logs {bot}` shows real-time output
+4. **Restart vs Rebuild**: Use `restart` for code changes, `up` for dependency changes
+5. **Clean up periodically**: Run `docker system prune -f` to free disk space
+6. **Local development**: Run infrastructure in Docker, bot with Python for faster iteration
 
-## 📚 Next Steps
+## 📚 Related Documentation
 
-- See `./bot.sh help` for full command reference
-- Run `./scripts/migrate-to-unified.sh` for guided migration
-- Check `docker-compose.yml` for infrastructure details
+- [Creating New Characters](CREATING_NEW_CHARACTERS.md) - Step-by-step guide to adding bots
+- [Cognitive Engine](architecture/COGNITIVE_ENGINE.md) - How the AI works
+- [Memory System](architecture/MEMORY_SYSTEM_V2.md) - Vector and graph memory
+- [Infrastructure & Deployment](architecture/INFRASTRUCTURE_DEPLOYMENT.md) - Container architecture

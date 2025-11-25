@@ -69,7 +69,8 @@ case "$1" in
             docker compose --profile "$2" up -d --build
         else
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh up [elena|ryan|dotty|aria|dream|all]"
+            echo "Usage: ./bot.sh up [bot|all]"
+            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
         echo -e "${GREEN}✓ Deployment complete${NC}"
@@ -80,7 +81,8 @@ case "$1" in
     down)
         if [ -z "$2" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh down [elena|ryan|dotty|aria|dream|all]"
+            echo "Usage: ./bot.sh down [bot|all]"
+            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
@@ -99,7 +101,8 @@ case "$1" in
     stop)
         if [ -z "$2" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh stop [elena|ryan|dotty|aria|dream|all]"
+            echo "Usage: ./bot.sh stop [bot|all]"
+            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
@@ -116,7 +119,8 @@ case "$1" in
     start)
         if [ -z "$2" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh start [elena|ryan|dotty|aria|dream|all]"
+            echo "Usage: ./bot.sh start [bot|all]"
+            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
@@ -133,7 +137,8 @@ case "$1" in
     restart)
         if [ -z "$2" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh restart [elena|ryan|dotty|aria|dream|all]"
+            echo "Usage: ./bot.sh restart [bot|all]"
+            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
