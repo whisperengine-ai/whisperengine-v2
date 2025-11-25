@@ -1,11 +1,26 @@
 # Embedding Dimension Upgrade: 384D → 768D
 
-**Document Version:** 1.1  
+**Document Version:** 1.2  
 **Created:** November 25, 2025  
 **Status:** Ready to Implement  
 **Priority:** 🔴 CRITICAL (Do Before More Production Data)  
 **Complexity:** 🟢 Low  
 **Estimated Time:** 30-60 minutes (depends on data volume)
+
+---
+
+## Multi-Modal Context: Memory Resolution
+
+Embeddings are the **resolution** of the Memory modality (🧠). Just as human memory clarity varies from fuzzy to crystal clear, embedding dimensions determine how finely characters can distinguish between similar memories.
+
+| Dimension | Resolution Quality |
+|-----------|-------------------|
+| 384D | "Blurry" - similar memories blend together |
+| 768D | "Clear" - nuanced distinctions preserved |
+
+Think of it like upgrading from standard definition to high definition memory. Characters will remember with greater fidelity.
+
+For full philosophy: See [`../architecture/MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md)
 
 ---
 

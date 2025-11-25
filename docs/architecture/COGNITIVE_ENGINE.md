@@ -2,6 +2,39 @@
 
 The **Cognitive Engine** (`src_v2/agents/engine.py`) is the brain of WhisperEngine v2. It orchestrates the flow of information from user input to character response, managing context, memory retrieval, and tool execution.
 
+## The Integration Layer for Multi-Modal Perception
+
+The Cognitive Engine serves as the **integration point** where all perceptual modalities converge. Characters perceive their world through six modalities (Universe, Vision, Audio, Text, Memory, Emotion), and the engine combines these into coherent experience.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         COGNITIVE ENGINE                                     │
+│                    (Perceptual Integration Layer)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   🌌 Universe ──┐                                                           │
+│   (context)     │                                                           │
+│                 │     ┌─────────────────┐     ┌──────────────────┐         │
+│   👁️ Vision ────┼────►│  AgentEngine    │────►│  LLM Response    │         │
+│   (images)      │     │  .generate()    │     │  Generation      │         │
+│                 │     └─────────────────┘     └──────────────────┘         │
+│   👂 Audio ─────┤              │                                            │
+│   (voice)       │              ▼                                            │
+│                 │     ┌─────────────────┐                                   │
+│   💬 Text ──────┤     │  System Prompt  │  ← Perceptual state injected     │
+│   (message)     │     │  Construction   │                                   │
+│                 │     └─────────────────┘                                   │
+│   🧠 Memory ────┤                                                           │
+│   (history)     │                                                           │
+│                 │                                                           │
+│   ❤️ Emotion ───┘                                                           │
+│   (trust/mood)                                                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+For philosophical foundation: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
 ## Architectural Theory: Dual Process Theory (System 1 vs. System 2)
 
 The design of the Cognitive Engine is inspired by **Daniel Kahneman's Dual Process Theory**, which posits that the human brain has two distinct modes of thought:

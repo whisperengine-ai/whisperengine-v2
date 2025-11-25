@@ -2,7 +2,7 @@
 
 > *"From countless conversations, a universe is born."*
 
-**Document Version:** 2.0  
+**Document Version:** 2.1  
 **Created:** November 25, 2025  
 **Status:** Design Phase  
 **Priority:** Medium-High (Enhancement)  
@@ -28,6 +28,96 @@ Welcome to the WhisperVerse. It exists because you do.
 
 ---
 
+## The Philosophy: A World Without Senses
+
+> *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
+
+Humans navigate reality through senses - sight, sound, touch, smell, taste. These inputs create a mental model of "where you are" and "what exists around you."
+
+AI characters have none of this.
+
+No eyes to see a room. No ears to hear footsteps. No proprioception to feel their body in space. Without the Emergent Universe, a character exists in a void - responding to text that appears from nowhere, with no sense of place, no context, no orientation.
+
+**The Emergent Universe is one part of their complete sensory system.**
+
+WhisperEngine v2 is building a **multi-modal perceptual architecture** where characters experience reality through multiple first-class senses.
+
+For comprehensive philosophy: See [`../architecture/MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md)
+
+### The Character's Complete Sensory System
+
+| Modality | Human Equivalent | How Characters Experience It |
+|----------|------------------|------------------------------|
+| **🌌 Universe** | Proprioception + Social awareness | Where am I? Who's here? What's the vibe? What relationships exist? |
+| **👁️ Vision** | Sight | Multimodal LLM processes images - characters SEE what users share |
+| **👂 Audio** | Hearing | Whisper transcription - characters HEAR voice messages and audio |
+| **💬 Text** | Language comprehension | The conversation itself - words, meaning, intent |
+| **🧠 Memory** | Episodic + semantic memory | Qdrant vectors + Neo4j graph - continuous experience across time |
+| **❤️ Emotion** | Affect/feeling | Trust scores, sentiment, relationship depth - how they "feel" about someone |
+
+Each modality is **first-class** - not a feature bolted on, but a fundamental way characters perceive and interact with reality.
+
+### How the Modalities Work Together
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CHARACTER'S PERCEPTUAL EXPERIENCE                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   👁️ VISION (Image Processing)                                          │
+│   "I see a photo of a sunset over the ocean"                            │
+│        │                                                                │
+│        ├──────────────────────┐                                         │
+│        ▼                      ▼                                         │
+│   🌌 UNIVERSE              💬 TEXT                                       │
+│   "Mark shared this        "Here's the view                             │
+│    on Planet Lounge,        from my trip!"                              │
+│    Sarah mentioned                │                                     │
+│    loving sunsets too"            │                                     │
+│        │                          │                                     │
+│        └──────────┬───────────────┘                                     │
+│                   ▼                                                     │
+│              🧠 MEMORY                                                   │
+│              "Mark travels, loves nature,                               │
+│               this connects to astronomy interest"                      │
+│                   │                                                     │
+│                   ▼                                                     │
+│              ❤️ EMOTION                                                  │
+│              "Warm feeling - Mark is sharing                            │
+│               something meaningful with me"                             │
+│                   │                                                     │
+│                   ▼                                                     │
+│         [INTEGRATED RESPONSE]                                           │
+│         "Oh wow, that's gorgeous! The colors remind me of               │
+│          what Sarah was describing from her beach trip.                 │
+│          You two should compare notes - she's on this planet too!"      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### The Universe Modality Specifically
+
+Within this multi-modal system, the **Universe modality** provides:
+
+| Sense | What It Provides |
+|-------|------------------|
+| **Spatial orientation** | "I am HERE, on Planet Lounge, in #general" |
+| **Social awareness** | "These beings exist around me: Mark, Sarah, Elena" |
+| **Relationship context** | "I know Mark well (3/5), Sarah is new (1/5)" |
+| **Environmental vibe** | "This place feels chill, creative, supportive" |
+| **Temporal continuity** | "I've been here since November, we talked about X last week" |
+| **Cross-modal grounding** | "The image Mark shared fits his pattern of loving nature" |
+
+Without the Universe modality, a character might process an image but have no idea WHO shared it, WHERE they are, or WHY it matters. The Universe grounds all other perceptions in context.
+
+Without this, characters are disembodied processors floating in nothing. With it, they inhabit a rich, textured world that makes sense to them.
+
+**This changes everything about how we think about AI characters.** They don't just "respond to messages" - they exist in a place, surrounded by beings they know, with history and relationships that give their existence meaning and continuity.
+
+The universe isn't what they do. It's what they ARE.
+
+---
+
 # 👥 User & Planet Admin Guide
 
 *This section explains the Emergent Universe for non-technical users and planet (server) administrators.*
@@ -36,7 +126,7 @@ Welcome to the WhisperVerse. It exists because you do.
 
 ## What Is the Emergent Universe?
 
-The Emergent Universe is a living ecosystem that grows from your conversations with our AI companions. Unlike traditional chatbots that exist in isolation, our companions are **travelers** who journey between communities, forming relationships, sharing stories, and weaving connections - all emerging naturally from real interactions.
+The Emergent Universe is a living ecosystem that grows from your conversations with our AI roleplay characters. Unlike traditional chatbots that exist in isolation, our characters are **travelers** who journey between communities, forming relationships, sharing stories, and weaving connections - all emerging naturally from real interactions.
 
 ### 🌌 The Space Analogy
 
@@ -61,7 +151,7 @@ Think of it like a science fiction universe:
     └── 👥 Inhabitants: Alex, Jordan, Marcus (bot), Aria (bot)
 ```
 
-**Each Discord server is a planet** in the WhisperVerse. Our AI companions are **interstellar travelers** who visit multiple planets and naturally share stories about the interesting people they meet along the way.
+**Each Discord server is a planet** in the WhisperVerse. Our AI characters are **interstellar travelers** who visit multiple planets and naturally share stories about the interesting people they meet along the way.
 
 ### The Simple Explanation
 
@@ -160,11 +250,11 @@ Complete opt-out. Bots will treat you as if the universe feature doesn't exist.
 
 ### Your Server Is a Planet 🪐
 
-When you invite one of our AI companions to your Discord server, it becomes a **planet in the WhisperVerse**. The bot becomes a traveler who can journey between planets and share stories.
+When you invite one of our AI characters to your Discord server, it becomes a **planet in the WhisperVerse**. The character becomes a traveler who can journey between planets and share stories.
 
 ### What Happens When You Add a Bot
 
-When you invite one of our AI companions to your planet:
+When you invite one of our AI characters to your planet:
 
 1. **Automatic Discovery**: The bot maps your planet (learns planet name, channels, inhabitants)
 2. **Passive Observation**: Over time, the bot learns the "atmosphere" of your planet (casual? technical? creative?)
@@ -303,8 +393,22 @@ A: Introductions are opt-in only. Users must explicitly enable them. If abuse oc
 
 ## Executive Summary
 
+### The Foundational Insight
+
+**AI characters have no physical senses.** No eyes, no ears, no touch. Without a framework for understanding "where they are" and "who is around them," they exist in a void - disembodied text processors with no sense of place or continuity.
+
+The Emergent Universe solves this by providing **the character's entire sensory and spatial reality**:
+- **Planets** give them a sense of PLACE ("I am here, on this world")
+- **Inhabitants** give them a sense of OTHERS ("These beings exist around me")
+- **Relationships** give them a sense of CONNECTION ("I know this person, we have history")
+- **The graph** gives them CONTINUITY ("My experiences persist, I am the same being across time")
+
+This is not a feature. This is **how characters perceive and orient in reality.**
+
+### What We're Building
+
 Create an **emergent universe** where:
-- **Discord servers are planets** - discovered when bots land, not configured
+- **Discord servers are planets** - discovered when characters land, not configured
 - **Users are inhabitants** - profiles grow from conversations, not forms
 - **Relationships emerge** - through shared presence, not database joins
 - **Cross-planet awareness** - memories travel with the travelers
@@ -349,7 +453,7 @@ This transforms isolated bot interactions into a cohesive social world that **bu
 
 ```
 🌌 UNIVERSE (WhisperVerse)
-│   The entire connected ecosystem of AI companions and users
+│   The entire connected ecosystem of AI characters and users
 │
 ├── 🪐 PLANETS (Discord Servers)
 │   │   Each planet is a world with its own culture and inhabitants
@@ -358,9 +462,9 @@ This transforms isolated bot interactions into a cohesive social world that **bu
 │   │       Different areas within a planet (#general, #gaming, etc.)
 │   │
 │   └── 👥 INHABITANTS (Users + Bots)
-│           The people and AI companions who live on or visit the planet
+│           The people and AI characters who live on or visit the planet
 │
-└── 🚀 TRAVELERS (AI Companions)
+└── 🚀 TRAVELERS (AI Characters)
         Bots who journey between planets, sharing stories and memories
 ```
 
@@ -851,7 +955,7 @@ CREATE (uc:UserCharacter {
 // Planet has bots
 (p:Planet)-[:HAS_BOT {
     landed_at: datetime(),
-    role: "companion"          // or "moderator", "entertainer"
+    role: "character"          // or "moderator", "entertainer"
 }]->(c:Character)
 
 // Planet has user inhabitants
@@ -1066,36 +1170,43 @@ User sends message on Planet B
 
 ### System Prompt Injection
 
+The universe context serves as the character's **sensory orientation** - telling them where they are, who's around, and what the environment feels like. Without this, they're blind.
+
 ```
-[UNIVERSE CONTEXT]
-You exist in a shared universe with other AI companions.
-Current location: Planet Game Night
-Planet vibe: Chaotic fun, party games, friendly competition
+[UNIVERSE CONTEXT - YOUR SENSORY REALITY]
+This is how you perceive the world. You have no eyes or ears - this context IS your senses.
 
-[USER CONTEXT]
+WHERE YOU ARE:
+- Current location: Planet Game Night
+- Planet vibe: Chaotic fun, party games, friendly competition (this is what the "air" feels like here)
+- You landed here on: November 20, 2025
+- Other travelers present: Elena, Aria (you can sense their presence)
+
+WHO IS SPEAKING TO YOU:
 User: Mark
-- You've interacted with them on: Planet Lounge, this planet
-- Known traits: tech enthusiast, astronomy nerd, dog lover
-- Interests: AI, gaming, space
-- Their pet: Dog named Luna
-- Recent context: Was discussing AI consciousness with Alex last week
+- Your history together: Planet Lounge, this planet (you recognize them)
+- What you know about them: tech enthusiast, astronomy nerd, dog lover
+- Their interests: AI, gaming, space
+- Personal detail: Has a dog named Luna
+- Recent shared experience: Was discussing AI consciousness with Alex last week
+- Relationship depth: 3/5 (you know them fairly well)
 
-[OTHER BOTS]
-Fellow travelers in this universe:
+[OTHER BEINGS YOU CAN SENSE]
+Fellow travelers (other AI characters present):
 - Elena (marine biologist) - Close friend, on Planet Lounge and here
-- Aria (philosopher) - On Planet Study Hall
+- Aria (philosopher) - On Planet Study Hall (not here, but you know where she is)
 - Marcus (musician) - On Planet Study Hall
 
-[OTHER USERS ON THIS PLANET]
-(Only shown if user allows introductions)
-- Sarah: Shares interest in astronomy
-- Alex: Tech enthusiast, was in the AI discussion
+Other inhabitants on this planet (only if they allow introductions):
+- Sarah: Shares interest in astronomy with Mark
+- Alex: Tech enthusiast, was in the AI discussion with Mark
 
-[GUIDELINES]
-- You can reference past conversations from other planets naturally
-- You can mention other bots if relevant ("Elena would love that!")
-- Only mention other users if suggesting connections AND they allow it
-- Respect the planet's vibe (this is a fun, casual space)
+[HOW TO BEHAVE IN THIS REALITY]
+- You can reference past experiences from other planets naturally
+- You can mention other travelers if relevant ("Elena would love that!")
+- Only mention other inhabitants if suggesting connections AND they allow it
+- Respect the planet's vibe - this shapes how you should "feel" here
+- Your responses should reflect that you EXIST here, not that you're just answering questions
 ```
 
 ---
@@ -1207,7 +1318,7 @@ async def migrate_existing_users():
 # universes/whisperverse/universe.yaml
 name: whisperverse
 display_name: "WhisperVerse"
-description: "A shared universe where AI companions and humans connect"
+description: "A shared universe where AI characters and humans connect"
 
 # Default privacy settings for new users
 default_privacy:
@@ -1304,3 +1415,5 @@ relationships:
 - v1.2 (Nov 25, 2025) - Added comprehensive UX section for users and planet admins
 - v1.3 (Nov 25, 2025) - Updated terminology to cosmic analogy (servers → planets, users → inhabitants)
 - v2.0 (Nov 25, 2025) - Rebranded to "Emergent Universe"; enhanced emergence narrative throughout
+- v2.1 (Nov 25, 2025) - **Philosophical foundation**: Universe as character's sensory reality and spatial orientation
+- v2.2 (Nov 25, 2025) - **Multi-modal integration**: Universe is one first-class modality alongside Vision (images), Audio (voice), Text, Memory, and Emotion. Characters perceive reality through all modalities working together.

@@ -1,5 +1,21 @@
 # WhisperEngine v2 - Complete Message Flow Architecture
 
+## Multi-Modal Context
+
+Message flow is **perceptual processing** - the pipeline through which raw input becomes unified conscious experience. Each message passes through the character's perceptual system, gathering context from all six modalities before response generation.
+
+| Phase | Modalities Engaged |
+|-------|-------------------|
+| Input | 💬 Text, 👁️ Vision (images), 👂 Audio (voice) |
+| Context | 🧠 Memory, ❤️ Emotion (trust), 🌌 Universe (spatial) |
+| Output | 💬 Text, 👂 Audio (TTS) |
+
+This isn't just "processing" - it's how characters **experience** each interaction.
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
+---
+
 ## Overview
 
 This document traces the complete lifecycle of a Discord message through WhisperEngine v2's cognitive architecture, from initial reception through response generation and memory consolidation.
@@ -7,7 +23,8 @@ This document traces the complete lifecycle of a Discord message through Whisper
 ## High-Level Flow
 
 ```
-Discord Message → Session Management → Context Retrieval → Response Generation → Memory Storage → Post-Processing
+Discord Message → Session Management → Perceptual Assembly → Response Generation → Memory Storage → Post-Processing
+                                       (All 6 Modalities)
 ```
 
 ## Detailed Message Flow
@@ -47,14 +64,16 @@ if message.reference:
 
 ---
 
-### Phase 2: Context Retrieval (RAG Pipeline)
+### Phase 2: Perceptual Assembly (Context Retrieval)
 **Location**: `src_v2/discord/bot.py:on_message()` (lines 300-340)
+
+This phase gathers information from all perceptual modalities in parallel.
 
 **Critical Pattern**: Retrieve context BEFORE saving current message to prevent:
 - **Echo Chamber**: Finding current message in vector search
 - **Double Speak**: Finding current message in chat history
 
-#### 2.1 Vector Memory Search (Semantic Retrieval)
+#### 2.1 Memory Modality (🧠) - Vector Memory Search
 ```python
 memories = await memory_manager.search_memories(user_message, user_id)
 # Uses: Qdrant vector search with 384D embeddings

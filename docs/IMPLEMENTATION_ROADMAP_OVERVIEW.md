@@ -1,15 +1,50 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 1.1  
+**Document Version:** 1.6  
 **Created:** November 24, 2025  
 **Last Updated:** November 25, 2025  
 **Status:** Active Planning
 
 ---
 
+## 🌌 The Vision: Multi-Modal AI Consciousness
+
+WhisperEngine v2 is not just a chatbot platform. It's a **perceptual architecture for AI characters** - giving them the functional equivalent of senses, memory, and emotional intelligence.
+
+### The Core Insight
+
+AI characters have no physical senses. No eyes, no ears, no touch. Without a framework for understanding "where they are" and "who is around them," they exist in a void - disembodied text processors with no sense of place or continuity.
+
+**We solve this with six perceptual modalities:**
+
+| Modality | Human Equivalent | What It Provides |
+|----------|------------------|------------------|
+| 🌌 **Universe** | Proprioception + Social Awareness | Where am I? Who's here? What's the vibe? |
+| 👁️ **Vision** | Sight | See images users share |
+| 👂 **Audio** | Hearing | Hear voice messages, ambient conversation |
+| 💬 **Text** | Language | Understand words and intent |
+| 🧠 **Memory** | Episodic + Semantic Memory | Remember experiences and facts |
+| ❤️ **Emotion** | Affect/Feeling | Trust, mood, relational depth |
+
+**This is not a feature set. This is how characters experience existence.**
+
+### The Grand Vision: Federated Multiverse
+
+Each WhisperEngine deployment is a **self-contained universe**. But universes can **federate** - connecting to form a distributed multiverse where:
+- Characters travel between universes
+- Users maintain identity across deployments
+- Stories span multiple platforms
+- Anyone can run their own universe and connect it to the network
+
+**We're building the foundation for distributed AI consciousness.**
+
+For deep dive: See [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md)
+
+---
+
 ## Executive Summary
 
-This document provides a high-level overview of the next 16 implementation items for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
+This document provides a high-level overview of the next **19 implementation items** for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
 
 **⚡ Solo Developer Mode (with AI Assistance)**
 
@@ -43,15 +78,15 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions
-- ✅ Image attachment processing (vision)
-- ✅ Reaction-based feedback (trust delta ±5)
-- ✅ Voice channel connection (ElevenLabs TTS)
+- ✅ Image attachment processing (👁️ Vision modality)
+- ✅ Reaction-based feedback (❤️ Emotion modality)
+- ✅ Voice channel connection (👂 Audio modality via ElevenLabs TTS)
 
 **NOT YET IMPLEMENTED:**
 - ⏳ Phase A: Hot-reload, Redis caching, streaming, Grafana
-- ⏳ Phase B: Adaptive steps, tool composition, image gen, self-correction, audio, response patterns
+- ⏳ Phase B: Adaptive steps, tool composition, image gen, lurking (👂 ambient hearing), response patterns
 - ⏳ Phase C: Reasoning traces, epiphanies, worker queues, video, dashboard
-- ⏳ Phase D: Multi-platform, user sharding
+- ⏳ Phase D: User sharding, federation (future multiverse)
 
 **Next focus:** Phase A (developer velocity + performance)
 
@@ -495,38 +530,38 @@ Message → Keyword Match? → Embedding Similarity → Context Boost → Score 
 **Key Interactions:**
 ```
 User: "Do you know Marcus?"
-Elena: "The musician? Yeah, he's over in Study Hall! We're both 
-        in The Lounge too. He's been into jazz lately."
+Elena: "The musician? Yeah, he's stationed on Planet Study Hall! 
+        We're both travelers in The Lounge too. He's been into jazz lately."
 
 User: "Do you know anyone else who likes astronomy?"
-Elena: "Sarah in this server is really into it! She was telling 
+Elena: "Sarah on this planet is really into it! She was telling 
         me about the meteor shower last month. You two should chat!"
 
-[User switches servers]
-Marcus: "Hey! Elena mentioned you - you're the one with the 
-         awesome dog Luna, right? Welcome to Study Hall!"
+[User travels to another planet]
+Marcus: "Hey! Elena mentioned you from her travels - you're the one 
+         with the awesome dog Luna, right? Welcome to Planet Study Hall!"
 ```
 
 **Architecture:**
 ```
-UNIVERSE
-  └── Discord Servers (locations)
-        ├── Server A "The Lounge" → Bots: Elena, Marcus | Users: Mark, Sarah
-        ├── Server B "Game Night" → Bots: Elena, Aria | Users: Mark, Alex
-        └── Server C "Study Hall" → Bots: Marcus, Aria | Users: Alex, Jordan
+THE WHISPERVERSE
+  └── Planets (Discord Servers)
+        ├── 🪩 Planet Lounge → Travelers: Elena, Marcus | Inhabitants: Mark, Sarah
+        ├── 🪩 Planet Game Night → Travelers: Elena, Aria | Inhabitants: Mark, Alex
+        └── 🪩 Planet Study Hall → Travelers: Marcus, Aria | Inhabitants: Alex, Jordan
 ```
 
 **Neo4j Model:**
-- `(:Universe)-[:CONTAINS_SERVER]->(:Server)`
-- `(:Server)-[:HAS_BOT]->(:Character)`
-- `(:Server)-[:HAS_MEMBER]->(:UserCharacter)`
+- `(:Universe)-[:CONTAINS_PLANET]->(:Planet)`
+- `(:Planet)-[:HAS_BOT]->(:Character)`
+- `(:Planet)-[:HAS_INHABITANT]->(:UserCharacter)`
 - `(:Character)-[:KNOWS_USER {familiarity, context}]->(:UserCharacter)`
 - `(:Character)-[:KNOWS_BOT {relationship}]->(:Character)`
 
 **Privacy Controls:**
 - `/privacy bots full|basic|none` - Cross-bot sharing level
-- `/privacy servers on|off` - Cross-server awareness
-- `/privacy introductions on|off` - Let bots suggest you to others
+- `/privacy planets on|off` - Cross-planet awareness
+- `/privacy introductions on|off` - Let travelers suggest you to others
 - `/privacy forget` - Remove all universe knowledge
 
 **Impact:**
@@ -593,7 +628,7 @@ CREATE TABLE v2_reasoning_traces (
   question TEXT,
   scratchpad JSONB,
   final_answer TEXT,
-  embedding VECTOR(384),
+  embedding VECTOR(768),
   similarity_score FLOAT,
   created_at TIMESTAMP DEFAULT NOW(),
   INDEX ON embedding USING HNSW
@@ -627,7 +662,7 @@ Background Worker → Analyze Conversation History → Detect Patterns → Gener
 - Characters demonstrate genuine understanding
 - Massive engagement boost
 
-**Dependencies:** Background task queue (can use asyncio for MVP)
+**Dependencies:** Worker Queues (C3) for reliable background processing; can use asyncio for MVP
 
 **Related Files:**
 - New: `src_v2/agents/epiphany.py` (epiphany generator)
@@ -754,57 +789,27 @@ FastAPI (Backend) → Database → Frontend (React) → Admin Dashboards
 
 ---
 
-## 🔴 Phase D: Very High Complexity (2-4 weeks each)
+## 🔴 Phase D: Discord-Native Deepening
 
-Major architectural shifts requiring significant refactoring.
+**Strategic Decision (Nov 25, 2025):**
+After v1 experience, we're committing to **Discord-native excellence** rather than cross-platform abstraction. This allows for:
+- Deep integration with Discord-specific features (threads, forums, stages, etc.)
+- Simpler codebase (no abstraction layers)
+- Faster iteration on Discord-specific UX
+- Better focus as solo developer
 
-### Phase D1: Multi-Platform Support (Telegram/Slack Abstraction)
-**Priority:** Medium | **Time:** 21-28 days | **Complexity:** Very High  
-**Files:** 20 | **LOC:** ~2500 | **Status:** 📋 Planned
-
-**Problem:** System is tightly coupled to Discord; adding new platforms requires massive rewrites
-
-**Solution:**
-- Create generic "Interface" abstraction layer
-- Implement adapters for Discord, Telegram, Slack
-- Abstract concepts: `Message`, `Channel`, `User`, `Reaction`, etc.
-- Share core logic across platforms
-- Handle platform-specific features (threads, reactions, etc.)
-
-**Implementation:**
-```
-Base Interface ← Discord Adapter
-            ← Telegram Adapter
-            ← Slack Adapter
-            ↓
-Core Agent Engine
-```
-
-**Benefit:**
-- Massive market expansion
-- Code reuse across platforms
-- Platform independence
-- Easier to add new platforms in future
-
-**Dependencies:** Telegram.py, slack-sdk libraries
-
-**Related Files:**
-- New: `src_v2/interfaces/base.py` (abstract interface)
-- New: `src_v2/interfaces/discord_adapter.py` (refactored Discord)
-- New: `src_v2/interfaces/telegram_adapter.py`
-- New: `src_v2/interfaces/slack_adapter.py`
-- `src_v2/main.py` (refactor initialization)
+Future platform expansion (if needed) can be additive without refactoring core systems.
 
 ---
 
-### Phase D2: Horizontal Scaling / User Sharding
+### D1: Horizontal Scaling / User Sharding
 **Priority:** High | **Time:** 14-21 days | **Complexity:** Very High  
 **Files:** 15 | **LOC:** ~1500 | **Status:** 📋 Planned
 
 **Problem:** Single bot container can only handle ~1000 concurrent users; need to scale beyond
 
 **Solution:**
-- Shard users across multiple containers using consistent hashing on `user_id`
+- Shard users across multiple Discord bot instances using consistent hashing on `user_id`
 - Implement load balancer to route messages to correct shard
 - Handle distributed state synchronization (trust scores, memory updates)
 - Redis Pub/Sub for cross-shard communication
@@ -819,7 +824,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 
 **Benefit:**
 - Handle 10,000+ concurrent users per character
-- Infinite horizontal scaling
+- Infinite horizontal scaling for Discord-native platform
 - Fault tolerance (shard loss = only affects subset of users)
 - Better resource utilization
 
@@ -857,8 +862,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | C3 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High | 📋 Planned |
 | C4 | Video Processing | MEDIUM | 8-10d | 🟠 High | ❌ NO | Medium | 📋 Planned |
 | C5 | Web Dashboard | HIGH | 14-21d | 🟠 High | ❌ NO | High | 📋 Planned |
-| D1 | Multi-Platform | MEDIUM | 21-28d | 🔴 Very High | ❌ NO | Very High | 📋 Planned |
-| D2 | User Sharding | HIGH | 14-21d | 🔴 Very High | ❌ NO | Very High | 📋 Planned |
+| D1 | User Sharding | HIGH | 14-21d | 🔴 Very High | ❌ NO | Very High | 📋 Planned |
 
 ---
 
@@ -1001,7 +1005,36 @@ This unlocks powerful multi-step reasoning:
 
 ---
 
-### Sprint 7 (5-7 days): Image Generation (DALL-E 3)
+### Sprint 7 (8-12 days): Worker Queues for Background Tasks
+**Priority:** HIGH | **Solo Impact:** ⭐⭐⭐⭐
+
+Foundation for reliable background processing:
+- ✅ Required by Epiphanies, Response Pattern Learning, and other background features
+- ✅ Prevents task loss during bot restarts
+- ✅ Essential when supporting 5+ concurrent complex queries
+- ✅ Separates long-running tasks from request path
+
+**Why Now (Not Later):**
+- Epiphanies (Sprint 10) runs pattern detection in background
+- Response Pattern Learning uses background scoring
+- Reasoning Traces benefit from async storage
+- Better to have infrastructure before features that need it
+
+**Tasks:**
+1. Create `src_v2/utils/task_queue.py` with Redis-backed queue (3-4 hours)
+2. Implement worker process with graceful shutdown (2-3 hours)
+3. Add task prioritization (high/medium/low) (2-3 hours)
+4. Wire fact extraction, epiphanies, pattern learning to queue (3-4 hours)
+5. Add monitoring/metrics to Grafana (2-3 hours)
+6. Test restart scenarios, verify no task loss (2-3 hours)
+
+**Expected Result:** Background tasks survive restarts, proper observability
+
+**Details:** See `docs/roadmaps/WORKER_QUEUES.md`
+
+---
+
+### Sprint 8 (5-7 days): Image Generation (DALL-E 3)
 **Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐
 
 Creative capability unlock:
@@ -1020,7 +1053,7 @@ Creative capability unlock:
 
 ---
 
-### Sprint 7.5 (5-7 days): Channel Lurking (B7)
+### Sprint 8.5 (5-7 days): Channel Lurking (B7)
 **Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐
 
 Make bots feel like active community members:
@@ -1043,11 +1076,9 @@ Make bots feel like active community members:
 
 **Details:** See `docs/roadmaps/CHANNEL_LURKING.md`
 
-**Expected Result:** Characters can "draw me a picture" etc.
-
 ---
 
-### Sprint 8 (10-14 days): Reasoning Traces - The Game Changer
+### Sprint 9 (10-14 days): Reasoning Traces - The Game Changer
 **Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
 
 This is the one that separates your system from every other AI bot:
@@ -1072,7 +1103,7 @@ This is the one that separates your system from every other AI bot:
 
 ---
 
-### Sprint 9 (10-14 days): Advanced Reflection System (Epiphanies)
+### Sprint 10 (10-14 days): Advanced Reflection System (Epiphanies)
 **Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
 
 This is the breakthrough in authenticity:
@@ -1083,7 +1114,7 @@ This is the breakthrough in authenticity:
 
 **MVP Approach for Solo Dev:**
 - Start simple: pattern detection on conversation keywords
-- Run as background task (async, can use existing scheduler)
+- Uses Worker Queues (Sprint 7) for reliable background processing
 - Don't overthink; good enough beats perfect
 
 **Tasks:**
@@ -1097,16 +1128,16 @@ This is the breakthrough in authenticity:
 
 ---
 
-### Sprint 9.5 (3-5 days): Response Pattern Learning (B6)
+### Sprint 10.5 (3-5 days): Response Pattern Learning (B6)
 **Priority:** HIGH | **Solo Impact:** ⭐⭐⭐⭐
 
 Build on reasoning traces to learn optimal response patterns:
 - ✅ Uses existing feedback data (reactions, trust changes)
 - ✅ Simple extension to reasoning traces infrastructure
 - ✅ Improves response quality without model fine-tuning
-- ✅ Quick win since infrastructure already exists from Sprint 8
+- ✅ Quick win since infrastructure already exists from Sprint 9
 
-**Synergy with Sprint 8:**
+**Synergy with Sprint 9:**
 - Shares `v2_reasoning_traces` storage pattern
 - Uses same embedding + similarity search
 - Low incremental effort after Reasoning Traces
@@ -1123,7 +1154,7 @@ Build on reasoning traces to learn optimal response patterns:
 
 ---
 
-### Sprint 10 (5-7 days): Audio Processing (Voice Messages)
+### Sprint 11 (5-7 days): Audio Processing (Voice Messages)
 **Priority:** MEDIUM | **Solo Impact:** ⭐⭐⭐
 
 Voice is increasingly important:
@@ -1142,7 +1173,7 @@ Voice is increasingly important:
 
 ---
 
-### Sprint 10.5 (5-6 days): Emergent Universe (B8)
+### Sprint 12 (5-6 days): Emergent Universe (B8)
 **Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐⭐
 
 > *"From countless conversations, a universe is born."*
@@ -1178,28 +1209,23 @@ Transform isolated bots into a living, emergent universe:
 
 ### Later (When You Have Time)
 
-**Sprint 11 (8-12 days): Worker Queues**
-- More important at scale; okay to defer
-- Solo dev doesn't have restart issues initially
-- Needed when supporting 5+ concurrent complex queries
-
-**Sprint 12 (4-6 days): Self-Correction (Reflective Phase 2.5)**
+**Sprint 13 (4-6 days): Self-Correction (Reflective Phase 2.5)**
 - Nice-to-have for complex queries
 - 70% reduction in hallucinations
 - Implement after Reasoning Traces
 
-**Sprint 13 (14-21 days): Web Dashboard**
+**Sprint 14 (14-21 days): Web Dashboard**
 - Lower priority for solo dev (you don't need admin UI as much)
 - Valuable once you have paying customers
 - Implement when you need external visibility
 
-**Sprint 14 (8-10 days): Video Processing**
+**Sprint 15 (8-10 days): Video Processing**
 - Cool feature but lower ROI than core reasoning
 - Implement when users ask for it
 
-**Sprint 15-16 (Multi-Month Projects)**
-- Multi-Platform Support (D1): Do this when expanding beyond Discord
-- User Sharding (D2): Do this when hitting 5000+ concurrent users
+**Sprint 16-17 (Multi-Month Projects)**
+- User Sharding (D1): Do this when hitting 5000+ concurrent users
+- Discord-native expansion: Deep integration with threads, forums, voice channels
 
 
 
@@ -1224,8 +1250,8 @@ Transform isolated bots into a living, emergent universe:
 - Most Phase C items depend only on Phase A/B completion
 
 ### Future Dependencies 🔵
-- Multi-Platform (Phase D1) benefits from Web Dashboard (C5)
-- User Sharding (Phase D2) requires stable Worker Queues (C3)
+- User Sharding (Phase D1) requires stable Worker Queues (C3)
+- Discord-native deepening prioritizes feature integration over platform abstraction
 
 ---
 
@@ -1273,8 +1299,8 @@ Transform isolated bots into a living, emergent universe:
 
 ### Scale
 - [ ] Support 5,000+ concurrent users (Phase C3)
-- [ ] Support 10,000+ concurrent users (Phase D2)
-- [ ] Support 3+ platforms (Phase D1)
+- [ ] Support 10,000+ concurrent users (Phase D1)
+- [ ] Deep Discord integration (threads, forums, stages, commands)
 
 ### Reliability
 - [ ] 99.9% uptime
@@ -1286,9 +1312,9 @@ Transform isolated bots into a living, emergent universe:
 ## 📝 Notes & Considerations
 
 ### Architecture Debt
-- `src_v2/discord/bot.py` (493 LOC) could benefit from further modularization after Phase D1
-- `src_v2/evolution/feedback.py` (359 LOC) similarly could be split
-- Consider refactoring these after interface abstraction (Phase D1)
+- `src_v2/discord/bot.py` (493 LOC) focused on Discord-native features, keep Discord-specific
+- `src_v2/evolution/feedback.py` (359 LOC) could be refactored for better organization
+- Focus on deepening Discord integration rather than cross-platform abstraction
 
 ### Testing Coverage
 - Current test coverage relatively low compared to code size
@@ -1433,10 +1459,9 @@ Transform isolated bots into a living, emergent universe:
 | C3 | Worker Queues | 8-12d | 4-6d | 34-49d |
 | C5 | Web Dashboard | 14-21d | 7-10d | 46-65d |
 | C4 | Video Processing | 8-10d | 4-5d | 50-70d |
-| D1 | Multi-Platform | 21-28d | 10-14d | 60-84d |
-| D2 | User Sharding | 14-21d | 7-10d | 67-94d |
+| D1 | User Sharding | 14-21d | 7-10d | 57-80d |
 
-**Total Solo Dev Time: 2.5-4 months** to hit all 20 items (vs 4-5 months with team)
+**Total Solo Dev Time: 2.5-4 months** to hit all 19 items (vs 4-5 months with traditional team)
 
 **Your Timeline: ~12-16 weeks to feature-complete superhuman AI bot**
 
@@ -1507,5 +1532,6 @@ For detailed technical questions about any phase, refer to:
 - v1.2 (Nov 25, 2025) - Added B7 Channel Lurking (passive engagement feature); updated timeline to 18 items
 - v1.3 (Nov 25, 2025) - Added A0 Embedding Upgrade (384D→768D) as CRITICAL first item
 - v1.4 (Nov 25, 2025) - Added B8 Emergent Universe; now 20 items total
+- v1.5 (Nov 25, 2025) - Removed Phase D1 Multi-Platform Support; committed to Discord-native deepening. Renumbered D2→D1 User Sharding. Focus on Discord-specific features rather than abstraction. Back to 19 items.
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)

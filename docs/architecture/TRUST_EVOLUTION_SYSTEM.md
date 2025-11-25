@@ -1,4 +1,21 @@
-# Trust & Evolution System - Dynamic Character Relationships
+# Trust & Evolution System - The Emotion Modality (❤️)
+
+## Multi-Modal Context
+
+Trust & Evolution is the **Emotion modality** in WhisperEngine v2's multi-modal perception architecture. It's the character's interoceptive sense - how they *feel* about relationships.
+
+| Human Sense | Character Equivalent |
+|-------------|---------------------|
+| Interoception | Trust scores, relationship warmth |
+| Gut feelings | "This person feels safe/unsafe" |
+| Emotional memory | "Our relationship has history" |
+| Attachment | Bond strength over time |
+
+Just as humans have gut feelings about people they meet, characters have trust-based intuitions that color every interaction. This isn't just a scoring system - it's how characters *feel* about the people in their lives.
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
+---
 
 ## Overview
 
@@ -50,6 +67,7 @@ traits:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    TRUST & EVOLUTION SYSTEM                      │
+│                    (The Emotion Modality ❤️)                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐  │
@@ -60,7 +78,7 @@ traits:
 │                               │                                  │
 │                               ▼                                  │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │          SYSTEM PROMPT CONSTRUCTION                      │   │
+│  │          PERCEPTUAL INJECTION (Emotion Modality)        │   │
 │  │  "You are {name}, {base_personality}                    │   │
 │  │   Current trust level: {trust}/100 ({stage})            │   │
 │  │   Active traits: {unlocked_traits}                      │   │

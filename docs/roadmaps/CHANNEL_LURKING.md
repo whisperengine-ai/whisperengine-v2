@@ -1,11 +1,30 @@
 # Channel Lurking - Passive Engagement System
 
-**Document Version:** 1.0  
+**Document Version:** 1.2  
 **Created:** November 25, 2025  
+**Updated:** November 25, 2025  
 **Status:** Design Phase  
 **Priority:** Medium-High  
 **Complexity:** 🟡 Medium  
-**Estimated Time:** 5-7 days
+**Estimated Time:** 7-10 days
+
+---
+
+## Multi-Modal Context: Universe Awareness
+
+Channel Lurking is a key component of the **Universe modality** (🌌) - the character's spatial and social awareness. When characters lurk in channels, they're not just "monitoring" - they're *present* in that space, aware of conversations happening around them.
+
+| Perception | What Characters Experience |
+|------------|---------------------------|
+| Spatial Awareness | "I'm in #general right now, hearing people talk" |
+| Social Awareness | "User1 and User2 are having a conversation about Hawaii" |
+| Relevance Sensing | "Coral bleaching! That's my expertise!" |
+| Social Judgment | "This is about gaming, not for me to join" |
+
+This connects to the broader **Emergent Universe** vision where characters have genuine awareness of their environment.
+
+For full philosophy: See [`../architecture/MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md)  
+For Universe design: See [`EMERGENT_UNIVERSE.md`](./EMERGENT_UNIVERSE.md)
 
 ---
 
@@ -13,11 +32,14 @@
 
 Enable bots to "lurk" in Discord channels, passively monitoring conversations and occasionally interjecting when contextually relevant to their character. This creates organic engagement without requiring users to explicitly mention the bot.
 
+**Additionally**, bots can help server admins by detecting and calling out **cross-channel spam** (users posting identical content across multiple channels) and **duplicate file/document spam**.
+
 **Key Constraints:**
 - ❌ NO LLM calls for detection (cost prohibitive)
 - ✅ All detection logic runs locally (embeddings, keyword matching, heuristics)
 - ✅ Anti-spam safeguards (rate limiting, relevance thresholds)
 - ✅ Character-appropriate triggers (marine biology for Elena, etc.)
+- ✅ Cross-channel spam detection (hash-based heuristics, no LLM needed)
 
 ---
 
@@ -56,15 +78,23 @@ Currently, our AI characters only speak when someone directly @mentions them or 
 > 
 > *(Elena stays silent—this isn't about marine biology)*
 
+**Example 4: Spam Detection (Becky calling out cross-posting)**
+
+> *[User posts identical script in #general, #scripts, #trading, #showcase, #help]*
+> 
+> **Becky:** Hey @SpamUser, I noticed you posted that same script in 5 channels in the last 10 minutes 👀 Maybe pick your top 2 channels? The mods will appreciate it, and people are more likely to actually read it! 😊
+
 ### What Server Admins Can Expect
 
 | Behavior | Details |
 |----------|---------|
-| **Frequency** | ~5-20 messages per day across all channels (not per channel) |
+| **Lurk Frequency** | ~5-20 topic-based responses per day across all channels |
+| **Spam Callouts** | ~1-5 spam warnings per day (depends on your server's spam level) |
 | **Response Length** | Short and casual (1-2 sentences), never long lectures |
 | **Tone** | Friendly interjection, like a server member joining a conversation |
 | **Topics** | Only topics matching the character's expertise (marine biology, music, etc.) |
-| **Spam Prevention** | Max 1 lurk response per channel every 30 minutes |
+| **Spam Detection** | Catches identical posts across 3+ channels within 30 minutes |
+| **Rate Limiting** | Max 1 lurk response per channel every 30 minutes |
 
 ### What This Feature Will NOT Do
 
@@ -74,6 +104,8 @@ Currently, our AI characters only speak when someone directly @mentions them or 
 - ❌ **Read DMs or private channels** — Only monitors channels the bot already has access to
 - ❌ **Respond to other bots** — Ignores messages from bots entirely
 - ❌ **Act creepy or intrusive** — Conservative thresholds mean the bot stays quiet unless the topic is clearly relevant
+- ❌ **Flag different-but-similar content** — Only exact duplicates trigger spam detection
+- ❌ **Flag admins/mods** — Whitelisted roles are exempt from spam detection
 
 ### Admin Controls
 
@@ -85,6 +117,12 @@ Server admins have full control over this feature:
 | `/lurk enable` | Turn lurking back on |
 | `/lurk threshold 0.9` | Make the bot more selective (higher = fewer responses) |
 | `/lurk stats` | See how many lurk responses happened this week |
+| `/spam enable` | Enable spam detection in this server |
+| `/spam disable` | Disable spam detection |
+| `/spam threshold 3` | Set cross-post limit (default: 2 channels OK, 3+ = spam) |
+| `/spam action warn` | Set action: `warn` (call out) or `delete` (auto-remove) |
+| `/spam whitelist @role` | Exempt a role from spam detection |
+| `/spam stats` | View spam detection stats |
 
 You can also disable lurking server-wide by contacting us.
 
@@ -115,6 +153,18 @@ A: The bot only responds to topics matching its character expertise (e.g., marin
 
 **Q: Can multiple bots lurk in the same channel?**
 A: Yes, but each has its own cooldown, so you won't get a pile-on of responses.
+
+**Q: How does spam detection work?**
+A: The bot tracks message content hashes across channels. If someone posts the exact same content to 3+ channels within 30 minutes, that's flagged as spam. Posting to 2 channels is fine—the rule is "2 channels got it, the other 10 don't need it!"
+
+**Q: What if someone posts similar but different content?**
+A: Only **exact duplicates** (or nearly exact, after normalizing whitespace) are flagged. Different files with the same purpose won't be flagged—their content hashes will be different.
+
+**Q: Can the bot auto-delete spam?**
+A: Yes, if you grant the `Manage Messages` permission and set `/spam action delete`. Otherwise, it will just warn the user publicly or flag it for admin review.
+
+**Q: What about trusted users or roles?**
+A: Use `/spam whitelist @role` to exempt specific roles (like admins, mods, or trusted contributors) from spam detection.
 
 ---
 
@@ -147,25 +197,37 @@ This creates a **passive experience** where users must always initiate. Real fri
 │  └─────────────┘  └─────────────┘  └─────────────┘  └────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
-                                    ▼
-                        ┌───────────────────────┐
-                        │  Should Respond?      │
-                        │  (Confidence Score)   │
-                        └───────────────────────┘
-                                    │
                     ┌───────────────┴───────────────┐
                     │                               │
                     ▼                               ▼
-            confidence < 0.7                confidence ≥ 0.7
-                    │                               │
-                    ▼                               ▼
-              [IGNORE]                    ┌─────────────────┐
-                                          │  AgentEngine    │
-                                          │  (LLM Response) │
-                                          └─────────────────┘
-                                                    │
-                                                    ▼
-                                          [Send to Channel]
+┌─────────────────────────────────────┐    ┌───────────────────────┐
+│    SpamDetector (Hash-Based)        │    │  Should Respond?      │
+│  ┌─────────────┐  ┌─────────────┐  │    │  (Confidence Score)   │
+│  │  Content    │  │  File       │  │    └───────────────────────┘
+│  │  Hash       │  │  Hash       │  │                │
+│  └─────────────┘  └─────────────┘  │    ┌───────────┴───────────┐
+│  ┌─────────────┐  ┌─────────────┐  │    │                       │
+│  │  Cross-Post │  │  Rate       │  │    ▼                       ▼
+│  │  Tracker    │  │  Limiter    │  │  confidence < 0.7    confidence ≥ 0.7
+│  └─────────────┘  └─────────────┘  │        │                       │
+└─────────────────────────────────────┘        ▼                       ▼
+            │                            [IGNORE]            ┌─────────────────┐
+            ▼                                                │  AgentEngine    │
+  ┌───────────────────────┐                                  │  (LLM Response) │
+  │  Spam Detected?       │                                  └─────────────────┘
+  │  (3+ channels)        │                                            │
+  └───────────────────────┘                                            ▼
+            │                                                [Send to Channel]
+    ┌───────┴───────┐
+    │               │
+    ▼               ▼
+  NO SPAM      SPAM FOUND
+    │               │
+    ▼               ▼
+ [IGNORE]    ┌─────────────────┐
+             │  Spam Response  │
+             │  (warn/delete)  │
+             └─────────────────┘
 ```
 
 ---
@@ -525,6 +587,22 @@ Example bad responses:
 3. Verify rate limiting works correctly
 4. Test multi-bot scenarios (avoid pile-ons)
 
+### Phase 5: Spam Detection (2-3 days)
+
+**Files:**
+- `src_v2/discord/spam_detector.py` - Core detection logic
+- `src_v2/discord/commands.py` - Add `/spam` commands
+- Database migration for `v2_spam_settings`, `v2_spam_incidents`
+
+**Tasks:**
+1. Create `SpamDetector` class with content/file hashing (2-3 hours)
+2. Integrate into `on_message()` flow (1-2 hours)
+3. Create spam response templates per character (1-2 hours)
+4. Implement `/spam` admin commands (2-3 hours)
+5. Add delete capability (requires `manage_messages` permission) (1-2 hours)
+6. Create mod channel logging (1-2 hours)
+7. Test with simulated spam patterns (1-2 hours)
+
 ---
 
 ## Configuration
@@ -539,6 +617,14 @@ LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # Per-channel cooldown
 LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
 LURK_MAX_DAILY_RESPONSES: int = 20  # Global daily limit
 LURK_REQUIRE_QUESTION: bool = False  # Only respond to questions?
+
+# --- Spam Detection ---
+ENABLE_SPAM_DETECTION: bool = False  # Feature flag
+SPAM_CROSS_POST_THRESHOLD: int = 3  # 3+ channels = spam (2 is OK)
+SPAM_TIME_WINDOW_MINUTES: int = 30  # Detection window
+SPAM_MIN_CONTENT_LENGTH: int = 50  # Don't track short messages
+SPAM_DEFAULT_ACTION: str = "warn"  # warn, delete, silent
+SPAM_CALLOUT_COOLDOWN_MINUTES: int = 60  # Don't repeatedly call out same user
 ```
 
 ---
@@ -594,6 +680,8 @@ topic_sentences:
 
 ## Cost Analysis
 
+### Lurk Engagement
+
 | Operation | Cost | Frequency |
 |-----------|------|-----------|
 | Keyword matching | $0.00 | Every message |
@@ -601,6 +689,16 @@ topic_sentences:
 | LLM response | ~$0.002-0.01 | Only when threshold met (~5-20/day) |
 
 **Daily cost estimate:** $0.04-0.20 (vs $0.50-2.00 if using LLM for detection)
+
+### Spam Detection
+
+| Operation | Cost | Frequency |
+|-----------|------|-----------|
+| Content hashing | $0.00 | Every message |
+| File hashing | $0.00 | Every attachment (<1MB) |
+| Character callout response | ~$0.002-0.01 | Only when spam detected (~1-5/day) |
+
+**Daily cost estimate:** $0.01-0.05 (hash-based detection is essentially free)
 
 ---
 
@@ -636,6 +734,269 @@ LURK_IGNORE_CONDITIONS = [
     lambda m: m.type != discord.MessageType.default,  # System messages
 ]
 ```
+
+---
+
+## 🚨 Spam Detection & Moderation
+
+### The Problem
+
+Server admins spend significant time manually:
+1. **Detecting cross-channel spam** — Users posting identical scripts/content across 5-10+ channels
+2. **Cleaning up duplicate files** — Same document posted everywhere
+3. **Warning repeat offenders** — Tedious and time-consuming
+
+### What This Feature Does
+
+The bot passively monitors for:
+
+| Spam Type | Detection Method | Threshold |
+|-----------|-----------------|----------|
+| **Cross-channel text spam** | Content hash matching | Same text in 3+ channels within 30 min |
+| **Cross-channel file spam** | File hash + filename matching | Same file in 3+ channels within 30 min |
+| **Rapid-fire posting** | Message rate per user | 10+ messages in 60 seconds |
+
+**Key Rule:** Posting to 2 channels is fine ("2 channels got it"). 3+ channels with identical content = spam.
+
+### How Detection Works (No LLM Required)
+
+```python
+class SpamDetector:
+    """Detect cross-channel spam using content hashing."""
+    
+    def __init__(self):
+        # Track recent posts: {content_hash: [(channel_id, timestamp, message_id)]}
+        self.recent_posts: Dict[str, List[Tuple[str, datetime, str]]] = {}
+        self.file_posts: Dict[str, List[Tuple[str, datetime, str]]] = {}  # file_hash -> posts
+        self.ttl_minutes = 30  # Only track posts within this window
+        
+    def content_hash(self, text: str) -> str:
+        """Normalize and hash text content."""
+        # Normalize: lowercase, strip whitespace, remove emojis
+        normalized = text.lower().strip()
+        normalized = re.sub(r'[\s]+', ' ', normalized)  # Collapse whitespace
+        normalized = re.sub(r'[^\w\s]', '', normalized)  # Remove punctuation
+        return hashlib.md5(normalized.encode()).hexdigest()
+    
+    def file_hash(self, attachment: discord.Attachment) -> str:
+        """Hash file by content or fall back to name+size."""
+        # For small files, hash content; for large, use name+size
+        if attachment.size < 1_000_000:  # <1MB
+            content = await attachment.read()
+            return hashlib.md5(content).hexdigest()
+        else:
+            # Large files: hash name + size (good enough for spam detection)
+            return hashlib.md5(f"{attachment.filename}:{attachment.size}".encode()).hexdigest()
+    
+    async def check_message(self, message: discord.Message) -> Optional[SpamAlert]:
+        """Check if message is cross-channel spam."""
+        now = datetime.now()
+        self._cleanup_old_entries(now)
+        
+        guild_id = str(message.guild.id)
+        channel_id = str(message.channel.id)
+        user_id = str(message.author.id)
+        
+        # Check text content
+        if len(message.content) >= 50:  # Only check substantial messages
+            c_hash = self.content_hash(message.content)
+            key = f"{guild_id}:{user_id}:{c_hash}"
+            
+            if key not in self.recent_posts:
+                self.recent_posts[key] = []
+            
+            # Record this post
+            self.recent_posts[key].append((channel_id, now, message.id))
+            
+            # Check for spam (3+ channels)
+            unique_channels = set(ch for ch, _, _ in self.recent_posts[key])
+            if len(unique_channels) >= 3:
+                return SpamAlert(
+                    type="cross_channel_text",
+                    user_id=user_id,
+                    channel_count=len(unique_channels),
+                    channels=list(unique_channels),
+                    content_preview=message.content[:100],
+                    message_ids=[mid for _, _, mid in self.recent_posts[key]]
+                )
+        
+        # Check file attachments
+        for attachment in message.attachments:
+            f_hash = await self.file_hash(attachment)
+            key = f"{guild_id}:{user_id}:{f_hash}"
+            
+            if key not in self.file_posts:
+                self.file_posts[key] = []
+            
+            self.file_posts[key].append((channel_id, now, message.id))
+            
+            unique_channels = set(ch for ch, _, _ in self.file_posts[key])
+            if len(unique_channels) >= 3:
+                return SpamAlert(
+                    type="cross_channel_file",
+                    user_id=user_id,
+                    channel_count=len(unique_channels),
+                    channels=list(unique_channels),
+                    filename=attachment.filename,
+                    message_ids=[mid for _, _, mid in self.file_posts[key]]
+                )
+        
+        return None  # Not spam
+```
+
+### Response Options
+
+Admins can configure how the bot responds to detected spam:
+
+**Option 1: Friendly Call-Out (Default)**
+```
+Hey @SpamUser, I noticed you posted that same script in 5 channels in the 
+last 10 minutes 👀 Maybe pick your top 2 channels? The mods will appreciate 
+it, and people are more likely to actually read it! 😊
+```
+
+**Option 2: Stern Warning**
+```
+@SpamUser ⚠️ Cross-posting the same content to 5 channels is considered spam 
+in this server. Please limit posts to 1-2 relevant channels. Continued 
+spamming may result in a timeout.
+```
+
+**Option 3: Auto-Delete + DM**
+- Bot deletes duplicate messages (keeps first 2)
+- Sends DM to user explaining why
+- Logs action for admin review
+
+**Option 4: Silent Flag for Admins**
+- Bot doesn't say anything publicly
+- Sends alert to mod channel or logs
+- Admin decides what to do
+
+### Character-Appropriate Spam Responses
+
+Each character handles spam callouts in their own voice:
+
+**Becky (nottaylor):**
+> "Babe, I love the hustle, but you just carpet-bombed 6 channels with that script 💣 Maybe chill? Pick your fave 2 and let the work speak for itself!"
+
+**Elena:**
+> "Hey! I noticed you're really excited to share that — it showed up in 5 channels! Maybe pick the most relevant one or two? That way people who are actually interested will see it 😊"
+
+**Marcus:**
+> "Yo, I get wanting to promote your stuff, but 7 channels with the same post? That's a lot. Pick your best 2 spots and let it breathe, fam."
+
+### Data Model
+
+```sql
+-- Server-level spam settings
+CREATE TABLE v2_spam_settings (
+    guild_id VARCHAR(64) PRIMARY KEY,
+    enabled BOOLEAN DEFAULT FALSE,
+    cross_post_threshold INT DEFAULT 3,  -- 3+ channels = spam
+    time_window_minutes INT DEFAULT 30,  -- Detection window
+    action VARCHAR(20) DEFAULT 'warn',   -- warn, delete, silent
+    response_style VARCHAR(20) DEFAULT 'friendly',  -- friendly, stern
+    whitelist_roles TEXT[],  -- Role IDs exempt from detection
+    mod_channel_id VARCHAR(64),  -- Where to log spam alerts
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Spam incident log
+CREATE TABLE v2_spam_incidents (
+    id SERIAL PRIMARY KEY,
+    guild_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
+    spam_type VARCHAR(30) NOT NULL,  -- cross_channel_text, cross_channel_file, rapid_fire
+    channel_count INT NOT NULL,
+    channels TEXT[] NOT NULL,  -- Channel IDs where spam was detected
+    content_hash VARCHAR(64),
+    content_preview TEXT,
+    filename VARCHAR(255),
+    action_taken VARCHAR(20) NOT NULL,  -- warned, deleted, flagged
+    message_ids TEXT[],  -- IDs of spam messages
+    detected_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Index for querying repeat offenders
+CREATE INDEX idx_spam_incidents_user ON v2_spam_incidents(guild_id, user_id, detected_at);
+```
+
+### Configuration
+
+```python
+# src_v2/config/settings.py
+
+# --- Spam Detection ---
+ENABLE_SPAM_DETECTION: bool = False  # Feature flag
+SPAM_CROSS_POST_THRESHOLD: int = 3  # 3+ channels = spam (2 is OK)
+SPAM_TIME_WINDOW_MINUTES: int = 30  # Detection window
+SPAM_MIN_CONTENT_LENGTH: int = 50  # Don't track short messages
+SPAM_DEFAULT_ACTION: str = "warn"  # warn, delete, silent
+SPAM_CALLOUT_COOLDOWN_MINUTES: int = 60  # Don't call out same user repeatedly
+```
+
+### Implementation Tasks
+
+**Phase 5: Spam Detection (2-3 days)**
+
+**Files:**
+- `src_v2/discord/spam_detector.py` - Core detection logic
+- `src_v2/discord/commands.py` - Add `/spam` commands
+- Database migration for `v2_spam_settings`, `v2_spam_incidents`
+
+**Tasks:**
+1. Create `SpamDetector` class with content/file hashing (2-3 hours)
+2. Integrate into `on_message()` flow (1-2 hours)
+3. Create spam response templates per character (1-2 hours)
+4. Implement `/spam` admin commands (2-3 hours)
+5. Add delete capability (requires `manage_messages` permission) (1-2 hours)
+6. Create mod channel logging (1-2 hours)
+7. Test with simulated spam patterns (1-2 hours)
+
+### Edge Cases
+
+**Different Files, Same Purpose:**
+> "Bear wouldn't get flagged his files are different"
+
+The hash-based approach handles this correctly:
+- Different file contents = different hash = not flagged
+- Same exact file = same hash = flagged
+
+**Legitimate Multi-Channel Posts:**
+- Announcements from admins (whitelist admin roles)
+- Bot commands (already ignored)
+- Different but related content (different hashes, not flagged)
+
+**User Appeals:**
+- Log all incidents for admin review
+- Provide `/spam history @user` for admins to see patterns
+- Allow admins to pardon false positives
+
+### Permission Requirements
+
+For spam detection to work optimally, the bot needs:
+
+| Permission | Required For |
+|------------|-------------|
+| `Read Messages` | Detecting spam |
+| `Send Messages` | Warning users |
+| `Manage Messages` | Auto-deleting spam (optional) |
+| `View Channel` | Seeing all channels |
+
+If `Manage Messages` isn't granted, bot will only warn (not delete).
+
+### Success Metrics (Spam Detection)
+
+- **Admin Time Saved:** Hours/week of manual spam cleanup
+- **False Positive Rate:** % of flagged posts that weren't actually spam
+- **User Behavior Change:** Do repeat offenders learn to stop?
+- **Opt-Out Rate:** Servers disabling the feature
+
+**Target:**
+- 90%+ spam correctly identified
+- <5% false positive rate
+- 50%+ reduction in admin manual cleanup
 
 ---
 
@@ -775,5 +1136,6 @@ topic_sentences:
 ---
 
 **Version History:**
+- v1.1 (Nov 25, 2025) - Added spam detection & moderation capabilities based on admin feedback
 - v1.0 (Nov 25, 2025) - Initial design document
 

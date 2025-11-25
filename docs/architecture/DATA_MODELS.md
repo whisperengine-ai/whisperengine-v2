@@ -1,5 +1,20 @@
 # Data Models & Schema
 
+## Multi-Modal Context
+
+The Four Pillars aren't just databases - they're the **physical substrate** of character perception. Each database stores a different aspect of how characters experience reality:
+
+| Pillar | Perceptual Role |
+|--------|-----------------|
+| **PostgreSQL** | 💬 Text (chat history), ❤️ Emotion (relationships) |
+| **Qdrant** | 🧠 Memory (vector recall) |
+| **Neo4j** | 🧠 Memory (semantic facts), 🌌 Universe (spatial/social graph) |
+| **InfluxDB** | System health (not perceptual - infrastructure only) |
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
+---
+
 This document details the data structures used across the four pillars of WhisperEngine v2's data layer: PostgreSQL, Qdrant, Neo4j, and InfluxDB.
 
 ## Architectural Theory: Polyglot Persistence
@@ -19,11 +34,11 @@ WhisperEngine v2 adopts a **Polyglot Persistence** architecture. Instead of forc
 graph TD
     App[Application Layer]
     
-    subgraph "The Four Pillars"
-        SQL[(PostgreSQL)]
-        Vector[(Qdrant)]
-        Graph[(Neo4j)]
-        Time[(InfluxDB)]
+    subgraph "The Four Pillars (Perceptual Substrate)"
+        SQL[(PostgreSQL<br/>Text + Emotion)]
+        Vector[(Qdrant<br/>Memory)]
+        Graph[(Neo4j<br/>Memory + Universe)]
+        Time[(InfluxDB<br/>Metrics)]
     end
     
     App -->|Auth, Logs, Sessions| SQL

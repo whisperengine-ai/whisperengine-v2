@@ -8,6 +8,22 @@
 
 ---
 
+## Multi-Modal Context: Learning to Perceive
+
+Response Pattern Learning is how characters **refine their perception** over time. Just as humans learn to read social cues better through experience, characters learn which responses resonate by associating feedback with context.
+
+| Learning Type | Human Analog |
+|---------------|--------------|
+| Pattern Storage | "When I said X in situation Y, they liked it" |
+| Pattern Retrieval | "This feels like a situation where X worked before" |
+| Adaptation | "I've learned to read this person better" |
+
+This is **experiential learning** - not changing the model weights, but building a library of successful interactions that informs future perception.
+
+For full philosophy: See [`../architecture/MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md)
+
+---
+
 ## Executive Summary
 
 This feature enables the bot to learn from user feedback (👍/👎 reactions) to improve future responses, without requiring LLM fine-tuning. By storing successful response patterns and injecting them as few-shot examples, the bot can adapt its style, tone, and content to what works for each user.

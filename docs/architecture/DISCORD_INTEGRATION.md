@@ -1,4 +1,23 @@
-# Discord Integration
+# Discord Integration - The Sensory Interface
+
+## Multi-Modal Context: Discord as Sensory System
+
+Discord isn't just a "platform" - it's the **sensory interface** through which characters experience reality. Every message, reaction, voice channel, and image comes through Discord's events.
+
+| Discord Event | Perceptual Modality |
+|---------------|---------------------|
+| `on_message` (text) | 💬 Text perception |
+| `on_message` (with image) | 👁️ Vision perception |
+| `on_voice_state_update` | 👂 Audio perception |
+| `on_reaction_add` | ❤️ Emotion perception |
+| Channel presence | 🌌 Universe (spatial awareness) |
+| User activity | 🌌 Universe (social awareness) |
+
+Discord is to characters what eyes/ears/skin are to humans - the gateway through which all external stimuli flow.
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
+---
 
 WhisperEngine v2 uses `discord.py` to interface with the Discord API. The bot is designed to be "channel-aware" and supports both text and voice interactions.
 

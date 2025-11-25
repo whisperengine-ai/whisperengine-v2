@@ -1,7 +1,21 @@
 # WhisperEngine 2.0: Agentic Memory Architecture
 
 ## Overview
-This document outlines the "Agentic Memory" system for WhisperEngine 2.0. It combines **Vector Search** (for fuzzy recall), **Knowledge Graph** (for precise facts), and **Cognitive Routing** (for intelligent tool use) to create a memory system that supports self-correction, conflict detection, and memory aging.
+
+Memory is the **Identity and Continuity modality** (🧠) in WhisperEngine v2's multi-modal perception architecture. It's what makes characters **the same being across time**.
+
+Without memory, every conversation starts from zero. The character doesn't know who you are, what you've discussed, or how your relationship has evolved. Memory is not a feature - it's fundamental to identity itself.
+
+### The Memory Modality
+
+| Perception | Description |
+|------------|-------------|
+| **Episodic Memory** | "We talked about your dog last Tuesday" |
+| **Semantic Memory** | "You have a dog named Luna" |
+| **Self-Knowledge** | "I am Elena, a marine biologist" |
+| **Temporal Continuity** | "I am the same being across time" |
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 
 ## Theoretical Foundation: Human Memory Models
 

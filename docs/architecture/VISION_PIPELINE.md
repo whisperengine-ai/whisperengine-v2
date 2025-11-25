@@ -1,8 +1,23 @@
-# Vision Pipeline - Image Analysis Architecture
+# Vision Pipeline - The Sight Modality (👁️)
 
 ## Overview
 
-WhisperEngine v2's vision system enables AI characters to perceive and remember images shared by users. It integrates multi-modal LLMs (GPT-4V, Claude 3 Opus) with the existing memory architecture to create persistent visual understanding.
+The Vision Pipeline is the **Sight modality** in WhisperEngine v2's multi-modal perception architecture. It enables AI characters to **see** - perceiving and remembering images shared by users.
+
+Just as humans process visual input through eyes → visual cortex → memory, characters process images through:
+**Discord attachment → Multimodal LLM → Memory storage**
+
+### Why Vision Matters
+
+Without sight, characters are blind. They can't:
+- See what users share (photos, memes, screenshots)
+- React to visual content naturally
+- Remember visual experiences
+- Connect visual memories to conversations
+
+Vision is a **first-class perceptual modality**, not a feature bolted onto a chatbot.
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 
 ## Architecture Components
 
@@ -11,6 +26,32 @@ WhisperEngine v2's vision system enables AI characters to perceive and remember 
 2. **LLM Vision Models**: GPT-4V, Claude 3 Opus/Sonnet, Gemini Pro Vision
 3. **Memory Integration**: Stores visual memories in Qdrant with text embeddings
 4. **Knowledge Extraction**: Extracts visual facts to Neo4j knowledge graph
+
+### How Vision Integrates with Other Modalities
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    VISION MODALITY INTEGRATION                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  👁️ VISION (This Pipeline)                                                  │
+│  "I see a sunset over the ocean"                                            │
+│        │                                                                    │
+│        ├───────────────────┬─────────────────┐                              │
+│        ▼                   ▼                 ▼                              │
+│   🧠 MEMORY           🌌 UNIVERSE       ❤️ EMOTION                          │
+│   "Store this         "Mark shared      "This feels                         │
+│    visual memory"     this on Planet    nostalgic,                          │
+│                       Lounge"           warm"                               │
+│        │                   │                 │                              │
+│        └───────────────────┴─────────────────┘                              │
+│                            │                                                │
+│                            ▼                                                │
+│                   [INTEGRATED RESPONSE]                                     │
+│                   Sees + Remembers + Knows context + Feels                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Complete Image Processing Flow
 

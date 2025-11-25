@@ -2,6 +2,23 @@
 
 **Status**: ✅ Implemented & Verified (Nov 2025)
 
+---
+
+## Multi-Modal Context: The Semantic Web of Memory
+
+The Knowledge Graph is part of the **Memory modality** (🧠) - specifically the **semantic memory** component. While vector search provides fuzzy episodic recall ("we talked about this"), the graph provides precise factual knowledge ("your dog is named Luna").
+
+| Memory Type | Implementation | Human Analog |
+|-------------|----------------|--------------|
+| Episodic | Qdrant vectors | "I remember that conversation" |
+| Semantic | Neo4j graph | "I know this fact about you" |
+
+The Knowledge Graph also forms the foundation for the **Universe modality** (🌌) - social relationships are stored as graph edges, enabling characters to understand their social context.
+
+For full philosophy: See [`../architecture/MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md)
+
+---
+
 This feature offloads static character background data (facts, history, preferences) from the system prompt into a Neo4j Knowledge Graph. It enables the bot to "remember" deep details without bloating the context window and allows for proactive "Common Ground" detection with users.
 
 ---

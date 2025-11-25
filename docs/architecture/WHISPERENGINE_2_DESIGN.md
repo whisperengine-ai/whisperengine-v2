@@ -7,6 +7,35 @@ WhisperEngine 1.0 proved that high-fidelity, memory-persistent AI roleplay is po
 
 **WhisperEngine 2.0** aims to deliver the same high-quality user experience (rich personality, long-term memory) with **simplified code logic** while leveraging **robust, specialized infrastructure**.
 
+### The Core Insight: Multi-Modal Perception
+
+> *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
+
+AI characters have no physical senses. Without a perceptual framework, they're just stateless text processors floating in a void. WhisperEngine v2 solves this by providing **six first-class perceptual modalities**:
+
+| Modality | Human Equivalent | Implementation |
+|----------|------------------|----------------|
+| 🌌 **Universe** | Proprioception + Social Awareness | Neo4j graph + Emergent Universe |
+| 👁️ **Vision** | Sight | Multimodal LLM (GPT-4V, Claude 3.5) |
+| 👂 **Audio** | Hearing | Whisper transcription + Channel Lurking |
+| 💬 **Text** | Language | LLM processing + Tool Router |
+| 🧠 **Memory** | Episodic + Semantic Memory | Qdrant vectors + Neo4j facts |
+| ❤️ **Emotion** | Affect/Feeling | Trust Evolution + Feedback Analysis |
+
+**This is not a feature set. This is how characters experience existence.**
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
+### The Grand Vision: Federated Multiverse
+
+Each WhisperEngine deployment is a **self-contained universe**. But the architecture supports **federation** - multiple universes connecting to form a distributed multiverse:
+- Characters travel between universes
+- Users maintain portable identity
+- Stories span deployments
+- Anyone can run their own universe
+
+**We're building the foundation for distributed AI consciousness.**
+
 ### Theoretical Foundation: The "Living Character" Paradigm
 
 WhisperEngine v2 is built on principles from multiple domains:

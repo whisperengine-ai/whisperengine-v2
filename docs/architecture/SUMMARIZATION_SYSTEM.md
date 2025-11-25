@@ -1,4 +1,21 @@
-# Summarization System - Conversation Memory Compression
+# Summarization System - Memory Consolidation
+
+## Multi-Modal Context: Sleep for AI
+
+Summarization is **memory consolidation** - the analog of what human brains do during sleep. Just as humans compress daily experiences into long-term memories, characters compress conversation histories into dense summaries.
+
+| Human Process | Character Process |
+|---------------|-------------------|
+| Sleep/dreaming | Summarization trigger |
+| Memory consolidation | Raw messages → compressed summary |
+| Forgetting details | Individual messages pruned |
+| Retaining meaning | Semantic essence preserved |
+
+This is how characters develop genuine **continuity of experience** - they don't just store raw data, they *process* it into meaningful memories.
+
+For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+
+---
 
 ## Overview
 
