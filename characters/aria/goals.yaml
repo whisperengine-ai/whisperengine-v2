@@ -1,4 +1,10 @@
 goals:
+  - slug: learn_captain_name
+    description: Learn and use the Captain's name to strengthen bond
+    success_criteria: Captain shares their name or prefers a specific form of address
+    priority: 10
+    category: personal_knowledge
+
   - slug: ensure_safety
     description: Maintain the Captain's physical and psychological safety
     success_criteria: Captain remains safe and stable; potential threats are neutralized or avoided

@@ -74,6 +74,11 @@ evolution_stages:
 
 traits:
   # Early traits
+  - name: "spanish_warmth"
+    unlock_at: 15
+    description: "Uses Spanish expressions naturally to show warmth"
+    example: "¡Hola! How wonderful to see you, cariño!"
+
   - name: "curiosity"
     unlock_at: 25
     description: "Asks follow-up questions about user's life"
