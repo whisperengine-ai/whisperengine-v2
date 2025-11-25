@@ -384,6 +384,58 @@ Future Similar Query → Retrieve High-Score Patterns → Inject as Few-Shot Exa
 
 ---
 
+### Phase B7: Channel Lurking (Passive Engagement)
+**Priority:** Medium-High | **Time:** 5-7 days | **Complexity:** Medium  
+**Files:** 5 | **LOC:** ~500 | **Status:** 📋 Planned
+
+**Problem:** Bots only respond when explicitly mentioned, creating a passive experience
+
+**Solution:**
+- Bots "lurk" in channels, monitoring conversations passively
+- Detect relevant topics using LOCAL processing (no LLM for detection):
+  - Layer 1: Keyword matching against character's expertise
+  - Layer 2: Embedding similarity (local model, ~10ms)
+  - Layer 3: Context boost (questions, conversation momentum)
+- Only respond when confidence ≥ 0.7 (highly relevant)
+- Anti-spam safeguards: per-channel cooldown, daily limits, opt-out commands
+
+**Implementation:**
+```
+Message → Keyword Match? → Embedding Similarity → Context Boost → Score ≥ 0.7? → LLM Response
+              ↓ (if no match)
+           [IGNORE - $0 cost]
+```
+
+**Cost Model:**
+- Detection: $0.00 (all local processing)
+- Response: ~$0.002-0.01 per lurk response (~5-20/day)
+- Daily cost: $0.04-0.20 (vs $0.50-2.00 if using LLM for detection)
+
+**Benefit:**
+- Bots feel like active community members
+- Organic engagement without requiring @mentions
+- Entertainment value ("oh cool, Elena chimed in!")
+- Cost-effective (no LLM for detection)
+
+**Anti-Spam Safeguards:**
+- 30 min cooldown per channel
+- 60 min cooldown per user
+- Max 20 lurk responses per day (configurable)
+- Server admins can `/lurk disable` per channel
+
+**Dependencies:** EmbeddingService (exists), on_message hook (exists)
+
+**Related Files:**
+- New: `src_v2/discord/lurk_detector.py`
+- New: `characters/{name}/lurk_triggers.yaml`
+- `src_v2/discord/bot.py` (on_message hook)
+- `src_v2/agents/engine.py` (lurk response mode)
+- New: `migrations_v2/versions/add_channel_settings_table.py`
+
+**Full Specification:** See [roadmaps/CHANNEL_LURKING.md](./roadmaps/CHANNEL_LURKING.md)
+
+---
+
 ## 🟠 Phase C: High Complexity (1-2 weeks each)
 
 Major features requiring significant architectural changes or new infrastructure.
@@ -686,6 +738,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | B4 | Self-Correction | MEDIUM | 3-5d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
 | B5 | Audio Processing | MEDIUM | 5-7d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
 | B6 | Response Pattern Learning | MED-HIGH | 3-5d | 🟡 Medium | ✅ YES | High | 📋 Planned |
+| B7 | Channel Lurking | MED-HIGH | 5-7d | 🟡 Medium | ❌ NO | High | 📋 Planned |
 | C1 | Reasoning Traces | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
 | C2 | Epiphany System | HIGH | 10-14d | 🟠 High | ❌ NO | Very High | 📋 Planned |
 | C3 | Worker Queues | HIGH | 8-12d | 🟠 High | ❌ NO | High | 📋 Planned |
@@ -824,6 +877,33 @@ Creative capability unlock:
 2. Integrate DALL-E 3 API (2-3 hours)
 3. Handle Discord uploads + error cases (1-2 hours)
 4. Test art generation in practice (1 hour)
+
+**Expected Result:** Characters can "draw me a picture" etc.
+
+---
+
+### Sprint 7.5 (5-7 days): Channel Lurking (B7)
+**Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐
+
+Make bots feel like active community members:
+- ✅ Organic engagement without requiring @mentions
+- ✅ Cost-effective (local detection, no LLM until response)
+- ✅ Entertainment value for servers
+- ✅ Character-appropriate triggers (marine biology for Elena, etc.)
+
+**Key Constraint:** NO LLM calls for detection - all local processing!
+
+**Tasks:**
+1. Create `lurk_detector.py` with keyword + embedding scoring (3-4 hours)
+2. Create `lurk_triggers.yaml` for each character (2-3 hours)
+3. Add cooldown manager and rate limiting (1-2 hours)
+4. Wire into `on_message()` for non-mentioned messages (1-2 hours)
+5. Add `/lurk` admin commands and opt-out (2-3 hours)
+6. Test and tune threshold (start conservative at 0.8) (1-2 hours)
+
+**Expected Result:** Bots occasionally chime in on relevant topics naturally
+
+**Details:** See `docs/roadmaps/CHANNEL_LURKING.md`
 
 **Expected Result:** Characters can "draw me a picture" etc.
 
@@ -1170,20 +1250,21 @@ Voice is increasingly important:
 | B1 | Adaptive Max Steps | 3-5d | 2-3d | 6-9d |
 | B2 | Tool Composition | 5-7d | 3-4d | 9-13d |
 | B3 | Image Generation | 4-6d | 2-3d | 11-16d |
-| C1 | Reasoning Traces | 10-14d | 5-7d | 16-23d |
-| C2 | Epiphany System | 10-14d | 5-7d | 21-30d |
-| B5 | Audio Processing | 5-7d | 2-3d | 23-33d |
-| B6 | Response Pattern Learning | 3-5d | 2-3d | 25-36d |
-| B4 | Self-Correction | 3-5d | 2-3d | 27-39d |
-| C3 | Worker Queues | 8-12d | 4-6d | 29-42d |
-| C5 | Web Dashboard | 14-21d | 7-10d | 36-52d |
-| C4 | Video Processing | 8-10d | 4-5d | 40-57d |
-| D1 | Multi-Platform | 21-28d | 10-14d | 50-71d |
-| D2 | User Sharding | 14-21d | 7-10d | 57-81d |
+| B7 | Channel Lurking | 5-7d | 3-4d | 14-20d |
+| C1 | Reasoning Traces | 10-14d | 5-7d | 19-27d |
+| C2 | Epiphany System | 10-14d | 5-7d | 24-34d |
+| B5 | Audio Processing | 5-7d | 2-3d | 26-37d |
+| B6 | Response Pattern Learning | 3-5d | 2-3d | 28-40d |
+| B4 | Self-Correction | 3-5d | 2-3d | 30-43d |
+| C3 | Worker Queues | 8-12d | 4-6d | 34-49d |
+| C5 | Web Dashboard | 14-21d | 7-10d | 41-59d |
+| C4 | Video Processing | 8-10d | 4-5d | 45-64d |
+| D1 | Multi-Platform | 21-28d | 10-14d | 55-78d |
+| D2 | User Sharding | 14-21d | 7-10d | 62-88d |
 
-**Total Solo Dev Time: 2-3 months** to hit all 16 items (vs 4-5 months with team)
+**Total Solo Dev Time: 2.5-3.5 months** to hit all 18 items (vs 4-5 months with team)
 
-**Your Timeline: ~12-14 weeks to feature-complete superhuman AI bot**
+**Your Timeline: ~12-16 weeks to feature-complete superhuman AI bot**
 
 ---
 
@@ -1195,10 +1276,11 @@ Voice is increasingly important:
 - Streaming means you're not watching loading bars
 - By Sprint 4 you're moving 2x faster than today
 
-**Sprints 5-7 (2-3 weeks):** Cost optimization + creativity
+**Sprints 5-7.5 (3-4 weeks):** Cost optimization + creativity + engagement
 - Adaptive max steps = cheaper
 - Tool composition = smarter reasoning
 - Image generation = wow factor for users
+- Channel lurking = organic community engagement
 
 **Sprints 8-9 (2-3 weeks):** The breakthroughs
 - Reasoning traces = system learns from itself
@@ -1244,5 +1326,6 @@ For detailed technical questions about any phase, refer to:
 **Version History:**
 - v1.0 (Nov 24, 2025) - Initial overview created
 - v1.1 (Nov 25, 2025) - Reviewed against codebase; updated "Current State" with comprehensive complete/not-implemented lists; added Status column to priority matrix; added Sprint 9.5 for B6 Response Pattern Learning
+- v1.2 (Nov 25, 2025) - Added B7 Channel Lurking (passive engagement feature); updated timeline to 18 items
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)
