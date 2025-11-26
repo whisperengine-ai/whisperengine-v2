@@ -256,7 +256,7 @@ LLM Stream → Token Buffer → Discord Messages → Edit/Append as Complete
 
 ### Phase A4: Grafana Dashboards for Metrics
 **Priority:** Medium | **Time:** 1 day | **Complexity:** Low  
-**Files:** 0 (Config only) | **LOC:** ~50 | **Status:** 📋 Planned
+**Files:** 0 (Config only) | **LOC:** ~50 | **Status:** ✅ Complete
 
 **Problem:** Visibility into system health is poor (no dashboards, only logs)
 
@@ -926,7 +926,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | A1 | Hot-Reload Characters | LOW | 1-2d | 🟢 Low | ✅ YES | Medium | ⏭️ Skipped |
 | A2 | Redis Caching | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | ✅ Complete |
 | A3 | Streaming Responses | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | ✅ Complete |
-| A4 | Grafana Dashboards | MEDIUM | 1d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
+| A4 | Grafana Dashboards | MEDIUM | 1d | 🟢 Low | ✅ YES | Medium | ✅ Complete |
 | A5 | Channel Context Awareness | MEDIUM | 3-4d | 🟢 Low-Med | ✅ YES | Medium | 📋 Planned |
 | B1 | Adaptive Max Steps | HIGH | 3-5d | 🟡 Medium | ⚠️ MAYBE | High | ✅ Complete |
 | B2 | Tool Composition | HIGH | 5-7d | 🟡 Medium | ❌ NO | High | ✅ Complete |
@@ -1523,7 +1523,7 @@ Transform isolated bots into a living, emergent universe:
 | A2 | Redis Caching | 2-3d | 1-2d | 1-2d |
 | A3 | Streaming Responses | 2-3d | 1-2d | 2-4d |
 | A1 | Hot-Reload Characters | 1-2d | 1d | 3-5d |
-| A4 | Grafana Dashboards | 1d | 1d | 4-6d |
+| A4 | Grafana Dashboards | 1d | 1d | ✅ Done |
 | A5 | Channel Context Awareness | 3-4d | 2-3d | 6-10d |
 | B1 | Adaptive Max Steps | 3-5d | 2-3d | 7-11d |
 | B2 | Tool Composition | 5-7d | 3-4d | 10-15d |
