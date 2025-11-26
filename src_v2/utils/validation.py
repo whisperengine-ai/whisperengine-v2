@@ -140,14 +140,18 @@ class InputValidator:
         Raises:
             ValidationError: If validation fails
         """
-        # Validate message content (more lenient than Discord)
-        is_valid, error_msg = InputValidator.validate_message_content(
-            message, 
-            InputValidator.ENGINE_INPUT_MAX_LENGTH,
-            context="Engine"
-        )
-        if not is_valid:
-            raise ValidationError(f"Engine message validation failed: {error_msg}", error_msg or "Invalid message")
+        # Allow empty message if images are present
+        if not message and image_urls:
+            pass
+        else:
+            # Validate message content (more lenient than Discord)
+            is_valid, error_msg = InputValidator.validate_message_content(
+                message, 
+                InputValidator.ENGINE_INPUT_MAX_LENGTH,
+                context="Engine"
+            )
+            if not is_valid:
+                raise ValidationError(f"Engine message validation failed: {error_msg}", error_msg or "Invalid message")
         
         # Check token estimate
         estimated_tokens = InputValidator.estimate_tokens(message)

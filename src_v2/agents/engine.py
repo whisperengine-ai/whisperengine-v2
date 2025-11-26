@@ -92,6 +92,10 @@ class AgentEngine:
             if not image_urls:
                 image_urls = None
         
+        # Handle empty message with images
+        if not user_message.strip() and image_urls:
+            user_message = "[User uploaded an image]"
+
         # 1. Classify Intent (Simple vs Complex)
         classify_start = time.time()
         is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
@@ -237,6 +241,10 @@ class AgentEngine:
             if not image_urls:
                 image_urls = None
         
+        # Handle empty message with images
+        if not user_message.strip() and image_urls:
+            user_message = "[User uploaded an image]"
+
         # 1. Classify Intent (Simple vs Complex)
         classify_start = time.time()
         is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
