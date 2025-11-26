@@ -10,6 +10,7 @@ from influxdb_client import Point
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool
+from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -44,7 +45,8 @@ class CognitiveRouter:
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
-            CheckPlanetContextTool(guild_id=guild_id)
+            CheckPlanetContextTool(guild_id=guild_id),
+            GenerateImageTool(character_name=character_name)
         ]
         
         # 2. Bind tools to LLM
@@ -52,7 +54,7 @@ class CognitiveRouter:
         
         # 3. Create System Prompt
         system_prompt = """You are the Cognitive Router for an advanced AI companion.
-Your goal is to determine if the user's message requires retrieving external memory or facts.
+Your goal is to determine if the user's message requires retrieving external memory, facts, or generating media.
 
 AVAILABLE TOOLS:
 - search_archived_summaries: For broad topics, past events, or "what did we talk about last week?".
@@ -62,10 +64,11 @@ AVAILABLE TOOLS:
 - update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
 - analyze_topic: For comprehensive research on a broad topic. Searches summaries, episodes, and facts simultaneously. Use this for "tell me everything about X" or complex questions.
 - check_planet_context: For questions about "where are we?", "who is here?", or details about the current server/planet.
+- generate_image: For when the user asks to see something, asks for a selfie, or asks you to draw/imagine something.
 
 RULES:
 1. If the user is just saying "hi" or small talk, you MAY call lookup_user_facts to personalize the greeting (e.g. to find their name), but avoid heavy memory searches.
-2. If the user asks a question that requires memory, CALL the appropriate tool.
+2. If the user asks a question that requires memory or media generation, CALL the appropriate tool.
 3. You can call multiple tools if needed.
 4. Use the provided chat history to resolve pronouns (e.g., "he", "it", "that") to specific entities.
 

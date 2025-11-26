@@ -16,6 +16,7 @@ from src_v2.tools.memory_tools import (
     UpdatePreferencesTool
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool
+from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 
@@ -196,7 +197,8 @@ class ReflectiveAgent:
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
-            CheckPlanetContextTool(guild_id=guild_id)
+            CheckPlanetContextTool(guild_id=guild_id),
+            GenerateImageTool(character_name=character_name)
         ]
 
     def _construct_prompt(self, base_system_prompt: str) -> str:

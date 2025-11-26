@@ -93,6 +93,11 @@ class Settings(BaseSettings):
     # --- Vision ---
     LLM_SUPPORTS_VISION: bool = False
 
+    # --- Image Generation ---
+    IMAGE_GEN_PROVIDER: Literal["bfl", "replicate", "fal"] = "bfl"
+    IMAGE_GEN_MODEL: str = "flux-pro-1.1"
+    FLUX_API_KEY: Optional[SecretStr] = None
+
     # --- Knowledge Graph ---
     ENABLE_RUNTIME_FACT_EXTRACTION: bool = True
 

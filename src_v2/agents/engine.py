@@ -140,7 +140,12 @@ class AgentEngine:
         # Inject memory context if it exists
         if context_variables.get("memory_context"):
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
-            system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+            
+            # Special handling for generated images
+            if "Image generated successfully" in context_variables['memory_context']:
+                system_content += "\n(SYSTEM INSTRUCTION: You have successfully generated an image. You MUST include the image URL in your response to the user. Do not hide it. Present it enthusiastically!)\n"
+            else:
+                system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
         # 5. Create Prompt Template
         prompt = ChatPromptTemplate.from_messages([
@@ -286,7 +291,12 @@ class AgentEngine:
         # Inject memory context if it exists
         if context_variables.get("memory_context"):
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
-            system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+            
+            # Special handling for generated images
+            if "Image generated successfully" in context_variables['memory_context']:
+                system_content += "\n(SYSTEM INSTRUCTION: You have successfully generated an image. You MUST include the image URL in your response to the user. Do not hide it. Present it enthusiastically!)\n"
+            else:
+                system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
         # 5. Create Prompt Template
         prompt = ChatPromptTemplate.from_messages([

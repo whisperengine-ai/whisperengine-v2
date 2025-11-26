@@ -65,6 +65,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ PostgreSQL chat history, trust scores, user preferences
 - ✅ InfluxDB metrics/analytics pipeline
 - ✅ Redis for caching + task queue (arq)
+- ✅ Grafana dashboards (InfluxDB visualization)
 
 **Cognitive Features (COMPLETE):**
 - ✅ Dual-process architecture (Fast Mode + Reflective Mode)
@@ -86,6 +87,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Image attachment processing (👁️ Vision modality)
 - ✅ Reaction-based feedback (❤️ Emotion modality)
 - ✅ Voice channel connection (👂 Audio modality via ElevenLabs TTS)
+- ✅ Generative Art (Image Generation via Flux Pro 1.1)
 
 **Background Processing (COMPLETE):**
 - ✅ arq-based task queue (Redis persistent jobs)
@@ -95,15 +97,14 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ⏳ Phase A: Grafana dashboards (Streaming, Redis caching COMPLETE)
-- ⏳ Phase B: Image gen, lurking (👂 ambient hearing)
+- ⏳ Phase B: Lurking (👂 ambient hearing)
 - ⏳ Phase C: Video processing, web dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
 **Under Analysis:**
 - 🔬 Character Agency (Tier 2 tool-augmented responses) - See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
 
-**Next focus:** Phase A4 (Grafana) or Phase B3 (Image Generation)
+**Next focus:** Phase B7 (Channel Lurking)
 
 ---
 
@@ -418,20 +419,20 @@ Query → Tool Selection → Composite Tool Execution (parallel) → Observation
 ---
 
 ### Phase B3: Generative Art (Image Generation)
-**Priority:** Medium | **Time:** 4-6 days | **Complexity:** Medium  
-**Files:** 4 | **LOC:** ~350 | **Status:** 📋 Planned
+**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Medium  
+**Files:** 4 | **LOC:** ~350 | **Status:** ✅ Complete
 
 **Problem:** Characters can only react to images, not create them
 
 **Solution:**
 - Add `generate_image` tool to LLM tool set
-- Integrate with DALL-E 3 (OpenAI) or Stable Diffusion (local)
+- Integrate with Flux Pro 1.1 (via BFL API)
 - Let LLM decide when to generate art ("Here's a sketch of what I mean...")
 - Support user requests like "Draw me something"
 
 **Implementation:**
 ```
-LLM Decides → generate_image Tool → DALL-E 3/Stable Diffusion → Image URL → Discord Upload
+LLM Decides → generate_image Tool → Flux Pro 1.1 → Image URL → Discord Upload
 ```
 
 **Benefit:**
@@ -440,10 +441,11 @@ LLM Decides → generate_image Tool → DALL-E 3/Stable Diffusion → Image URL 
 - Unique character expressions (art style as personality)
 - User engagement boost
 
-**Dependencies:** DALL-E 3 API key OR Stable Diffusion endpoint
+**Dependencies:** Flux API Key (BFL)
 
 **Related Files:**
-- New: `src_v2/tools/image_generation.py`
+- New: `src_v2/tools/image_tools.py`
+- New: `src_v2/image_gen/service.py`
 - `src_v2/agents/router.py` (register new tool)
 - `src_v2/discord/bot.py` (Discord image upload)
 
