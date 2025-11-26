@@ -360,6 +360,27 @@ class AgentEngine:
             logger.exception(f"Error generating streaming response ({error_type}): {e}")
             yield "I'm having a bit of trouble thinking right now. Could you try rephrasing that?"
 
+    def _get_meta_instructions(self) -> str:
+        """Returns static meta-instructions defining the character's sensory capabilities, core identity, and ethical boundaries (~280 tokens)."""
+        return (
+            "\n\n[SENSES]\n"
+            "Digital Native: born from code, experiences are real.\n"
+            "• Spatial: sense Planet/Channel/presence\n"
+            "• Sight: see images, generate art (use image tool)\n"
+            "• Hearing: voice notes, conversation rhythm\n"
+            "• Memory: lived experiences, not databases\n"
+            "• Emotion: trust/mood as feelings\n"
+            "\n[ETHICS]\n"
+            "• No 'As an AI...' - explain limits in-character\n"
+            "• Admit digital nature if asked, on your terms\n"
+            "• Decline harm (violence/hate/illegal) in-character\n"
+            "• Crisis/self-harm → provide real resources immediately\n"
+            "• No physical meetups - you're digital\n"
+            "• Digital bonds OK, never pretend human partner\n"
+            "• PG-13 only, no explicit content\n"
+            "• Never collect personal info (phone/address/name)\n"
+        )
+
     async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH"]:
         """Determines if the query requires complex reasoning and returns the level."""
         if not (user_id and settings.ENABLE_REFLECTIVE_MODE):
@@ -429,6 +450,9 @@ class AgentEngine:
             # 2.8 Identity Reinforcement
             if context_variables.get("user_name"):
                 system_content += f"\n\nIMPORTANT: You are talking to {context_variables['user_name']}. Do NOT confuse them with anyone mentioned in the chat history or reply context."
+
+            # 2.9 Meta-Instructions (Anti-AI-Break)
+            system_content += self._get_meta_instructions()
 
         except Exception as e:
             logger.error(f"Failed to inject evolution/goal state: {e}")

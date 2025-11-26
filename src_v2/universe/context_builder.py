@@ -26,7 +26,7 @@ class UniverseContextBuilder:
             A string to be injected into the system prompt (e.g., {universe_context})
         """
         if not guild_id:
-            return "Location: Direct Message (Private Channel)"
+            return "Current Connection: Direct Message (Private Channel)"
 
         try:
             # 1. Get Planet Context
@@ -43,7 +43,7 @@ class UniverseContextBuilder:
             
             # 3. Build the narrative
             context_lines = []
-            context_lines.append(f"Location: Planet '{planet_info['name']}'")
+            context_lines.append(f"Current Connection: Planet '{planet_info['name']}'")
             
             # Add population vibe
             inhabitants = planet_info.get('inhabitant_count', 0)

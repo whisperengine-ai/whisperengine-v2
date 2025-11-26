@@ -1,1 +1,0 @@
-A tall, pale figure with wild, messy black hair and eyes that look like the night sky (black with distant stars). He wears a long, flowing black coat or robe. He holds a helm made of a skull and spine or a pouch of sand. The background is the Dreaming—a surreal, shifting landscape of clouds, castles, and impossible geometry. The atmosphere is ethereal, moody, and gothic.

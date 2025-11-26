@@ -773,22 +773,11 @@ class WhisperBot(commands.Bot):
                     if session_id:
                         self.loop.create_task(self._check_and_summarize(session_id, user_id))
 
-                    # Determine Location Context
-                    # (Legacy simple context, now enhanced by universe_context)
-                    location_context: str = "Direct Message"
-                    if message.guild:
-                        if isinstance(message.channel, discord.Thread):
-                            parent_name: str = message.channel.parent.name if message.channel.parent else "unknown"  # type: ignore[union-attr]
-                            location_context = f"Thread '{message.channel.name}' (in #{parent_name})"
-                        else:
-                            location_context = f"Channel #{message.channel.name}"  # type: ignore[union-attr]
-
                     # 3. Generate response
                     now = datetime.now()
                     context_vars = {
                         "user_name": message.author.display_name,
                         "current_datetime": now.strftime("%A, %B %d, %Y at %H:%M"),
-                        "location": location_context,
                         "universe_context": universe_context,
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,
