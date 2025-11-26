@@ -216,8 +216,7 @@ class ExploreGraphTool(BaseTool):
 
 
 class DiscoverCommonGroundInput(BaseModel):
-    """No parameters needed - discovers shared interests between you and the user."""
-    pass
+    target: str = Field(description="The target to find common ground with. Defaults to 'user'.", default="user")
 
 class DiscoverCommonGroundTool(BaseTool):
     name: str = "discover_common_ground"
@@ -226,10 +225,10 @@ class DiscoverCommonGroundTool(BaseTool):
     user_id: str = Field(exclude=True)
     bot_name: str = Field(default="default", exclude=True)
 
-    def _run(self) -> str:
+    def _run(self, target: str = "user") -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self) -> str:
+    async def _arun(self, target: str = "user") -> str:
         try:
             common_ground = await knowledge_manager.find_common_ground(self.user_id, self.bot_name)
             if common_ground:
@@ -241,8 +240,7 @@ class DiscoverCommonGroundTool(BaseTool):
 
 
 class GetEvolutionStateInput(BaseModel):
-    """No parameters needed - retrieves current state for this user."""
-    pass
+    target: str = Field(description="The target to check evolution state for. Defaults to 'user'.", default="user")
 
 class CharacterEvolutionTool(BaseTool):
     name: str = "get_character_evolution"
@@ -251,10 +249,10 @@ class CharacterEvolutionTool(BaseTool):
     user_id: str = Field(exclude=True)
     character_name: str = Field(exclude=True)
 
-    def _run(self) -> str:
+    def _run(self, target: str = "user") -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self) -> str:
+    async def _arun(self, target: str = "user") -> str:
         try:
             relationship = await trust_manager.get_relationship_level(self.user_id, self.character_name)
             

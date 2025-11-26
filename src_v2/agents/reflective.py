@@ -154,12 +154,16 @@ class ReflectiveAgent:
                 logger.warning(f"LLM returned empty response at step {steps}. Retry {empty_response_retries}/{max_empty_retries}")
                 
                 # Recovery: If we just executed tools and haven't exhausted retries, nudge the LLM
-                if tools_used > 0 and empty_response_retries <= max_empty_retries:
+                if empty_response_retries <= max_empty_retries:
                     # Remove the empty response from history
                     messages.pop()
                     
                     # Add a nudge message
-                    nudge = SystemMessage(content="You received tool output but haven't completed the user's request. Continue with your task - if they asked for an image, call generate_image now.")
+                    nudge_content = "You returned an empty response. Please use a tool (like discover_common_ground) or provide a final answer."
+                    if tools_used > 0:
+                        nudge_content = "You received tool output but haven't completed the user's request. Continue with your task - if they asked for an image, call generate_image now."
+                        
+                    nudge = SystemMessage(content=nudge_content)
                     messages.append(nudge)
                     
                     # Don't increment steps for this retry
