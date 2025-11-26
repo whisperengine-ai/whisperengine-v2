@@ -728,7 +728,7 @@ class AgentEngine:
                     .tag("bot_name", character_name) \
                     .tag("mode", mode) \
                     .tag("complexity", str(complexity)) \
-                    .field("latency", latency) \
+                    .field("latency", float(latency)) \
                     .time(datetime.datetime.utcnow())
                 
                 db_manager.influxdb_write_api.write(
@@ -736,5 +736,8 @@ class AgentEngine:
                     org=settings.INFLUXDB_ORG,
                     record=point
                 )
+                logger.debug(f"Logged metrics to InfluxDB: latency={latency:.2f}s mode={mode}")
             except Exception as e:
                 logger.error(f"Failed to log metrics to InfluxDB: {e}")
+        else:
+            logger.warning("InfluxDB write API not available, skipping metrics logging")
