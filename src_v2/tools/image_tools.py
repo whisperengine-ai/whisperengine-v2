@@ -4,7 +4,7 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
 from loguru import logger
 
-from src_v2.image_gen.service import image_service, pending_images
+from src_v2.image_gen.service import image_service, pending_images, image_prompt_memory
 from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.evolution.trust import trust_manager
@@ -17,18 +17,22 @@ class GenerateImageInput(BaseModel):
         default="portrait",
         enum=["portrait", "landscape", "square", "widescreen"]
     )
+    refine: bool = Field(
+        description="Set to true if the user is refining/tweaking a previous image. This reuses the previous seed for consistency.",
+        default=False
+    )
 
 class GenerateImageTool(BaseTool):
     name: str = "generate_image"
-    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or wants a visual. Include the artistic style and mood in your prompt (e.g., 'cinematic portrait with dramatic lighting', 'soft watercolor of a sunset'). Choose aspect ratio: portrait (4:5), landscape (16:9), square (1:1), widescreen (2.4:1)."
+    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or wants a visual. Include the artistic style and mood in your prompt (e.g., 'cinematic portrait with dramatic lighting', 'soft watercolor of a sunset'). Choose aspect ratio: portrait (4:5), landscape (16:9), square (1:1), widescreen (2.4:1). Set refine=true when the user is tweaking/adjusting a previous image."
     args_schema: Type[BaseModel] = GenerateImageInput
     character_name: str = ""
     user_id: str = ""
 
-    def _run(self, prompt: str, aspect_ratio: str = "portrait") -> str:
+    def _run(self, prompt: str, aspect_ratio: str = "portrait", refine: bool = False) -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, prompt: str, aspect_ratio: str = "portrait") -> str:
+    async def _arun(self, prompt: str, aspect_ratio: str = "portrait", refine: bool = False) -> str:
         try:
             # 0. Trust Gate - Check if user has sufficient trust level
             min_trust = settings.IMAGE_GEN_MIN_TRUST
@@ -115,14 +119,29 @@ class GenerateImageTool(BaseTool):
                 enhanced_prompt = prompt
                 logger.info("User/Other subject mode: Using prompt as-is (no character injection)")
             
-            logger.info(f"Generating image with prompt: {enhanced_prompt} (Size: {width}x{height})")
+            # 4. Handle Refinement Mode
+            # If refining, try to reuse the previous seed for consistency
+            seed_to_use = None
+            if refine:
+                previous = await image_prompt_memory.get(self.user_id)
+                if previous:
+                    seed_to_use = previous.get("seed")
+                    previous_prompt = previous.get("prompt", "")
+                    logger.info(f"Refine mode: Reusing seed {seed_to_use} from previous generation")
+                    logger.debug(f"Previous prompt was: {previous_prompt[:100]}...")
+                else:
+                    logger.info("Refine mode requested but no previous prompt found. Using new seed.")
             
-            # 4. Call Service
-            image_result = await image_service.generate_image(enhanced_prompt, width=width, height=height)
+            logger.info(f"Generating image with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
+            
+            # 5. Call Service
+            image_result = await image_service.generate_image(enhanced_prompt, width=width, height=height, seed=seed_to_use)
             
             if image_result:
+                # Save prompt and seed for future refinement
+                await image_prompt_memory.save(self.user_id, enhanced_prompt, image_result.seed)
+                
                 # Register the image for later retrieval by the Discord bot
-                # We use the user_id to queue the image for the final response
                 await pending_images.add(self.user_id, image_result)
                 return f"Image generated successfully ({aspect_ratio})."
             else:

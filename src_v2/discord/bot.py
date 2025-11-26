@@ -601,10 +601,6 @@ class WhisperBot(commands.Bot):
                                 # 1. Text & Sticker Context
                                 content = ref_msg.content or ""
                                 
-                                # Strip stats footer if present (only if feature is enabled, to avoid false positives)
-                                if settings.STATS_FOOTER_DEFAULT_ENABLED and "──────────────" in content:
-                                    content = content.split("──────────────")[0].strip()
-                                
                                 # Handle Stickers in reply
                                 if ref_msg.stickers:
                                     sticker_names = [s.name for s in ref_msg.stickers]
