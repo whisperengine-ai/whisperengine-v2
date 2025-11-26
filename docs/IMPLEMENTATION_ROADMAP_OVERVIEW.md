@@ -284,6 +284,54 @@ InfluxDB → Grafana Dashboard + Alerts
 
 ---
 
+### Phase A5: Channel Context Awareness
+**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Low  
+**Files:** 2-3 | **LOC:** ~200 | **Status:** 📋 Planned
+
+**Problem:** Bot only sees messages directed at it (mentions/DMs), so it can't answer "what did I just say about X?" when users reference recent channel activity.
+
+**Solution (Two Phases):**
+
+**Phase 1: Keyword-Triggered Context Pull**
+- Detect when user asks about channel context ("what did I say", "catch me up", etc.)
+- Pull last 20 messages from Discord API on-demand (zero storage overhead)
+- Inject as context into prompt (~500 tokens)
+- No caching needed - always fresh data
+
+**Phase 2: LLM-Requested Context Tool** (optional, later)
+- Expose `get_channel_context` as a tool in Reflective Mode
+- LLM decides when it needs context (smarter than keyword detection)
+- Lower false positive/negative rates
+
+**Implementation:**
+```
+User Message → Keyword Detection → Discord API (history) → Format → Inject into Prompt
+                                          ↓
+                               Last 20 messages, 30 min window
+```
+
+**Benefit:**
+- Bot feels "aware" of channel conversations
+- Answers "what did I say about X?" correctly
+- Zero storage overhead (vs Redis caching approach)
+- Simpler implementation, always fresh data
+
+**Cost Model:**
+- API calls: 1 per triggered message (rate limit safe)
+- Latency: +50-200ms when triggered
+- Token cost: ~200-500 tokens injected
+
+**Dependencies:** None
+
+**Related Files:**
+- New: `src_v2/discord/context.py` (fetch + format)
+- `src_v2/discord/bot.py` (integration)
+- `src_v2/config/settings.py` (feature flags)
+
+**Full Specification:** See [roadmaps/CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md)
+
+---
+
 ## 🟡 Phase B: Medium Complexity (3-7 days each)
 
 Features requiring significant logic changes but manageable scope.
@@ -869,6 +917,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | A2 | Redis Caching | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | ✅ Complete |
 | A3 | Streaming Responses | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | ✅ Complete |
 | A4 | Grafana Dashboards | MEDIUM | 1d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
+| A5 | Channel Context Awareness | MEDIUM | 2-3d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
 | B1 | Adaptive Max Steps | HIGH | 3-5d | 🟡 Medium | ⚠️ MAYBE | High | ✅ Complete |
 | B2 | Tool Composition | HIGH | 5-7d | 🟡 Medium | ❌ NO | High | ✅ Complete |
 | B3 | Image Generation | MEDIUM | 4-6d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
@@ -1465,11 +1514,12 @@ Transform isolated bots into a living, emergent universe:
 | A3 | Streaming Responses | 2-3d | 1-2d | 2-4d |
 | A1 | Hot-Reload Characters | 1-2d | 1d | 3-5d |
 | A4 | Grafana Dashboards | 1d | 1d | 4-6d |
-| B1 | Adaptive Max Steps | 3-5d | 2-3d | 6-9d |
-| B2 | Tool Composition | 5-7d | 3-4d | 9-13d |
-| B3 | Image Generation | 4-6d | 2-3d | 11-16d |
-| B7 | Channel Lurking | 5-7d | 3-4d | 14-20d |
-| **C1** | **Insight Agent** | **20-28d** | **5-7d** | **19-27d** |
+| A5 | Channel Context Awareness | 2-3d | 1-2d | 5-8d |
+| B1 | Adaptive Max Steps | 3-5d | 2-3d | 7-11d |
+| B2 | Tool Composition | 5-7d | 3-4d | 10-15d |
+| B3 | Image Generation | 4-6d | 2-3d | 12-18d |
+| B7 | Channel Lurking | 5-7d | 3-4d | 15-22d |
+| **C1** | **Insight Agent** | **20-28d** | **5-7d** | **20-29d** |
 | - | ↳ (Reasoning Traces) | - | - | (subsumed) |
 | - | ↳ (Epiphanies) | - | - | (subsumed) |
 | - | ↳ (Response Patterns) | - | - | (subsumed) |
@@ -1557,5 +1607,6 @@ For detailed technical questions about any phase, refer to:
 - v1.4 (Nov 25, 2025) - Added B8 Emergent Universe; now 20 items total
 - v1.5 (Nov 25, 2025) - Removed Phase D1 Multi-Platform Support; committed to Discord-native deepening. Renumbered D2→D1 User Sharding. Focus on Discord-specific features rather than abstraction. Back to 19 items.
 - v1.6 (Nov 25, 2025) - **Major consolidation:** Created Insight Agent (C1) to unify Reasoning Traces + Epiphanies + Response Pattern Learning into single agentic system. Saves 15-21 days of development. Renumbered C3→C2, C4→C3, C5→C4. Added `docs/roadmaps/INSIGHT_AGENT.md` specification. Timeline reduced to 10-14 weeks.
+- v1.7 (Nov 25, 2025) - Added A5 Channel Context Awareness (Discord API pull approach for "what did I say?" queries). Two phases: keyword detection (simple) and LLM tool (smarter). See `docs/roadmaps/CHANNEL_CONTEXT_AWARENESS.md`.
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)
