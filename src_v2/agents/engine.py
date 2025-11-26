@@ -342,6 +342,9 @@ class AgentEngine:
             total_time = time.time() - start_time
             logger.info(f"Total response time: {total_time:.2f}s (Fast Mode Stream)")
             
+            # Log metrics
+            await self._log_metrics(user_id, character.name, total_time, "fast", is_complex)
+            
         except Exception as e:
             error_type = type(e).__name__
             logger.exception(f"Error generating streaming response ({error_type}): {e}")
@@ -719,15 +722,19 @@ class AgentEngine:
         except Exception as e:
             logger.warning(f"Failed to log prompt: {e}")
 
-    async def _log_metrics(self, user_id: str, character_name: str, latency: float, mode: str, complexity: str):
+    async def _log_metrics(self, user_id: Optional[str], character_name: str, latency: float, mode: str, complexity: Any):
         """Logs response metrics to InfluxDB."""
         if db_manager.influxdb_write_api:
             try:
+                # Handle complexity=False case
+                complexity_str = str(complexity) if complexity else "simple"
+                safe_user_id = user_id or "unknown"
+
                 point = Point("response_metrics") \
-                    .tag("user_id", user_id) \
+                    .tag("user_id", safe_user_id) \
                     .tag("bot_name", character_name) \
                     .tag("mode", mode) \
-                    .tag("complexity", str(complexity)) \
+                    .tag("complexity", complexity_str) \
                     .field("latency", float(latency)) \
                     .time(datetime.datetime.utcnow())
                 
