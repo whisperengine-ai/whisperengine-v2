@@ -381,12 +381,12 @@
             "type": "influxdb",
             "uid": "InfluxDB_V2"
           },
-          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"tool_usage\")\n  |> filter(fn: (r) => r[\"_field\"] == \"duration_ms\")\n  |> group(columns: [\"tool_name\"])\n  |> count()",
+          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"tool_usage\")\n  |> filter(fn: (r) => r[\"_field\"] == \"duration_ms\")\n  |> group(columns: [\"tool_name\"])\n  |> count()\n  |> group()\n  |> map(fn: (r) => ({_value: r._value, tool_name: r.tool_name}))",
           "refId": "A"
         }
       ],
       "title": "Tool Usage Count",
-      "type": "barchart"
+      "type": "piechart"
     }
   ],
   "refresh": "5s",
