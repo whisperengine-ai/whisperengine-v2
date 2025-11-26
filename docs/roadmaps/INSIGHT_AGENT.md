@@ -160,25 +160,25 @@ The Insight Agent doesn't run on every message. It triggers based on:
 
 ### Prioritization Logic
 
-```python
-def calculate_priority(user_id: str) -> float:
-    """Higher score = analyze sooner."""
+```
+function calculate_priority(user_id) -> float:
+    // Higher score = analyze sooner
     score = 0.0
     
-    # Recent activity boost
+    // Recent activity boost
     messages_last_hour = get_message_count(user_id, hours=1)
-    score += min(messages_last_hour * 0.1, 1.0)  # Cap at 1.0
+    score += min(messages_last_hour * 0.1, 1.0)
     
-    # Positive feedback boost
+    // Positive feedback boost
     recent_reactions = get_positive_reactions(user_id, hours=24)
     score += min(recent_reactions * 0.2, 1.0)
     
-    # Time since last analysis penalty
+    // Time since last analysis penalty
     hours_since_analysis = get_hours_since_last_analysis(user_id)
     if hours_since_analysis > 24:
         score += 0.5
     
-    # Trust level boost (invest in high-trust users)
+    // Trust level boost (invest in high-trust users)
     trust_score = get_trust_score(user_id)
     if trust_score > 50:
         score += 0.3
@@ -193,135 +193,95 @@ def calculate_priority(user_id: str) -> float:
 ### Data Gathering Tools
 
 #### `analyze_conversation_patterns`
-```python
+```
 class AnalyzeConversationPatternsTool(BaseTool):
-    """
-    Analyzes recent conversation for patterns in:
-    - Message timing (when does user engage?)
-    - Topic flow (how do conversations evolve?)
-    - Engagement signals (message length, questions asked)
-    """
-    name = "analyze_conversation_patterns"
-    description = "Analyzes recent conversations for behavioral patterns."
+    // Analyzes recent conversation for patterns in:
+    // - Message timing (when does user engage?)
+    // - Topic flow (how do conversations evolve?)
+    // - Engagement signals (message length, questions asked)
     
-    async def _arun(self, time_range: str = "last_week") -> str:
-        # Query chat history, compute statistics
-        # Return structured analysis
+    function _arun(time_range="last_week") -> str:
+        history = get_chat_history(time_range)
+        stats = compute_statistics(history)
+        return format_analysis(stats)
 ```
 
 #### `detect_emotional_themes`
-```python
+```
 class DetectEmotionalThemesTool(BaseTool):
-    """
-    Detects recurring emotional themes across sessions:
-    - Topics that correlate with positive/negative sentiment
-    - Emotional triggers (what makes user happy/sad?)
-    - Mood patterns over time
-    """
-    name = "detect_emotional_themes"
-    description = "Identifies emotional patterns and correlations in conversations."
+    // Detects recurring emotional themes across sessions:
+    // - Topics that correlate with positive/negative sentiment
+    // - Emotional triggers (what makes user happy/sad?)
+    // - Mood patterns over time
 ```
 
 #### `find_recurring_topics`
-```python
+```
 class FindRecurringTopicsTool(BaseTool):
-    """
-    Identifies topics the user returns to repeatedly:
-    - Explicit interests (stated preferences)
-    - Implicit interests (topics they keep bringing up)
-    - Seasonal patterns (topics tied to time of year)
-    """
-    name = "find_recurring_topics"
-    description = "Finds topics the user discusses repeatedly across sessions."
+    // Identifies topics the user returns to repeatedly:
+    // - Explicit interests (stated preferences)
+    // - Implicit interests (topics they keep bringing up)
+    // - Seasonal patterns (topics tied to time of year)
 ```
 
 #### `compare_with_past_sessions`
-```python
+```
 class CompareWithPastSessionsTool(BaseTool):
-    """
-    Compares current session with past sessions to detect:
-    - Mood shifts (better/worse than usual?)
-    - New interests vs old interests
-    - Relationship evolution signals
-    """
-    name = "compare_with_past_sessions"
-    description = "Compares current session patterns with historical baseline."
+    // Compares current session with past sessions to detect:
+    // - Mood shifts (better/worse than usual?)
+    // - New interests vs old interests
+    // - Relationship evolution signals
 ```
 
 #### `check_goal_progress`
-```python
+```
 class CheckGoalProgressTool(BaseTool):
-    """
-    Checks progress on active character goals:
-    - Which goals are advancing?
-    - Which goals are stalled?
-    - Opportunities to advance goals naturally
-    """
-    name = "check_goal_progress"
-    description = "Evaluates progress on active character goals for this user."
+    // Checks progress on active character goals:
+    // - Which goals are advancing?
+    // - Which goals are stalled?
+    // - Opportunities to advance goals naturally
 ```
 
 ### Action Tools
 
 #### `generate_epiphany`
-```python
+```
 class GenerateEpiphanyTool(BaseTool):
-    """
-    Generates an epiphany (sudden insight) about the user.
-    Only call this when you've discovered something genuinely non-obvious.
+    // Generates an epiphany (sudden insight) about the user.
+    // Only call this when you've discovered something genuinely non-obvious.
     
-    Example epiphanies:
-    - "I just realized you always mention space when you're feeling down"
-    - "You seem to open up more in the evenings"
-    - "Your taste in music has shifted a lot since we first talked"
-    """
-    name = "generate_epiphany"
-    description = "Stores a genuine insight about the user for future reference."
-    
-    async def _arun(self, insight: str, confidence: float, evidence: List[str]) -> str:
-        # Validate insight isn't trivial
-        # Store in v2_epiphanies table
-        # Return confirmation
+    function _arun(insight, confidence, evidence) -> str:
+        if is_trivial(insight):
+            return "Error: Insight too trivial"
+            
+        store_epiphany(insight, confidence, evidence)
+        return "Epiphany stored successfully"
 ```
 
 #### `store_reasoning_trace`
-```python
+```
 class StoreReasoningTraceTool(BaseTool):
-    """
-    Stores a successful reasoning trace for future reuse.
-    Only store traces that:
-    - Solved a genuinely complex problem
-    - Could help with similar future problems
-    - Had a positive outcome (user satisfied)
-    """
-    name = "store_reasoning_trace"
-    description = "Saves a reasoning pattern that worked well for future reference."
+    // Stores a successful reasoning trace for future reuse.
+    // Only store traces that:
+    // - Solved a genuinely complex problem
+    // - Could help with similar future problems
+    // - Had a positive outcome (user satisfied)
     
-    async def _arun(self, question: str, reasoning_steps: List[str], 
-                    answer: str, quality_score: float) -> str:
-        # Embed the question for future similarity search
-        # Store in v2_reasoning_traces table
+    function _arun(question, reasoning_steps, answer, quality_score) -> str:
+        embedding = embed(question)
+        store_trace(question, reasoning_steps, answer, embedding)
+        return "Trace stored"
 ```
 
 #### `learn_response_pattern`
-```python
+```
 class LearnResponsePatternTool(BaseTool):
-    """
-    Records a response pattern that resonated with the user.
-    Used for RLHF-style adaptation without fine-tuning.
+    // Records a response pattern that resonated with the user.
+    // Used for RLHF-style adaptation without fine-tuning.
     
-    Pattern includes:
-    - The type of message that prompted this response
-    - The response style (length, tone, structure)
-    - Feedback signal (reactions, follow-up engagement)
-    """
-    name = "learn_response_pattern"
-    description = "Records a response style that worked well with this user."
-    
-    async def _arun(self, message_type: str, response_style: str,
-                    example_response: str, feedback_score: float) -> str:
-        # Store in v2_response_patterns table
-        # Embed for future retrieval
+    function _arun(message_type, response_style, example_response, feedback_score) -> str:
+        store_pattern(message_type, response_style, example_response, feedback_score)
+        return "Pattern learned"
 ```
 
 ---
@@ -330,184 +290,33 @@ class LearnResponsePatternTool(BaseTool):
 
 ### InsightAgent Class
 
-```python
-# src_v2/agents/insight_agent.py
-
-from typing import List, Optional, Tuple
-from pydantic import BaseModel
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
-from langchain_core.tools import BaseTool
-from loguru import logger
-
-from src_v2.agents.llm_factory import create_llm
-from src_v2.config.settings import settings
-
-
-class InsightResult(BaseModel):
-    """Result of an insight analysis run."""
-    epiphanies: List[dict]  # Generated epiphanies
-    patterns: List[dict]     # Learned response patterns
-    traces: List[dict]       # Stored reasoning traces
-    insights: List[str]      # General observations
-    tools_used: int
-    steps_taken: int
-
-
+```
 class InsightAgent:
-    """
-    Background agent that reflects on user conversations and generates insights.
-    Runs periodically or triggered after significant interaction volume.
+    // Background agent that reflects on user conversations and generates insights.
+    // Runs periodically or triggered after significant interaction volume.
     
-    Unlike ReflectiveAgent (real-time, user-facing), InsightAgent:
-    - Runs in background (no latency concerns)
-    - Focuses on cross-session patterns
-    - Generates persistent artifacts (epiphanies, traces, patterns)
-    - Uses lighter model (cost optimization)
-    """
-    
-    def __init__(self):
-        # Use utility model (cheaper) since this runs in background
-        self.llm = create_llm(temperature=0.3, mode="utility")
-        self.max_steps = 5  # Lighter than reflective mode
-        
-    async def run(self, user_id: str, character_name: str) -> InsightResult:
-        """
-        Analyze recent interactions and generate insights.
-        
-        Args:
-            user_id: Discord user ID to analyze
-            character_name: Character name for context
-            
-        Returns:
-            InsightResult with generated artifacts
-        """
-        tools = self._get_tools(user_id, character_name)
-        llm_with_tools = self.llm.bind_tools(tools)
-        
-        system_prompt = self._build_system_prompt(character_name)
+    function run(user_id, character_name) -> InsightResult:
+        tools = get_tools(user_id, character_name)
+        system_prompt = build_system_prompt(character_name)
         
         messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Analyze recent interactions with user {user_id}. "
-                                 f"Look for patterns, generate insights, and store any "
-                                 f"valuable reasoning traces or response patterns.")
+            SystemMessage(system_prompt),
+            HumanMessage("Analyze recent interactions...")
         ]
         
         steps = 0
-        tools_used = 0
-        
-        logger.info(f"InsightAgent starting analysis for user {user_id}")
-        
-        while steps < self.max_steps:
-            steps += 1
-            
-            response = await llm_with_tools.ainvoke(messages)
+        while steps < max_steps:
+            response = llm.invoke(messages, tools=tools)
             messages.append(response)
             
-            if response.tool_calls:
-                tools_used += len(response.tool_calls)
-                
-                for tool_call in response.tool_calls:
-                    result = await self._execute_tool(tool_call, tools)
-                    messages.append(ToolMessage(
-                        content=result,
-                        tool_call_id=tool_call["id"],
-                        name=tool_call["name"]
-                    ))
+            if response.has_tool_calls:
+                for call in response.tool_calls:
+                    result = execute_tool(call, tools)
+                    messages.append(ToolMessage(result))
             else:
-                # No more tool calls - agent is done
-                break
-        
-        logger.info(f"InsightAgent finished for {user_id}: {steps} steps, {tools_used} tools")
-        
-        return self._collect_results(messages, steps, tools_used)
-    
-    def _get_tools(self, user_id: str, character_name: str) -> List[BaseTool]:
-        """Returns tools available to the insight agent."""
-        return [
-            # Data gathering
-            AnalyzeConversationPatternsTool(user_id=user_id),
-            DetectEmotionalThemesTool(user_id=user_id),
-            FindRecurringTopicsTool(user_id=user_id),
-            CompareWithPastSessionsTool(user_id=user_id),
-            CheckGoalProgressTool(user_id=user_id, character_name=character_name),
-            # Actions
-            GenerateEpiphanyTool(user_id=user_id, character_name=character_name),
-            StoreReasoningTraceTool(user_id=user_id, character_name=character_name),
-            LearnResponsePatternTool(user_id=user_id, character_name=character_name),
-        ]
-    
-    def _build_system_prompt(self, character_name: str) -> str:
-        return f"""You are a reflective agent analyzing conversations between {character_name} and a user.
-
-Your goal is to discover meaningful patterns and generate valuable insights.
-
-## What to Look For:
-1. **Behavioral patterns** - When does the user engage? How do conversations flow?
-2. **Emotional correlations** - What topics correlate with positive/negative sentiment?
-3. **Recurring themes** - What does the user keep coming back to?
-4. **Relationship signals** - Is the relationship deepening, stagnating, or cooling?
-
-## What to Generate:
-1. **Epiphanies** - Sudden realizations that feel genuinely insightful
-   - Only generate if you discover something non-obvious
-   - Example: "I just realized you always talk about space when you're feeling down"
-   
-2. **Reasoning traces** - Successful problem-solving patterns worth remembering
-   - Only store if the reasoning could help similar future problems
-   
-3. **Response patterns** - Styles that resonated with this user
-   - Note what worked so future responses can be tailored
-
-## Guidelines:
-- Use tools to gather data BEFORE drawing conclusions
-- Be selective - quality over quantity
-- Don't force insights if nothing meaningful emerges
-- Consider the user's privacy and comfort
-
-Start by analyzing conversation patterns, then dig deeper based on what you find."""
-
-    async def _execute_tool(self, tool_call: dict, tools: List[BaseTool]) -> str:
-        """Execute a tool and return its result."""
-        tool_name = tool_call["name"]
-        tool_args = tool_call["args"]
-        
-        selected_tool = next((t for t in tools if t.name == tool_name), None)
-        
-        if selected_tool:
-            try:
-                return await selected_tool.ainvoke(tool_args)
-            except Exception as e:
-                logger.error(f"InsightAgent tool {tool_name} failed: {e}")
-                return f"Error: {e}"
-        else:
-            return f"Error: Tool {tool_name} not found"
-    
-    def _collect_results(self, messages: List, steps: int, tools_used: int) -> InsightResult:
-        """Collect results from the message history."""
-        # Parse tool results to extract generated artifacts
-        epiphanies = []
-        patterns = []
-        traces = []
-        insights = []
-        
-        for msg in messages:
-            if isinstance(msg, ToolMessage):
-                # Parse tool outputs for artifacts
-                # (Implementation depends on tool output format)
-                pass
-            elif isinstance(msg, AIMessage) and msg.content:
-                # Final message may contain summary insights
-                insights.append(str(msg.content))
-        
-        return InsightResult(
-            epiphanies=epiphanies,
-            patterns=patterns,
-            traces=traces,
-            insights=insights,
-            tools_used=tools_used,
-            steps_taken=steps
-        )
+                break  // Done
+                
+        return collect_results(messages)
 ```
 
 ---
@@ -574,39 +383,34 @@ CREATE TABLE v2_response_patterns (
 
 When C3 (Worker Queues) is implemented, the Insight Agent will be scheduled via Redis/arq:
 
-```python
-# src_v2/workers/worker.py
+```
+// src_v2/workers/worker.py
 
-from arq import cron
-from src_v2.agents.insight_agent import InsightAgent
-
-insight_agent = InsightAgent()
-
-async def analyze_user(ctx, user_id: str, character_name: str):
-    """Worker task to analyze a specific user."""
-    result = await insight_agent.run(user_id, character_name)
-    logger.info(f"Insight analysis complete: {result.epiphanies} epiphanies, "
-                f"{result.patterns} patterns, {result.traces} traces")
+function analyze_user(ctx, user_id, character_name):
+    // Worker task to analyze a specific user
+    result = insight_agent.run(user_id, character_name)
+    log_result(result)
 
 class WorkerSettings:
     functions = [analyze_user]
     cron_jobs = [
-        # Run insight analysis for active users every hour
-        cron(analyze_active_users, hour=None, minute=0)  # Every hour
+        // Run insight analysis for active users every hour
+        cron(analyze_active_users, hour=None, minute=0)
     ]
 ```
 
 Until C3 is implemented, can use simple `asyncio.create_task` with in-memory scheduling:
 
-```python
-# Temporary implementation before Worker Queues
-async def schedule_insight_analysis(user_id: str, character_name: str):
-    """Schedule insight analysis in background."""
-    async def run_analysis():
-        await asyncio.sleep(60)  # Delay to batch with other messages
-        await insight_agent.run(user_id, character_name)
+```
+// Temporary implementation before Worker Queues
+function schedule_insight_analysis(user_id, character_name):
+    // Schedule insight analysis in background
     
-    asyncio.create_task(run_analysis())
+    function run_analysis():
+        wait(60 seconds)  // Delay to batch with other messages
+        insight_agent.run(user_id, character_name)
+    
+    create_background_task(run_analysis())
 ```
 
 ---

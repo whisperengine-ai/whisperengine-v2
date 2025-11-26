@@ -143,43 +143,25 @@ CREATE TABLE v2_response_patterns (
 2. Create `PatternStore` class with `save_pattern()` method
 3. Hook into `on_reaction_add()` to capture successful responses
 
-```python
-# src_v2/evolution/pattern_store.py
+```
+// src_v2/evolution/pattern_store.py
 class PatternStore:
-    async def save_pattern(
-        self,
-        user_id: str,
-        character_name: str,
-        user_message: str,
-        bot_response: str,
-        feedback_score: float,
-        positive_reactions: int,
-        negative_reactions: int
-    ) -> None:
-        """Save a response pattern when feedback is positive."""
+    function save_pattern(user_id, character_name, user_message, bot_response, feedback_score, ...) -> None:
+        // Save a response pattern when feedback is positive
         
-        # Only save patterns with positive feedback
+        // Only save patterns with positive feedback
         if feedback_score <= 0:
             return
             
-        # Embed the user message for semantic search
-        embedding = await embedding_service.embed_text(user_message)
+        // Embed the user message for semantic search
+        embedding = embed_text(user_message)
         
-        # Detect intent and topic (simple heuristics or LLM call)
-        intent = self._detect_intent(user_message)
-        topic = self._detect_topic(user_message, bot_response)
+        // Detect intent and topic (simple heuristics or LLM call)
+        intent = detect_intent(user_message)
+        topic = detect_topic(user_message, bot_response)
         
-        # Store in PostgreSQL
-        await db_manager.postgres_pool.execute("""
-            INSERT INTO v2_response_patterns 
-            (user_id, character_name, user_message, bot_response, 
-             feedback_score, positive_reactions, negative_reactions,
-             response_length, detected_intent, detected_topic, user_message_embedding)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ON CONFLICT DO NOTHING
-        """, user_id, character_name, user_message, bot_response,
-             feedback_score, positive_reactions, negative_reactions,
-             len(bot_response), intent, topic, embedding)
+        // Store in PostgreSQL
+        db.execute("INSERT INTO v2_response_patterns ...", ...)
 ```
 
 ### Day 2: Retrieval & Ranking
@@ -192,42 +174,23 @@ class PatternStore:
 2. Add ranking by feedback_score + recency + relevance
 3. Add deduplication (don't show near-duplicate responses)
 
-```python
-async def get_similar_successful_patterns(
-    self,
-    user_id: str,
-    character_name: str,
-    current_message: str,
-    limit: int = 3,
-    min_score: float = 0.5
-) -> List[Dict]:
-    """Retrieve high-scoring past responses for similar messages."""
+```
+function get_similar_successful_patterns(user_id, character_name, current_message, limit=3) -> List[Dict]:
+    // Retrieve high-scoring past responses for similar messages
     
-    # Embed current message
-    query_embedding = await embedding_service.embed_text(current_message)
+    // Embed current message
+    query_embedding = embed_text(current_message)
     
-    # Search for similar messages with positive feedback
-    results = await db_manager.postgres_pool.fetch("""
-        SELECT 
-            user_message,
-            bot_response,
-            feedback_score,
-            positive_reactions,
-            detected_intent,
-            1 - (user_message_embedding <=> $4) as similarity
-        FROM v2_response_patterns
-        WHERE user_id = $1 
-          AND character_name = $2
-          AND feedback_score >= $3
-        ORDER BY 
-            (1 - (user_message_embedding <=> $4)) * 0.6 +  -- Semantic similarity
-            feedback_score * 0.3 +                         -- Feedback quality
-            (1.0 / (EXTRACT(EPOCH FROM NOW() - created_at) / 86400 + 1)) * 0.1  -- Recency
-        DESC
-        LIMIT $5
-    """, user_id, character_name, min_score, query_embedding, limit)
+    // Search for similar messages with positive feedback
+    // Rank by: Semantic Similarity (60%) + Feedback Score (30%) + Recency (10%)
+    results = db.fetch("""
+        SELECT ... FROM v2_response_patterns
+        WHERE user_id = $1 AND character_name = $2 AND feedback_score >= 0.5
+        ORDER BY weighted_score DESC
+        LIMIT $limit
+    """)
     
-    return [dict(r) for r in results]
+    return results
 ```
 
 ### Day 3: System Prompt Injection
@@ -240,25 +203,25 @@ async def get_similar_successful_patterns(
 2. Format patterns as few-shot examples
 3. Add permissive instruction (not mandatory to follow)
 
-```python
-# In AgentEngine._build_system_context()
+```
+// In AgentEngine._build_system_context()
 
-async def _get_pattern_context(self, user_id: str, character_name: str, user_message: str) -> str:
-    """Retrieve successful response patterns for similar messages."""
-    patterns = await pattern_store.get_similar_successful_patterns(
+function _get_pattern_context(user_id, character_name, user_message) -> str:
+    // Retrieve successful response patterns for similar messages
+    patterns = pattern_store.get_similar_successful_patterns(
         user_id, character_name, user_message, limit=2
     )
     
-    if not patterns:
+    if is_empty(patterns):
         return ""
     
     context = "\n\n[SUCCESSFUL RESPONSE PATTERNS]\n"
     context += "For similar messages, responses like these resonated well with this user:\n"
     
-    for i, p in enumerate(patterns, 1):
-        reactions = "👍" * min(p['positive_reactions'], 3)
-        context += f"\n{i}. User asked: \"{p['user_message'][:100]}...\"\n"
-        context += f"   Your response: \"{p['bot_response'][:200]}...\" ({reactions})\n"
+    for i, p in enumerate(patterns):
+        reactions = "👍" * p['positive_reactions']
+        context += f"\n{i}. User asked: \"{p['user_message']}...\"\n"
+        context += f"   Your response: \"{p['bot_response']}...\" ({reactions})\n"
     
     context += "\n(Consider matching this energy, length, and structure. But stay natural—don't copy verbatim.)\n"
     
@@ -276,29 +239,25 @@ async def _get_pattern_context(self, user_id: str, character_name: str, user_mes
 3. Tune similarity threshold and ranking weights
 4. Add logging for debugging
 
-```python
-async def test_pattern_storage_and_retrieval():
-    """Test that positive feedback stores patterns and retrieval works."""
-    # Store a pattern
-    await pattern_store.save_pattern(
+```
+function test_pattern_storage_and_retrieval():
+    // Test that positive feedback stores patterns and retrieval works
+    
+    // Store a pattern
+    pattern_store.save_pattern(
         user_id="test_user",
-        character_name="elena",
         user_message="What's your favorite ocean creature?",
         bot_response="¡Ay, qué buena pregunta! I have such a soft spot for sea otters...",
-        feedback_score=0.8,
-        positive_reactions=3,
-        negative_reactions=0
+        feedback_score=0.8
     )
     
-    # Retrieve for similar message
-    patterns = await pattern_store.get_similar_successful_patterns(
+    // Retrieve for similar message
+    patterns = pattern_store.get_similar_successful_patterns(
         user_id="test_user",
-        character_name="elena",
-        current_message="What marine animal do you like best?",
-        limit=3
+        current_message="What marine animal do you like best?"
     )
     
-    assert len(patterns) >= 1
+    assert count(patterns) >= 1
     assert "sea otters" in patterns[0]['bot_response']
 ```
 
@@ -322,20 +281,17 @@ ENABLE_RESPONSE_PATTERN_LEARNING: bool = Field(
 )
 
 # Pattern decay (run periodically)
-async def decay_old_patterns():
-    """Reduce scores of old, unreferenced patterns."""
-    await db_manager.postgres_pool.execute("""
+function decay_old_patterns():
+    // Reduce scores of old, unreferenced patterns
+    db.execute("""
         UPDATE v2_response_patterns
         SET feedback_score = feedback_score * 0.95
         WHERE last_referenced < NOW() - INTERVAL '30 days'
           AND reference_count < 3
     """)
     
-    # Archive very low score patterns
-    await db_manager.postgres_pool.execute("""
-        DELETE FROM v2_response_patterns
-        WHERE feedback_score < 0.2
-    """)
+    // Archive very low score patterns
+    db.execute("DELETE FROM v2_response_patterns WHERE feedback_score < 0.2")
 ```
 
 ---

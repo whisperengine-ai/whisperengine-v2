@@ -640,25 +640,44 @@ Everything else is **discovered and stored in the graph**.
 ### Auto-Discovery Events
 
 ```python
-# on_guild_join - Bot lands on new planet
-async def on_guild_join(guild):
-    # Create (:Planet) node with basic Discord API info
-    # Create (:Channel) nodes for all text channels
-    # Create (:UserCharacter) nodes for all non-bot members
-    # Create (:Character)-[:ON_PLANET]->(:Planet) relationship
+// Event: Bot lands on new planet (server)
+function on_guild_join(guild):
+    // Create (:Planet) node with basic Discord API info
+    neo4j.create_planet(id=guild.id, name=guild.name)
     
-# on_message (lurking mode) - Passive observation
-async def on_lurk_observation(message):
-    # Update user last_seen timestamp
-    # Extract topics from message (local embeddings)
-    # Detect user-to-user interactions (replies, mentions)
-    # Update planet activity patterns
+    // Create (:Channel) nodes for all text channels
+    for channel in guild.channels:
+        neo4j.create_channel(id=channel.id, name=channel.name)
+        
+    // Create (:UserCharacter) nodes for all non-bot members
+    for member in guild.members:
+        if not member.bot:
+            neo4j.create_user(id=member.id, name=member.name)
+            
+    // Link bot to planet
+    neo4j.create_relationship(Bot, "ON_PLANET", Planet)
+
+// Event: Passive observation (lurking)
+function on_lurk_observation(message):
+    // Update user last_seen timestamp
+    neo4j.update_user_last_seen(message.author.id)
     
-# post_conversation - After bot responds
-async def post_conversation_learning(user_id, facts):
-    # Increment bot-user familiarity
-    # Add discovered traits to user profile
-    # Note any user-to-user mentions
+    // Extract topics from message (local embeddings)
+    topics = extract_topics(message.content)
+    neo4j.link_topics_to_planet(topics, message.guild.id)
+    
+    // Detect user-to-user interactions
+    if message.mentions:
+        neo4j.record_interaction(message.author, message.mentions)
+
+// Event: After bot responds
+function post_conversation_learning(user_id, facts):
+    // Increment bot-user familiarity
+    neo4j.increment_familiarity(bot_id, user_id)
+    
+    // Add discovered traits to user profile
+    for fact in facts:
+        neo4j.add_user_trait(user_id, fact)
 ```
 
 ### Graph Navigation Queries
@@ -1072,53 +1091,31 @@ RETURN bot.name, k.familiarity, k.context
 ### Privacy Enforcement
 
 ```python
-# src_v2/universe/privacy.py
+// src_v2/universe/privacy.py
 
 class PrivacyManager:
-    async def can_share_with_other_bot(
-        self, 
-        user_id: str, 
-        source_bot: str, 
-        target_bot: str,
-        fact_type: str  # "name", "interest", "personal"
-    ) -> bool:
-        """Check if source bot can share user info with target bot."""
-        settings = await self.get_user_settings(user_id)
+    // Check if source bot can share user info with target bot
+    function can_share_with_other_bot(user_id, source_bot, target_bot, fact_type) -> bool:
+        settings = db.get_user_settings(user_id)
         
-        if settings.invisible_mode:
-            return False
-            
-        if not settings.share_with_other_bots:
-            return False
-            
-        if settings.sharing_level == "basic" and fact_type == "personal":
-            return False
+        if settings.invisible_mode: return False
+        if not settings.share_with_other_bots: return False
+        if settings.sharing_level == "basic" and fact_type == "personal": return False
             
         return True
     
-    async def can_mention_to_user(
-        self,
-        about_user_id: str,
-        to_user_id: str,
-        bot_name: str
-    ) -> bool:
-        """Check if bot can mention about_user to to_user."""
-        settings = await self.get_user_settings(about_user_id)
+    // Check if bot can mention about_user to to_user
+    function can_mention_to_user(about_user_id, to_user_id, bot_name) -> bool:
+        settings = db.get_user_settings(about_user_id)
         return settings.allow_bot_introductions and not settings.invisible_mode
     
-    async def filter_shareable_facts(
-        self,
-        user_id: str,
-        facts: List[str]
-    ) -> List[str]:
-        """Remove facts that contain hidden topics."""
-        settings = await self.get_user_settings(user_id)
-        hidden = settings.hidden_topics or []
+    // Remove facts that contain hidden topics
+    function filter_shareable_facts(user_id, facts) -> List[str]:
+        settings = db.get_user_settings(user_id)
+        hidden_topics = settings.hidden_topics or []
         
-        return [
-            fact for fact in facts
-            if not any(topic.lower() in fact.lower() for topic in hidden)
-        ]
+        return [fact for fact in facts 
+                if not contains_hidden_topic(fact, hidden_topics)]
 ```
 
 ---
@@ -1269,38 +1266,33 @@ Other inhabitants on this planet (only if they allow introductions):
 For users who already have conversation history, backfill their universe presence:
 
 ```python
-async def migrate_existing_users():
+function migrate_existing_users():
     """Create UserCharacter nodes from existing data."""
     
     # 1. Get all unique user_ids from chat history
-    users = await db.fetch("""
-        SELECT DISTINCT user_id, user_name, 
-               array_agg(DISTINCT channel_id) as channels
-        FROM v2_chat_history 
-        GROUP BY user_id, user_name
-    """)
+    users = db.fetch_all_users()
     
     for user in users:
         # 2. Create UserCharacter node
-        await universe_manager.ensure_user_exists(
-            user_id=user['user_id'],
-            display_name=user['user_name']
+        universe_manager.ensure_user_exists(
+            user_id=user.id,
+            display_name=user.name
         )
         
         # 3. Aggregate traits from existing knowledge graph
-        facts = await knowledge_manager.get_user_facts(user['user_id'])
+        facts = knowledge_manager.get_user_facts(user.id)
         for fact in facts:
             if is_shareable_trait(fact):
-                await universe_manager.add_user_trait(
-                    user_id=user['user_id'],
+                universe_manager.add_user_trait(
+                    user_id=user.id,
                     trait=fact,
                     confidence=0.7
                 )
         
         # 4. Set default privacy (conservative)
-        await privacy_manager.ensure_defaults(user['user_id'])
+        privacy_manager.ensure_defaults(user.id)
     
-    logger.info(f"Migrated {len(users)} existing users to universe")
+    print(f"Migrated {len(users)} existing users to universe")
 ```
 
 ### Existing Bots

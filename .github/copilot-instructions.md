@@ -30,6 +30,32 @@ Key singletons: `db_manager`, `memory_manager`, `knowledge_manager`, `character_
 
 ## 🎯 Critical Code Patterns
 
+### 0. Documentation Style: Pseudocode in Design Docs
+When writing feature specifications or roadmap documents (in `docs/roadmaps/`), **use pseudocode instead of full Python code**. This keeps docs:
+- Readable and focused on design, not implementation
+- Language-agnostic (easier to adapt to Rust, Go, TypeScript later if needed)
+- Concise (pseudocode is ~1/3 the LOC of Python)
+- Maintainable (small changes to spec don't require code rewrites)
+
+**Pattern for docs:**
+```
+// Use clean pseudocode with minimal syntax
+function needs_channel_context(message) -> bool:
+  if has_recent_marker(message):
+    return true
+  if has_past_marker(message):
+    return false
+  return default(true)
+```
+
+**When to use full code instead:**
+- Implementation guides with real error handling
+- Code examples that users will copy-paste
+- Tests that need to actually run
+- API integration examples
+
+**See:** `docs/roadmaps/CHANNEL_CONTEXT_AWARENESS.md` for pseudocode examples
+
 ### 1. Async/Await + Type Hints (REQUIRED)
 All I/O is async; type hints on ALL function signatures:
 ```python

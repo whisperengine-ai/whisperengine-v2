@@ -73,21 +73,20 @@ Reflective Mode is inspired by **Daniel Kahneman's Dual Process Theory** (*Think
 ### Modify `src_v2/agents/engine.py`
 The `AgentEngine` will act as the primary switchboard.
 
-```python
-# Pseudo-code for generate_response
-async def generate_response(self, ...):
-    # 1. Classify Intent
-    is_complex = await self.classifier.is_complex(user_message)
+```
+// Pseudo-code for generate_response
+function generate_response(user_message, user_id, character) -> Response:
+    // 1. Classify Intent
+    is_complex = classifier.is_complex(user_message)
     
     if is_complex:
-        logger.info("Engaging Reflective Mode")
-        # Run the ReAct loop
-        response = await self.reflective_agent.run(user_message, user_id, character)
-        return response
+        log("Engaging Reflective Mode")
+        // Run the ReAct loop
+        return reflective_agent.run(user_message, user_id, character)
     else:
-        logger.info("Engaging Fast Mode")
-        # Existing Router -> RAG -> Response flow
-        return await self._run_fast_mode(...)
+        log("Engaging Fast Mode")
+        // Existing Router -> RAG -> Response flow
+        return run_fast_mode(user_message, ...)
 ```
 
 ## 5. Implementation Steps

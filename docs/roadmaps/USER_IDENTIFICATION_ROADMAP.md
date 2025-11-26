@@ -151,37 +151,20 @@ psql whispengine_v2 < backup_pre_user_name_migration.sql
 **File:** `src_v2/memory/manager.py`
 
 **A. Update method signature:**
-```python
-# Line ~68
-async def add_message(
-    self, 
-    user_id: str, 
-    character_name: str, 
-    role: str, 
-    content: str, 
-    user_name: Optional[str] = None,  # ✅ ADD THIS
-    channel_id: Optional[str] = None, 
-    message_id: Optional[str] = None, 
-    metadata: Optional[Dict[str, Any]] = None
-):
+```
+// Line ~68
+function add_message(user_id, character_name, role, content, user_name=None, ...):
+    // Add message to history with optional user_name
 ```
 
 **B. Update SQL INSERT:**
-```python
-# Line ~77
-await conn.execute("""
+```
+// Line ~77
+db.execute("""
     INSERT INTO v2_chat_history 
-    (user_id, character_name, role, content, user_name, channel_id, message_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-""", 
-    str(user_id), 
-    character_name, 
-    role, 
-    content, 
-    user_name or "User",  # ✅ ADD THIS
-    str(channel_id) if channel_id else None, 
-    str(message_id) if message_id else None
-)
+    (user_id, character_name, role, content, user_name, ...)
+    VALUES ($1, $2, $3, $4, $5, ...)
+""", ..., user_name or "User", ...)
 ```
 
 **Acceptance Criteria:**
@@ -206,18 +189,10 @@ await conn.execute("""
 **File:** `src_v2/memory/manager.py`
 
 **Update method signature:**
-```python
-# Line ~89
-async def _save_vector_memory(
-    self, 
-    user_id: str, 
-    role: str, 
-    content: str, 
-    channel_id: Optional[str] = None, 
-    message_id: Optional[str] = None, 
-    metadata: Optional[Dict[str, Any]] = None,
-    user_name: Optional[str] = None  # ✅ ADD THIS (for future use)
-):
+```
+// Line ~89
+function _save_vector_memory(user_id, role, content, ..., user_name=None):
+    // Save to vector DB (user_name added for future use)
 ```
 
 **Note:** Not immediately used in Qdrant, but included for API consistency.
@@ -241,42 +216,38 @@ async def _save_vector_memory(
 **File:** `src_v2/memory/manager.py`
 
 **A. Update SQL queries to fetch `user_name`:**
-```python
-# Line ~324 (channel context)
-rows = await conn.fetch("""
+```
+// Line ~324 (channel context)
+rows = db.fetch("""
     SELECT role, content, user_id, user_name 
     FROM v2_chat_history 
-    WHERE channel_id = $1 AND character_name = $2
-    ORDER BY timestamp DESC
-    LIMIT $3
-""", str(channel_id), character_name, limit)
+    WHERE channel_id = $1 ...
+""")
 
-# Line ~334 (DM context)
-rows = await conn.fetch("""
+// Line ~334 (DM context)
+rows = db.fetch("""
     SELECT role, content, user_id, user_name 
     FROM v2_chat_history 
-    WHERE user_id = $1 AND character_name = $2
-    ORDER BY timestamp DESC
-    LIMIT $3
-""", str(user_id), character_name, limit)
+    WHERE user_id = $1 ...
+""")
 ```
 
 **B. Update message formatting logic:**
-```python
-# Line ~343
+```
+// Line ~343
 for row in reversed(rows):
     if row['role'] == 'human':
         content = row['content']
         
-        # In group contexts, distinguish other users by name
-        if channel_id and row['user_id'] != str(user_id):
-            # Use stored display name, fallback to ID if missing
+        // In group contexts, distinguish other users by name
+        if channel_id and row['user_id'] != user_id:
+            // Use stored display name, fallback to ID if missing
             display_name = row['user_name'] or f"User {row['user_id']}"
             content = f"[{display_name}]: {content}"
             
-        messages.append(HumanMessage(content=content))
+        messages.append(HumanMessage(content))
     elif row['role'] == 'ai':
-        messages.append(AIMessage(content=row['content']))
+        messages.append(AIMessage(row['content']))
 ```
 
 **Acceptance Criteria:**
@@ -311,24 +282,18 @@ for row in reversed(rows):
 **Location:** Line ~526 (in `on_message` handler)
 
 **Before:**
-```python
-await memory_manager.add_message(
-    user_id, character.name, 'human', user_message, 
-    channel_id=channel_id, 
-    message_id=str(message.id)
-)
+```
+memory_manager.add_message(user_id, ..., user_message, ...)
 ```
 
 **After:**
-```python
-await memory_manager.add_message(
+```
+memory_manager.add_message(
     user_id, 
-    character.name, 
-    'human', 
+    ..., 
     user_message, 
-    user_name=message.author.display_name,  # ✅ ADD THIS
-    channel_id=channel_id, 
-    message_id=str(message.id)
+    user_name=message.author.display_name,  // ✅ ADD THIS
+    ...
 )
 ```
 
@@ -353,27 +318,19 @@ await memory_manager.add_message(
 **Location:** Line ~671 (in `on_message` handler)
 
 **Before:**
-```python
-await memory_manager.add_message(
-    user_id, 
-    character.name, 
-    'ai', 
-    response, 
-    channel_id=channel_id, 
-    message_id=str(sent_messages[-1].id)
-)
+```
+memory_manager.add_message(user_id, ..., 'ai', response, ...)
 ```
 
 **After:**
-```python
-await memory_manager.add_message(
+```
+memory_manager.add_message(
     user_id, 
-    character.name, 
+    ..., 
     'ai', 
     response, 
-    user_name=None,  # ✅ ADD THIS (AI doesn't need display name)
-    channel_id=channel_id, 
-    message_id=str(sent_messages[-1].id)
+    user_name=None,  // ✅ ADD THIS (AI doesn't need display name)
+    ...
 )
 ```
 
@@ -406,66 +363,66 @@ await memory_manager.add_message(
 **Test Cases:**
 
 **TC-1: Backward Compatibility**
-```python
-async def test_history_with_null_names():
-    """Verify system handles existing messages without user_name"""
-    # Setup: Message with NULL user_name in database
-    # Action: Retrieve history
-    # Assert: Falls back to "User {user_id}" format
+```
+function test_history_with_null_names():
+    // Verify system handles existing messages without user_name
+    // Setup: Message with NULL user_name in database
+    // Action: Retrieve history
+    // Assert: Falls back to "User {user_id}" format
 ```
 
 **TC-2: New Messages Store Names**
-```python
-async def test_new_messages_store_names():
-    """Verify new messages properly store display names"""
-    # Setup: Add message with user_name="Sarah"
-    # Action: Query database directly
-    # Assert: user_name column contains "Sarah"
+```
+function test_new_messages_store_names():
+    // Verify new messages properly store display names
+    // Setup: Add message with user_name="Sarah"
+    // Action: Query database directly
+    // Assert: user_name column contains "Sarah"
 ```
 
 **TC-3: Multi-User Group Chat**
-```python
-async def test_group_chat_name_formatting():
-    """Verify different users show different names in group context"""
-    # Setup: 3 messages from different users in same channel
-    # Action: Retrieve history from one user's perspective
-    # Assert: Other users have [Name]: prefix, current user does not
+```
+function test_group_chat_name_formatting():
+    // Verify different users show different names in group context
+    // Setup: 3 messages from different users in same channel
+    // Action: Retrieve history from one user's perspective
+    // Assert: Other users have [Name]: prefix, current user does not
 ```
 
 **TC-4: DM Context (No Prefix)**
-```python
-async def test_dm_context_no_prefix():
-    """Verify DM conversations don't show name prefixes"""
-    # Setup: Message in DM (channel_id=None)
-    # Action: Retrieve history
-    # Assert: No [Name]: prefix appears
+```
+function test_dm_context_no_prefix():
+    // Verify DM conversations don't show name prefixes
+    // Setup: Message in DM (channel_id=None)
+    // Action: Retrieve history
+    // Assert: No [Name]: prefix appears
 ```
 
 **TC-5: Unicode Display Names**
-```python
-async def test_unicode_display_names():
-    """Verify emoji and international characters work"""
-    # Setup: Messages with names like "Sarah 🎉" and "田中さん"
-    # Action: Store and retrieve
-    # Assert: Names displayed correctly without corruption
+```
+function test_unicode_display_names():
+    // Verify emoji and international characters work
+    // Setup: Messages with names like "Sarah 🎉" and "田中さん"
+    // Action: Store and retrieve
+    // Assert: Names displayed correctly without corruption
 ```
 
 **TC-6: Long Display Names**
-```python
-async def test_long_display_names():
-    """Verify 32-character names (Discord max) work"""
-    # Setup: Message with 32-character display name
-    # Action: Store and retrieve
-    # Assert: Full name preserved and displayed
+```
+function test_long_display_names():
+    // Verify 32-character names (Discord max) work
+    // Setup: Message with 32-character display name
+    // Action: Store and retrieve
+    // Assert: Full name preserved and displayed
 ```
 
 **TC-7: NULL Name Handling**
-```python
-async def test_null_name_fallback():
-    """Verify NULL user_name falls back gracefully"""
-    # Setup: Call add_message without user_name parameter
-    # Action: Retrieve history
-    # Assert: Shows "User" as default
+```
+function test_null_name_fallback():
+    // Verify NULL user_name falls back gracefully
+    // Setup: Call add_message without user_name parameter
+    // Action: Retrieve history
+    // Assert: Shows "User" as default
 ```
 
 **Acceptance Criteria:**

@@ -285,48 +285,58 @@ InfluxDB → Grafana Dashboard + Alerts
 ---
 
 ### Phase A5: Channel Context Awareness
-**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Low  
-**Files:** 2-3 | **LOC:** ~200 | **Status:** 📋 Planned
+**Priority:** Medium | **Time:** 3-4 days | **Complexity:** Low-Medium  
+**Files:** 3-4 | **LOC:** ~400 | **Status:** 📋 Planned
 
 **Problem:** Bot only sees messages directed at it (mentions/DMs), so it can't answer "what did I just say about X?" when users reference recent channel activity.
 
-**Solution (Two Phases):**
+**Solution (Hybrid Approach):**
 
-**Phase 1: Keyword-Triggered Context Pull**
+**Phase 1a: Discord API Pull (Fallback)**
 - Detect when user asks about channel context ("what did I say", "catch me up", etc.)
-- Pull last 20 messages from Discord API on-demand (zero storage overhead)
-- Inject as context into prompt (~500 tokens)
-- No caching needed - always fresh data
+- Pull last 20 messages from Discord API on-demand
+- Keyword filtering only
+- Used when Redis cache is empty (cold start)
+
+**Phase 1b: Redis Rolling Buffer with Semantic Search (Primary)**
+- Cache non-mentioned messages in Redis with local embeddings
+- Uses `all-MiniLM-L6-v2` (384-dim, ~5ms, $0 cost)
+- Semantic similarity search via Redis Stack
+- 30 min TTL, 50 messages per channel
+- Finds "turtles" when asked about "reptiles"
 
 **Phase 2: LLM-Requested Context Tool** (optional, later)
 - Expose `get_channel_context` as a tool in Reflective Mode
-- LLM decides when it needs context (smarter than keyword detection)
-- Lower false positive/negative rates
+- LLM decides when it needs context
 
 **Implementation:**
 ```
-User Message → Keyword Detection → Discord API (history) → Format → Inject into Prompt
-                                          ↓
-                               Last 20 messages, 30 min window
+Non-mentioned message → Local embed (~5ms) → Redis cache (30min TTL)
+                                                    ↓
+Bot mentioned + needs_context() → Redis semantic search (15-20ms)
+                                                    ↓
+                                  If empty → Discord API fallback (50-200ms)
 ```
 
 **Benefit:**
 - Bot feels "aware" of channel conversations
-- Answers "what did I say about X?" correctly
-- Zero storage overhead (vs Redis caching approach)
-- Simpler implementation, always fresh data
+- Semantic search finds related content
+- Zero embedding API cost (local model)
+- Fast (15-20ms primary, 50-200ms fallback)
 
 **Cost Model:**
-- API calls: 1 per triggered message (rate limit safe)
-- Latency: +50-200ms when triggered
-- Token cost: ~200-500 tokens injected
+- Embedding: $0 (local model)
+- Storage: ~50KB per active channel
+- Latency: +15-20ms (Redis) or +50-200ms (Discord API fallback)
 
-**Dependencies:** None
+**Dependencies:** Redis Stack (for vector search)
 
 **Related Files:**
-- New: `src_v2/discord/context.py` (fetch + format)
+- New: `src_v2/discord/context.py` (keyword detection, Discord API)
+- New: `src_v2/discord/channel_cache.py` (Redis semantic cache)
 - `src_v2/discord/bot.py` (integration)
 - `src_v2/config/settings.py` (feature flags)
+- `docker-compose.yml` (upgrade to redis-stack)
 
 **Full Specification:** See [roadmaps/CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md)
 
@@ -917,7 +927,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | A2 | Redis Caching | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | ✅ Complete |
 | A3 | Streaming Responses | HIGH | 2-3d | 🟢 Low-Med | ✅ YES | High | ✅ Complete |
 | A4 | Grafana Dashboards | MEDIUM | 1d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
-| A5 | Channel Context Awareness | MEDIUM | 2-3d | 🟢 Low | ✅ YES | Medium | 📋 Planned |
+| A5 | Channel Context Awareness | MEDIUM | 3-4d | 🟢 Low-Med | ✅ YES | Medium | 📋 Planned |
 | B1 | Adaptive Max Steps | HIGH | 3-5d | 🟡 Medium | ⚠️ MAYBE | High | ✅ Complete |
 | B2 | Tool Composition | HIGH | 5-7d | 🟡 Medium | ❌ NO | High | ✅ Complete |
 | B3 | Image Generation | MEDIUM | 4-6d | 🟡 Medium | ❌ NO | Medium | 📋 Planned |
@@ -1514,7 +1524,7 @@ Transform isolated bots into a living, emergent universe:
 | A3 | Streaming Responses | 2-3d | 1-2d | 2-4d |
 | A1 | Hot-Reload Characters | 1-2d | 1d | 3-5d |
 | A4 | Grafana Dashboards | 1d | 1d | 4-6d |
-| A5 | Channel Context Awareness | 2-3d | 1-2d | 5-8d |
+| A5 | Channel Context Awareness | 3-4d | 2-3d | 6-10d |
 | B1 | Adaptive Max Steps | 3-5d | 2-3d | 7-11d |
 | B2 | Tool Composition | 5-7d | 3-4d | 10-15d |
 | B3 | Image Generation | 4-6d | 2-3d | 12-18d |
@@ -1607,6 +1617,6 @@ For detailed technical questions about any phase, refer to:
 - v1.4 (Nov 25, 2025) - Added B8 Emergent Universe; now 20 items total
 - v1.5 (Nov 25, 2025) - Removed Phase D1 Multi-Platform Support; committed to Discord-native deepening. Renumbered D2→D1 User Sharding. Focus on Discord-specific features rather than abstraction. Back to 19 items.
 - v1.6 (Nov 25, 2025) - **Major consolidation:** Created Insight Agent (C1) to unify Reasoning Traces + Epiphanies + Response Pattern Learning into single agentic system. Saves 15-21 days of development. Renumbered C3→C2, C4→C3, C5→C4. Added `docs/roadmaps/INSIGHT_AGENT.md` specification. Timeline reduced to 10-14 weeks.
-- v1.7 (Nov 25, 2025) - Added A5 Channel Context Awareness (Discord API pull approach for "what did I say?" queries). Two phases: keyword detection (simple) and LLM tool (smarter). See `docs/roadmaps/CHANNEL_CONTEXT_AWARENESS.md`.
+- v1.7 (Nov 25, 2025) - Added A5 Channel Context Awareness. Updated to hybrid approach: Phase 1a (Discord API fallback) + Phase 1b (Redis rolling buffer with local embeddings for semantic search) + Phase 2 (LLM tool). See `docs/roadmaps/CHANNEL_CONTEXT_AWARENESS.md`.
 
 **Next Review:** After Phase A completion (estimated Dec 1, 2025)

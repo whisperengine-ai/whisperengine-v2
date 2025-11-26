@@ -309,52 +309,45 @@ keywords:
 ```
 
 **Scoring:**
-```python
-def keyword_score(message: str, triggers: dict) -> float:
+```
+function keyword_score(message, triggers) -> float:
     score = 0.0
-    message_lower = message.lower()
+    message_lower = lowercase(message)
     
-    # Check high relevance keywords
+    // Check high relevance keywords
     for kw in triggers['high_relevance']:
-        if kw in message_lower:
+        if message_lower contains kw:
             score += 0.5
             
-    # Check medium relevance
+    // Check medium relevance
     for kw in triggers['medium_relevance']:
-        if kw in message_lower:
+        if message_lower contains kw:
             score += 0.3
             
-    # Bonus for questions
+    // Bonus for questions
     for pattern in triggers['question_patterns']:
-        if pattern in message_lower:
+        if message_lower contains pattern:
             score += 0.2
             
-    return min(score, 1.0)  # Cap at 1.0
+    return min(score, 1.0)  // Cap at 1.0
 ```
 
 ### Layer 2: Embedding Similarity (Cheap, Accurate)
 
 Use the existing `EmbeddingService` (all-MiniLM-L6-v2, runs locally) to compute semantic similarity:
 
-```python
-# Pre-compute character topic embeddings at startup
+```
+// Pre-compute character topic embeddings at startup
 CHARACTER_TOPIC_EMBEDDINGS = {
-    "elena": embedding_service.embed_documents([
-        "coral reef restoration and marine conservation",
-        "ocean acidification and climate change effects on sea life",
-        "sea turtle and marine mammal biology",
-        "scuba diving and underwater exploration",
-        "tide pool ecosystems and intertidal zones",
-    ])
+    "elena": embed(["coral reef restoration...", "ocean acidification...", ...])
 }
 
-async def embedding_score(message: str, character: str) -> float:
-    """Compute max cosine similarity to character topics."""
-    msg_embedding = await embedding_service.embed_query_async(message)
+function embedding_score(message, character) -> float:
+    msg_embedding = embed(message)
     topic_embeddings = CHARACTER_TOPIC_EMBEDDINGS[character]
     
     similarities = [cosine_similarity(msg_embedding, te) for te in topic_embeddings]
-    return max(similarities)  # Return best match
+    return max(similarities)  // Return best match
 ```
 
 **Cost:** $0.00 (runs on CPU, ~10ms per message)
@@ -367,22 +360,22 @@ Boost score if:
 - Recent messages in channel were also on-topic (conversation momentum)
 - User has high trust with the bot (they'd welcome the interjection)
 
-```python
-def context_boost(message: Message, channel_history: List[Message]) -> float:
+```
+function context_boost(message, channel_history) -> float:
     boost = 0.0
     
-    # Question bonus
-    if message.content.strip().endswith('?'):
+    // Question bonus
+    if message ends with '?':
         boost += 0.15
         
-    # Conversation momentum (last 5 messages also on-topic)
-    recent_on_topic = sum(1 for m in channel_history[-5:] if is_on_topic(m))
+    // Conversation momentum (last 5 messages also on-topic)
+    recent_on_topic = count(m in channel_history[-5:] if is_on_topic(m))
     if recent_on_topic >= 2:
         boost += 0.1
         
-    # User relationship bonus
-    trust = await trust_manager.get_trust_score(user_id, character_name)
-    if trust >= 50:  # Close friend or above
+    // User relationship bonus
+    trust = get_trust_score(user_id, character_name)
+    if trust >= 50:  // Close friend or above
         boost += 0.1
         
     return boost
@@ -390,30 +383,26 @@ def context_boost(message: Message, channel_history: List[Message]) -> float:
 
 ### Combined Scoring
 
-```python
-async def should_lurk_respond(message: Message, character: str) -> Tuple[bool, float]:
-    """
-    Determine if bot should respond to a channel message.
-    Returns (should_respond, confidence_score).
-    """
-    # Layer 1: Keyword matching (fast)
-    kw_score = keyword_score(message.content, load_triggers(character))
+```
+function should_lurk_respond(message, character) -> (bool, float):
+    // Layer 1: Keyword matching (fast)
+    kw_score = keyword_score(message, character_triggers)
     
-    # Early exit if no keywords match
+    // Early exit if no keywords match
     if kw_score == 0:
         return False, 0.0
     
-    # Layer 2: Embedding similarity (accurate)
-    emb_score = await embedding_score(message.content, character)
+    // Layer 2: Embedding similarity (accurate)
+    emb_score = embedding_score(message, character)
     
-    # Layer 3: Context boost
-    ctx_boost = await context_boost(message, channel_history)
+    // Layer 3: Context boost
+    ctx_boost = context_boost(message, channel_history)
     
-    # Weighted combination
+    // Weighted combination
     final_score = (kw_score * 0.3) + (emb_score * 0.5) + ctx_boost
     
-    # Threshold
-    threshold = 0.7  # Configurable
+    // Threshold
+    threshold = 0.7  // Configurable
     return final_score >= threshold, final_score
 ```
 
@@ -423,57 +412,34 @@ async def should_lurk_respond(message: Message, character: str) -> Tuple[bool, f
 
 ### Rate Limiting
 
-```python
+```
 class LurkCooldownManager:
-    """Prevents excessive lurk responses."""
+    // Prevents excessive lurk responses
     
-    def __init__(self):
-        # Per-channel cooldown (don't spam one channel)
-        self.channel_cooldowns: Dict[str, datetime] = {}
-        self.channel_cooldown_minutes = 30  # Min 30 min between lurk responses per channel
+    function can_respond(channel_id, user_id) -> (bool, reason):
+        now = current_time()
         
-        # Per-user cooldown (don't stalk one person)
-        self.user_cooldowns: Dict[str, datetime] = {}
-        self.user_cooldown_minutes = 60  # Min 1 hour between lurk responses to same user
+        // Reset daily counter if new day
+        if is_new_day(last_reset):
+            reset_daily_counters()
         
-        # Global rate limit (don't be annoying overall)
-        self.global_responses_today: int = 0
-        self.max_global_per_day = 20  # Max 20 lurk responses per day total
-        self.last_reset: datetime = datetime.now()
-        
-    def can_respond(self, channel_id: str, user_id: str) -> Tuple[bool, str]:
-        """Check if we're allowed to lurk-respond."""
-        now = datetime.now()
-        
-        # Reset daily counter
-        if (now - self.last_reset).days >= 1:
-            self.global_responses_today = 0
-            self.last_reset = now
-        
-        # Check global limit
-        if self.global_responses_today >= self.max_global_per_day:
+        // Check global limit
+        if global_responses_today >= max_global_per_day:
             return False, "daily_limit"
             
-        # Check channel cooldown
-        if channel_id in self.channel_cooldowns:
-            elapsed = (now - self.channel_cooldowns[channel_id]).total_seconds() / 60
-            if elapsed < self.channel_cooldown_minutes:
-                return False, "channel_cooldown"
+        // Check channel cooldown (e.g. 30 mins)
+        if time_since_last_channel_response < channel_cooldown_minutes:
+            return False, "channel_cooldown"
                 
-        # Check user cooldown
-        if user_id in self.user_cooldowns:
-            elapsed = (now - self.user_cooldowns[user_id]).total_seconds() / 60
-            if elapsed < self.user_cooldown_minutes:
-                return False, "user_cooldown"
+        // Check user cooldown (e.g. 60 mins)
+        if time_since_last_user_response < user_cooldown_minutes:
+            return False, "user_cooldown"
                 
         return True, "allowed"
         
-    def record_response(self, channel_id: str, user_id: str) -> None:
-        """Record that we responded."""
-        now = datetime.now()
-        self.channel_cooldowns[channel_id] = now
-        self.user_cooldowns[user_id] = now
-        self.global_responses_today += 1
+    function record_response(channel_id, user_id):
+        update_timestamps(channel_id, user_id)
+        increment_global_counter()
 ```
 
 ### Relevance Floor
@@ -724,14 +690,13 @@ If multiple bots are in the same channel and all have lurking enabled:
 
 ### Message Types to Ignore
 
-```python
+```
 LURK_IGNORE_CONDITIONS = [
-    lambda m: m.author.bot,  # Other bots
-    lambda m: len(m.content) < 10,  # Too short
-    lambda m: m.content.startswith('!'),  # Commands
-    lambda m: m.content.startswith('/'),  # Slash commands
-    lambda m: 'http' in m.content,  # Links (likely sharing, not discussing)
-    lambda m: m.type != discord.MessageType.default,  # System messages
+    is_bot_message,          // Other bots
+    is_too_short,            // < 10 chars
+    is_command,              // Starts with ! or /
+    contains_link,           // Likely sharing, not discussing
+    is_system_message        // Join/leave messages
 ]
 ```
 
@@ -760,88 +725,37 @@ The bot passively monitors for:
 
 ### How Detection Works (No LLM Required)
 
-```python
+```
 class SpamDetector:
-    """Detect cross-channel spam using content hashing."""
+    // Detect cross-channel spam using content hashing
     
-    def __init__(self):
-        # Track recent posts: {content_hash: [(channel_id, timestamp, message_id)]}
-        self.recent_posts: Dict[str, List[Tuple[str, datetime, str]]] = {}
-        self.file_posts: Dict[str, List[Tuple[str, datetime, str]]] = {}  # file_hash -> posts
-        self.ttl_minutes = 30  # Only track posts within this window
+    function check_message(message) -> Optional[SpamAlert]:
+        cleanup_old_entries()
         
-    def content_hash(self, text: str) -> str:
-        """Normalize and hash text content."""
-        # Normalize: lowercase, strip whitespace, remove emojis
-        normalized = text.lower().strip()
-        normalized = re.sub(r'[\s]+', ' ', normalized)  # Collapse whitespace
-        normalized = re.sub(r'[^\w\s]', '', normalized)  # Remove punctuation
-        return hashlib.md5(normalized.encode()).hexdigest()
-    
-    def file_hash(self, attachment: discord.Attachment) -> str:
-        """Hash file by content or fall back to name+size."""
-        # For small files, hash content; for large, use name+size
-        if attachment.size < 1_000_000:  # <1MB
-            content = await attachment.read()
-            return hashlib.md5(content).hexdigest()
-        else:
-            # Large files: hash name + size (good enough for spam detection)
-            return hashlib.md5(f"{attachment.filename}:{attachment.size}".encode()).hexdigest()
-    
-    async def check_message(self, message: discord.Message) -> Optional[SpamAlert]:
-        """Check if message is cross-channel spam."""
-        now = datetime.now()
-        self._cleanup_old_entries(now)
-        
-        guild_id = str(message.guild.id)
-        channel_id = str(message.channel.id)
-        user_id = str(message.author.id)
-        
-        # Check text content
-        if len(message.content) >= 50:  # Only check substantial messages
-            c_hash = self.content_hash(message.content)
+        // Check text content
+        if length(message.content) >= 50:
+            c_hash = md5(normalize(message.content))
             key = f"{guild_id}:{user_id}:{c_hash}"
             
-            if key not in self.recent_posts:
-                self.recent_posts[key] = []
+            record_post(key, channel_id, message.id)
             
-            # Record this post
-            self.recent_posts[key].append((channel_id, now, message.id))
-            
-            # Check for spam (3+ channels)
-            unique_channels = set(ch for ch, _, _ in self.recent_posts[key])
-            if len(unique_channels) >= 3:
-                return SpamAlert(
-                    type="cross_channel_text",
-                    user_id=user_id,
-                    channel_count=len(unique_channels),
-                    channels=list(unique_channels),
-                    content_preview=message.content[:100],
-                    message_ids=[mid for _, _, mid in self.recent_posts[key]]
-                )
+            // Check for spam (3+ channels)
+            unique_channels = get_unique_channels(key)
+            if count(unique_channels) >= 3:
+                return SpamAlert(type="cross_channel_text", channels=unique_channels)
         
-        # Check file attachments
+        // Check file attachments
         for attachment in message.attachments:
-            f_hash = await self.file_hash(attachment)
+            f_hash = hash_file(attachment)
             key = f"{guild_id}:{user_id}:{f_hash}"
             
-            if key not in self.file_posts:
-                self.file_posts[key] = []
+            record_post(key, channel_id, message.id)
             
-            self.file_posts[key].append((channel_id, now, message.id))
-            
-            unique_channels = set(ch for ch, _, _ in self.file_posts[key])
-            if len(unique_channels) >= 3:
-                return SpamAlert(
-                    type="cross_channel_file",
-                    user_id=user_id,
-                    channel_count=len(unique_channels),
-                    channels=list(unique_channels),
-                    filename=attachment.filename,
-                    message_ids=[mid for _, _, mid in self.file_posts[key]]
-                )
+            unique_channels = get_unique_channels(key)
+            if count(unique_channels) >= 3:
+                return SpamAlert(type="cross_channel_file", channels=unique_channels)
         
-        return None  # Not spam
+        return None  // Not spam
 ```
 
 ### Response Options
