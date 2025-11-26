@@ -34,6 +34,7 @@ class ReflectiveAgent:
         user_input: str, 
         user_id: str, 
         system_prompt: str, 
+        chat_history: Optional[List[BaseMessage]] = None,
         callback: Optional[Callable[[str], Awaitable[None]]] = None, 
         image_urls: Optional[List[str]] = None,
         max_steps_override: Optional[int] = None,
@@ -87,10 +88,16 @@ class ReflectiveAgent:
                     })
 
         # 4. Initialize Loop
-        messages = [
-            SystemMessage(content=full_prompt),
-            HumanMessage(content=user_message_content)
-        ]
+        messages = [SystemMessage(content=full_prompt)]
+        
+        # Inject Chat History
+        if chat_history:
+            # We only need the last few messages to resolve context
+            # Reflective mode is expensive, so we limit context to last 6 messages (~3 turns)
+            recent_history = chat_history[-6:]
+            messages.extend(recent_history)
+            
+        messages.append(HumanMessage(content=user_message_content))
         
         # Bind tools to LLM
         llm_with_tools = self.llm.bind_tools(tools)

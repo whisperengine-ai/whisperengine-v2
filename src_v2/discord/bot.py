@@ -67,7 +67,6 @@ def extract_pending_images(text: str) -> Tuple[str, List[discord.File]]:
     
     # Clean up any double spaces or newlines left behind
     cleaned_text = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned_text)
-    cleaned_text = re.sub(r'  +', ' ', cleaned_text)
     
     return cleaned_text.strip(), files
 
@@ -1518,7 +1517,7 @@ class WhisperBot(commands.Bot):
                     logger.info(f"Included image from referenced message: {attachment.url}")
                 
                 if trigger_vision and settings.LLM_SUPPORTS_VISION:
-                     asyncio.create_task(
+                    asyncio.create_task(
                         vision_manager.analyze_and_store(
                             image_url=attachment.url,
                             user_id=user_id,

@@ -385,7 +385,7 @@ class AgentEngine:
             complexity_level = await self.classifier.classify(user_message, chat_history)
             
             if complexity_level == "SIMPLE":
-                logger.info(f"Complexity Analysis: SIMPLE")
+                logger.info("Complexity Analysis: SIMPLE")
                 return False
             
             logger.info(f"Complexity Analysis: {complexity_level}")
@@ -564,6 +564,7 @@ class AgentEngine:
             user_message, 
             user_id, 
             system_content, 
+            chat_history=chat_history,
             callback=callback,
             image_urls=image_urls,
             max_steps_override=max_steps_override,
@@ -584,8 +585,12 @@ class AgentEngine:
         
         # Append any found markers to the response so the bot can extract them
         if collected_markers:
-            logger.info(f"Injecting {len(collected_markers)} image marker(s) into reflective response")
-            response_text = response_text + "\n" + " ".join(collected_markers)
+            # Filter out markers that are already in the response text to avoid duplication
+            new_markers = [m for m in collected_markers if m not in response_text]
+            
+            if new_markers:
+                logger.info(f"Injecting {len(new_markers)} image marker(s) into reflective response")
+                response_text = response_text + "\n" + " ".join(new_markers)
         
         if settings.ENABLE_PROMPT_LOGGING:
             await self._log_prompt(

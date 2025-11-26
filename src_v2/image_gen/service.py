@@ -20,15 +20,28 @@ class ImageGenerationResult:
         return discord.File(BytesIO(self.image_bytes), filename=self.filename)
 
 
+import time
+
 class PendingImageRegistry:
     """
     Thread-safe registry for images generated during response generation.
     Images are stored temporarily and retrieved by the Discord bot for upload.
+    Includes TTL cleanup to prevent memory leaks.
     """
     
     def __init__(self):
-        self._images: Dict[str, ImageGenerationResult] = {}
+        self._images: Dict[str, Tuple[float, ImageGenerationResult]] = {}
+        self._ttl = 300  # 5 minutes
     
+    def _cleanup(self):
+        """Remove expired images."""
+        now = time.time()
+        expired = [k for k, (ts, _) in self._images.items() if now - ts > self._ttl]
+        for k in expired:
+            del self._images[k]
+        if expired:
+            logger.debug(f"Cleaned up {len(expired)} expired pending images")
+
     def register(self, result: ImageGenerationResult) -> str:
         """
         Register an image and return a unique ID for later retrieval.
@@ -39,8 +52,9 @@ class PendingImageRegistry:
         Returns:
             A unique string ID that can be embedded in the response
         """
+        self._cleanup()  # Lazy cleanup on registration
         image_id = str(uuid.uuid4())[:8]  # Short unique ID
-        self._images[image_id] = result
+        self._images[image_id] = (time.time(), result)
         logger.debug(f"Registered pending image: {image_id}")
         return image_id
     
@@ -54,10 +68,11 @@ class PendingImageRegistry:
         Returns:
             The ImageGenerationResult if found, None otherwise
         """
-        result = self._images.pop(image_id, None)
-        if result:
+        entry = self._images.pop(image_id, None)
+        if entry:
             logger.debug(f"Retrieved pending image: {image_id}")
-        return result
+            return entry[1]
+        return None
     
     def clear(self) -> None:
         """Clear all pending images (cleanup on error)."""
