@@ -100,13 +100,12 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 **NOT YET IMPLEMENTED:**
 - ⏳ Phase A5: Channel Context Awareness
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
+- ⏳ Phase A7: Character Agency (Tier 2 tool-augmented responses)
+- ⏳ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
 - ⏳ Phase C: Video processing, web dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Under Analysis:**
-- 🔬 Character Agency (Tier 2 tool-augmented responses) - See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
-
-**Next focus:** Phase A5 (Channel Context Awareness)
+**Next focus:** Phase A7 (Character Agency) and Phase A8 (Image Generation Enhancements) - Production data validates both. See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md) and [IMAGE_GENERATION_ENHANCEMENTS.md](./roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md)
 
 ---
 
@@ -394,6 +393,118 @@ Image + User Message → Vision Analysis → Trigger Detection
 - `src_v2/knowledge/extractor.py` (visual-specific extraction prompts)
 
 **Full Specification:** See [roadmaps/VISION_FACT_EXTRACTION.md](./roadmaps/VISION_FACT_EXTRACTION.md)
+
+---
+
+### Phase A7: Character Agency (Tier 2 Tool-Augmented Responses)
+**Priority:** High | **Time:** 2-3 days | **Complexity:** Low-Medium  
+**Files:** 3-4 | **LOC:** ~300 | **Status:** 📋 Ready for Implementation
+
+**Problem:** Characters are currently reactive (context pre-fetched, single LLM call). They can't *decide* to look something up, which limits authenticity and depth.
+
+**Production Validation (Nov 26, 2025):**
+- Regular text responses: **10-30 seconds** (not 1-2s as originally estimated)
+- Image generation + refinement: **~30 seconds per iteration**
+- Users engaged in **1+ hour sessions** with iterative refinement
+- **Conclusion:** Latency tolerance is extremely high. Users value depth over speed.
+
+**Solution:**
+- Implement `CharacterAgent` class with single-tool capability
+- Route substantive messages to Tier 2 by default
+- Keep Tier 1 (reactive) only for trivial messages (greetings, emoji, <5 words)
+- Show lightweight thinking indicator (💭 pattern)
+
+**Implementation:**
+```
+User Message
+     ↓
+  TRIVIAL? → YES → Tier 1 (Fast, no tools)
+     ↓ NO
+  COMPLEX? → YES → Tier 3 (ReflectiveAgent)
+     ↓ NO
+  Tier 2 (CharacterAgent - single tool, 2 LLM calls max)
+```
+
+**Benefit:**
+- Characters feel more authentic (they *decide* to look things up)
+- Tool usage expresses personality (Elena: memories, Marcus: facts)
+- Visible "thinking" perceived as care, not delay
+- Marginal latency cost (~2-4s) on already-high baseline (10-30s)
+
+**Cost Model:**
+- Tier 1: ~$0.002/message (current)
+- Tier 2: ~$0.005/message (2 LLM calls + 1 tool)
+- Tier 3: ~$0.01/message (unchanged)
+
+**Feature Flag:** `ENABLE_CHARACTER_AGENCY` (default: true)
+
+**Dependencies:** None (existing memory tools reused)
+
+**Related Files:**
+- New: `src_v2/agents/character_agent.py` (CharacterAgent class)
+- `src_v2/agents/engine.py` (add Tier 2 routing)
+- `src_v2/agents/classifier.py` (add MODERATE classification)
+- `src_v2/config/settings.py` (add feature flag)
+
+**Full Specification:** See [architecture/CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
+
+---
+
+### Phase A8: Image Generation Enhancements
+**Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
+**Files:** 5 | **LOC:** ~380 | **Status:** 📋 Ready for Implementation
+
+**Problem:** Production sessions show users iterate 10-15+ times on portraits due to character self-injection, no iteration memory, and unwanted aesthetic associations.
+
+**Production Evidence (Nov 26, 2025):**
+- 1.5+ hour session with 15+ image generations
+- ~40% of portrait sessions had gender/presentation mismatch
+- Users requested "keep X, change Y" which was difficult without memory
+- "Cult leader vibes" feedback on spiritual + cosmic combinations
+
+**Solution (4 Enhancements):**
+
+1. **Portrait Mode Detection** - Detect "portrait of me" requests, skip character self-injection
+2. **Iteration Memory** - Redis session to track previous prompt + user refinements
+3. **Negative Prompt Library** - Category-based negatives (portrait, spiritual, cosmic, fantasy)
+4. **Reference Intent Detection** - Clarify if photo is "this is me" vs "use this style"
+
+**Implementation:**
+```
+User Request + Image?
+     ↓
+  PORTRAIT? → YES → Skip character context, use portrait template
+     ↓ NO
+  REFINEMENT? → YES → Load session, apply delta to previous prompt
+     ↓ NO
+  Character-blended generation (current behavior)
+     ↓
+  Apply negative prompts based on detected categories
+```
+
+**Benefit:**
+- Reduce iterations-to-satisfaction from 10-15 to 5-7
+- Gender mismatch rate: 40% → <10%
+- "Cult leader" incidents: 10% → <2%
+- Better user experience with "keep X, change Y" requests
+
+**Cost Impact:** Neutral (fewer iterations = fewer generations needed)
+
+**Feature Flags:**
+- `ENABLE_PORTRAIT_MODE` (default: true)
+- `ENABLE_IMAGE_SESSION_MEMORY` (default: true)
+- `ENABLE_NEGATIVE_PROMPTS` (default: true)
+
+**Dependencies:** Phase B3 (Image Generation) ✅ Complete
+
+**Related Files:**
+- `src_v2/tools/image_tools.py` (portrait detection, session awareness)
+- New: `src_v2/image_gen/prompts.py` (prompt engineering, negatives)
+- New: `src_v2/image_gen/session.py` (iteration memory)
+- `src_v2/core/cache.py` (Redis session storage)
+- `src_v2/agents/reflective.py` (clarification flow)
+
+**Full Specification:** See [roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md](./roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md)
 
 ---
 
