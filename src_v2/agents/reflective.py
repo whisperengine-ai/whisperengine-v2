@@ -13,9 +13,16 @@ from src_v2.tools.memory_tools import (
     SearchEpisodesTool, 
     LookupFactsTool, 
     UpdateFactsTool, 
-    UpdatePreferencesTool
+    UpdatePreferencesTool,
+    ExploreGraphTool,
+    DiscoverCommonGroundTool,
+    CharacterEvolutionTool
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool
+from src_v2.tools.insight_tools import (
+    AnalyzePatternsTool,
+    DetectThemesTool
+)
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
@@ -243,12 +250,24 @@ class ReflectiveAgent:
     def _get_tools(self, user_id: str, guild_id: Optional[str] = None) -> List[BaseTool]:
         character_name = settings.DISCORD_BOT_NAME or "default"
         tools = [
+            # Memory & Knowledge Tools
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
             LookupFactsTool(user_id=user_id, bot_name=character_name),
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
+            
+            # Graph & Relationship Tools
+            ExploreGraphTool(user_id=user_id, bot_name=character_name),
+            DiscoverCommonGroundTool(user_id=user_id, bot_name=character_name),
+            CharacterEvolutionTool(user_id=user_id, character_name=character_name),
+            
+            # Introspection & Pattern Tools
+            AnalyzePatternsTool(user_id=user_id, bot_name=character_name),
+            DetectThemesTool(user_id=user_id, bot_name=character_name),
+            
+            # Context Tools
             CheckPlanetContextTool(guild_id=guild_id),
         ]
         
@@ -260,15 +279,27 @@ class ReflectiveAgent:
 
     def _construct_prompt(self, base_system_prompt: str) -> str:
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
-You have access to tools to recall memories, facts, summaries, and generate images.
+You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, and generate images.
 Use these tools to gather information or create visual content before answering.
 Think step-by-step.
 
+AVAILABLE TOOL CATEGORIES:
+1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic
+2. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
+3. Introspection: analyze_conversation_patterns, detect_recurring_themes
+4. Context: check_planet_context
+5. Creative: generate_image (if enabled)
+
 IMPORTANT RULES:
 - If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
-- Gathering information (analyze_topic, search_*) is NOT the same as generating an image.
+- If the user asks about connections, relationships, what's connected, or to explore the network/graph, use the explore_knowledge_graph tool.
+- If the user asks what you have in common, shared interests, or you want to find connection points, use the discover_common_ground tool.
+- If the user asks about your relationship, trust level, or how close you are, use get_character_evolution.
+- If the user asks about patterns, themes, or what topics come up often, use analyze_conversation_patterns or detect_recurring_themes.
+- Gathering information is NOT the same as generating an image.
 - After gathering context, if the task requires an image, call generate_image with a detailed prompt.
 - Do NOT give a final answer until you have completed all requested actions.
+- When asked to search or explore, USE THE TOOLS - don't just describe what you would do.
 
 CHARACTER CONTEXT:
 {base_system_prompt}

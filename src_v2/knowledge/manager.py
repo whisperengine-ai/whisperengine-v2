@@ -559,6 +559,141 @@ PRIVACY RESTRICTION ENABLED:
         except Exception as e:
             logger.error(f"Failed to clear user knowledge: {e}")
 
+    async def explore_graph(
+        self, 
+        user_id: str, 
+        bot_name: str, 
+        start_node: str = "user", 
+        depth: int = 2
+    ) -> str:
+        """
+        Explores the knowledge graph from a starting point, returning connected entities.
+        
+        Args:
+            user_id: The user's ID
+            bot_name: The bot/character name
+            start_node: "user", "character", or a specific entity name
+            depth: How many hops to traverse (1-3)
+        
+        Returns:
+            Formatted string of connected entities and relationships
+        """
+        if not db_manager.neo4j_driver:
+            return "Graph database not available."
+        
+        depth = min(max(depth, 1), 3)  # Clamp between 1-3
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                results = []
+                
+                if start_node.lower() == "user":
+                    # Explore from User node
+                    if depth == 1:
+                        query = """
+                        MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
+                        RETURN 'You' as source, r.predicate as relationship, e.name as target
+                        LIMIT 15
+                        """
+                    elif depth == 2:
+                        query = """
+                        MATCH path = (u:User {id: $user_id})-[r1:FACT]->(e1:Entity)
+                        OPTIONAL MATCH (e1)-[r2:FACT|IS_A|BELONGS_TO]->(e2:Entity)
+                        WHERE e2 IS NOT NULL
+                        RETURN 'You' as source, r1.predicate as rel1, e1.name as mid, 
+                               type(r2) as rel2, e2.name as target
+                        LIMIT 20
+                        UNION
+                        MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
+                        RETURN 'You' as source, r.predicate as rel1, e.name as mid, 
+                               null as rel2, null as target
+                        LIMIT 10
+                        """
+                    else:  # depth == 3
+                        query = """
+                        MATCH (u:User {id: $user_id})-[r1:FACT]->(e1:Entity)
+                        OPTIONAL MATCH (e1)-[r2:FACT|IS_A|BELONGS_TO*1..2]->(e2:Entity)
+                        WHERE e2 IS NOT NULL
+                        RETURN 'You' as source, r1.predicate as rel1, e1.name as mid,
+                               'connects to' as rel2, e2.name as target
+                        LIMIT 25
+                        """
+                    
+                    result = await session.run(query, user_id=user_id)
+                    records = await result.data()
+                    
+                    if not records:
+                        return "No connections found for this user in the knowledge graph."
+                    
+                    for r in records:
+                        if r.get('target'):
+                            results.append(f"• {r['source']} → {r['rel1']} → {r['mid']} → {r.get('rel2', '...')} → {r['target']}")
+                        else:
+                            results.append(f"• {r['source']} → {r['rel1']} → {r['mid']}")
+                
+                elif start_node.lower() == "character":
+                    # Explore from Character node
+                    query = """
+                    MATCH (c:Character {name: $bot_name})-[r:FACT]->(e:Entity)
+                    RETURN $bot_name as source, r.predicate as relationship, e.name as target
+                    LIMIT 15
+                    """
+                    result = await session.run(query, bot_name=bot_name)
+                    records = await result.data()
+                    
+                    if not records:
+                        return f"No connections found for {bot_name} in the knowledge graph."
+                    
+                    for r in records:
+                        results.append(f"• {r['source']} → {r['relationship']} → {r['target']}")
+                    
+                    # Also find common ground
+                    common_query = """
+                    MATCH (u:User {id: $user_id})-[r1:FACT]->(e:Entity)<-[r2:FACT]-(c:Character {name: $bot_name})
+                    RETURN e.name as shared_entity, r1.predicate as user_rel, r2.predicate as char_rel
+                    LIMIT 5
+                    """
+                    common_result = await session.run(common_query, user_id=user_id, bot_name=bot_name)
+                    common_records = await common_result.data()
+                    
+                    if common_records:
+                        results.append("\n🔗 Shared Connections (Common Ground):")
+                        for r in common_records:
+                            results.append(f"  • Both connected to '{r['shared_entity']}' (You: {r['user_rel']}, Me: {r['char_rel']})")
+                
+                else:
+                    # Explore from a specific Entity
+                    query = """
+                    MATCH (e:Entity {name: $entity_name})<-[r:FACT]-(n)
+                    RETURN labels(n)[0] as node_type, 
+                           CASE WHEN n:User THEN 'User' ELSE n.name END as source,
+                           r.predicate as relationship, 
+                           e.name as target
+                    LIMIT 10
+                    UNION
+                    MATCH (e:Entity {name: $entity_name})-[r:FACT|IS_A|BELONGS_TO]->(o:Entity)
+                    RETURN 'Entity' as node_type, e.name as source, type(r) as relationship, o.name as target
+                    LIMIT 10
+                    """
+                    result = await session.run(query, entity_name=start_node)
+                    records = await result.data()
+                    
+                    if not records:
+                        return f"No connections found for '{start_node}' in the knowledge graph."
+                    
+                    for r in records:
+                        results.append(f"• {r['source']} → {r['relationship']} → {r['target']}")
+                
+                if not results:
+                    return "No graph connections found."
+                
+                header = f"📊 Knowledge Graph Exploration (depth={depth}, from={start_node}):\n"
+                return header + "\n".join(results)
+                
+        except Exception as e:
+            logger.error(f"Graph exploration failed: {e}")
+            return f"Error exploring graph: {e}"
+
     @staticmethod
     async def _fetch_facts(tx, user_id: str, limit: int) -> List[str]:
         query = """

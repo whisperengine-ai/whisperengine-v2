@@ -182,6 +182,64 @@ class UpdatePreferencesTool(BaseTool):
         except Exception as e:
             return f"Error updating preferences: {e}"
 
+class ExploreGraphInput(BaseModel):
+    start_node: Optional[str] = Field(
+        description="The starting point for exploration. Use 'user' for the current user's connections, 'character' for the AI character's connections, or a specific entity name. Defaults to 'user'.",
+        default="user"
+    )
+    depth: Optional[int] = Field(
+        description="How many hops out to explore (1-3). 1 = direct connections, 2 = friends of friends, 3 = extended network. Default is 2.",
+        default=2
+    )
+
+class ExploreGraphTool(BaseTool):
+    name: str = "explore_knowledge_graph"
+    description: str = "Explores the knowledge graph to find connections and relationships. Use this when the user asks 'what is connected?', 'who else?', 'what do you know about the network?', or wants to explore relationships beyond specific facts."
+    args_schema: Type[BaseModel] = ExploreGraphInput
+    user_id: str = Field(exclude=True)
+    bot_name: str = Field(default="default", exclude=True)
+
+    def _run(self, start_node: Optional[str] = "user", depth: Optional[int] = 2) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, start_node: Optional[str] = "user", depth: Optional[int] = 2) -> str:
+        try:
+            result = await knowledge_manager.explore_graph(
+                user_id=self.user_id, 
+                bot_name=self.bot_name,
+                start_node=start_node or "user",
+                depth=min(depth or 2, 3)  # Cap at 3 for performance
+            )
+            return f"Graph Exploration Result:\n{result}"
+        except Exception as e:
+            return f"Error exploring graph: {e}"
+
+
+class DiscoverCommonGroundInput(BaseModel):
+    """No parameters needed - discovers shared interests between you and the user."""
+    pass
+
+class DiscoverCommonGroundTool(BaseTool):
+    name: str = "discover_common_ground"
+    description: str = "Discovers what you and the user have in common - shared interests, places, experiences, or values. Use this when you want to find connection points, when asked 'what do we have in common?', or to personalize the conversation with shared interests."
+    args_schema: Type[BaseModel] = DiscoverCommonGroundInput
+    user_id: str = Field(exclude=True)
+    bot_name: str = Field(default="default", exclude=True)
+
+    def _run(self) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self) -> str:
+        try:
+            common_ground = await knowledge_manager.find_common_ground(self.user_id, self.bot_name)
+            if common_ground:
+                return f"🔗 Common Ground Discovered:\n{common_ground}\n\nYou can naturally reference these shared interests to build rapport!"
+            else:
+                return "No common ground found yet. As you learn more about the user, shared interests may emerge."
+        except Exception as e:
+            return f"Error discovering common ground: {e}"
+
+
 class GetEvolutionStateInput(BaseModel):
     """No parameters needed - retrieves current state for this user."""
     pass
