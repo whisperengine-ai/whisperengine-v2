@@ -1262,9 +1262,14 @@ class WhisperBot(commands.Bot):
                 )
                 
                 # Update Trust based on feedback
-                # Positive feedback increases trust significantly
-                # Negative feedback decreases trust
-                trust_delta = 5 if feedback["score"] > 0 else -5
+                # Positive feedback increases trust, negative decreases
+                # Neutral (unrecognized) reactions don't affect trust
+                if feedback["score"] > 0:
+                    trust_delta = 5
+                elif feedback["score"] < 0:
+                    trust_delta = -5
+                else:
+                    trust_delta = 0  # Neutral/unrecognized reactions
                 
                 async def handle_reaction_trust():
                     try:
@@ -1362,10 +1367,10 @@ class WhisperBot(commands.Bot):
                 
                 if is_positive:
                     score_delta = -0.2 # Remove positive boost
-                    trust_delta = -5
+                    trust_delta = -1   # Minimal penalty for removing positive reaction (mistakes happen)
                 elif is_negative:
                     score_delta = 0.2 # Remove negative penalty
-                    trust_delta = 5
+                    trust_delta = 1   # Minimal bonus for removing negative reaction
                 
                 if score_delta != 0:
                     collection_name = f"whisperengine_memory_{self.character_name}"

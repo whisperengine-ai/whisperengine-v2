@@ -22,8 +22,13 @@ class FeedbackAnalyzer:
     """
     
     # Reaction sentiment mapping
-    POSITIVE_REACTIONS = ['👍', '❤️', '😊', '🎉', '✨', '💯', '🔥', '💖']
-    NEGATIVE_REACTIONS = ['👎', '😢', '😠', '💔', '😕', '🤔']
+    POSITIVE_REACTIONS = [
+        '👍', '❤️', '😊', '🎉', '✨', '💯', '🔥', '💖',
+        '😎', '🎊', '🥳', '💜', '💙', '💚', '🧡', '💛',
+        '🤩', '😍', '🙌', '👏', '💕', '😁', '😄', '🥰',
+        '❤️‍🔥', '💗', '💝', '🌟', '⭐', '🏆', '👑', '💎'
+    ]
+    NEGATIVE_REACTIONS = ['👎', '😢', '😠', '💔', '😕', '🤮', '💩', '🙄']
     
     def __init__(self):
         logger.info("FeedbackAnalyzer initialized")
