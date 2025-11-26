@@ -25,8 +25,8 @@ class InputValidator:
     DISCORD_OUTPUT_MAX_LENGTH = 2000  # Per message chunk
     
     # Engine limits (for non-Discord entry points)
-    ENGINE_INPUT_MAX_LENGTH = 50000  # ~12k tokens
-    ENGINE_INPUT_MAX_TOKENS = 12000  # Approximate
+    ENGINE_INPUT_MAX_LENGTH = 200000  # ~50k tokens
+    ENGINE_INPUT_MAX_TOKENS = 50000  # Approximate
     
     @staticmethod
     def validate_message_content(

@@ -1105,7 +1105,7 @@ class WhisperBot(commands.Bot):
                     extracted_text = await document_processor.process_attachment(attachment.url, attachment.filename)
                     if extracted_text:
                         # Truncate
-                        limit = 5000 if silent else 10000
+                        limit = 10000 if silent else 20000
                         if len(extracted_text) > limit:
                             extracted_text = extracted_text[:limit] + "\n...[Content Truncated]..."
                         
