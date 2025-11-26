@@ -88,6 +88,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Reaction-based feedback (❤️ Emotion modality)
 - ✅ Voice channel connection (👂 Audio modality via ElevenLabs TTS)
 - ✅ Generative Art (Image Generation via Flux Pro 1.1)
+- ✅ Channel Lurking (Passive Engagement)
 
 **Background Processing (COMPLETE):**
 - ✅ arq-based task queue (Redis persistent jobs)
@@ -97,14 +98,14 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ⏳ Phase B: Lurking (👂 ambient hearing)
+- ⏳ Phase A: Channel Context Awareness
 - ⏳ Phase C: Video processing, web dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
 **Under Analysis:**
 - 🔬 Character Agency (Tier 2 tool-augmented responses) - See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
 
-**Next focus:** Phase B7 (Channel Lurking)
+**Next focus:** Phase A5 (Channel Context Awareness)
 
 ---
 
@@ -552,7 +553,7 @@ Future Similar Query → Retrieve High-Score Patterns → Inject as Few-Shot Exa
 
 ### Phase B7: Channel Lurking (Passive Engagement)
 **Priority:** Medium-High | **Time:** 5-7 days | **Complexity:** Medium  
-**Files:** 5 | **LOC:** ~500 | **Status:** 📋 Planned
+**Files:** 5 | **LOC:** ~500 | **Status:** ✅ Complete
 
 **Problem:** Bots only respond when explicitly mentioned, creating a passive experience
 
