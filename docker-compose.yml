@@ -80,6 +80,23 @@ services:
     networks:
       - v2_network
 
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: whisperengine-v2-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data_v2:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    networks:
+      - v2_network
+
   redis:
     image: redis:7.4-alpine
     container_name: whisperengine-v2-redis
@@ -487,6 +504,7 @@ volumes:
   neo4j_data_v2:
   influxdb_data_v2:
   redis_data_v2:
+  grafana_data_v2:
 
 networks:
   v2_network:
