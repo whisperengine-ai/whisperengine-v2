@@ -7,6 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager, retry_db_operation
+from src_v2.core.cache import cache_manager
 from src_v2.knowledge.extractor import FactExtractor, Fact
 from src_v2.agents.llm_factory import create_llm
 
@@ -219,6 +220,9 @@ RULES:
                 # We use execute_write for modifications
                 await session.run(cypher_query, user_id=user_id)
                 
+                # Invalidate common ground cache
+                await cache_manager.delete_pattern(f"knowledge:common_ground:*:{user_id}")
+                
                 return "Fact updated successfully."
 
         except Exception as e:
@@ -232,6 +236,11 @@ RULES:
         1. Direct connections (User -> Entity <- Bot)
         2. Shared categories (User -> Entity -> Category <- Entity <- Bot)
         """
+        cache_key = f"knowledge:common_ground:{bot_name}:{user_id}"
+        cached_data = await cache_manager.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         if not db_manager.neo4j_driver:
             return ""
 
@@ -269,10 +278,9 @@ RULES:
                     for r in records_cat:
                         connections.append(f"- You both like {r['category']} (User: {r['user_item']}, You: {r['bot_item']})")
 
-                if not connections:
-                    return ""
-                
-                return "\n".join(connections)
+                result_str = "\n".join(connections) if connections else ""
+                await cache_manager.set(cache_key, result_str)
+                return result_str
         except Exception as e:
             logger.error(f"Common ground check failed: {e}")
             return ""
@@ -340,6 +348,9 @@ RULES:
         async with db_manager.neo4j_driver.session() as session:
             for fact in facts:
                 await session.execute_write(self._merge_fact, user_id, fact)
+        
+        # Invalidate common ground cache for this user (across all bots)
+        await cache_manager.delete_pattern(f"knowledge:common_ground:*:{user_id}")
 
     @staticmethod
     async def _merge_fact(tx, user_id: str, fact: Fact):

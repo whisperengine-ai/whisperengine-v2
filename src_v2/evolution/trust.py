@@ -10,6 +10,7 @@ from loguru import logger
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
 from src_v2.evolution.manager import get_evolution_manager
+from src_v2.core.cache import cache_manager
 import json
 
 
@@ -28,8 +29,13 @@ class TrustManager:
         Returns:
             Dict with {trust_score: int, level: str, unlocked_traits: List[str], preferences: Dict}
         """
+        cache_key = f"trust:{character_name}:{user_id}"
+        cached_data = await cache_manager.get_json(cache_key)
+        if cached_data:
+            return cached_data
+
         if not db_manager.postgres_pool:
-            return {"trust_score": 0, "level": "Stranger", "unlocked_traits": [], "preferences": {}}
+            return {"trust_score": 0, "level": 1, "level_label": "Stranger", "unlocked_traits": [], "preferences": {}}
             
         try:
             async with db_manager.postgres_pool.acquire() as conn:
@@ -46,7 +52,7 @@ class TrustManager:
                         INSERT INTO v2_user_relationships (user_id, character_name, trust_score, unlocked_traits, insights, preferences)
                         VALUES ($1, $2, 0, '[]'::jsonb, '[]'::jsonb, '{}'::jsonb)
                     """, user_id, character_name)
-                    return {
+                    result = {
                         "trust_score": 0, 
                         "level": 1, 
                         "level_label": "Stranger", 
@@ -56,6 +62,8 @@ class TrustManager:
                         "mood": "neutral",
                         "mood_intensity": 0.5
                     }
+                    await cache_manager.set_json(cache_key, result)
+                    return result
                 
                 trust_score = row['trust_score']
                 
@@ -94,7 +102,7 @@ class TrustManager:
                 elif trust_score >= 40: level_int = 3
                 elif trust_score >= 20: level_int = 2
                         
-                return {
+                result = {
                     "trust_score": trust_score, 
                     "level": level_int,
                     "level_label": stage['name'],
@@ -104,6 +112,9 @@ class TrustManager:
                     "mood": row.get('mood', 'neutral'),
                     "mood_intensity": row.get('mood_intensity', 0.5)
                 }
+                
+                await cache_manager.set_json(cache_key, result)
+                return result
                 
         except Exception as e:
             logger.error(f"Failed to get relationship level: {e}")
@@ -133,6 +144,9 @@ class TrustManager:
                 """, user_id, character_name, [key], json_value)
                 
                 logger.info(f"Updated preference '{key}' to '{value}' for {user_id}")
+                
+                # Invalidate cache
+                await cache_manager.delete(f"trust:{character_name}:{user_id}")
         except Exception as e:
             logger.error(f"Failed to update preference: {e}")
 
@@ -153,25 +167,29 @@ class TrustManager:
                 """, user_id, character_name, key)
                 
                 logger.info(f"Deleted preference '{key}' for {user_id}")
+                
+                # Invalidate cache
+                await cache_manager.delete(f"trust:{character_name}:{user_id}")
         except Exception as e:
             logger.error(f"Failed to delete preference: {e}")
 
     async def clear_user_preferences(self, user_id: str, character_name: str):
         """
-        Clears all preferences for a user and character.
+        Clears user preferences and resets trust score.
         """
         if not db_manager.postgres_pool:
             return
-            
+
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE v2_user_relationships
-                    SET preferences = '{}'::jsonb,
-                        updated_at = NOW()
+                    SET preferences = '{}'::jsonb, trust_score = 0, unlocked_traits = '[]'::jsonb, insights = '[]'::jsonb
                     WHERE user_id = $1 AND character_name = $2
                 """, user_id, character_name)
                 
+                # Invalidate cache
+                await cache_manager.delete(f"trust:{character_name}:{user_id}")
                 logger.info(f"Cleared preferences for {user_id}")
         except Exception as e:
             logger.error(f"Failed to clear preferences: {e}")
@@ -229,6 +247,11 @@ class TrustManager:
                             SET last_milestone_date = NOW()
                             WHERE user_id = $1 AND character_name = $2
                         """, user_id, character_name)
+                    
+                    # Invalidate cache
+                    await cache_manager.delete(f"trust:{character_name}:{user_id}")
+                    
+                    if milestone_msg:
                         return milestone_msg
                         
             return None
@@ -259,6 +282,8 @@ class TrustManager:
                 
                 logger.info(f"Unlocked trait '{trait}' for {user_id} with {character_name}")
                 
+                # Invalidate cache
+                await cache_manager.delete(f"trust:{character_name}:{user_id}")
         except Exception as e:
             logger.error(f"Failed to unlock trait: {e}")
 

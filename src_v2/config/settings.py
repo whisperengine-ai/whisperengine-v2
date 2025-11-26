@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     INFLUXDB_ORG: str = Field(default="whisperengine")
     INFLUXDB_BUCKET: str = Field(default="metrics")
     
+    # Redis (Caching)
+    REDIS_URL: str = Field(default="redis://localhost:6379/0")
+    
     # --- API ---
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000

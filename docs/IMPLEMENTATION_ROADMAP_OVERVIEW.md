@@ -85,7 +85,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Voice channel connection (👂 Audio modality via ElevenLabs TTS)
 
 **NOT YET IMPLEMENTED:**
-- ⏳ Phase A: Hot-reload, Redis caching, streaming, Grafana
+- ⏳ Phase A: Streaming, Grafana (Redis caching COMPLETE)
 - ⏳ Phase B: Adaptive steps, tool composition, image gen, lurking (👂 ambient hearing), response patterns
 - ⏳ Phase C: Insight Agent (reasoning traces + epiphanies + patterns), worker queues, video, dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
@@ -93,7 +93,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 **Under Analysis:**
 - 🔬 Character Agency (Tier 2 tool-augmented responses) - See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
 
-**Next focus:** Phase A (developer velocity + performance)
+**Next focus:** Phase B (Adaptive Steps & Tool Composition)
 
 ---
 
@@ -183,7 +183,7 @@ File Watcher → Character Manager → Hot Reload Trigger
 
 ### Phase A2: Redis Caching Layer
 **Priority:** High | **Time:** 2-3 days | **Complexity:** Low-Medium  
-**Files:** 3 | **LOC:** ~200 | **Status:** 📋 Planned
+**Files:** 3 | **LOC:** ~200 | **Status:** ✅ Complete
 
 **Problem:** Repeated lookups hit Postgres/Neo4j unnecessarily (trust scores, facts, user prefs)
 

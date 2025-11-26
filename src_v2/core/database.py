@@ -3,6 +3,7 @@ from typing import Optional
 from qdrant_client import AsyncQdrantClient
 from neo4j import AsyncGraphDatabase, AsyncDriver
 import asyncpg
+import redis.asyncio as redis
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import WriteOptions
 from loguru import logger
@@ -36,6 +37,7 @@ class DatabaseManager:
         self.neo4j_driver: Optional[AsyncDriver] = None
         self.influxdb_client: Optional[InfluxDBClient] = None
         self.influxdb_write_api = None
+        self.redis_client: Optional[redis.Redis] = None
 
     async def _connect_with_retry(self, name: str, connect_func, max_retries: int = 5, delay: int = 2):
         """Helper to connect to a database with retry logic."""
@@ -57,6 +59,15 @@ class DatabaseManager:
             logger.info("Connected to PostgreSQL.")
         
         await self._connect_with_retry("PostgreSQL", _connect)
+
+    async def connect_redis(self):
+        async def _connect():
+            logger.info(f"Connecting to Redis at {settings.REDIS_URL}...")
+            self.redis_client = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+            await self.redis_client.ping()
+            logger.info("Connected to Redis.")
+
+        await self._connect_with_retry("Redis", _connect)
 
     async def connect_qdrant(self):
         async def _connect():
@@ -116,6 +127,7 @@ class DatabaseManager:
     async def connect_all(self):
         await asyncio.gather(
             self.connect_postgres(),
+            self.connect_redis(),
             self.connect_qdrant(),
             self.connect_neo4j(),
             self.connect_influxdb()
@@ -129,6 +141,8 @@ class DatabaseManager:
             await self.neo4j_driver.close()
         if self.qdrant_client:
             await self.qdrant_client.close()
+        if self.redis_client:
+            await self.redis_client.close()
         if self.influxdb_client:
             self.influxdb_client.close()
         logger.info("Disconnected from databases.")

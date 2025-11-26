@@ -80,6 +80,22 @@ services:
     networks:
       - v2_network
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: whisperengine-v2-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_v2:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - v2_network
+
   # ========================================
   # BOT INSTANCES (Profile-Based)
   # ========================================
@@ -101,6 +117,7 @@ services:
     environment:
       - DISCORD_BOT_NAME=elena
       - TZ=America/Los_Angeles
+      - REDIS_URL=redis://redis:6379/0
     ports:
       - "8000:8000"
     depends_on:
@@ -422,6 +439,7 @@ volumes:
   qdrant_data_v2:
   neo4j_data_v2:
   influxdb_data_v2:
+  redis_data_v2:
 
 networks:
   v2_network:

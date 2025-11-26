@@ -12,7 +12,7 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-INFRA_SERVICES="postgres qdrant neo4j influxdb"
+INFRA_SERVICES="postgres qdrant neo4j influxdb redis"
 
 show_help() {
     echo -e "${BLUE}WhisperEngine v2 - Bot Management${NC}"
