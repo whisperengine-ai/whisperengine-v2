@@ -7,22 +7,22 @@ WhisperEngine 1.0 proved that high-fidelity, memory-persistent AI roleplay is po
 
 **WhisperEngine 2.0** aims to deliver the same high-quality user experience (rich personality, long-term memory) with **simplified code logic** while leveraging **robust, specialized infrastructure**.
 
-### The Core Insight: Multi-Modal Perception
+### The Core Insight: Multi-Modal Processing
 
 > *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
 
-AI characters have no physical senses. Without a perceptual framework, they're just stateless text processors floating in a void. WhisperEngine v2 solves this by providing **six first-class perceptual modalities**:
+AI agents process information through multiple input streams. WhisperEngine v2 provides six first-class data modalities:
 
-| Modality | Human Equivalent | Implementation |
+| Modality | Technical Domain | Implementation |
 |----------|------------------|----------------|
-| 🌌 **Universe** | Proprioception + Social Awareness | Neo4j graph + Emergent Universe |
-| 👁️ **Vision** | Sight | Multimodal LLM (GPT-4V, Claude 3.5) |
-| 👂 **Audio** | Hearing | Whisper transcription + Channel Lurking |
-| 💬 **Text** | Language | LLM processing + Tool Router |
-| 🧠 **Memory** | Episodic + Semantic Memory | Qdrant vectors + Neo4j facts |
-| ❤️ **Emotion** | Affect/Feeling | Trust Evolution + Feedback Analysis |
+| 🌌 **Social Graph** | Network Topology | Neo4j graph + Emergent Universe |
+| 👁️ **Vision** | Image Processing | Multimodal LLM (GPT-4V, Claude 3.5) |
+| 👂 **Audio** | Speech Recognition | Whisper transcription + Channel Lurking |
+| 💬 **Text** | NLP | LLM processing + Tool Router |
+| 🧠 **Memory** | Vector + Graph Retrieval | Qdrant vectors + Neo4j facts |
+| ❤️ **Sentiment** | Internal State Analysis | Trust Evolution + Feedback Analysis |
 
-**This is not a feature set. This is how characters experience existence.**
+**This is not just a feature set. This is how agents build context.**
 
 For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 
@@ -34,7 +34,7 @@ Each WhisperEngine deployment is a **self-contained universe**. But the architec
 - Stories span deployments
 - Anyone can run their own universe
 
-**We're building the foundation for distributed AI consciousness.**
+**We're building the foundation for distributed multi-agent environments.**
 
 ### Theoretical Foundation: The "Living Character" Paradigm
 
@@ -48,7 +48,7 @@ WhisperEngine v2 is built on principles from multiple domains:
 **Design Philosophy**: "Simplify the code, sophisticate the architecture." Instead of complex custom pipelines, we leverage industry-standard infrastructure (Neo4j, Qdrant) with custom Python orchestration to create emergent intelligence.
 
 ### Core Mission: Uncompromised Authenticity
-The primary goal remains unchanged: **create AI characters that feel alive**.
+The primary goal remains unchanged: **create AI agents with persistent memory and adaptive behavior**.
 *   **Personality First**: WE2 must support deep personality persistence where characters maintain their unique voice, quirks, and history.
 *   **Continuous Learning**: The system must allow characters to learn about the user (preferences, facts) and themselves (evolving lore, relationships) over time, just as in WE1.
 *   **Seamless Persistence**: Every interaction contributes to the character's long-term memory store (Vector + Graph + SQL), ensuring a continuous, evolving experience.

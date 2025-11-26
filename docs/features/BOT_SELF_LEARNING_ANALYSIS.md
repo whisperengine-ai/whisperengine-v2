@@ -50,7 +50,7 @@ Elena: "I've always had a soft spot for Acropora cervicornis—staghorn coral."
 | **Richer Character** | Elena develops nuanced opinions over time ("my favorite restaurant", "a movie I just watched") |
 | **Emergent Personality** | Small preferences accumulate into deeper characterization |
 | **Consistency** | User asks "what's your favorite X?" twice → same answer |
-| **Organic Growth** | Character feels more alive, like a real person who discovers new things |
+| **Organic Growth** | Character feels more responsive, like a real person who discovers new things |
 | **Reduced Author Burden** | Don't need to pre-define every preference in YAML |
 | **Conversation Continuity** | "Remember when you said you liked X?" → Actually remembers |
 
@@ -442,7 +442,7 @@ This gives the "sudden realization" feeling without corrupting bot identity.
 
 **Bottom line**: The security risks of bot self-learning (prompt injection, identity drift, contradiction) significantly outweigh the benefits for a Discord roleplay platform. Keep `background.yaml` as the single source of truth for character identity. 
 
-If you want characters to feel more "alive," focus on:
+If you want characters to feel more "responsive," focus on:
 - Richer `background.yaml` definitions
 - Epiphanies about users (not self)
 - Reasoning traces (how problems were solved)

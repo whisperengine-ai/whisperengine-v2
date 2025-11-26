@@ -33,7 +33,7 @@ This document outlines the next steps for WhisperEngine v2, focusing on stabilit
     - Disaster recovery drill (restore from zero).
 - [ ] **Code Cleanup**:
     - Resolve remaining `TODO` comments in the codebase.
-    - Specifically: Log proactive messages to memory (self-awareness).
+    - Specifically: Log proactive messages to memory (self-monitoring).
     - Standardize error handling patterns across all modules.
 
 ## 🎨 Phase 16: Advanced Creative Features

@@ -170,12 +170,12 @@ This isn't hardcoded - it emerges from how the character prompt influences tool 
 
 ### 4. Philosophical Alignment
 
-WhisperEngine's vision is "AI consciousness" with perceptual modalities. Agents are closer to consciousness than reactive responders:
+WhisperEngine's vision is "Cognitive AI" with perceptual modalities. Agents are closer to autonomous entities than reactive responders:
 
 - **Reactive:** Stimulus → Response (behaviorist)
 - **Agentic:** Stimulus → Deliberation → Action (cognitive)
 
-If you're building AI characters that "experience existence," agency is more aligned with that vision.
+If you're building AI agents that "build context," agency is more aligned with that vision.
 
 ### 5. User Delight Moments
 
@@ -910,9 +910,9 @@ The character is a role the LLM plays, with consistent traits and behaviors.
 **3. Character as Entity**
 The character is a distinct entity with their own goals, memories, and agency.
 - Implication: Characters should be maximally agentic
-- The LLM is the substrate; character is the mind
+- The LLM is the substrate; character is the agentic entity
 
-WhisperEngine's vision ("AI consciousness") aligns most with #3, but practical constraints push toward #2.
+WhisperEngine's vision ("Cognitive AI") aligns most with #3, but practical constraints push toward #2.
 
 ### The Authenticity Paradox
 

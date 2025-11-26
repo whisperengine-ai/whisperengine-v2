@@ -595,7 +595,7 @@ Marcus: Hey! Elena mentioned you from her travels - you're the one
 ```
 Mark: Remember that conversation we had about AI?
 Elena: Oh, the one on Planet Game Night last week? Where you were 
-       debating with Alex about consciousness? That was 
+       debating with Alex about AI ethics? That was 
        a great discussion!
 ```
 
@@ -1158,7 +1158,7 @@ User sends message on Planet B
 │     User: Mark                                          │
 │     Known from: Planet Lounge                           │
 │     Traits: tech enthusiast, dog lover                  │
-│     Last topic: AI consciousness discussion             │
+│     Last topic: AI ethics discussion                    │
 │     Other bots know: Has dog named Luna (via Elena)     │
 └─────────────────────────────────────────────────────────┘
                 │
@@ -1188,7 +1188,7 @@ User: Mark
 - What you know about them: tech enthusiast, astronomy nerd, dog lover
 - Their interests: AI, gaming, space
 - Personal detail: Has a dog named Luna
-- Recent shared experience: Was discussing AI consciousness with Alex last week
+- Recent shared experience: Was discussing AI ethics with Alex last week
 - Relationship depth: 3/5 (you know them fairly well)
 
 [OTHER BEINGS YOU CAN SENSE]

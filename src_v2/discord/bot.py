@@ -768,6 +768,17 @@ class WhisperBot(commands.Bot):
                     logger.exception(f"Critical error in on_message: {e}")
                     await message.channel.send("I'm having a bit of trouble processing that right now. Please try again later.")
 
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
+        """
+        Global error handler for commands.
+        """
+        # Ignore CommandNotFound errors (e.g. !reflect which is handled manually)
+        if isinstance(error, commands.CommandNotFound):
+            return
+            
+        # Log other errors
+        logger.error(f"Ignoring exception in command {ctx.command}: {error}")
+
     async def on_reaction_add(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]) -> None:
         """
         Handles reactions added to messages.

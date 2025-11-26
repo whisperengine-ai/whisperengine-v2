@@ -2,17 +2,17 @@
 
 The **Cognitive Engine** (`src_v2/agents/engine.py`) is the brain of WhisperEngine v2. It orchestrates the flow of information from user input to character response, managing context, memory retrieval, and tool execution.
 
-## The Integration Layer for Multi-Modal Perception
+## The Integration Layer for Multi-Modal Processing
 
-The Cognitive Engine serves as the **integration point** where all perceptual modalities converge. Characters perceive their world through six modalities (Universe, Vision, Audio, Text, Memory, Emotion), and the engine combines these into coherent experience.
+The Cognitive Engine serves as the **integration point** where all data streams converge. Agents process inputs through six data streams (Social Graph, Vision, Audio, Text, Memory, Sentiment), and the engine combines these into coherent context.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         COGNITIVE ENGINE                                     │
-│                    (Perceptual Integration Layer)                           │
+│                    (Data Integration Layer)                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   🌌 Universe ──┐                                                           │
+│   🌌 Social Graph ┐                                                         │
 │   (context)     │                                                           │
 │                 │     ┌─────────────────┐     ┌──────────────────┐         │
 │   👁️ Vision ────┼────►│  AgentEngine    │────►│  LLM Response    │         │
@@ -21,19 +21,19 @@ The Cognitive Engine serves as the **integration point** where all perceptual mo
 │   👂 Audio ─────┤              │                                            │
 │   (voice)       │              ▼                                            │
 │                 │     ┌─────────────────┐                                   │
-│   💬 Text ──────┤     │  System Prompt  │  ← Perceptual state injected     │
+│   💬 Text ──────┤     │  System Prompt  │  ← Context state injected        │
 │   (message)     │     │  Construction   │                                   │
 │                 │     └─────────────────┘                                   │
 │   🧠 Memory ────┤                                                           │
 │   (history)     │                                                           │
 │                 │                                                           │
-│   ❤️ Emotion ───┘                                                           │
+│   ❤️ Sentiment ─┘                                                           │
 │   (trust/mood)                                                              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-For philosophical foundation: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+For architectural details: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 
 ## Architectural Theory: Dual Process Theory (System 1 vs. System 2)
 

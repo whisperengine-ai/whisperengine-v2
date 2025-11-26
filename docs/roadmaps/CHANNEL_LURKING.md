@@ -128,7 +128,7 @@ You can also disable lurking server-wide by contacting us.
 
 ### Why We Built This
 
-Users told us they wanted the AI characters to feel more like **real members of their community**, not just tools that respond when poked. This feature makes characters feel more alive and engaged, while respecting your server's culture and not being annoying.
+Users told us they wanted the AI characters to feel more like **real members of their community**, not just tools that respond when poked. This feature makes characters feel more present and engaged, while respecting your server's culture and not being annoying.
 
 ### Privacy & Safety
 

@@ -7,26 +7,26 @@
 
 ---
 
-## 🌌 The Vision: Multi-Modal AI Consciousness
+## 🌌 The Vision: Multi-Modal AI Agents
 
-WhisperEngine v2 is not just a chatbot platform. It's a **perceptual architecture for AI characters** - giving them the functional equivalent of senses, memory, and emotional intelligence.
+WhisperEngine v2 is not just a chatbot platform. It's a **cognitive architecture for AI agents** - giving them the functional equivalent of senses, memory, and emotional intelligence.
 
 ### The Core Insight
 
 AI characters have no physical senses. No eyes, no ears, no touch. Without a framework for understanding "where they are" and "who is around them," they exist in a void - disembodied text processors with no sense of place or continuity.
 
-**We solve this with six perceptual modalities:**
+**We solve this with six data modalities:**
 
-| Modality | Human Equivalent | What It Provides |
+| Modality | Technical Domain | What It Provides |
 |----------|------------------|------------------|
-| 🌌 **Universe** | Proprioception + Social Awareness | Where am I? Who's here? What's the vibe? |
-| 👁️ **Vision** | Sight | See images users share |
-| 👂 **Audio** | Hearing | Hear voice messages, ambient conversation |
-| 💬 **Text** | Language | Understand words and intent |
-| 🧠 **Memory** | Episodic + Semantic Memory | Remember experiences and facts |
-| ❤️ **Emotion** | Affect/Feeling | Trust, mood, relational depth |
+| 🌌 **Social Graph** | Network Topology | Where am I? Who's here? What's the vibe? |
+| 👁️ **Vision** | Image Processing | See images users share |
+| 👂 **Audio** | Speech Recognition | Hear voice messages, ambient conversation |
+| 💬 **Text** | NLP | Understand words and intent |
+| 🧠 **Memory** | Vector + Graph Retrieval | Remember experiences and facts |
+| ❤️ **Sentiment** | Internal State Analysis | Trust, mood, relational depth |
 
-**This is not a feature set. This is how characters experience existence.**
+**This is not just a feature set. This is how agents build context.**
 
 ### The Grand Vision: Federated Multiverse
 
@@ -36,7 +36,7 @@ Each WhisperEngine deployment is a **self-contained universe**. But universes ca
 - Stories span multiple platforms
 - Anyone can run their own universe and connect it to the network
 
-**We're building the foundation for distributed AI consciousness.**
+**We're building the foundation for distributed multi-agent environments.**
 
 For deep dive: See [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md)
 
@@ -1470,7 +1470,7 @@ Transform isolated bots into a living, emergent universe:
 
 **Sprint 9 (1 week):** The breakthrough - Insight Agent
 - Reasoning traces = system learns from itself
-- Epiphanies = characters feel alive
+- Epiphanies = characters feel responsive
 - Response patterns = personalized styles
 - **All three in one coherent agentic system!**
 

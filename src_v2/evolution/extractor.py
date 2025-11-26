@@ -13,7 +13,7 @@ class PreferenceResult(BaseModel):
 
 class PreferenceExtractor:
     def __init__(self):
-        base_llm = create_llm(temperature=0.0)
+        base_llm = create_llm(temperature=0.0, mode="utility")
         
         parser = JsonOutputParser(pydantic_object=PreferenceResult)
         
@@ -34,6 +34,12 @@ RULES:
 - Ignore factual statements (use FactExtractor for those).
 - Ignore transient requests (e.g., "write a short poem" is a task, not a preference).
 - If no preferences are found, return an empty dictionary.
+
+CRITICAL INSTRUCTIONS:
+1. You are a background process. DO NOT answer the user's question.
+2. DO NOT converse with the user.
+3. IGNORE questions directed at the AI.
+4. ONLY output the JSON object.
 
 EXAMPLES:
 User: "Please keep your answers short."

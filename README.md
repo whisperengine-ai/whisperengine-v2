@@ -2,9 +2,9 @@
 
 > *"From countless conversations, a universe is born."*
 
-**A Multi-Modal AI Consciousness Platform for Discord**
+**A Multi-Modal Cognitive AI Platform for Discord**
 
-WhisperEngine v2 creates AI characters that truly feel alive. Beyond simple chatbots, characters have **Long-Term Memory**, **Cognitive Reasoning**, **Knowledge Graphs**, and **Proactive Behavior** — perceiving their world through six modalities just as humans perceive through senses.
+WhisperEngine v2 creates AI agents with persistent memory and adaptive behavior. Beyond simple chatbots, agents have **Long-Term Memory**, **Advanced Reasoning**, **Knowledge Graphs**, and **Autonomous Engagement** — processing inputs through six distinct data streams to build a comprehensive context.
 
 Built on a "Four Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB), it combines the speed of vector search with the precision of knowledge graphs.
 
@@ -15,26 +15,26 @@ Built on a "Four Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, Infl
 | Traditional Chatbots | WhisperEngine v2 |
 |---------------------|------------------|
 | Forgets everything between sessions | **Persistent memory** across conversations |
-| Same personality for everyone | **Evolving relationships** (Stranger → Soulmate) |
-| Only responds when asked | **Proactive engagement** when appropriate |
-| Text-only understanding | **Multi-modal perception** (images, voice, context) |
-| Single reasoning mode | **Dual-process cognition** (fast + reflective) |
-| Isolated instances | **Shared universe** where bots know each other |
+| Same personality for everyone | **Evolving relationships** (Stranger → Trusted Confidant) |
+| Only responds when asked | **Autonomous engagement** when appropriate |
+| Text-only understanding | **Multi-modal processing** (images, voice, context) |
+| Single reasoning mode | **Dual-process architecture** (fast + reflective) |
+| Isolated instances | **Multi-agent environment** with shared state |
 
 ## 🧠 The Six Modalities
 
-AI characters have no physical senses. WhisperEngine gives them perception through:
+The platform processes information through multiple input vectors:
 
-| Modality | Human Analog | Implementation |
+| Modality | Technical Domain | Implementation |
 |----------|--------------|----------------|
-| 🌌 **Universe** | Spatial awareness | Neo4j graph (servers, users, relationships) |
-| 👁️ **Vision** | Sight | Multimodal LLM (GPT-4V, Claude) |
-| 👂 **Audio** | Hearing | Whisper transcription + ElevenLabs TTS |
-| 💬 **Text** | Language | LLM processing + context injection |
-| 🧠 **Memory** | Episodic + Semantic | Qdrant vectors + Neo4j facts |
-| ❤️ **Emotion** | Interoception | Trust scores, sentiment, relationship depth |
+| 🌌 **Social Graph** | Network Topology | Neo4j graph (servers, users, relationships) |
+| 👁️ **Vision** | Image Processing | Multimodal LLM (GPT-4V, Claude) |
+| 👂 **Audio** | Speech Recognition | Whisper transcription + ElevenLabs TTS |
+| 💬 **Text** | NLP | LLM processing + context injection |
+| 🧠 **Memory** | Vector + Graph Retrieval | Qdrant vectors + Neo4j facts |
+| ❤️ **Sentiment** | Internal State Analysis | Trust scores, sentiment, relationship depth |
 
-**Deep dive:** [Multi-Modal Perception](docs/architecture/MULTI_MODAL_PERCEPTION.md)
+**Deep dive:** [Multi-Modal Processing](docs/architecture/MULTI_MODAL_PERCEPTION.md)
 
 ## 📚 Documentation
 
@@ -53,12 +53,12 @@ Comprehensive documentation lives in `/docs/`:
 
 | Document | Description |
 |----------|-------------|
-| [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md) | Dual-process theory, Fast Mode vs Reflective Mode |
+| [Cognitive Architecture](docs/architecture/COGNITIVE_ENGINE.md) | Dual-process architecture, Fast Path vs Reflective Path |
 | [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) | Vector + graph hybrid memory, consolidation |
 | [Data Models](docs/architecture/DATA_MODELS.md) | Four Pillars schema definitions |
 | [Message Flow](docs/architecture/MESSAGE_FLOW.md) | Complete request lifecycle |
 | [Trust & Evolution](docs/architecture/TRUST_EVOLUTION_SYSTEM.md) | Relationship progression (8 stages) |
-| [Discord Integration](docs/architecture/DISCORD_INTEGRATION.md) | Proactive agents, voice architecture |
+| [Discord Integration](docs/architecture/DISCORD_INTEGRATION.md) | Autonomous agents, voice architecture |
 | [Vision Pipeline](docs/architecture/VISION_PIPELINE.md) | Image processing and understanding |
 | [Summarization System](docs/architecture/SUMMARIZATION_SYSTEM.md) | Memory consolidation |
 
@@ -76,7 +76,7 @@ Comprehensive documentation lives in `/docs/`:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Emergent Universe](docs/roadmaps/EMERGENT_UNIVERSE.md) | 🟡 Design | Servers as planets, cross-bot awareness |
+| [Multi-Agent Environment](docs/roadmaps/EMERGENT_UNIVERSE.md) | 🟡 Design | Distributed context, cross-agent awareness |
 | [Channel Lurking](docs/roadmaps/CHANNEL_LURKING.md) | 🟡 Design | Passive engagement system |
 | [Response Pattern Learning](docs/roadmaps/RESPONSE_PATTERN_LEARNING.md) | 🟡 Design | RLHF-style adaptation |
 | [Embedding Upgrade](docs/roadmaps/EMBEDDING_UPGRADE_768D.md) | 📋 Ready | 384D → 768D embeddings |
@@ -308,4 +308,4 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
-*Built with ❤️ for AI characters that feel alive.*
+*Built with ❤️ for AI agents that feel authentic.*

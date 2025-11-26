@@ -1,6 +1,6 @@
 # Roadmap V2 - Phase 11: Personality & Style Tuning
 
-This phase focuses on the "Soul" of the character. Now that we have the "Brain" (Memory + Knowledge), we need to ensure the bot expresses itself in a way that is consistent, engaging, and true to its persona.
+This phase focuses on the "Core Identity" of the character. Now that we have the "Brain" (Memory + Knowledge), we need to ensure the bot expresses itself in a way that is consistent, engaging, and true to its persona.
 
 ## Goals
 - [ ] **Style Enforcement**: Ensure the bot strictly adheres to the voice/tone defined in `character.md`.

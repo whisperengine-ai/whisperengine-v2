@@ -493,7 +493,7 @@ Elena's identity is **immutable** after initialization:
 | **Richer Character** | Elena could develop nuanced opinions over time ("my favorite restaurant", "a movie I just watched") |
 | **Emergent Personality** | Small preferences accumulate into deeper characterization |
 | **Continuity** | User asks "what's your favorite X?" twice → consistent answer |
-| **Organic Growth** | Character feels more alive, like a real person who discovers new things |
+| **Organic Growth** | Character feels more responsive, like a real person who discovers new things |
 | **Reduced Author Burden** | Don't need to pre-define every preference in YAML |
 
 ### Cons of Bot Self-Learning (Security & Consistency Risks)

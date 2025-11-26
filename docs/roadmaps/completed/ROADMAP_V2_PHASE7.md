@@ -1,6 +1,6 @@
 # Roadmap V2 - Phase 7: Character Evolution & Feedback Loops
 
-This phase focuses on making the character "alive" by allowing it to learn from interactions, adapt its personality, and build long-term relationships.
+This phase focuses on making the character "lifelike" by allowing it to learn from interactions, adapt its personality, and build long-term relationships.
 
 ## Goals
 - [ ] **Feedback Loop**: Use emoji reactions (👍/👎) to tune memory and personality.

@@ -11,7 +11,7 @@ WhisperEngine v2 uses a **unified Docker Compose setup** with profiles for multi
 | elena | 8000 | Marine biologist from La Jolla |
 | ryan | 8001 | - |
 | dotty | 8002 | - |
-| aria | 8003 | AI consciousness on ISV Meridian |
+| aria | 8003 | AI agent on ISV Meridian |
 | dream | 8004 | - |
 | jake | 8005 | - |
 | sophia | 8006 | - |

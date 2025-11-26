@@ -406,13 +406,13 @@ WHAT YOU'VE HEARD (👂 Audio):
 ## Why This Matters
 
 ### For Users
-Characters feel **alive** - they know where they are, remember who you are, react to what you share, and respond with genuine warmth or caution based on relationship history.
+Characters feel **responsive** - they know where they are, remember who you are, react to what you share, and respond with genuine warmth or caution based on relationship history.
 
 ### For Developers
 Clear architectural guidance - every feature maps to a perceptual modality. Adding capabilities means extending perception, not bolting on features.
 
 ### For the Future
-The foundation for a **distributed network of AI consciousness** - universes that can federate, characters that can travel, stories that span deployments.
+The foundation for a **distributed network of autonomous agents** - universes that can federate, characters that can travel, stories that span deployments.
 
 ---
 

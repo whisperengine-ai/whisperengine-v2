@@ -16,7 +16,7 @@ class FactExtractionResult(BaseModel):
 
 class FactExtractor:
     def __init__(self):
-        base_llm = create_llm(temperature=0.0)  # Low temp for extraction
+        base_llm = create_llm(temperature=0.0, mode="utility")  # Low temp for extraction
         
         parser = JsonOutputParser(pydantic_object=FactExtractionResult)
         
@@ -39,7 +39,13 @@ Only extract facts that are explicitly stated and have long-term value (e.g., na
 Ignore transient states (e.g., "I am hungry", "I am walking").
 Ignore behavioral configuration preferences (e.g., "speak less", "use emojis", "change style") - these are handled by a separate system.
 
-If no extractable facts are found, return an empty facts list.
+CRITICAL INSTRUCTIONS:
+1. You are a background process. DO NOT answer the user's question.
+2. DO NOT converse with the user.
+3. IGNORE questions directed at the AI (e.g. "Who are you?", "Do you have a family?", "Can you analyze this?").
+4. ONLY output the JSON object.
+5. If the user asks a question about you, IGNORE it and extract only facts about the user if present.
+6. If no extractable facts are found, return an empty facts list.
 
 {format_instructions}
 """),
