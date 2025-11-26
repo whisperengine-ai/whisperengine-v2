@@ -1238,11 +1238,11 @@ Other inhabitants on this planet (only if they allow introductions):
 
 ### Phase 4: Respecting Boundaries (Day 4-5)
 *Trust must be earned.*
-- [ ] Create `PrivacyManager` class
+- [x] Create `PrivacyManager` class
 - [x] Add PostgreSQL privacy settings table with defaults
-- [ ] Implement `/privacy` Discord commands
-- [ ] Add privacy filtering to ALL graph queries
-- [ ] Implement `/universe info` transparency command
+- [x] Implement `/privacy` Discord commands
+- [x] Add privacy filtering to ALL graph queries
+- [x] Implement `/universe info` transparency command
 
 ### Phase 5: Weaving the Tapestry (Day 5-6)
 *Context flows naturally.*

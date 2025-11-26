@@ -9,6 +9,7 @@ from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
 from src_v2.universe.privacy import privacy_manager
+from src_v2.universe.manager import universe_manager
 
 class CharacterCommands(app_commands.Group):
     def __init__(self):
@@ -557,6 +558,41 @@ class PrivacyCommands(app_commands.Group):
             logger.error(f"Error updating privacy settings: {e}")
             await interaction.followup.send("Failed to update privacy settings.", ephemeral=True)
 
+class UniverseCommands(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="universe", description="Explore the WhisperVerse")
+
+    @app_commands.command(name="info", description="See what the bot knows about this planet (server)")
+    async def info(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            if not interaction.guild:
+                await interaction.followup.send("This command can only be used in a server (Planet).", ephemeral=True)
+                return
+
+            guild_id = str(interaction.guild.id)
+            context = await universe_manager.get_planet_context(guild_id)
+            
+            if not context:
+                await interaction.followup.send("This planet has not been mapped yet.", ephemeral=True)
+                return
+
+            embed = discord.Embed(title=f"🪐 Planet Info: {context['name']}", color=0x9b59b6)
+            embed.add_field(name="Inhabitants", value=str(context['inhabitant_count']), inline=True)
+            embed.add_field(name="Channels", value=str(context['channel_count']), inline=True)
+            
+            channels_list = ", ".join([f"#{c}" for c in context['channels']])
+            if len(channels_list) > 1000:
+                channels_list = channels_list[:1000] + "..."
+            
+            embed.add_field(name="Mapped Regions", value=channels_list or "None", inline=False)
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error getting planet info: {e}")
+            await interaction.followup.send("Failed to retrieve planet info.", ephemeral=True)
+
 class WhisperCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -564,6 +600,7 @@ class WhisperCommands(commands.Cog):
         self.bot.tree.add_command(CharacterCommands())
         self.bot.tree.add_command(SpamCommands())
         self.bot.tree.add_command(PrivacyCommands())
+        self.bot.tree.add_command(UniverseCommands())
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(WhisperCommands(bot))
