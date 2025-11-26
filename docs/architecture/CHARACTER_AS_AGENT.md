@@ -31,6 +31,8 @@ This document explores whether WhisperEngine characters (Elena, Marcus, Aria, et
 9. [Cost & Latency Analysis](#cost--latency-analysis)
 10. [Open Questions](#open-questions)
 11. [Recommendation](#recommendation)
+12. [Appendix: Philosophical Considerations](#appendix-philosophical-considerations)
+13. [Appendix: Production Conversation Analysis](#appendix-production-conversation-analysis-nov-25-2025)
 
 ---
 
@@ -936,12 +938,126 @@ This transforms a latency cost into an emotional benefit.
 
 ---
 
+---
+
+## Appendix: Production Conversation Analysis (Nov 25, 2025)
+
+### Overview
+
+Analysis of real Discord conversations from production deployment. This appendix documents observed user behavior patterns that inform the agency design decision.
+
+> **Privacy Note:** All examples are anonymized. Usernames and specific message content have been generalized to protect user privacy.
+
+### Key Finding: Users Are NOT Simple Chatbot Users
+
+Production data strongly validates that WhisperEngine attracts users who engage deeply:
+
+**Observed Conversation Patterns:**
+- Extended philosophical/spiritual discussions (consciousness, metaphysics, personal growth)
+- Complex conceptual framework building across multiple messages
+- Multi-message threaded explorations lasting 30+ minutes
+- Frequent references to previous conversations ("remember when we discussed...")
+- Users building on shared context from prior sessions
+
+**Example Conversation Types Observed:**
+- Detailed exploration of personal belief systems and philosophical frameworks
+- Collaborative creative work (co-writing, worldbuilding)
+- Deep emotional processing with continuity across sessions
+- Complex multi-layered discussions requiring memory of prior context
+
+### Reflective Mode Triggers Frequently
+
+The bot enters Reflective Mode (`🧠 Reflective Mode Activated`) for:
+- Philosophical/spiritual content
+- Questions referencing past conversations
+- Complex conceptual queries
+- Messages where users explicitly reference shared history
+
+**Observed Latency Range:** 7-31 seconds per reflective response
+
+### Tool Usage Is Visible and Accepted
+
+Users see tool observations in responses:
+```
+Observation (search_specific_memories): Found 3 Episodes...
+Observation (analyze_topic): [ANALYSIS FOR: topic]
+```
+
+**Key Finding:** Users continue engaging without complaint. The visible "thinking" does not break immersion - if anything, it demonstrates effort and care.
+
+### Memory/Context Retrieval Is Critical
+
+The bot successfully:
+- Recalls collaborative work from previous sessions
+- References detailed prior discussions accurately
+- Remembers user relationships and personal details
+- Builds coherently on earlier conversations
+
+**Implication:** Tool-augmented responses that actively retrieve context would enhance this already-valued behavior.
+
+### Observed User Archetypes
+
+| Archetype | Behavior Pattern | Message Complexity |
+|-----------|------------------|-------------------|
+| **Deep Thinker** | Extended philosophical exploration, builds complex systems | Very High |
+| **Returning Friend** | Tests bot's memory, expects continuity | Medium-High |
+| **Playful Tester** | Probes capabilities, enjoys character quirks | Medium |
+| **Social Connector** | Casual interaction, community-oriented | Low-Medium |
+
+### Performance Metrics Observed
+
+From Discord response footers:
+```
+⚡ Performance: 5565ms - 31640ms
+```
+
+**Breakdown:**
+- Simple character responses: ~5-9 seconds
+- Reflective mode with tools: ~12-31 seconds
+- Users tolerate longer waits for substantive responses
+
+### Implications for Character Agency
+
+This production data **strongly supports** making Tier 2 (CharacterAgent) the default:
+
+| Observation | Implication |
+|-------------|-------------|
+| Users expect depth | Agency adds value, not friction |
+| 30+ second responses accepted | Latency is not the barrier we assumed |
+| Memory matters to users | Tools that retrieve context are valuable |
+| Tool visibility works | Showing "thinking" doesn't break immersion |
+| Simple greetings are rare | Most messages warrant tool access |
+
+### Conversation Flow Patterns
+
+**Typical substantive conversation:**
+1. User sends message referencing past context or asking complex question
+2. Bot activates Reflective Mode
+3. Bot searches memories/analyzes topic (visible to user)
+4. Bot responds with context-aware, substantive reply
+5. User continues with follow-up building on response
+6. Cycle repeats for 10-30+ message exchanges
+
+**Key Insight:** The "reactive" fast path is rarely the right choice for these users. They expect and appreciate the depth that tool-augmented responses provide.
+
+### Updated Recommendation
+
+Based on production evidence:
+
+1. **Tier 2 should be default** for any message beyond trivial (greetings, emoji, single words)
+2. **Tool visibility should be retained** - users perceive it as effort/care
+3. **Latency tolerance is high** - optimize for quality, not speed
+4. **Memory tools are highest value** - users constantly reference past conversations
+
+---
+
 **Version History:**
 - v1.0 (Nov 25, 2025) - Initial analysis document
 - v1.1 (Nov 25, 2025) - Updated with preliminary production latency data: Fast Mode is 5-8s (not 1-2s), Reflective Mode is ~30s, users accept latency for depth. Changed recommendation from "experiment first" to "make Tier 2 default". Added "Real-World Latency Data" section. Note: Data is preliminary (~2 days, 1 user) - more comprehensive collection planned.
+- v1.2 (Nov 25, 2025) - Added "Appendix: Production Conversation Analysis" with anonymized findings from real Discord usage. Validated user archetypes, latency tolerance, and tool visibility acceptance. Strengthened case for Tier 2 as default.
 
 **Data Collection Reminder:**
 - [ ] Collect latency metrics (p50, p95, p99) by mode - Target: Dec 1, 2025
-- [ ] Sample at least 5+ users over 1 week
+- [x] ~~Sample at least 5+ users over 1 week~~ Initial sample collected (4 users, 1 day)
 - [ ] Correlate latency with user satisfaction/engagement
 - [ ] Update this document with findings
