@@ -22,8 +22,8 @@ class GenerateImageTool(BaseTool):
     name: str = "generate_image"
     description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or wants a visual. Include the artistic style and mood in your prompt (e.g., 'cinematic portrait with dramatic lighting', 'soft watercolor of a sunset'). Choose aspect ratio: portrait (4:5), landscape (16:9), square (1:1), widescreen (2.4:1)."
     args_schema: Type[BaseModel] = GenerateImageInput
-    character_name: str = Field(exclude=True)
-    user_id: str = Field(exclude=True)
+    character_name: str = ""
+    user_id: str = ""
 
     def _run(self, prompt: str, aspect_ratio: str = "portrait") -> str:
         raise NotImplementedError("Use _arun instead")
@@ -83,9 +83,37 @@ class GenerateImageTool(BaseTool):
                 except Exception as e:
                     logger.error(f"Self-Discovery failed: {e}. Using default.")
             
-            # 3. Construct Enhanced Prompt
-            # Combine character visual description with the user's prompt (which includes style)
-            enhanced_prompt = f"{visual_desc}. {prompt}"
+            # 3. Determine if this is a self-portrait or user/other subject
+            # Check if the prompt is about the character itself
+            char_name_lower = self.character_name.lower()
+            prompt_lower = prompt.lower()
+            
+            # Keywords that suggest the image is OF the character (self-portrait)
+            self_keywords = [
+                "me", "myself", "my face", "my appearance", "what i look like",
+                "selfie", "self-portrait", "self portrait",
+                char_name_lower, "your face", "your appearance"
+            ]
+            
+            # Keywords that suggest the image is FOR/ABOUT the user or another subject
+            user_keywords = [
+                "you", "your", "yourself", "user", "portrait of you",
+                "what you look like", "for you", "of you",
+                "him", "her", "them", "their", "he", "she", "they",
+                "person", "man", "woman", "guy", "girl", "male", "female"
+            ]
+            
+            is_self_image = any(kw in prompt_lower for kw in self_keywords)
+            is_user_image = any(kw in prompt_lower for kw in user_keywords)
+            
+            # Only include character visual description for self-portraits
+            # NOT when creating images for/of the user or other subjects
+            if is_self_image and not is_user_image:
+                enhanced_prompt = f"{visual_desc}. {prompt}"
+                logger.info("Self-portrait mode: Including character visual description")
+            else:
+                enhanced_prompt = prompt
+                logger.info("User/Other subject mode: Using prompt as-is (no character injection)")
             
             logger.info(f"Generating image with prompt: {enhanced_prompt} (Size: {width}x{height})")
             
