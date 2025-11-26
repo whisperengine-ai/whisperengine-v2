@@ -8,32 +8,42 @@ from src_v2.image_gen.service import image_service, pending_images
 from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
 
-# Marker format for embedded images in responses
-IMAGE_MARKER_PREFIX = "[WHISPER_IMAGE:"
-IMAGE_MARKER_SUFFIX = "]"
-
-# Regex pattern for extracting image markers
-import re
-IMAGE_MARKER_PATTERN = re.compile(
-    re.escape(IMAGE_MARKER_PREFIX) + r"([a-f0-9]{8})" + re.escape(IMAGE_MARKER_SUFFIX)
-)
-
 class GenerateImageInput(BaseModel):
     prompt: str = Field(description="A description of the image to generate. Be creative and descriptive.")
     style: str = Field(description="The artistic style of the image (e.g., 'photorealistic', 'oil painting', 'sketch', 'cyberpunk').", default="photorealistic")
+    aspect_ratio: str = Field(
+        description="The aspect ratio of the image. Choose based on the subject matter.", 
+        default="portrait",
+        enum=["portrait", "landscape", "square", "widescreen"]
+    )
 
 class GenerateImageTool(BaseTool):
     name: str = "generate_image"
-    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or when you want to show a visual representation of your thoughts. The prompt should be descriptive."
+    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or when you want to show a visual representation of your thoughts. The prompt should be descriptive. You can choose the aspect ratio (portrait, landscape, square, widescreen)."
     args_schema: Type[BaseModel] = GenerateImageInput
     character_name: str = Field(exclude=True)
+    user_id: str = Field(exclude=True)
 
-    def _run(self, prompt: str, style: str = "photorealistic") -> str:
+    def _run(self, prompt: str, style: str = "photorealistic", aspect_ratio: str = "portrait") -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, prompt: str, style: str = "photorealistic") -> str:
+    async def _arun(self, prompt: str, style: str = "photorealistic", aspect_ratio: str = "portrait") -> str:
         try:
-            # 1. Get Character Visual Description
+            # 1. Map Aspect Ratio to Dimensions
+            # Flux 1.1 Pro has a hard limit of 1440px on any dimension.
+            # All dimensions should be multiples of 32.
+            width, height = 1152, 1440 # Default Portrait (4:5)
+            
+            if aspect_ratio == "landscape":
+                width, height = 1440, 832 # 16:9 (approx)
+            elif aspect_ratio == "square":
+                width, height = 1440, 1440 # 1:1
+            elif aspect_ratio == "widescreen":
+                width, height = 1440, 608 # 2.37:1 (approx 2.4:1)
+            elif aspect_ratio == "portrait":
+                width, height = 1152, 1440 # 4:5
+            
+            # 2. Get Character Visual Description
             # Try to get from DB first (via the new async method), fallback to file
             visual_desc = await character_manager.get_visual_description(self.character_name)
             
@@ -63,21 +73,20 @@ class GenerateImageTool(BaseTool):
                 except Exception as e:
                     logger.error(f"Self-Discovery failed: {e}. Using default.")
             
-            # 2. Construct Enhanced Prompt
+            # 3. Construct Enhanced Prompt
             # "A photorealistic image of [Visual Desc]. [User Prompt]. Style: [Style]"
             enhanced_prompt = f"{style} image of {visual_desc}. {prompt}"
             
-            logger.info(f"Generating image with prompt: {enhanced_prompt}")
+            logger.info(f"Generating image with prompt: {enhanced_prompt} (Size: {width}x{height})")
             
-            # 3. Call Service
-            image_result = await image_service.generate_image(enhanced_prompt)
+            # 4. Call Service
+            image_result = await image_service.generate_image(enhanced_prompt, width=width, height=height)
             
             if image_result:
                 # Register the image for later retrieval by the Discord bot
-                image_id = pending_images.register(image_result)
-                # Return a special marker that the bot will parse and replace with an attachment
-                marker = f"{IMAGE_MARKER_PREFIX}{image_id}{IMAGE_MARKER_SUFFIX}"
-                return f"Image generated successfully. {marker}"
+                # We use the user_id to queue the image for the final response
+                await pending_images.add(self.user_id, image_result)
+                return f"Image generated successfully ({aspect_ratio})."
             else:
                 return "Failed to generate image. Please try again later."
                 

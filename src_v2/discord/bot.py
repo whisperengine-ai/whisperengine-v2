@@ -25,7 +25,6 @@ from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
 from src_v2.workers.task_queue import task_queue
 from src_v2.image_gen.service import pending_images
-from src_v2.tools.image_tools import IMAGE_MARKER_PREFIX, IMAGE_MARKER_SUFFIX, IMAGE_MARKER_PATTERN
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator
 
@@ -35,35 +34,29 @@ BFL_IMAGE_URL_PATTERN = re.compile(
 )
 
 
-def extract_pending_images(text: str) -> Tuple[str, List[discord.File]]:
+async def extract_pending_images(text: str, user_id: str) -> Tuple[str, List[discord.File]]:
     """
-    Extract image markers from response text and retrieve the corresponding images.
+    Retrieve any pending images for the user from Redis.
     Also strips out any BFL URLs that the LLM might have included.
     
     Args:
-        text: The response text that may contain image markers and/or BFL URLs
+        text: The response text
+        user_id: The user ID to check for pending images
         
     Returns:
         Tuple of (cleaned_text, list_of_discord_files)
     """
     files: List[discord.File] = []
     
-    # Find all image markers
-    matches = IMAGE_MARKER_PATTERN.findall(text)
+    # Retrieve all pending images for this user from Redis
+    results = await pending_images.pop_all(user_id)
     
-    for image_id in matches:
-        result = pending_images.retrieve(image_id)
-        if result:
-            files.append(result.to_discord_file())
-            logger.info(f"Retrieved pending image {image_id} for Discord upload")
-        else:
-            logger.warning(f"Image ID {image_id} not found in pending_images registry")
-    
-    # Remove the markers from the text
-    cleaned_text = IMAGE_MARKER_PATTERN.sub("", text)
+    for result in results:
+        files.append(result.to_discord_file())
+        logger.info(f"Retrieved pending image for user {user_id} for Discord upload")
     
     # Strip out any BFL URLs that the LLM might have included
-    cleaned_text = BFL_IMAGE_URL_PATTERN.sub("", cleaned_text)
+    cleaned_text = BFL_IMAGE_URL_PATTERN.sub("", text)
     
     # Clean up any double spaces or newlines left behind
     cleaned_text = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned_text)
@@ -925,7 +918,7 @@ class WhisperBot(commands.Bot):
                             final_text = f"{response}\n\n{footer_text}"
                         
                         # Extract any generated images from the response
-                        cleaned_text, image_files = extract_pending_images(final_text)
+                        cleaned_text, image_files = await extract_pending_images(final_text, user_id)
                         
                         # Split response into chunks if it's too long
                         message_chunks = self._chunk_message(cleaned_text)

@@ -1,10 +1,18 @@
 import asyncio
 import aiohttp
 import uuid
+import json
+import aiofiles
+import redis.asyncio as redis
 from io import BytesIO
+from pathlib import Path
 from loguru import logger
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, List
 from src_v2.config.settings import settings
+
+# Resolve storage directory relative to project root (works in Docker and local)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_TEMP_DOWNLOADS_DIR = _PROJECT_ROOT / "temp_downloads"
 
 class ImageGenerationResult:
     """Result from image generation containing URL and raw bytes."""
@@ -20,65 +28,104 @@ class ImageGenerationResult:
         return discord.File(BytesIO(self.image_bytes), filename=self.filename)
 
 
-import time
-
 class PendingImageRegistry:
     """
-    Thread-safe registry for images generated during response generation.
-    Images are stored temporarily and retrieved by the Discord bot for upload.
-    Includes TTL cleanup to prevent memory leaks.
+    Redis-backed registry for images generated during response generation.
+    Uses filesystem for storage and Redis for metadata/queueing.
     """
     
     def __init__(self):
-        self._images: Dict[str, Tuple[float, ImageGenerationResult]] = {}
+        self._redis = None
         self._ttl = 300  # 5 minutes
-    
-    def _cleanup(self):
-        """Remove expired images."""
-        now = time.time()
-        expired = [k for k, (ts, _) in self._images.items() if now - ts > self._ttl]
-        for k in expired:
-            del self._images[k]
-        if expired:
-            logger.debug(f"Cleaned up {len(expired)} expired pending images")
-
-    def register(self, result: ImageGenerationResult) -> str:
-        """
-        Register an image and return a unique ID for later retrieval.
+        self._storage_dir = _TEMP_DOWNLOADS_DIR
         
-        Args:
-            result: The ImageGenerationResult to store
-            
-        Returns:
-            A unique string ID that can be embedded in the response
-        """
-        self._cleanup()  # Lazy cleanup on registration
-        image_id = str(uuid.uuid4())[:8]  # Short unique ID
-        self._images[image_id] = (time.time(), result)
-        logger.debug(f"Registered pending image: {image_id}")
-        return image_id
-    
-    def retrieve(self, image_id: str) -> Optional[ImageGenerationResult]:
-        """
-        Retrieve and remove an image from the registry.
+        # Ensure storage directory exists
+        self._storage_dir.mkdir(parents=True, exist_ok=True)
         
-        Args:
-            image_id: The unique ID returned from register()
-            
-        Returns:
-            The ImageGenerationResult if found, None otherwise
+    async def _get_redis(self):
+        if not self._redis:
+            self._redis = redis.from_url(settings.REDIS_URL)
+        return self._redis
+
+    async def add(self, user_id: str, result: ImageGenerationResult) -> None:
         """
-        entry = self._images.pop(image_id, None)
-        if entry:
-            logger.debug(f"Retrieved pending image: {image_id}")
-            return entry[1]
-        return None
-    
-    def clear(self) -> None:
-        """Clear all pending images (cleanup on error)."""
-        self._images.clear()
+        Save image to disk and add metadata to the user's pending queue in Redis.
+        """
+        try:
+            # 1. Save image to disk
+            file_id = str(uuid.uuid4())
+            filename = f"{file_id}.png"
+            filepath = self._storage_dir / filename
+            
+            async with aiofiles.open(filepath, "wb") as f:
+                await f.write(result.image_bytes)
+            
+            # 2. Prepare metadata (store absolute path as string for JSON)
+            metadata = {
+                "path": str(filepath),
+                "url": result.url,
+                "filename": result.filename
+            }
+            
+            # 3. Store in Redis
+            key = f"pending_images:{user_id}"
+            r = await self._get_redis()
+            
+            await r.rpush(key, json.dumps(metadata))
+            await r.expire(key, self._ttl)
+            
+            logger.debug(f"Saved pending image to {filepath} and queued for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to add image to registry: {e}")
 
-
+    async def pop_all(self, user_id: str) -> List[ImageGenerationResult]:
+        """
+        Retrieve all pending images for a user, load from disk, and cleanup.
+        """
+        key = f"pending_images:{user_id}"
+        results = []
+        
+        try:
+            r = await self._get_redis()
+            
+            # Get all items
+            while True:
+                data = await r.lpop(key)
+                if not data:
+                    break
+                
+                try:
+                    meta = json.loads(data)
+                    path = Path(meta["path"])
+                    
+                    if path.exists():
+                        # Load bytes
+                        async with aiofiles.open(path, "rb") as f:
+                            image_bytes = await f.read()
+                        
+                        # Create result object
+                        results.append(ImageGenerationResult(
+                            url=meta["url"],
+                            image_bytes=image_bytes,
+                            filename=meta["filename"]
+                        ))
+                        
+                        # Cleanup file
+                        path.unlink()
+                        logger.debug(f"Retrieved and cleaned up image: {path}")
+                    else:
+                        logger.warning(f"Pending image file not found: {path}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing pending image item: {e}")
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to retrieve images from Redis: {e}")
+            return []
+            
 # Global registry instance
 pending_images = PendingImageRegistry()
 

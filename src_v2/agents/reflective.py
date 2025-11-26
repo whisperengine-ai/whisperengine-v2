@@ -209,7 +209,7 @@ class ReflectiveAgent:
         
         # Conditionally add image generation tool
         if settings.ENABLE_IMAGE_GENERATION:
-            tools.append(GenerateImageTool(character_name=character_name))
+            tools.append(GenerateImageTool(character_name=character_name, user_id=user_id))
         
         return tools
 

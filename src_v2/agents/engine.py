@@ -25,7 +25,6 @@ from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.utils.validation import ValidationError, validator
 from src_v2.evolution.manager import get_evolution_manager
-from src_v2.tools.image_tools import IMAGE_MARKER_PREFIX, IMAGE_MARKER_SUFFIX, IMAGE_MARKER_PATTERN
 
 class AgentEngine:
     """Core cognitive engine for generating AI responses with memory and evolution."""
@@ -570,27 +569,6 @@ class AgentEngine:
             max_steps_override=max_steps_override,
             guild_id=guild_id
         )
-        
-        # Extract image markers from tool outputs in the trace
-        # The LLM doesn't copy these to its final response, so we need to inject them
-        collected_markers = []
-        for msg in trace:
-            if hasattr(msg, 'content') and isinstance(msg.content, str):
-                markers = IMAGE_MARKER_PATTERN.findall(msg.content)
-                for marker_id in markers:
-                    full_marker = f"{IMAGE_MARKER_PREFIX}{marker_id}{IMAGE_MARKER_SUFFIX}"
-                    if full_marker not in collected_markers:
-                        collected_markers.append(full_marker)
-                        logger.debug(f"Found image marker in trace: {marker_id}")
-        
-        # Append any found markers to the response so the bot can extract them
-        if collected_markers:
-            # Filter out markers that are already in the response text to avoid duplication
-            new_markers = [m for m in collected_markers if m not in response_text]
-            
-            if new_markers:
-                logger.info(f"Injecting {len(new_markers)} image marker(s) into reflective response")
-                response_text = response_text + "\n" + " ".join(new_markers)
         
         if settings.ENABLE_PROMPT_LOGGING:
             await self._log_prompt(

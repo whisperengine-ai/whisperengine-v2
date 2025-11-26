@@ -8,6 +8,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+temp_downloads/
 eggs/
 .eggs/
 lib/
@@ -50,7 +51,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Runtime Data & Temp
-temp_downloads/
 characters/**/*.backup_*.json
 
 # Database
