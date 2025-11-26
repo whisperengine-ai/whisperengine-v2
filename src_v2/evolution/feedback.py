@@ -26,8 +26,6 @@ class FeedbackAnalyzer:
     NEGATIVE_REACTIONS = ['👎', '😢', '😠', '💔', '😕', '🤔']
     
     def __init__(self):
-        self.influx_client = db_manager.influxdb_client
-        self.qdrant_client = db_manager.qdrant_client
         logger.info("FeedbackAnalyzer initialized")
 
     async def get_feedback_score(self, message_id: str, user_id: str) -> Optional[Dict]:
@@ -42,12 +40,12 @@ class FeedbackAnalyzer:
             Dict with {score: float, positive_count: int, negative_count: int, reactions: List[str]}
             Score ranges from -1.0 (all negative) to +1.0 (all positive)
         """
-        if not self.influx_client:
+        if not db_manager.influxdb_client:
             logger.warning("InfluxDB not available, cannot get feedback score")
             return None
             
         try:
-            query_api = self.influx_client.query_api()
+            query_api = db_manager.influxdb_client.query_api()
             
             # Query for reaction events on this message
             flux_query = f'''
@@ -118,13 +116,13 @@ class FeedbackAnalyzer:
             collection_name: Qdrant collection name
             score_delta: Amount to adjust the importance score by (-1.0 to +1.0)
         """
-        if not self.qdrant_client:
+        if not db_manager.qdrant_client:
             logger.warning("Qdrant not available, cannot adjust memory score")
             return
             
         try:
             # Retrieve the current point
-            points = await self.qdrant_client.retrieve(
+            points = await db_manager.qdrant_client.retrieve(
                 collection_name=collection_name,
                 ids=[memory_id]
             )
@@ -141,7 +139,7 @@ class FeedbackAnalyzer:
             new_importance = max(0.0, min(1.0, current_importance + score_delta))
             
             # Update the point payload
-            await self.qdrant_client.set_payload(
+            await db_manager.qdrant_client.set_payload(
                 collection_name=collection_name,
                 payload={"importance": new_importance},
                 points=[memory_id]
@@ -156,12 +154,12 @@ class FeedbackAnalyzer:
         """
         Finds a memory point by message_id and adjusts its importance score.
         """
-        if not self.qdrant_client:
+        if not db_manager.qdrant_client:
             return
 
         try:
             # Search for point with message_id in payload
-            scroll_result = await self.qdrant_client.scroll(
+            scroll_result = await db_manager.qdrant_client.scroll(
                 collection_name=collection_name,
                 scroll_filter=Filter(
                     must=[
@@ -201,11 +199,11 @@ class FeedbackAnalyzer:
         Returns:
             Dict with insights and metrics
         """
-        if not self.influx_client:
+        if not db_manager.influxdb_client:
             return {"error": "InfluxDB not available"}
             
         try:
-            query_api = self.influx_client.query_api()
+            query_api = db_manager.influxdb_client.query_api()
             
             # Query reaction events
             flux_query = f'''
@@ -329,13 +327,13 @@ class FeedbackAnalyzer:
         
         Returns: "Happy", "Neutral", "Annoyed (User has been reacting negatively)", "Excited (User is very engaged)"
         """
-        if not self.influx_client:
+        if not db_manager.influxdb_client:
             return "Neutral"
-
-        try:
-            query_api = self.influx_client.query_api()
             
-            # Query for recent reactions from this user
+        try:
+            query_api = db_manager.influxdb_client.query_api()
+            
+            # Query recent reactions (last 1 hour)
             flux_query = f'''
             from(bucket: "{settings.INFLUXDB_BUCKET}")
                 |> range(start: -1h)
