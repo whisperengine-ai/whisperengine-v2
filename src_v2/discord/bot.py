@@ -874,6 +874,7 @@ class WhisperBot(commands.Bot):
                 channel_id=channel_id,
                 user_id=user_id,
                 author_is_bot=message.author.bot,
+                has_mentions=bool(message.mentions),
                 channel_lurk_enabled=True,  # Already checked above
                 custom_threshold=channel_threshold
             )

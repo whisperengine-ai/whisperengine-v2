@@ -263,11 +263,15 @@ class LurkDetector:
         
         return self._topic_embeddings or []
     
-    def _should_ignore_message(self, content: str, author_is_bot: bool) -> Tuple[bool, str]:
+    def _should_ignore_message(self, content: str, author_is_bot: bool, has_mentions: bool = False) -> Tuple[bool, str]:
         """Check if message should be ignored entirely."""
         # Ignore bot messages
         if author_is_bot:
             return True, "bot_message"
+            
+        # Ignore messages mentioning others (politeness)
+        if has_mentions:
+            return True, "mentions_others"
         
         # Ignore too short
         if len(content.strip()) < self.MIN_MESSAGE_LENGTH:
@@ -402,6 +406,7 @@ class LurkDetector:
         channel_id: str,
         user_id: str,
         author_is_bot: bool = False,
+        has_mentions: bool = False,
         user_trust_score: Optional[int] = None,
         channel_lurk_enabled: bool = True,
         custom_threshold: Optional[float] = None
@@ -414,6 +419,7 @@ class LurkDetector:
             channel_id: Discord channel ID
             user_id: Discord user ID
             author_is_bot: Whether the author is a bot
+            has_mentions: Whether the message mentions other users
             user_trust_score: Optional trust score for personalization
             channel_lurk_enabled: Whether lurking is enabled for this channel
             custom_threshold: Override default threshold
@@ -434,7 +440,7 @@ class LurkDetector:
             )
         
         # Check if message should be ignored
-        should_ignore, ignore_reason = self._should_ignore_message(message, author_is_bot)
+        should_ignore, ignore_reason = self._should_ignore_message(message, author_is_bot, has_mentions)
         if should_ignore:
             return LurkResult(
                 should_respond=False,
