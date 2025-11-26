@@ -103,7 +103,7 @@ Items that MUST be done before any production data exists.
 
 ### Phase A0: Embedding Dimension Upgrade (384D → 768D)
 **Priority:** 🔴 CRITICAL | **Time:** 45-75 minutes | **Complexity:** Low  
-**Files:** 4 | **LOC:** ~200 | **Status:** 📋 Ready to Implement
+**Files:** 4 | **LOC:** ~200 | **Status:** ⏸️ On Hold (Performance Concerns)
 
 **Problem:** Current 384D embeddings (all-MiniLM-L6-v2) have lower semantic resolution and 256 token context limit
 
@@ -117,6 +117,11 @@ Items that MUST be done before any production data exists.
 - Easier now with low data volume
 - Harder later: More memories = longer migration time
 - ~10-15% improvement in retrieval quality
+
+**Update (Nov 25, 2025):**
+- Benchmarks on real data show `bge-base-en-v1.5` is ~30x slower (180ms vs 5ms per message).
+- Decision made to stick with `all-MiniLM-L6-v2` for now to prioritize latency.
+- Will revisit if retrieval quality becomes a bottleneck.
 
 **Implementation:**
 ```
@@ -145,8 +150,8 @@ Update Settings → Delete Dev Collections → Restart → Done
 Quick wins that deliver immediate value with minimal code changes.
 
 ### Phase A1: Hot-Reloading Character Definitions
-**Priority:** High | **Time:** 1-2 days | **Complexity:** Low  
-**Files:** 2 | **LOC:** ~150 | **Status:** 📋 Planned
+**Priority:** Low | **Time:** 1-2 days | **Complexity:** Low  
+**Files:** 2 | **LOC:** ~150 | **Status:** ⏭️ Skipped (Low Value)
 
 **Problem:** Character definition changes require container restart (~2 minutes downtime)
 
@@ -154,6 +159,9 @@ Quick wins that deliver immediate value with minimal code changes.
 - Watch `characters/{name}/*.md` and `*.yaml` files for changes
 - Reload character definitions on-the-fly via file system watcher
 - Optional HTTP endpoint to trigger reload manually
+
+**Update (Nov 25, 2025):**
+- User decided to skip. Character files change infrequently; restart is acceptable.
 
 **Implementation:**
 ```

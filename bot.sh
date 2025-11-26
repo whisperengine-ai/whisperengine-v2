@@ -126,10 +126,13 @@ case "$1" in
 
         if [ "$2" = "all" ]; then
             echo -e "${YELLOW}Starting all bots...${NC}"
-            docker compose --profile all start
+            # Neo4j workaround: Force recreate to prevent restart loops
+            docker compose stop neo4j >/dev/null 2>&1 || true
+            docker compose rm -f neo4j >/dev/null 2>&1 || true
+            docker compose --profile all up -d --no-build
         else
             echo -e "${YELLOW}Starting $2...${NC}"
-            docker compose start "$2"
+            docker compose up -d --no-build "$2"
         fi
         echo -e "${GREEN}✓ Started${NC}"
         ;;
