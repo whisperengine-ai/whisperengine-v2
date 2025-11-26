@@ -14,24 +14,27 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
+from src_v2.evolution.emoji_taxonomy import emoji_taxonomy
 
 
 class FeedbackAnalyzer:
     """
     Analyzes user feedback (reactions) to adjust memory importance and personality traits.
-    """
     
-    # Reaction sentiment mapping
-    POSITIVE_REACTIONS = [
-        '👍', '❤️', '😊', '🎉', '✨', '💯', '🔥', '💖',
-        '😎', '🎊', '🥳', '💜', '💙', '💚', '🧡', '💛',
-        '🤩', '😍', '🙌', '👏', '💕', '😁', '😄', '🥰',
-        '❤️‍🔥', '💗', '💝', '🌟', '⭐', '🏆', '👑', '💎'
-    ]
-    NEGATIVE_REACTIONS = ['👎', '😢', '😠', '💔', '😕', '🤮', '💩', '🙄']
+    Uses EmojiTaxonomy for consistent emoji classification across the codebase.
+    """
     
     def __init__(self):
         logger.info("FeedbackAnalyzer initialized")
+    
+    # Backward compatibility properties - delegate to taxonomy
+    @property
+    def POSITIVE_REACTIONS(self) -> list[str]:
+        return emoji_taxonomy.list_positive()
+    
+    @property
+    def NEGATIVE_REACTIONS(self) -> list[str]:
+        return emoji_taxonomy.list_negative()
 
     async def get_feedback_score(self, message_id: str, user_id: str) -> Optional[Dict]:
         """
@@ -69,8 +72,13 @@ class FeedbackAnalyzer:
             
             for table in tables:
                 for record in table.records:
-                    reaction = record.values.get("reaction")
-                    action = record.values.get("action", "add") # Default to add for backward compatibility
+                    # InfluxDB returns each field as a separate record
+                    # Only process records where the field is "reaction"
+                    if record.get_field() != "reaction":
+                        continue
+                    
+                    reaction = record.get_value()  # The emoji is in _value
+                    action = record.values.get("action", "add")  # action is a tag, so it's in values
                     
                     if reaction:
                         if action == "add":
@@ -83,28 +91,36 @@ class FeedbackAnalyzer:
             if not reactions:
                 return {
                     "score": 0.0,
+                    "weighted_score": 0.0,
                     "positive_count": 0,
                     "negative_count": 0,
+                    "neutral_count": 0,
                     "reactions": []
                 }
             
-            # Calculate sentiment
-            positive_count = sum(1 for r in reactions if r in self.POSITIVE_REACTIONS)
-            negative_count = sum(1 for r in reactions if r in self.NEGATIVE_REACTIONS)
+            # Calculate sentiment using taxonomy
+            positive_count = sum(1 for r in reactions if emoji_taxonomy.is_positive(r))
+            negative_count = sum(1 for r in reactions if emoji_taxonomy.is_negative(r))
+            neutral_count = sum(1 for r in reactions if emoji_taxonomy.is_neutral(r))
             total_count = positive_count + negative_count
             
-            # Score: -1.0 to +1.0
+            # Simple score: -1.0 to +1.0 (backward compatible)
             if total_count == 0:
                 score = 0.0
             else:
                 score = (positive_count - negative_count) / total_count
             
-            logger.debug(f"Feedback score for message {message_id}: {score} (👍{positive_count} 👎{negative_count})")
+            # Weighted score: uses intensity weights from taxonomy
+            weighted_score = sum(emoji_taxonomy.get_score(r) for r in reactions)
+            
+            logger.debug(f"Feedback score for message {message_id}: {score} (👍{positive_count} 👎{negative_count} ➖{neutral_count}) weighted={weighted_score:.2f}")
             
             return {
                 "score": score,
+                "weighted_score": weighted_score,
                 "positive_count": positive_count,
                 "negative_count": negative_count,
+                "neutral_count": neutral_count,
                 "reactions": reactions
             }
             
@@ -351,7 +367,10 @@ class FeedbackAnalyzer:
             reactions = []
             for table in tables:
                 for record in table.records:
-                    reaction = record.values.get("reaction")
+                    # Only process records where the field is "reaction"
+                    if record.get_field() != "reaction":
+                        continue
+                    reaction = record.get_value()  # The emoji is in _value
                     if reaction:
                         reactions.append(reaction)
             

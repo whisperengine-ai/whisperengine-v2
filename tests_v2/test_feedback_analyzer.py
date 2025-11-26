@@ -41,15 +41,30 @@ async def test_feedback_analyzer():
     # Mock InfluxDB query result
     mock_query_api = MagicMock()
     mock_table = MagicMock()
-    mock_record_positive = MagicMock()
-    mock_record_positive.values = {"reaction": "❤️"}
-    mock_record_negative = MagicMock()
-    mock_record_negative.values = {"reaction": "👎"}
     
-    mock_table.records = [mock_record_positive, mock_record_positive, mock_record_negative]
+    # Mock records for new parsing logic
+    # Record 1: Positive reaction
+    mock_record_positive = MagicMock()
+    mock_record_positive.get_field.return_value = "reaction"
+    mock_record_positive.get_value.return_value = "❤️"
+    mock_record_positive.values = {"action": "add"}
+    
+    # Record 2: Another positive reaction
+    mock_record_positive_2 = MagicMock()
+    mock_record_positive_2.get_field.return_value = "reaction"
+    mock_record_positive_2.get_value.return_value = "❤️"
+    mock_record_positive_2.values = {"action": "add"}
+    
+    # Record 3: Negative reaction
+    mock_record_negative = MagicMock()
+    mock_record_negative.get_field.return_value = "reaction"
+    mock_record_negative.get_value.return_value = "👎"
+    mock_record_negative.values = {"action": "add"}
+    
+    mock_table.records = [mock_record_positive, mock_record_positive_2, mock_record_negative]
     mock_query_api.query.return_value = [mock_table]
     
-    with patch.object(analyzer, 'influx_client', MagicMock()) as mock_client:
+    with patch('src_v2.evolution.feedback.db_manager.influxdb_client', MagicMock()) as mock_client:
         mock_client.query_api.return_value = mock_query_api
         
         result = await analyzer.get_feedback_score("test_message_123", "test_user")
@@ -77,28 +92,32 @@ async def test_feedback_analyzer():
     
     # Simulate reactions to long messages with negative feedback
     mock_record_1 = MagicMock()
+    mock_record_1.get_field.return_value = "reaction"
+    mock_record_1.get_value.return_value = "👎"
     mock_record_1.values = {
         "message_id": "msg1",
-        "reaction": "👎",
-        "message_length": 600
+        "message_length": 600,
+        "action": "add"
     }
     mock_record_2 = MagicMock()
+    mock_record_2.get_field.return_value = "reaction"
+    mock_record_2.get_value.return_value = "👎"
     mock_record_2.values = {
         "message_id": "msg1",
-        "reaction": "👎",
-        "message_length": 600
+        "message_length": 600,
+        "action": "add"
     }
     
     mock_table.records = [mock_record_1, mock_record_2]
     mock_query_api.query.return_value = [mock_table]
     
-    with patch.object(analyzer, 'influx_client', MagicMock()) as mock_client:
+    with patch('src_v2.evolution.feedback.db_manager.influxdb_client', MagicMock()) as mock_client:
         mock_client.query_api.return_value = mock_query_api
         
         insights = await analyzer.analyze_user_feedback_patterns("test_user", days=30)
         
         if "error" not in insights:
-            logger.info(f"✅ Pattern analysis completed")
+            logger.info("✅ Pattern analysis completed")
             logger.info(f"   Recommendations: {insights.get('recommendations', [])}")
             
             # Check if verbosity preference was detected
@@ -120,13 +139,15 @@ async def test_feedback_analyzer():
     mock_records = []
     for _ in range(5):
         record = MagicMock()
-        record.values = {"reaction": "❤️"}
+        record.get_field.return_value = "reaction"
+        record.get_value.return_value = "❤️"
+        record.values = {"action": "add"}
         mock_records.append(record)
     
     mock_table.records = mock_records
     mock_query_api.query.return_value = [mock_table]
     
-    with patch.object(analyzer, 'influx_client', MagicMock()) as mock_client:
+    with patch('src_v2.evolution.feedback.db_manager.influxdb_client', MagicMock()) as mock_client:
         mock_client.query_api.return_value = mock_query_api
         
         mood = await analyzer.get_current_mood("test_user")
@@ -145,21 +166,21 @@ async def test_feedback_analyzer():
     logger.info("Test 5: Handle missing InfluxDB gracefully")
     
     analyzer_no_influx = FeedbackAnalyzer()
-    analyzer_no_influx.influx_client = None
     
-    result = await analyzer_no_influx.get_feedback_score("test_msg", "test_user")
-    
-    if result is None:
-        logger.info("✅ Correctly returns None when InfluxDB unavailable")
-    else:
-        logger.error(f"❌ Should return None without InfluxDB, got {result}")
-    
-    mood = await analyzer_no_influx.get_current_mood("test_user")
-    
-    if mood == "Neutral":
-        logger.info("✅ Returns Neutral mood when InfluxDB unavailable")
-    else:
-        logger.error(f"❌ Should return Neutral without InfluxDB, got {mood}")
+    with patch('src_v2.evolution.feedback.db_manager.influxdb_client', None):
+        result = await analyzer_no_influx.get_feedback_score("test_msg", "test_user")
+        
+        if result is None:
+            logger.info("✅ Correctly returns None when InfluxDB unavailable")
+        else:
+            logger.error(f"❌ Should return None without InfluxDB, got {result}")
+        
+        mood = await analyzer_no_influx.get_current_mood("test_user")
+        
+        if mood == "Neutral":
+            logger.info("✅ Returns Neutral mood when InfluxDB unavailable")
+        else:
+            logger.error(f"❌ Should return Neutral without InfluxDB, got {mood}")
     
     # ---------------------------------------------------------
     # Test 6: Score Calculation Logic
@@ -169,10 +190,19 @@ async def test_feedback_analyzer():
     # Test all positive
     mock_query_api = MagicMock()
     mock_table = MagicMock()
-    mock_table.records = [MagicMock(values={"reaction": "❤️"}) for _ in range(3)]
+    
+    mock_records = []
+    for _ in range(3):
+        r = MagicMock()
+        r.get_field.return_value = "reaction"
+        r.get_value.return_value = "❤️"
+        r.values = {"action": "add"}
+        mock_records.append(r)
+        
+    mock_table.records = mock_records
     mock_query_api.query.return_value = [mock_table]
     
-    with patch.object(analyzer, 'influx_client', MagicMock()) as mock_client:
+    with patch('src_v2.evolution.feedback.db_manager.influxdb_client', MagicMock()) as mock_client:
         mock_client.query_api.return_value = mock_query_api
         
         result = await analyzer.get_feedback_score("test_msg", "test_user")
@@ -183,9 +213,16 @@ async def test_feedback_analyzer():
             logger.error(f"❌ Expected 1.0 for all positive, got {result['score'] if result else 'None'}")
     
     # Test all negative
-    mock_table.records = [MagicMock(values={"reaction": "👎"}) for _ in range(3)]
+    mock_records = []
+    for _ in range(3):
+        r = MagicMock()
+        r.get_field.return_value = "reaction"
+        r.get_value.return_value = "👎"
+        r.values = {"action": "add"}
+        mock_records.append(r)
+    mock_table.records = mock_records
     
-    with patch.object(analyzer, 'influx_client', MagicMock()) as mock_client:
+    with patch('src_v2.evolution.feedback.db_manager.influxdb_client', MagicMock()) as mock_client:
         mock_client.query_api.return_value = mock_query_api
         
         result = await analyzer.get_feedback_score("test_msg", "test_user")

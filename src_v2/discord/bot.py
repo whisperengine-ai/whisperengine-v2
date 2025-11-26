@@ -20,6 +20,7 @@ from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_analyzer
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.extractor import preference_extractor
+from src_v2.evolution.emoji_taxonomy import emoji_taxonomy
 from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
@@ -1249,7 +1250,10 @@ class WhisperBot(commands.Bot):
             if feedback:
                 # Adjust memory importance in Qdrant
                 collection_name = f"whisperengine_memory_{self.character_name}"
-                score_delta = feedback["score"] * 0.2  # Scale to ±0.2 adjustment
+                
+                # Use weighted score of the specific emoji added for more granular control
+                emoji_weight = emoji_taxonomy.get_score(emoji)
+                score_delta = emoji_weight * 0.2  # Scale to ±0.2 adjustment (Heart=0.24, ThumbsUp=0.2)
                 
                 await feedback_analyzer.adjust_memory_score_by_message_id(
                     message_id=message_id,
@@ -1259,11 +1263,9 @@ class WhisperBot(commands.Bot):
                 
                 # Update Trust based on feedback
                 # Positive feedback increases trust, negative decreases
-                # Neutral (unrecognized) reactions don't affect trust
-                if feedback["score"] > 0:
-                    trust_delta = 5
-                elif feedback["score"] < 0:
-                    trust_delta = -5
+                # Use weighted score: Heart (+1.2) -> +6 trust, ThumbsUp (+1.0) -> +5 trust
+                if emoji_weight != 0:
+                    trust_delta = int(emoji_weight * 5)
                 else:
                     trust_delta = 0  # Neutral/unrecognized reactions
                 
@@ -1277,10 +1279,10 @@ class WhisperBot(commands.Bot):
 
                 self.loop.create_task(handle_reaction_trust())
                 
-                logger.info(f"Feedback score for message: {feedback['score']} (adjusted memory importance)")
+                logger.info(f"Feedback score for message: {feedback['score']} (adjusted memory importance by {score_delta:.2f})")
                 
                 # Trigger Insight Agent analysis after positive feedback
-                if feedback["score"] > 0:
+                if emoji_weight > 0:
                     try:
                         await task_queue.enqueue_insight_analysis(
                             user_id=user_id,
@@ -1333,40 +1335,20 @@ class WhisperBot(commands.Bot):
             if feedback:
                 # Adjust memory importance in Qdrant
                 # Since we removed a reaction, we need to recalculate the impact.
-                # The simplest way is to just use the new score to set a "target" importance,
-                # but our system uses deltas. 
-                # So we should apply the INVERSE of what adding this reaction would do.
+                # We apply the INVERSE of what adding this reaction would do.
                 
-                # However, get_feedback_score returns the CURRENT total score.
-                # If we just use the current score, we might drift.
-                # A better approach for "remove" is to calculate the delta this specific reaction removal caused.
+                emoji_weight = emoji_taxonomy.get_score(emoji)
                 
-                # But since we don't know the exact previous state easily without querying,
-                # let's just use the new score to guide the adjustment.
-                # Actually, if we removed a positive reaction, score goes down.
-                # If we removed a negative reaction, score goes up.
+                # Inverse of add: -1 * weight * 0.2
+                score_delta = -1 * emoji_weight * 0.2
                 
-                # Let's trust the feedback score from InfluxDB which is now accurate (replayed events).
-                # But wait, adjust_memory_score_by_message_id takes a DELTA.
-                # If I just pass the new score * 0.2, I am applying the whole score again!
-                # That is WRONG.
-                
-                # Correct logic:
-                # If removed reaction was POSITIVE: Delta should be NEGATIVE.
-                # If removed reaction was NEGATIVE: Delta should be POSITIVE.
-                
-                is_positive = emoji in feedback_analyzer.POSITIVE_REACTIONS
-                is_negative = emoji in feedback_analyzer.NEGATIVE_REACTIONS
-                
-                score_delta = 0
+                # Trust delta for removal is smaller than addition to avoid "gaming"
+                # But we still use the weight to determine direction
                 trust_delta = 0
-                
-                if is_positive:
-                    score_delta = -0.2 # Remove positive boost
-                    trust_delta = -1   # Minimal penalty for removing positive reaction (mistakes happen)
-                elif is_negative:
-                    score_delta = 0.2 # Remove negative penalty
-                    trust_delta = 1   # Minimal bonus for removing negative reaction
+                if emoji_weight > 0:
+                    trust_delta = -1   # Minimal penalty for removing positive reaction
+                elif emoji_weight < 0:
+                    trust_delta = 1    # Minimal bonus for removing negative reaction
                 
                 if score_delta != 0:
                     collection_name = f"whisperengine_memory_{self.character_name}"
