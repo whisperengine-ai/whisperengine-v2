@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Callable, Awaitable
+from typing import List, Dict, Any, Optional, Callable, Awaitable, Literal
 import json
 import datetime
 import time
@@ -102,11 +102,21 @@ class AgentEngine:
 
         # 3. Branching Logic: Reflective Mode
         if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
+            # Determine max steps based on complexity level
+            max_steps = 10 # Default
+            if is_complex == "COMPLEX_LOW":
+                max_steps = 5
+            elif is_complex == "COMPLEX_MID":
+                max_steps = 10
+            elif is_complex == "COMPLEX_HIGH":
+                max_steps = 15
+                
             response = await self._run_reflective_mode(
                 character, user_message, user_id, system_content, 
-                chat_history, context_variables, image_urls, callback
+                chat_history, context_variables, image_urls, callback,
+                max_steps_override=max_steps
             )
-            logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode)")
+            logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
             return response
         
         # 4. Fast Mode (Standard Flow)
@@ -183,20 +193,160 @@ class AgentEngine:
             else:
                 return "I'm having a bit of trouble thinking right now. Could you try rephrasing that?"
 
-    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> bool:
-        """Determines if the query requires complex reasoning."""
+    async def generate_response_stream(
+        self, 
+        character: Character, 
+        user_message: str, 
+        chat_history: Optional[List[BaseMessage]] = None,
+        context_variables: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+        image_urls: Optional[List[str]] = None,
+        callback: Optional[Callable[[str], Awaitable[None]]] = None,
+        force_reflective: bool = False
+    ):
+        """
+        Generates a streaming response for the given character and user message.
+        Yields chunks of text as they are generated.
+        """
+        start_time = time.time()
+        chat_history = chat_history or []
+        context_variables = context_variables or {}
+        
+        # Defensive validation
+        try:
+            validator.validate_for_engine(user_message, image_urls)
+        except ValidationError as e:
+            logger.warning(f"Engine validation failed: {e.message}")
+            yield e.user_message
+            return
+        
+        # Validate and filter image URLs
+        if image_urls:
+            image_urls, _ = validator.validate_image_urls(image_urls)
+            if not image_urls:
+                image_urls = None
+        
+        # 1. Classify Intent (Simple vs Complex)
+        classify_start = time.time()
+        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
+        logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+
+        # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
+        context_start = time.time()
+        system_content = await self._build_system_context(character, user_message, user_id, context_variables)
+        logger.debug(f"Context building took {time.time() - context_start:.2f}s")
+
+        # 3. Branching Logic: Reflective Mode
+        if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
+            # Determine max steps based on complexity level
+            max_steps = 10 # Default
+            if is_complex == "COMPLEX_LOW":
+                max_steps = 5
+            elif is_complex == "COMPLEX_MID":
+                max_steps = 10
+            elif is_complex == "COMPLEX_HIGH":
+                max_steps = 15
+
+            # Reflective mode doesn't support true streaming yet, so we yield the full response
+            response = await self._run_reflective_mode(
+                character, user_message, user_id, system_content, 
+                chat_history, context_variables, image_urls, callback,
+                max_steps_override=max_steps
+            )
+            logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
+            yield response
+            return
+        
+        # 4. Fast Mode (Standard Flow)
+        
+        # 4.1 Cognitive Routing (The "Brain")
+        routing_start = time.time()
+        await self._run_cognitive_routing(user_id, user_message, chat_history, context_variables)
+        logger.debug(f"Cognitive routing took {time.time() - routing_start:.2f}s")
+        
+        # Inject memory context if it exists
+        if context_variables.get("memory_context"):
+            system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
+            system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+
+        # 5. Create Prompt Template
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_content),
+            MessagesPlaceholder(variable_name="chat_history"),
+            MessagesPlaceholder(variable_name="user_input_message")
+        ])
+
+        # 6. Create Chain
+        chain = prompt | self.llm
+
+        # 7. Execute Stream
+        try:
+            # Prepare input content (Text or Multimodal)
+            user_input_message = await self._prepare_input_content(user_message, image_urls)
+
+            # Prepare inputs
+            inputs = {
+                "chat_history": chat_history,
+                "user_input_message": user_input_message,
+                **context_variables
+            }
+            
+            # Fill missing variables
+            for var in prompt.input_variables:
+                if var not in inputs:
+                    inputs[var] = ""
+            
+            llm_start = time.time()
+            full_response = ""
+            
+            async for chunk in chain.astream(inputs):
+                content = chunk.content
+                if content:
+                    full_response += str(content)
+                    yield str(content)
+            
+            logger.debug(f"LLM streaming took {time.time() - llm_start:.2f}s")
+            
+            # 8. Log Prompt (if enabled)
+            if settings.ENABLE_PROMPT_LOGGING:
+                await self._log_prompt(
+                    character_name=character.name,
+                    user_id=user_id or "unknown",
+                    system_prompt=system_content,
+                    chat_history=chat_history,
+                    user_input=user_message,
+                    context_variables=context_variables,
+                    response=full_response,
+                    image_urls=image_urls
+                )
+            
+            total_time = time.time() - start_time
+            logger.info(f"Total response time: {total_time:.2f}s (Fast Mode Stream)")
+            
+        except Exception as e:
+            error_type = type(e).__name__
+            logger.exception(f"Error generating streaming response ({error_type}): {e}")
+            yield "I'm having a bit of trouble thinking right now. Could you try rephrasing that?"
+
+    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH"]:
+        """Determines if the query requires complex reasoning and returns the level."""
         if not (user_id and settings.ENABLE_REFLECTIVE_MODE):
             return False
             
         if force_reflective:
             logger.info("Complexity Analysis: FORCED COMPLEX by user")
-            return True
+            return "COMPLEX_HIGH" # Assume high complexity if forced
             
         try:
-            is_complex_str = await self.classifier.classify(user_message, chat_history)
-            is_complex = (is_complex_str == "COMPLEX")
-            logger.info(f"Complexity Analysis: {is_complex_str}")
-            return is_complex
+            complexity_level = await self.classifier.classify(user_message, chat_history)
+            
+            if complexity_level == "SIMPLE":
+                logger.info(f"Complexity Analysis: SIMPLE")
+                return False
+            
+            logger.info(f"Complexity Analysis: {complexity_level}")
+            return complexity_level
+            
         except Exception as e:
             logger.error(f"Complexity classifier failed: {e}")
             return False
@@ -339,7 +489,8 @@ class AgentEngine:
         chat_history: List[BaseMessage], 
         context_variables: Dict[str, Any], 
         image_urls: Optional[List[str]], 
-        callback: Optional[Callable[[str], Awaitable[None]]]
+        callback: Optional[Callable[[str], Awaitable[None]]],
+        max_steps_override: Optional[int] = None
     ) -> str:
         """Runs the reflective reasoning mode for complex queries.
         
@@ -352,11 +503,12 @@ class AgentEngine:
             context_variables: Additional context data
             image_urls: Optional list of image URLs
             callback: Optional callback for streaming responses
+            max_steps_override: Optional override for max reasoning steps
             
         Returns:
             Generated response text
         """
-        logger.info("Engaging Reflective Mode")
+        logger.info(f"Engaging Reflective Mode (Max Steps: {max_steps_override or 'Default'})")
         response_text: str
         trace: List[BaseMessage]
         response_text, trace = await self.reflective_agent.run(
@@ -364,7 +516,8 @@ class AgentEngine:
             user_id, 
             system_content, 
             callback=callback,
-            image_urls=image_urls
+            image_urls=image_urls,
+            max_steps_override=max_steps_override
         )
         
         if settings.ENABLE_PROMPT_LOGGING:

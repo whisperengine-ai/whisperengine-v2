@@ -638,7 +638,13 @@ class WhisperBot(commands.Bot):
                             except Exception as e:
                                 logger.error(f"Failed to update reflective status: {e}")
 
-                    response = await self.agent_engine.generate_response(
+                    # Streaming Response Logic
+                    full_response_text = ""
+                    active_message: Optional[discord.Message] = None
+                    last_update_time = 0
+                    update_interval = 0.7  # Seconds between edits to avoid rate limits
+                    
+                    async for chunk in self.agent_engine.generate_response_stream(
                         character=character,
                         user_message=user_message,
                         chat_history=chat_history,
@@ -647,7 +653,24 @@ class WhisperBot(commands.Bot):
                         image_urls=image_urls,
                         callback=reflective_callback,
                         force_reflective=force_reflective
-                    )
+                    ):
+                        full_response_text += chunk
+                        
+                        # Rate limit updates
+                        now = time.time()
+                        if now - last_update_time > update_interval:
+                            # Only stream if length is safe
+                            if len(full_response_text) < 1950:
+                                try:
+                                    if not active_message:
+                                        active_message = await message.channel.send(full_response_text)
+                                    else:
+                                        await active_message.edit(content=full_response_text)
+                                except Exception as e:
+                                    logger.warning(f"Failed to stream update: {e}")
+                            last_update_time = now
+                    
+                    response = full_response_text
                     
                     processing_time_ms: float = (time.time() - start_time) * 1000
                     
@@ -667,29 +690,42 @@ class WhisperBot(commands.Bot):
                     # 4. Save AI Response
                     try:
                         # Append footer if enabled
-                        full_response = response
+                        final_text = response
                         if footer_text:
-                            full_response = f"{response}\n\n{footer_text}"
+                            final_text = f"{response}\n\n{footer_text}"
                         
                         # Split response into chunks if it's too long
-                        message_chunks = self._chunk_message(full_response)
+                        message_chunks = self._chunk_message(final_text)
                         
-                        # Send all chunks
+                        # Handle the first chunk (Edit existing or Send new)
                         sent_messages = []
-                        for chunk in message_chunks:
-                            sent_msg = await message.channel.send(chunk)
-                            sent_messages.append(sent_msg)
+                        
+                        if active_message:
+                            # We already have a message, edit it to be the first chunk
+                            await active_message.edit(content=message_chunks[0])
+                            sent_messages.append(active_message)
+                            
+                            # Send remaining chunks
+                            for chunk in message_chunks[1:]:
+                                sent_msg = await message.channel.send(chunk)
+                                sent_messages.append(sent_msg)
+                        else:
+                            # No streaming happened (maybe very fast or empty?), send all chunks
+                            for chunk in message_chunks:
+                                sent_msg = await message.channel.send(chunk)
+                                sent_messages.append(sent_msg)
                         
                         # Save the full response to memory (not chunked)
                         # Use the last message ID as the primary reference
-                        await memory_manager.add_message(
-                            user_id, 
-                            character.name, 
-                            'ai', 
-                            response, 
-                            channel_id=channel_id, 
-                            message_id=str(sent_messages[-1].id)
-                        )
+                        if sent_messages:
+                            await memory_manager.add_message(
+                                user_id, 
+                                character.name, 
+                                'ai', 
+                                response, 
+                                channel_id=channel_id, 
+                                message_id=str(sent_messages[-1].id)
+                            )
                         
                         # 4.5 Goal Analysis (Fire-and-forget)
                         # Analyze the interaction (User Message + AI Response)

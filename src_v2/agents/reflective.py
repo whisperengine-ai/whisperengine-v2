@@ -26,7 +26,15 @@ class ReflectiveAgent:
         self.llm = create_llm(temperature=0.1, mode="reflective")
         self.max_steps = settings.REFLECTIVE_MAX_STEPS
 
-    async def run(self, user_input: str, user_id: str, system_prompt: str, callback: Optional[Callable[[str], Awaitable[None]]] = None, image_urls: Optional[List[str]] = None) -> Tuple[str, List[BaseMessage]]:
+    async def run(
+        self, 
+        user_input: str, 
+        user_id: str, 
+        system_prompt: str, 
+        callback: Optional[Callable[[str], Awaitable[None]]] = None, 
+        image_urls: Optional[List[str]] = None,
+        max_steps_override: Optional[int] = None
+    ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
         """
@@ -86,9 +94,12 @@ class ReflectiveAgent:
         steps = 0
         tools_used = 0
         
-        logger.info(f"Starting Reflective Mode (Native) for user {user_id}")
+        # Determine max steps (override > settings)
+        current_max_steps = max_steps_override or self.max_steps
+        
+        logger.info(f"Starting Reflective Mode (Native) for user {user_id} (Max Steps: {current_max_steps})")
 
-        while steps < self.max_steps:
+        while steps < current_max_steps:
             steps += 1
             
             # Invoke LLM

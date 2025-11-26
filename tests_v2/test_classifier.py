@@ -37,7 +37,7 @@ async def test_classifier_with_history():
         ]
         result = await classifier.classify("It reminds me of my childhood.", history)
         
-        assert result == "COMPLEX"
+        assert result == "COMPLEX_MID"
         
         # Verify history was included in the prompt
         call_args = mock_llm.ainvoke.call_args[0][0]
@@ -50,14 +50,14 @@ async def test_classifier_complex():
         # Setup mock LLM
         mock_llm = AsyncMock()
         mock_response = MagicMock()
-        mock_response.content = "COMPLEX"
+        mock_response.content = "COMPLEX_HIGH"
         mock_llm.ainvoke.return_value = mock_response
         mock_create_llm.return_value = mock_llm
 
         classifier = ComplexityClassifier()
         result = await classifier.classify("What is the meaning of life and how does it relate to our past conversations?")
         
-        assert result == "COMPLEX"
+        assert result == "COMPLEX_HIGH"
 
 @pytest.mark.asyncio
 async def test_classifier_error_handling():

@@ -12,12 +12,14 @@ class ComplexityClassifier:
         # Use 'router' mode for potentially faster/cheaper model, 0.0 temp for consistency
         self.llm = create_llm(temperature=0.0, mode="router")
 
-    async def classify(self, text: str, chat_history: Optional[List[BaseMessage]] = None) -> Literal["SIMPLE", "COMPLEX"]:
+    async def classify(self, text: str, chat_history: Optional[List[BaseMessage]] = None) -> Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH"]:
         """
-        Classifies the input text as SIMPLE or COMPLEX.
+        Classifies the input text as SIMPLE or COMPLEX with granularity.
         
         SIMPLE: Greetings, direct questions, casual chat, simple facts.
-        COMPLEX: Multi-step reasoning, emotional analysis, synthesis of multiple facts, philosophical questions.
+        COMPLEX_LOW: Requires 1-2 tool calls (e.g. simple fact lookup).
+        COMPLEX_MID: Requires 3-5 tool calls (e.g. synthesis of multiple facts).
+        COMPLEX_HIGH: Requires 6+ tool calls (e.g. deep reasoning, multi-step research).
         """
         chat_history = chat_history or []
         
@@ -32,14 +34,14 @@ class ComplexityClassifier:
         context_str = f"Recent Chat History:\n{history_text}\n" if history_text else ""
 
         system_prompt = """Analyze the user input given the recent conversation context. 
-Return 'COMPLEX' if it requires:
-1. Multi-step reasoning
-2. Emotional analysis
-3. Synthesis of multiple facts
-4. Specific details about my background, history, or personal life that might need lookup (e.g. "Where did you grow up?", "Who is your father?")
+Classify the complexity into one of these categories:
 
-Return 'SIMPLE' for greetings, direct questions about the immediate context, or casual chat.
-Output ONLY the word 'SIMPLE' or 'COMPLEX'."""
+1. SIMPLE: Greetings, direct questions about immediate context, casual chat. No tools needed.
+2. COMPLEX_LOW: Needs 1-2 simple lookups (e.g. "Where did you grow up?", "What is your favorite color?").
+3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, or moderate reasoning.
+4. COMPLEX_HIGH: Needs 6+ steps. Deep philosophical questions, complex multi-step research, or very ambiguous queries requiring exploration.
+
+Output ONLY one of: 'SIMPLE', 'COMPLEX_LOW', 'COMPLEX_MID', 'COMPLEX_HIGH'."""
 
         user_content = f"{context_str}User Input: {text}"
 
@@ -52,8 +54,14 @@ Output ONLY the word 'SIMPLE' or 'COMPLEX'."""
             response = await self.llm.ainvoke(messages)
             content = response.content.strip().upper()
             
-            if "COMPLEX" in content:
-                return "COMPLEX"
+            if "COMPLEX_HIGH" in content:
+                return "COMPLEX_HIGH"
+            elif "COMPLEX_MID" in content:
+                return "COMPLEX_MID"
+            elif "COMPLEX_LOW" in content:
+                return "COMPLEX_LOW"
+            elif "COMPLEX" in content: # Fallback for older models
+                return "COMPLEX_MID"
             return "SIMPLE"
             
         except Exception as e:
