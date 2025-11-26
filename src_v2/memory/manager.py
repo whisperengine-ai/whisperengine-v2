@@ -8,6 +8,8 @@ from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.config.settings import settings
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.utils.time_utils import get_relative_time
+from influxdb_client import Point
+import time
 
 class MemoryManager:
     def __init__(self, bot_name: Optional[str] = None):
@@ -99,47 +101,62 @@ class MemoryManager:
         """
         Embeds and saves a memory to Qdrant.
         """
+        start_time = time.time()
         if not db_manager.qdrant_client:
             return
 
-        target_collection = collection_name or self.collection_name
-
         try:
             # Generate embedding
-            content_embedding = await self.embedding_service.embed_query_async(content)
+            embedding = await self.embedding_service.get_embedding(content)
             
-            # Create payload
+            # Prepare payload
             payload = {
                 "user_id": str(user_id),
                 "role": role,
                 "content": content,
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.datetime.now().isoformat(),
+                "channel_id": str(channel_id) if channel_id else None,
+                "message_id": str(message_id) if message_id else None
             }
-            if channel_id:
-                payload["channel_id"] = str(channel_id)
-            if message_id:
-                payload["message_id"] = str(message_id)
             
-            # Merge additional metadata (e.g. emotion, topics) if provided
             if metadata:
                 payload.update(metadata)
             
             # Upsert to Qdrant
-            point_id = str(uuid.uuid4())
+            target_collection = collection_name or self.collection_name
+            
             await db_manager.qdrant_client.upsert(
                 collection_name=target_collection,
                 points=[
                     PointStruct(
-                        id=point_id,
-                        vector=content_embedding,
+                        id=str(uuid.uuid4()),
+                        vector=embedding,
                         payload=payload
                     )
                 ]
             )
-            logger.debug(f"Saved vector memory for user {user_id} to {target_collection}")
+            
+            # Log metrics
+            if db_manager.influxdb_write_api:
+                try:
+                    duration_ms = (time.time() - start_time) * 1000
+                    point = Point("memory_latency") \
+                        .tag("user_id", user_id) \
+                        .tag("operation", "write") \
+                        .field("duration_ms", duration_ms) \
+                        .time(datetime.datetime.utcnow())
+                    
+                    db_manager.influxdb_write_api.write(
+                        bucket=settings.INFLUXDB_BUCKET,
+                        org=settings.INFLUXDB_ORG,
+                        record=point
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log memory metrics: {e}")
             
         except Exception as e:
             logger.error(f"Failed to save vector memory: {e}")
+            raise e
 
     async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], collection_name: Optional[str] = None) -> Optional[str]:
         """
@@ -184,6 +201,7 @@ class MemoryManager:
         """
         Searches for relevant memories in Qdrant.
         """
+        start_time = time.time()
         if not db_manager.qdrant_client:
             logger.warning("Qdrant client not available for search_memories")
             return []
@@ -208,6 +226,25 @@ class MemoryManager:
             
             logger.debug(f"Found {len(search_result.points)} memory results")
             
+            # Log metrics
+            if db_manager.influxdb_write_api:
+                try:
+                    duration_ms = (time.time() - start_time) * 1000
+                    point = Point("memory_latency") \
+                        .tag("user_id", user_id) \
+                        .tag("operation", "read") \
+                        .field("duration_ms", duration_ms) \
+                        .field("result_count", len(search_result.points)) \
+                        .time(datetime.datetime.utcnow())
+                    
+                    db_manager.influxdb_write_api.write(
+                        bucket=settings.INFLUXDB_BUCKET,
+                        org=settings.INFLUXDB_ORG,
+                        record=point
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log memory metrics: {e}")
+
             return [
                 {
                     "id": hit.id,

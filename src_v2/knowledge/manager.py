@@ -4,6 +4,9 @@ from pathlib import Path
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from datetime import datetime
+import time
+from influxdb_client import Point
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager, retry_db_operation
@@ -415,19 +418,105 @@ RULES:
                      predicate=predicate,
                      confidence=fact.confidence)
 
-    async def get_user_knowledge(self, user_id: str, limit: int = 10) -> str:
+    async def get_user_knowledge(self, user_id: str, query: Optional[str] = None) -> str:
         """
-        Retrieves known facts about the user.
+        Retrieves relevant facts about the user from the Knowledge Graph.
+        If query is provided, it generates a specific Cypher query.
+        Otherwise, it returns general facts.
         """
+        start_time = time.time()
         if not db_manager.neo4j_driver:
             return ""
 
         try:
             async with db_manager.neo4j_driver.session() as session:
-                result = await session.execute_read(self._fetch_facts, user_id, limit)
-                return "\n".join(result)
+                if query:
+                    # 1. Generate Cypher from Natural Language
+                    cypher_query = await self.cypher_chain.ainvoke({"question": query})
+                    # Clean up markdown if present
+                    cypher_query = cypher_query.replace("```cypher", "").replace("```", "").strip()
+                    
+                    if "NO_ANSWER" in cypher_query:
+                        return ""
+                        
+                    logger.debug(f"Generated Cypher: {cypher_query}")
+                    
+                    # 2. Execute Query
+                    result = await session.run(cypher_query, user_id=user_id, bot_name=settings.DISCORD_BOT_NAME)
+                    records = await result.data()
+                    
+                    # Log metrics
+                    if db_manager.influxdb_write_api:
+                        try:
+                            duration_ms = (time.time() - start_time) * 1000
+                            point = Point("knowledge_latency") \
+                                .tag("user_id", user_id) \
+                                .tag("type", "query") \
+                                .field("duration_ms", duration_ms) \
+                                .field("result_count", len(records)) \
+                                .time(datetime.utcnow())
+                            
+                            db_manager.influxdb_write_api.write(
+                                bucket=settings.INFLUXDB_BUCKET,
+                                org=settings.INFLUXDB_ORG,
+                                record=point
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to log knowledge metrics: {e}")
+
+                    if not records:
+                        return ""
+                    
+                    # Format results
+                    formatted_results = []
+                    for record in records:
+                        values = [str(v) for v in record.values()]
+                        formatted_results.append(" ".join(values))
+                    
+                    return "\n".join(formatted_results)
+                
+                else:
+                    # Default: Get all facts about the user
+                    # Limit to 10 most recent or relevant
+                    result = await session.run("""
+                        MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
+                        RETURN r.predicate, e.name
+                        ORDER BY r.created_at DESC
+                        LIMIT 10
+                    """, user_id=user_id)
+                    
+                    records = await result.data()
+                    
+                    # Log metrics
+                    if db_manager.influxdb_write_api:
+                        try:
+                            duration_ms = (time.time() - start_time) * 1000
+                            point = Point("knowledge_latency") \
+                                .tag("user_id", user_id) \
+                                .tag("type", "default") \
+                                .field("duration_ms", duration_ms) \
+                                .field("result_count", len(records)) \
+                                .time(datetime.utcnow())
+                            
+                            db_manager.influxdb_write_api.write(
+                                bucket=settings.INFLUXDB_BUCKET,
+                                org=settings.INFLUXDB_ORG,
+                                record=point
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to log knowledge metrics: {e}")
+
+                    if not records:
+                        return ""
+                        
+                    facts = []
+                    for r in records:
+                        facts.append(f"- User {r['r.predicate']} {r['e.name']}")
+                    
+                    return "\n".join(facts)
+
         except Exception as e:
-            logger.error(f"Failed to get user knowledge: {e}")
+            logger.error(f"Failed to retrieve user knowledge: {e}")
             return ""
 
     async def clear_user_knowledge(self, user_id: str):

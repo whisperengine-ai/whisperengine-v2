@@ -3,11 +3,15 @@ from loguru import logger
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import BaseTool
+from datetime import datetime
+import time
+from influxdb_client import Point
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
 
 class CognitiveRouter:
     """
@@ -97,27 +101,51 @@ Analyze the user's input and decide."""
                 # Find the matching tool instance
                 tool_instance = next((t for t in tools if t.name == tool_name), None)
                 
+                start_time = time.time()
+                success = False
+                
                 if tool_instance:
                     try:
                         logger.debug(f"Executing {tool_name} with args: {tool_args}")
                         # We use ainvoke directly. The user_id is already in the tool instance.
                         result = await tool_instance.ainvoke(tool_args)
-                        return tool_name, f"--- Result from {tool_name} ---\n{result}"
+                        success = True
+                        return tool_name, f"--- Result from {tool_name} ---\n{result}", start_time, success
                     except Exception as e:
                         logger.error(f"Tool execution failed for {tool_name}: {e}")
-                        return tool_name, f"Error executing {tool_name}: {e}"
+                        return tool_name, f"Error executing {tool_name}: {e}", start_time, success
                 else:
                     logger.warning(f"LLM called unknown tool: {tool_name}")
-                    return tool_name, None
+                    return tool_name, None, start_time, False
 
             # Execute all tools in parallel
             import asyncio
             results = await asyncio.gather(*[execute_tool(tc) for tc in tool_calls])
             
-            for tool_name, result in results:
+            for tool_name, result, start_time, success in results:
                 executed_tool_names.append(tool_name)
                 if result:
                     context_parts.append(result)
+                
+                # Log tool usage to InfluxDB
+                if db_manager.influxdb_write_api:
+                    try:
+                        duration_ms = (time.time() - start_time) * 1000
+                        point = Point("tool_usage") \
+                            .tag("tool_name", tool_name) \
+                            .tag("user_id", user_id) \
+                            .tag("bot_name", character_name) \
+                            .field("duration_ms", duration_ms) \
+                            .field("success", success) \
+                            .time(datetime.utcnow())
+                        
+                        db_manager.influxdb_write_api.write(
+                            bucket=settings.INFLUXDB_BUCKET,
+                            org=settings.INFLUXDB_ORG,
+                            record=point
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to log tool usage: {e}")
 
             reasoning = f"Decided to call: {', '.join(executed_tool_names)}"
         else:
