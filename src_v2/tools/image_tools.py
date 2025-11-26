@@ -7,10 +7,11 @@ from loguru import logger
 from src_v2.image_gen.service import image_service, pending_images
 from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
+from src_v2.evolution.trust import trust_manager
+from src_v2.config.settings import settings
 
 class GenerateImageInput(BaseModel):
-    prompt: str = Field(description="A description of the image to generate. Be creative and descriptive.")
-    style: str = Field(description="The artistic style of the image (e.g., 'photorealistic', 'oil painting', 'sketch', 'cyberpunk').", default="photorealistic")
+    prompt: str = Field(description="A detailed description of the image to generate. Include the artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting) and mood. Be creative and vivid.")
     aspect_ratio: str = Field(
         description="The aspect ratio of the image. Choose based on the subject matter.", 
         default="portrait",
@@ -19,16 +20,25 @@ class GenerateImageInput(BaseModel):
 
 class GenerateImageTool(BaseTool):
     name: str = "generate_image"
-    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or when you want to show a visual representation of your thoughts. The prompt should be descriptive. You can choose the aspect ratio (portrait, landscape, square, widescreen)."
+    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or wants a visual. Include the artistic style and mood in your prompt (e.g., 'cinematic portrait with dramatic lighting', 'soft watercolor of a sunset'). Choose aspect ratio: portrait (4:5), landscape (16:9), square (1:1), widescreen (2.4:1)."
     args_schema: Type[BaseModel] = GenerateImageInput
     character_name: str = Field(exclude=True)
     user_id: str = Field(exclude=True)
 
-    def _run(self, prompt: str, style: str = "photorealistic", aspect_ratio: str = "portrait") -> str:
+    def _run(self, prompt: str, aspect_ratio: str = "portrait") -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, prompt: str, style: str = "photorealistic", aspect_ratio: str = "portrait") -> str:
+    async def _arun(self, prompt: str, aspect_ratio: str = "portrait") -> str:
         try:
+            # 0. Trust Gate - Check if user has sufficient trust level
+            min_trust = settings.IMAGE_GEN_MIN_TRUST
+            if min_trust > 0:
+                relationship = await trust_manager.get_relationship_level(self.user_id, self.character_name)
+                current_trust = relationship.get("trust_score", 0)
+                if current_trust < min_trust:
+                    logger.info(f"Image generation blocked for user {self.user_id}: trust {current_trust} < {min_trust}")
+                    return f"I'd love to create images for you, but we need to get to know each other a bit better first! (Trust: {current_trust}/{min_trust})"
+            
             # 1. Map Aspect Ratio to Dimensions
             # Flux 1.1 Pro has a hard limit of 1440px on any dimension.
             # All dimensions should be multiples of 32.
@@ -74,8 +84,8 @@ class GenerateImageTool(BaseTool):
                     logger.error(f"Self-Discovery failed: {e}. Using default.")
             
             # 3. Construct Enhanced Prompt
-            # "A photorealistic image of [Visual Desc]. [User Prompt]. Style: [Style]"
-            enhanced_prompt = f"{style} image of {visual_desc}. {prompt}"
+            # Combine character visual description with the user's prompt (which includes style)
+            enhanced_prompt = f"{visual_desc}. {prompt}"
             
             logger.info(f"Generating image with prompt: {enhanced_prompt} (Size: {width}x{height})")
             
