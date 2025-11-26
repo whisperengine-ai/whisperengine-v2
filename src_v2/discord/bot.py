@@ -348,11 +348,12 @@ class WhisperBot(commands.Bot):
                             return
                     
                     # Early validation: Check message length (Discord limit)
-                    try:
-                        validator.validate_for_discord(user_message)
-                    except ValidationError as e:
-                        await message.channel.send(e.user_message)
-                        return
+                    if user_message:
+                        try:
+                            validator.validate_for_discord(user_message)
+                        except ValidationError as e:
+                            await message.channel.send(e.user_message)
+                            return
 
                     # Capture raw message for fact extraction (before context injection)
                     # This prevents the bot from extracting facts from replied-to messages or forwarded content
@@ -1045,8 +1046,8 @@ class WhisperBot(commands.Bot):
         image_urls = []
         processed_texts = []
         
-        MAX_FILES = 5
-        MAX_SIZE_MB = 5
+        MAX_FILES = 10
+        MAX_SIZE_MB = 25
         MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
         
         # Early Notification for File Count
