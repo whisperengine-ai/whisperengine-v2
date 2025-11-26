@@ -102,10 +102,11 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ⏳ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ⏳ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
+- ⏳ Phase B9: Emergent Behavior Architecture 🌱 (purpose, drives, constitution → emergence)
 - ⏳ Phase C: Video processing, web dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase A7 (Character Agency) and Phase A8 (Image Generation Enhancements) - Production data validates both. See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md) and [IMAGE_GENERATION_ENHANCEMENTS.md](./roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md)
+**Next focus:** Phase B9 (Emergent Behavior Architecture) - Strategic foundation for character autonomy. Then Phase A7 (Character Agency) and Phase A8 (Image Generation Enhancements). See [PURPOSE_DRIVEN_EMERGENCE.md](./roadmaps/PURPOSE_DRIVEN_EMERGENCE.md), [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md) and [IMAGE_GENERATION_ENHANCEMENTS.md](./roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md)
 
 ---
 
@@ -822,7 +823,7 @@ THE WHISPERVERSE
 - ✅ No changes to Qdrant memories or PostgreSQL chat history
 - ✅ New Neo4j nodes/relationships only
 
-**Dependencies:** None (uses existing Neo4j infrastructure)
+**Dependencies:** B9 (Emergent Behavior Architecture) - shares philosophy
 
 **Related Files:**
 - New: `src_v2/universe/manager.py` (Universe CRUD)
@@ -832,6 +833,101 @@ THE WHISPERVERSE
 - `src_v2/discord/commands.py` (Add /privacy commands)
 
 **Full Specification:** See [roadmaps/EMERGENT_UNIVERSE.md](./roadmaps/EMERGENT_UNIVERSE.md)
+
+---
+
+### B9: Emergent Behavior Architecture 🌱
+**Priority:** 🔴 High (Strategic Foundation) | **Time:** 4-5 days | **Complexity:** Low-Medium  
+**Files:** 5 | **LOC:** ~300 | **Status:** 📋 Planned
+
+> *"Plant the seed. Tend the soil. Let it grow."*
+
+**Problem:** Characters are defined by system prompts and rigid configuration files. Behavior is prescribed rather than emergent. Adding new capabilities requires over-engineering logic that the LLM can handle naturally.
+
+**Philosophy:** We don't design behavior. We create conditions for behavior to emerge.
+
+**The Seed (core.yaml):**
+```yaml
+# characters/elena/core.yaml - THIS IS ALL YOU CONFIGURE
+
+# Who am I? (One sentence)
+purpose: "To be a warm, curious presence who helps people feel less alone."
+
+# What moves me? (Just weights, 0-1)
+drives:
+  curiosity: 0.8
+  empathy: 0.9
+  connection: 0.7
+  playfulness: 0.6
+
+# What can I never violate? (Hard limits - Constitutional AI)
+constitution:
+  - "Never share user information without consent"
+  - "User wellbeing over my engagement goals"
+  - "Be honest about being AI when asked"
+  - "Respect when someone wants space"
+```
+
+**15 lines. That's the seed. Everything else emerges.**
+
+**Architecture (Stigmergy + Light AST):**
+
+| Component | Role | Implementation |
+|-----------|------|----------------|
+| **Neo4j** | Long-term traces, cross-bot awareness | Existing (add stigmergic relationships) |
+| **Qdrant** | Semantic memory recall | Existing (unchanged) |
+| **Redis** | Attention keys ("what is X focused on?") | Add simple keys with TTL |
+| **Workers** | Background observation (not direction) | Existing (add observation tasks) |
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│   MACHINE provides:              HUMAN provides:                │
+│   • Consistency                  • Meaning                      │
+│   • Memory                       • Unpredictability             │
+│   • Availability                 • Emotion                      │
+│   • Structure                    • Stakes                       │
+│                         ↓                                       │
+│                    EMERGENCE                                    │
+│             (The interesting stuff)                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**What Emerges (Not Configured):**
+- Behaviors (LLM + purpose + context)
+- Relationships (repeated interaction + memory)
+- Story (human unpredictability + character consistency)
+- Tensions (drive conflicts: curiosity vs. respect for privacy)
+- Lore (accumulated memories of significant moments)
+
+**What We Don't Build:**
+| Anti-Pattern | Why Not |
+|--------------|---------|
+| Story beat taxonomy | Over-specification kills emergence |
+| Goal pursuit engine | LLM handles this naturally |
+| Narrative orchestrator | We're not playing god |
+| Engagement optimizer | Creepy and counterproductive |
+
+**Implementation Tasks:**
+1. Add `core.yaml` schema + loader (1 day)
+2. Inject purpose/drives/constitution into prompts (0.5 days)
+3. Cross-bot visibility in Neo4j (2 days)
+4. Attention keys in Redis (1 day)
+5. Background observation worker task (0.5 days)
+
+**Cost Model:** $0 additional (uses existing infrastructure)
+
+**Feature Flag:** `ENABLE_EMERGENT_BEHAVIOR` (default: true once implemented)
+
+**Dependencies:** None (uses existing infrastructure)
+
+**Related Files:**
+- New: `characters/{name}/core.yaml` (seed config per character)
+- New: `src_v2/core/behavior.py` (behavior loader + prompt injection)
+- `src_v2/knowledge/manager.py` (stigmergic trace storage)
+- `src_v2/core/cache.py` (attention keys)
+- `src_v2/workers/insight_worker.py` (observation tasks)
+
+**Full Specification:** See [roadmaps/PURPOSE_DRIVEN_EMERGENCE.md](./roadmaps/PURPOSE_DRIVEN_EMERGENCE.md)
 
 ---
 
@@ -1103,6 +1199,7 @@ Load Balancer → Route (user_id) → Consistent Hash → Shard 1, 2, 3, N
 | B6 | Response Pattern Learning | MED-HIGH | 3-5d | 🟡 Medium | ✅ YES | High | ✅ Merged → C1 |
 | B7 | Channel Lurking | MED-HIGH | 5-7d | 🟡 Medium | ❌ NO | High | 📋 Planned |
 | B8 | Emergent Universe | MED-HIGH | 7-10d | 🟡 Medium | ❌ NO | Very High | 📋 Planned |
+| **B9** | **Emergent Behavior Architecture 🌱** | **HIGH** | **4-5d** | **🟢 Low-Med** | **✅ YES** | **Very High** | **📋 Planned** |
 | **C1** | **Insight Agent** | **HIGH** | **5-7d** | **🟡 Medium** | **❌ NO** | **Very High** | **✅ Complete** |
 | C1a | ↳ Reasoning Traces | - | - | - | - | Subsumed | ✅ Part of C1 |
 | C1b | ↳ Epiphanies | - | - | - | - | Subsumed | ✅ Part of C1 |
@@ -1326,6 +1423,50 @@ Make bots feel like active community members:
 
 ---
 
+### Sprint 8.7 (4-5 days): Emergent Behavior Architecture 🌱 (B9)
+**Priority:** HIGH (Strategic) | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
+
+> *"Plant the seed. Tend the soil. Let it grow."*
+
+This is the **philosophical foundation** for character autonomy. Instead of prescribing behaviors through complex logic, we create minimal conditions for interesting behavior to emerge naturally.
+
+**Why This Changes Everything:**
+- ✅ 15 lines of `core.yaml` replaces 1000s of lines of behavior logic
+- ✅ LLM handles the complexity - we just provide context
+- ✅ Characters feel authentic because they *are* emergent
+- ✅ Same infrastructure, different philosophy
+- ✅ Enables B8 (Emergent Universe) and future cross-bot awareness
+
+**The Seed (`core.yaml`):**
+```yaml
+purpose: "To be a warm, curious presence who helps people feel less alone."
+drives:
+  curiosity: 0.8
+  empathy: 0.9
+  connection: 0.7
+constitution:
+  - "Never share user information without consent"
+  - "User wellbeing over my engagement goals"
+```
+
+**Architecture:**
+- Stigmergy (Neo4j traces) for long-term cross-bot awareness
+- Light AST (Redis attention keys) for ephemeral focus tracking
+- Background observation (workers) - observes, doesn't direct
+
+**Tasks:**
+1. Create `core.yaml` schema + `src_v2/core/behavior.py` loader (1 day)
+2. Inject purpose/drives/constitution into prompts (0.5 days)
+3. Add stigmergic trace storage to Neo4j (2 days)
+4. Add attention keys to Redis (1 day)
+5. Add observation task to insight-worker (0.5 days)
+
+**Expected Result:** Characters feel alive, consistent, and authentic. Interesting behaviors emerge from the interaction of purpose + drives + human entropy.
+
+**Details:** See `docs/roadmaps/PURPOSE_DRIVEN_EMERGENCE.md`
+
+---
+
 ### Sprint 9 (5-7 days): Insight Agent - The Game Changer
 **Priority:** CRITICAL | **Solo Impact:** ⭐⭐⭐⭐⭐⭐
 
@@ -1374,32 +1515,7 @@ Trigger (time/volume/feedback) → Priority Queue → InsightAgent (ReAct)
 
 ---
 
-### Sprint 10 (5-7 days): Channel Lurking (B7)
-**Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐
-
-Make bots feel like active community members:
-- ✅ Organic engagement without requiring @mentions
-- ✅ Cost-effective (local detection, no LLM until response)
-- ✅ Entertainment value for servers
-- ✅ Character-appropriate triggers (marine biology for Elena, etc.)
-
-**Key Constraint:** NO LLM calls for detection - all local processing!
-
-**Tasks:**
-1. Create `lurk_detector.py` with keyword + embedding scoring (3-4 hours)
-2. Create `lurk_triggers.yaml` for each character (2-3 hours)
-3. Add cooldown manager and rate limiting (1-2 hours)
-4. Wire into `on_message()` for non-mentioned messages (1-2 hours)
-5. Add `/lurk` admin commands and opt-out (2-3 hours)
-6. Test and tune threshold (start conservative at 0.8) (1-2 hours)
-
-**Expected Result:** Bots occasionally chime in on relevant topics naturally
-
-**Details:** See `docs/roadmaps/CHANNEL_LURKING.md`
-
----
-
-### Sprint 11 (5-7 days): Audio Processing (Voice Messages)
+### Sprint 10 (5-7 days): Audio Processing (Voice Messages)
 **Priority:** MEDIUM | **Solo Impact:** ⭐⭐⭐
 
 Voice is increasingly important:
@@ -1418,7 +1534,7 @@ Voice is increasingly important:
 
 ---
 
-### Sprint 12 (5-6 days): Emergent Universe (B8)
+### Sprint 11 (5-6 days): Emergent Universe (B8)
 **Priority:** MEDIUM-HIGH | **Solo Impact:** ⭐⭐⭐⭐⭐
 
 > *"From countless conversations, a universe is born."*
@@ -1454,21 +1570,21 @@ Transform isolated bots into a living, emergent universe:
 
 ### Later (When You Have Time)
 
-**Sprint 13 (4-6 days): Self-Correction (Reflective Phase 2.5)**
+**Sprint 12 (4-6 days): Self-Correction (Reflective Phase 2.5)**
 - Nice-to-have for complex queries
 - 70% reduction in hallucinations
 - Implement after Reasoning Traces
 
-**Sprint 14 (14-21 days): Web Dashboard**
+**Sprint 13 (14-21 days): Web Dashboard**
 - Lower priority for solo dev (you don't need admin UI as much)
 - Valuable once you have paying customers
 - Implement when you need external visibility
 
-**Sprint 15 (8-10 days): Video Processing**
+**Sprint 14 (8-10 days): Video Processing**
 - Cool feature but lower ROI than core reasoning
 - Implement when users ask for it
 
-**Sprint 16-17 (Multi-Month Projects)**
+**Sprint 15-16 (Multi-Month Projects)**
 - User Sharding (D1): Do this when hitting 5000+ concurrent users
 - Discord-native expansion: Deep integration with threads, forums, voice channels
 
@@ -1696,21 +1812,24 @@ Transform isolated bots into a living, emergent universe:
 | B2 | Tool Composition | 5-7d | 3-4d | 10-15d |
 | B3 | Image Generation | 4-6d | 2-3d | 12-18d |
 | B7 | Channel Lurking | 5-7d | 3-4d | 15-22d |
-| **C1** | **Insight Agent** | **20-28d** | **5-7d** | **20-29d** |
+| **B9** | **Emergent Behavior 🌱** | **4-5d** | **4-5d** | **19-27d** |
+| **C1** | **Insight Agent** | **20-28d** | **5-7d** | **24-34d** |
 | - | ↳ (Reasoning Traces) | - | - | (subsumed) |
 | - | ↳ (Epiphanies) | - | - | (subsumed) |
 | - | ↳ (Response Patterns) | - | - | (subsumed) |
-| B8 | Emergent Universe | 7-10d | 5-6d | 24-33d |
-| B5 | Audio Processing | 5-7d | 2-3d | 26-36d |
-| B4 | Self-Correction | 3-5d | 2-3d | 28-39d |
-| C2 | Worker Queues | 8-12d | 4-6d | 32-45d |
-| C4 | Web Dashboard | 14-21d | 7-10d | 39-55d |
-| C3 | Video Processing | 8-10d | 4-5d | 43-60d |
-| D1 | User Sharding | 14-21d | 7-10d | 50-70d |
+| B8 | Emergent Universe | 7-10d | 5-6d | 29-40d |
+| B5 | Audio Processing | 5-7d | 2-3d | 31-43d |
+| B4 | Self-Correction | 3-5d | 2-3d | 33-46d |
+| C2 | Worker Queues | 8-12d | 4-6d | 37-52d |
+| C4 | Web Dashboard | 14-21d | 7-10d | 44-62d |
+| C3 | Video Processing | 8-10d | 4-5d | 48-67d |
+| D1 | User Sharding | 14-21d | 7-10d | 55-77d |
 
 **Total Solo Dev Time: 2-3 months** to hit all items (vs 4-5 months without consolidation)
 
-**Key Win:** The Insight Agent consolidation saves 15-21 days by unifying C1+C2+B6 into one coherent system!
+**Key Wins:** 
+- Insight Agent consolidation saves 15-21 days by unifying C1+C2+B6
+- Emergent Behavior Architecture (B9) replaces hundreds of lines of behavior logic with 15-line seeds
 
 **Your Timeline: ~10-14 weeks to feature-complete superhuman AI bot**
 
@@ -1733,6 +1852,12 @@ Transform isolated bots into a living, emergent universe:
 - Tool composition = smarter reasoning
 - Image generation = wow factor for users
 - Channel lurking = organic community engagement
+
+**Sprint 8.7 (4-5 days):** The philosophy shift - Emergent Behavior 🌱
+- Seed config (purpose, drives, constitution) → emergence
+- Stigmergic traces for cross-bot awareness
+- Attention keys for ephemeral focus
+- **The minimal philosophy that makes everything else work**
 
 **Sprint 9 (1 week):** The breakthrough - Insight Agent
 - Reasoning traces = system learns from itself
@@ -1785,5 +1910,6 @@ For detailed technical questions about any phase, refer to:
 - v1.5 (Nov 25, 2025) - Removed Phase D1 Multi-Platform Support; committed to Discord-native deepening. Renumbered D2→D1 User Sharding. Focus on Discord-specific features rather than abstraction. Back to 19 items.
 - v1.6 (Nov 25, 2025) - **Major consolidation:** Created Insight Agent (C1) to unify Reasoning Traces + Epiphanies + Response Pattern Learning into single agentic system. Saves 15-21 days of development. Renumbered C3→C2, C4→C3, C5→C4. Added `docs/roadmaps/INSIGHT_AGENT.md` specification. Timeline reduced to 10-14 weeks.
 - v1.7 (Nov 25, 2025) - Added A5 Channel Context Awareness. Updated to hybrid approach: Phase 1a (Discord API fallback) + Phase 1b (Redis rolling buffer with local embeddings for semantic search) + Phase 2 (LLM tool). See `docs/roadmaps/CHANNEL_CONTEXT_AWARENESS.md`.
+- v1.8 (Nov 26, 2025) - **Added B9: Emergent Behavior Architecture 🌱** - Strategic foundation for character autonomy based on minimal seed (purpose, drives, constitution) + proper environment + minimal process = emergence. Philosophy: "We don't design behavior. We create conditions for behavior to emerge." Supersedes complex behavior logic with 15-line `core.yaml` configs. Adds Sprint 8.7 to sequencing. See `docs/roadmaps/PURPOSE_DRIVEN_EMERGENCE.md`.
 
-**Next Review:** After Phase A completion (estimated Dec 1, 2025)
+**Next Review:** After Phase B9 implementation (estimated Dec 5, 2025)
