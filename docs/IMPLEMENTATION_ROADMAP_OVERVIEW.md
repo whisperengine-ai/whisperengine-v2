@@ -645,10 +645,10 @@ A unified **Insight Agent** that runs periodically in the background using a ReA
 
 **Implementation Details:**
 - `src_v2/workers/task_queue.py` - arq-based Redis queue for job management
-- `src_v2/workers/insight_worker.py` - Separate container worker process
+- `src_v2/workers/worker.py` - Separate container worker process
 - `src_v2/agents/insight_agent.py` - ReAct agent for analysis
 - `src_v2/tools/insight_tools.py` - Specialized introspection tools
-- `docker-compose.yml` - Added `insight-worker` container (profile: workers)
+- `docker-compose.yml` - Added `worker` container (profile: worker)
 
 **Trigger Conditions:**
 | Trigger | Condition |
@@ -682,19 +682,19 @@ A unified **Insight Agent** that runs periodically in the background using a ReA
 
 **Related Files:**
 - `src_v2/workers/task_queue.py` (TaskQueue singleton, arq wrapper)
-- `src_v2/workers/insight_worker.py` (shared worker process for ALL bots)
+- `src_v2/workers/worker.py` (shared worker process for ALL bots)
 - `src_v2/agents/insight_agent.py` (ReAct agent for background analysis)
 - `src_v2/tools/insight_tools.py` (5 introspection tools)
 - `src_v2/discord/bot.py` (triggers on reactions and session end)
-- `docker-compose.yml` (insight-worker service, profile: workers)
+- `docker-compose.yml` (worker service, profile: worker)
 
 **Shared Worker Architecture (Nov 25, 2025):**
-A single `insight-worker` container serves **all bot instances**. Jobs include `bot_name` in the payload so the worker knows which character context to use. This avoids 1:1 container mapping and is more resource-efficient.
+A single `worker` container serves **all bot instances**. Jobs include `bot_name` in the payload so the worker knows which character context to use. This avoids 1:1 container mapping and is more resource-efficient.
 
 ```
 Bot A ─┐                      ┌─→ Job: {bot_name: "elena", user_id: "123", ...}
 Bot B ─┼──→ Redis Queue ────→│
-Bot C ─┘                      └─→ Single Insight Worker (shared)
+Bot C ─┘                      └─→ Single Worker (shared)
 ```
 
 **Full Specification:** See [roadmaps/INSIGHT_AGENT.md](./roadmaps/INSIGHT_AGENT.md)

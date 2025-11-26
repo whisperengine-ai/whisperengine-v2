@@ -45,6 +45,9 @@ python run_v2.py elena  # Run locally
 ./bot.sh up dream
 # Or use docker compose directly:
 docker compose --profile elena --profile dream up -d --build
+
+# Scale workers (Default is 3)
+docker compose --profile worker up -d --scale worker=5
 ```
 
 ## 📊 Status Check
@@ -58,10 +61,12 @@ docker compose --profile elena --profile dream up -d --build
 ```bash
 # View logs
 ./bot.sh logs elena      # Specific bot
+./bot.sh logs worker     # Background worker
 ./bot.sh logs all        # All containers
 
 # Shell access
 docker exec -it whisperengine-v2-elena /bin/bash       # Bot container
+docker exec -it whisperengine-v2-worker-1 /bin/bash    # Worker container (1st instance)
 docker exec -it whisperengine-v2-postgres psql -U whisper -d whisperengine_v2  # Database
 docker exec -it whisperengine-v2-neo4j cypher-shell -u neo4j -p password       # Neo4j
 
@@ -83,7 +88,7 @@ docker inspect whisperengine-v2-elena | jq '.[0].State.Health'
 ### Add New Bot
 1. Create `.env.{newbot}`
 2. Add character files in `characters/{newbot}/`
-3. Add to `docker-compose.unified.yml`:
+3. Add to `docker-compose.yml`:
 ```yaml
 newbot:
   profiles: ["newbot", "all"]
@@ -194,6 +199,7 @@ Project Root
 | Neo4j Browser | 7474 | http://localhost:7474 |
 | Neo4j Bolt | 7687 | bolt://localhost:7687 |
 | InfluxDB | 8086 | http://localhost:8086 |
+| Redis | 6379 | redis-cli -h localhost |
 
 ## 🆘 Getting Help
 

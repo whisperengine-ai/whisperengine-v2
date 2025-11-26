@@ -15,7 +15,7 @@
 | Component | Status | File |
 |-----------|--------|------|
 | TaskQueue | ✅ Complete | `src_v2/workers/task_queue.py` |
-| InsightWorker | ✅ Complete | `src_v2/workers/insight_worker.py` |
+| Worker | ✅ Complete | `src_v2/workers/worker.py` |
 | InsightAgent | ✅ Complete | `src_v2/agents/insight_agent.py` |
 | InsightTools | ✅ Complete | `src_v2/tools/insight_tools.py` |
 | Bot Triggers | ✅ Complete | `src_v2/discord/bot.py` |
@@ -26,7 +26,7 @@
 
 ## Shared Worker Architecture
 
-A single `insight-worker` container serves **all bot instances**:
+A single `worker` container serves **all bot instances**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -35,7 +35,7 @@ A single `insight-worker` container serves **all bot instances**:
 │                                                                     │
 │   Bot: Elena ─┐                                                     │
 │               │                                                     │
-│   Bot: Ryan ──┼──→ Redis Queue (arq) ──→ Single Insight Worker     │
+│   Bot: Ryan ──┼──→ Redis Queue (arq) ──→ Single Worker (Shared)    │
 │               │         ↑                        ↓                  │
 │   Bot: Dotty ─┘         │              InsightAgent.analyze()       │
 │                         │                        ↓                  │
@@ -575,7 +575,7 @@ CREATE TABLE v2_response_patterns (
 When C3 (Worker Queues) is implemented, the Insight Agent will be scheduled via Redis/arq:
 
 ```python
-# src_v2/workers/insight_worker.py
+# src_v2/workers/worker.py
 
 from arq import cron
 from src_v2.agents.insight_agent import InsightAgent
