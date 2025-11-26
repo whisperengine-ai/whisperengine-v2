@@ -15,6 +15,7 @@ from typing import Dict, Optional, List
 from loguru import logger
 from src_v2.core.database import db_manager
 from src_v2.evolution.trust import trust_manager
+from src_v2.config.settings import settings
 
 
 class StatsFooter:
@@ -23,7 +24,8 @@ class StatsFooter:
     """
     
     def __init__(self):
-        self.enabled = False  # Global toggle, can be overridden per-user
+        # Global toggle from settings, can be overridden per-user via /stats_footer command
+        self.enabled = settings.STATS_FOOTER_DEFAULT_ENABLED
         
     async def is_enabled_for_user(self, user_id: str, character_name: str) -> bool:
         """

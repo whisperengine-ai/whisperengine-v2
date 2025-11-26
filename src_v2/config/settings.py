@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     # --- Debugging ---
     ENABLE_PROMPT_LOGGING: bool = False
 
+    # --- Stats Footer ---
+    STATS_FOOTER_DEFAULT_ENABLED: bool = Field(
+        default=False, 
+        description="Show stats footer by default for new users (can be toggled per-user with /stats_footer)"
+    )
+
     # --- Privacy & Security ---
     ENABLE_DM_BLOCK: bool = True
     DM_ALLOWED_USER_IDS: str = Field(default="", description="List of Discord User IDs allowed to DM the bot (comma-separated)")
