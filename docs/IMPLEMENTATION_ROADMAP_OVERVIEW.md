@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 1.7  
+**Document Version:** 1.8  
 **Created:** November 24, 2025  
-**Last Updated:** November 25, 2025  
+**Last Updated:** November 26, 2025  
 **Status:** Active Planning
 
 ---
@@ -44,9 +44,9 @@ For deep dive: See [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architectur
 
 ## Executive Summary
 
-This document provides a high-level overview of the next **17 implementation items** for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
+This document provides a high-level overview of the next **18 implementation items** for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
 
-**Key Consolidation (v1.7):** The Insight Agent (C1) now unifies Reasoning Traces, Epiphanies, and Response Pattern Learning into a single agentic background system, reducing total items from 19 to 17 and saving 15-21 days of development time.
+**Key Consolidation (v1.8):** Added Vision-to-Knowledge Fact Extraction (A6) for extracting user appearance/possession facts from images when user provides explicit context.
 
 **⚡ Solo Developer Mode (with AI Assistance)**
 
@@ -98,7 +98,8 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ⏳ Phase A: Channel Context Awareness
+- ⏳ Phase A5: Channel Context Awareness
+- ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ⏳ Phase C: Video processing, web dashboard
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
@@ -341,6 +342,58 @@ Bot mentioned + needs_context() → Redis semantic search (15-20ms)
 - `docker-compose.yml` (upgrade to redis-stack)
 
 **Full Specification:** See [roadmaps/CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md)
+
+---
+
+### Phase A6: Vision-to-Knowledge Fact Extraction
+**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Low-Medium  
+**Files:** 3-4 | **LOC:** ~250 | **Status:** 📋 Planned
+
+**Problem:** When users upload selfies or personal photos, the bot analyzes and stores descriptions in vector memory, but does NOT extract structured facts to the knowledge graph. Bot may hallucinate that it "saved details about your appearance" when it actually didn't.
+
+**Current State:**
+- ✅ Vision LLM analyzes images → descriptions stored in memory
+- ❌ No facts extracted (e.g., "User has brown hair" not in knowledge graph)
+- ❌ Bot can't reliably recall physical appearance details
+
+**Solution (User-Triggered Extraction):**
+- Detect trigger phrases in user message ("this is me", "here's my cat", etc.)
+- Only extract facts when user explicitly indicates subject identity
+- Avoids false positives (friend's photo incorrectly attributed to user)
+
+**Implementation:**
+```
+Image + User Message → Vision Analysis → Trigger Detection
+                                              ↓
+                           "this is me" → Extract appearance facts
+                           "my cat Luna" → Extract pet facts  
+                           No trigger → Store description only
+```
+
+**Trigger phrases for self:**
+- "this is me", "here's a pic of myself", "that's me", "selfie", "how do I look"
+
+**Trigger phrases for possessions:**
+- "this is my [pet/car/house]", "here's my new...", "meet my [name]"
+
+**Benefit:**
+- Bot can actually remember user appearance
+- Zero false positives (requires explicit user context)
+- No extra LLM calls when no trigger detected
+- Enables "what do I look like?" queries
+
+**Cost Model:**
+- No trigger: $0.003 (vision only, no change)
+- With trigger: $0.008 (vision + fact extraction)
+
+**Dependencies:** Knowledge extraction worker (exists)
+
+**Related Files:**
+- `src_v2/vision/manager.py` (add trigger detection, conditional extraction)
+- `src_v2/discord/bot.py` (pass user message context to vision manager)
+- `src_v2/knowledge/extractor.py` (visual-specific extraction prompts)
+
+**Full Specification:** See [roadmaps/VISION_FACT_EXTRACTION.md](./roadmaps/VISION_FACT_EXTRACTION.md)
 
 ---
 
