@@ -1,0 +1,229 @@
+"""
+Task Queue Manager using arq (Async Redis Queue)
+Provides a lightweight persistent job queue for background tasks.
+"""
+import os
+from typing import Any, Dict, Optional, Callable, Awaitable
+from loguru import logger
+from arq import create_pool
+from arq.connections import RedisSettings, ArqRedis
+
+from src_v2.config.settings import settings
+
+
+class TaskQueue:
+    """
+    Manages enqueueing tasks to Redis for background workers.
+    
+    Usage:
+        # Enqueue a task
+        await task_queue.enqueue("analyze_conversation", user_id="123", session_id="abc")
+        
+        # Enqueue with delay
+        await task_queue.enqueue("summarize_session", _defer_by=60, user_id="123")
+    """
+    
+    _instance: Optional["TaskQueue"] = None
+    _pool: Optional[ArqRedis] = None
+    
+    def __new__(cls) -> "TaskQueue":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    @classmethod
+    def get_redis_settings(cls) -> RedisSettings:
+        """Parse REDIS_URL into RedisSettings for arq."""
+        redis_url = settings.REDIS_URL
+        
+        # Parse redis://host:port/db format
+        if redis_url.startswith("redis://"):
+            url = redis_url[8:]  # Remove redis://
+        else:
+            url = redis_url
+            
+        # Split host:port/db
+        if "/" in url:
+            host_port, db = url.rsplit("/", 1)
+            database = int(db) if db else 0
+        else:
+            host_port = url
+            database = 0
+            
+        if ":" in host_port:
+            host, port = host_port.split(":")
+            port = int(port)
+        else:
+            host = host_port
+            port = 6379
+            
+        return RedisSettings(
+            host=host,
+            port=port,
+            database=database,
+            conn_timeout=10,
+            conn_retries=5,
+        )
+    
+    async def connect(self) -> None:
+        """Initialize connection to Redis."""
+        if self._pool is None:
+            try:
+                self._pool = await create_pool(self.get_redis_settings())
+                logger.info("TaskQueue connected to Redis")
+            except Exception as e:
+                logger.error(f"Failed to connect TaskQueue to Redis: {e}")
+                raise
+    
+    async def close(self) -> None:
+        """Close Redis connection."""
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
+            logger.info("TaskQueue disconnected from Redis")
+    
+    async def enqueue(
+        self, 
+        task_name: str, 
+        _defer_by: Optional[int] = None,
+        _job_id: Optional[str] = None,
+        **kwargs: Any
+    ) -> Optional[str]:
+        """
+        Enqueue a task for background processing.
+        
+        Args:
+            task_name: Name of the task function to execute
+            _defer_by: Delay in seconds before execution
+            _job_id: Optional unique job ID (for deduplication)
+            **kwargs: Arguments to pass to the task
+            
+        Returns:
+            Job ID if successfully enqueued, None otherwise
+        """
+        if self._pool is None:
+            await self.connect()
+            
+        if self._pool is None:
+            logger.warning(f"Cannot enqueue task {task_name}: Redis not connected")
+            return None
+            
+        try:
+            job = await self._pool.enqueue_job(
+                task_name,
+                _defer_by=_defer_by,
+                _job_id=_job_id,
+                **kwargs
+            )
+            
+            if job:
+                logger.debug(f"Enqueued task {task_name} (job_id: {job.job_id})")
+                return job.job_id
+            else:
+                logger.debug(f"Task {task_name} already queued (duplicate job_id)")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to enqueue task {task_name}: {e}")
+            return None
+    
+    async def enqueue_insight_analysis(
+        self,
+        user_id: str,
+        character_name: str,
+        trigger: str = "volume",
+        priority: int = 5
+    ) -> Optional[str]:
+        """
+        Convenience method to enqueue an insight analysis task.
+        
+        Args:
+            user_id: Discord user ID
+            character_name: Bot character name
+            trigger: What triggered this analysis (time, volume, session_end, feedback)
+            priority: 1-10, lower = higher priority
+        """
+        job_id = f"insight_{user_id}_{character_name}"
+        
+        return await self.enqueue(
+            "run_insight_analysis",
+            _job_id=job_id,  # Prevents duplicate jobs for same user/character
+            user_id=user_id,
+            character_name=character_name,
+            trigger=trigger,
+            priority=priority
+        )
+    
+    async def enqueue_summarization(
+        self,
+        user_id: str,
+        character_name: str,
+        session_id: str,
+        messages: list
+    ) -> Optional[str]:
+        """
+        Enqueue a session summarization task.
+        
+        Args:
+            user_id: Discord user ID
+            character_name: Bot character name
+            session_id: Conversation session ID
+            messages: List of message dicts with 'role' and 'content' keys
+        """
+        job_id = f"summarize_{session_id}"
+        
+        return await self.enqueue(
+            "run_summarization",
+            _job_id=job_id,
+            user_id=user_id,
+            character_name=character_name,
+            session_id=session_id,
+            messages=messages
+        )
+    
+    async def enqueue_reflection(
+        self,
+        user_id: str,
+        character_name: str
+    ) -> Optional[str]:
+        """
+        Enqueue a user reflection/pattern analysis task.
+        
+        Args:
+            user_id: Discord user ID
+            character_name: Bot character name
+        """
+        job_id = f"reflection_{user_id}_{character_name}"
+        
+        return await self.enqueue(
+            "run_reflection",
+            _job_id=job_id,
+            user_id=user_id,
+            character_name=character_name
+        )
+    
+    async def enqueue_knowledge_extraction(
+        self,
+        user_id: str,
+        message: str
+    ) -> Optional[str]:
+        """
+        Enqueue a knowledge extraction task (fact extraction to Neo4j).
+        
+        This is critical for response latency - knowledge extraction was
+        previously blocking the response pipeline.
+        
+        Args:
+            user_id: Discord user ID
+            message: User message text to extract facts from
+        """
+        # No job_id deduplication - each message should be processed
+        return await self.enqueue(
+            "run_knowledge_extraction",
+            user_id=user_id,
+            message=message
+        )
+
+
+# Global instance
+task_queue = TaskQueue()

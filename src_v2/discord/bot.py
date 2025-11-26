@@ -10,7 +10,6 @@ from src_v2.agents.engine import AgentEngine
 from src_v2.core.character import character_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
-from src_v2.memory.summarizer import SummaryManager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.knowledge.documents import document_processor
 from src_v2.voice.player import play_text
@@ -19,9 +18,9 @@ from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_analyzer
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.extractor import preference_extractor
-from src_v2.intelligence.reflection import reflection_engine
 from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
+from src_v2.workers.task_queue import task_queue
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator
 
@@ -29,7 +28,6 @@ class WhisperBot(commands.Bot):
     """Discord bot with AI character personality and memory systems."""
     
     agent_engine: AgentEngine
-    summary_manager: SummaryManager
     scheduler: ProactiveScheduler
     character_name: str
     
@@ -48,7 +46,6 @@ class WhisperBot(commands.Bot):
         )
         
         self.agent_engine = AgentEngine()
-        self.summary_manager = SummaryManager()
         self.scheduler = ProactiveScheduler(self)
         
         # Validate Bot Identity
@@ -557,12 +554,16 @@ class WhisperBot(commands.Bot):
                     except Exception as e:
                         logger.error(f"Failed to save user message to memory: {e}")
 
-                    # Fire-and-forget knowledge extraction (only from user's actual message, not file content or reply context)
+                    # Fire-and-forget knowledge extraction via background worker
+                    # (offloaded from response pipeline for lower latency)
                     if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
                         try:
-                            await knowledge_manager.process_user_message(user_id, raw_user_message)
+                            await task_queue.enqueue_knowledge_extraction(
+                                user_id=user_id,
+                                message=raw_user_message
+                            )
                         except Exception as e:
-                            logger.error(f"Failed to process knowledge extraction: {e}")
+                            logger.error(f"Failed to enqueue knowledge extraction: {e}")
 
                     # Fire-and-forget Preference Extraction
                     if settings.ENABLE_PREFERENCE_EXTRACTION:
@@ -842,6 +843,18 @@ class WhisperBot(commands.Bot):
                 self.loop.create_task(handle_reaction_trust())
                 
                 logger.info(f"Feedback score for message: {feedback['score']} (adjusted memory importance)")
+                
+                # Trigger Insight Agent analysis after positive feedback
+                if feedback["score"] > 0:
+                    try:
+                        await task_queue.enqueue_insight_analysis(
+                            user_id=user_id,
+                            character_name=self.character_name,
+                            trigger="feedback",
+                            priority=3  # Higher priority for feedback triggers
+                        )
+                    except Exception as insight_err:
+                        logger.debug(f"Could not enqueue insight analysis: {insight_err}")
 
         except Exception as e:
             logger.error(f"Error handling reaction add: {e}")
@@ -945,7 +958,7 @@ class WhisperBot(commands.Bot):
 
     async def _check_and_summarize(self, session_id: str, user_id: str):
         """
-        Checks if summarization is needed and runs it.
+        Checks if summarization is needed and enqueues it to background worker.
         """
         try:
             # 1. Get session start time
@@ -959,27 +972,44 @@ class WhisperBot(commands.Bot):
             # 3. Check threshold (e.g., 20 messages)
             SUMMARY_THRESHOLD = 20
             if message_count >= SUMMARY_THRESHOLD:
-                logger.info(f"Session {session_id} reached {message_count} messages. Triggering summarization.")
+                logger.info(f"Session {session_id} reached {message_count} messages. Enqueueing summarization.")
                 
                 # Fetch messages
                 messages = await memory_manager.get_recent_history(user_id, self.character_name, limit=message_count)
                 # Convert to dict format expected by SummaryManager
                 msg_dicts = [{"role": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content} for m in messages]
                 
-                # Generate Summary
-                summary_manager = SummaryManager() 
-                result = await summary_manager.generate_summary(msg_dicts)
+                # Enqueue summarization to background worker
+                try:
+                    await task_queue.enqueue_summarization(
+                        user_id=user_id,
+                        character_name=self.character_name,
+                        session_id=session_id,
+                        messages=msg_dicts
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to enqueue summarization: {e}")
+                    return
                 
-                if result:
-                    await summary_manager.save_summary(session_id, user_id, result)
-                    logger.info(f"Session {session_id} summarized successfully.")
+                # Enqueue reflection (runs after summarization completes)
+                try:
+                    await task_queue.enqueue_reflection(
+                        user_id=user_id,
+                        character_name=self.character_name
+                    )
+                except Exception as e:
+                    logger.debug(f"Could not enqueue reflection: {e}")
                     
-                    # Trigger Reflection
-                    logger.info("Triggering reflection analysis...")
-                    await reflection_engine.analyze_user_patterns(user_id, self.character_name)
-                    
-                    # Ideally we should mark these messages as summarized or close the session to start a fresh one.
-                    # For now, we just log it.
+                # Enqueue Insight Agent analysis
+                try:
+                    await task_queue.enqueue_insight_analysis(
+                        user_id=user_id,
+                        character_name=self.character_name,
+                        trigger="session_end",
+                        priority=5
+                    )
+                except Exception as e:
+                    logger.debug(f"Could not enqueue insight analysis: {e}")
                     
         except Exception as e:
             logger.error(f"Error in _check_and_summarize: {e}")

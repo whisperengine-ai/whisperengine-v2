@@ -198,10 +198,72 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
 *   **Key Libraries**:
     *   **Configuration**: `pydantic-settings` (Type-safe config management).
     *   **Database ORM**: `asyncpg` (PostgreSQL), `qdrant-client`, `neo4j` (direct driver).
-    *   **Background Tasks**: `asyncio` with background workers for reflection/consolidation.
+    *   **Background Tasks**: `arq` (Redis-backed task queue) + `asyncio` for simple fire-and-forget.
     *   **Migrations**: `alembic` (Database schema management).
     *   **Logging**: `loguru` (Structured, simplified logging).
     *   **HTTP Client**: `httpx` (Modern async HTTP client for LLM APIs).
     *   **Embeddings**: `sentence-transformers` (Local embedding generation).
 *   **Removed**: `spaCy`, `RoBERTa`, `LangChain`, `LlamaIndex` (replaced by custom Python + LLM native function calling).
-*   **Deployment**: `docker-compose.yml` with individual services per bot and shared infrastructure containers.
+*   **Deployment**: `docker-compose.yml` with individual services per bot, shared infrastructure, and shared worker containers.
+
+## 6. Background Worker Architecture
+
+### The Shared Worker Model
+
+Background processing uses a **shared worker** architecture - a single worker container serves **all bot instances**:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        WORKER ARCHITECTURE                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   Bot: Elena ─┐                                                     │
+│               │                                                     │
+│   Bot: Ryan ──┼──→ Redis Queue (arq) ──→ Shared Worker Container   │
+│               │         ↑                        ↓                  │
+│   Bot: Dotty ─┘         │              Job Handler (loads context)  │
+│                         │                        ↓                  │
+│                    Job Payload:          Execute analysis/task      │
+│                    {                     Store results to DBs       │
+│                      bot_name: "elena",                            │
+│                      user_id: "123",                               │
+│                      job_type: "insight"                           │
+│                    }                                                │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Why Shared Workers?**
+- **Resource Efficient**: 1 worker container vs N workers (one per bot)
+- **Simpler Deployment**: No 1:1 bot-to-worker mapping required
+- **Context Routing**: Jobs include `bot_name` so worker loads correct character context
+- **Concurrent Processing**: Worker can process jobs from multiple bots simultaneously
+
+### Task Classification
+
+| Task Type | Handler | When to Use |
+|-----------|---------|-------------|
+| **Fire-and-Forget** | `asyncio.create_task` | Simple, stateless tasks (fact extraction, metrics) |
+| **Queued Background** | `arq` Redis queue | Long-running, agentic tasks (insight analysis) |
+
+### Current Workers
+
+| Worker | Purpose | Triggers |
+|--------|---------|----------|
+| `insight-worker` | Pattern detection, epiphanies, response learning | Positive reactions, session end |
+
+### Starting Workers
+
+```bash
+# Start the shared worker (serves all bots)
+./bot.sh start workers
+
+# Or manually:
+docker-compose --profile workers up -d insight-worker
+```
+
+### Adding New Background Tasks
+
+1. Define job handler in `src_v2/workers/insight_worker.py` (or new worker file)
+2. Register in `WorkerSettings.functions`
+3. Enqueue from bot code: `await task_queue.enqueue("job_name", **params)`

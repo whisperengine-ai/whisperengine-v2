@@ -52,6 +52,7 @@ RULES:
 - Do NOT include markdown formatting (```cypher). Just the raw query.
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
 - For "hobbies" or "interests", ALWAYS check for 'LIKES', 'LOVES', 'ENJOYS'.
+- If the question cannot be answered by the schema (e.g. asking for chat history, weather, time, or general knowledge), return exactly: RETURN "NO_ANSWER"
 """),
             ("human", "{question}")
         ])
@@ -177,6 +178,16 @@ RULES:
             cypher_query = await self.cypher_chain.ainvoke({"question": question})
             cypher_query = cypher_query.replace("```cypher", "").replace("```", "").strip()
             
+            # Handle "NO_ANSWER" case
+            if 'RETURN "NO_ANSWER"' in cypher_query or "NO_ANSWER" in cypher_query:
+                return "No relevant information found in the graph (out of scope)."
+
+            # Basic validation: Ensure it starts with a valid Cypher keyword
+            valid_starts = ["MATCH", "CALL", "RETURN", "WITH", "OPTIONAL MATCH"]
+            if not any(cypher_query.upper().startswith(keyword) for keyword in valid_starts):
+                logger.warning(f"LLM generated invalid Cypher: {cypher_query}")
+                return "Could not generate a valid graph query."
+
             logger.info(f"Generated Cypher: {cypher_query}")
 
             # 2. Execute

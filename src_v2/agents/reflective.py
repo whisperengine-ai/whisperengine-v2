@@ -15,6 +15,7 @@ from src_v2.tools.memory_tools import (
     UpdateFactsTool, 
     UpdatePreferencesTool
 )
+from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 
 class ReflectiveAgent:
@@ -191,7 +192,8 @@ class ReflectiveAgent:
             SearchEpisodesTool(user_id=user_id),
             LookupFactsTool(user_id=user_id, bot_name=character_name),
             UpdateFactsTool(user_id=user_id),
-            UpdatePreferencesTool(user_id=user_id, character_name=character_name)
+            UpdatePreferencesTool(user_id=user_id, character_name=character_name),
+            AnalyzeTopicTool(user_id=user_id, bot_name=character_name)
         ]
 
     def _construct_prompt(self, base_system_prompt: str) -> str:

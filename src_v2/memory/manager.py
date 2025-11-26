@@ -10,8 +10,9 @@ from src_v2.memory.embeddings import EmbeddingService
 from src_v2.utils.time_utils import get_relative_time
 
 class MemoryManager:
-    def __init__(self):
-        self.collection_name = f"whisperengine_memory_{settings.DISCORD_BOT_NAME}" if settings.DISCORD_BOT_NAME else "whisperengine_memory_default"
+    def __init__(self, bot_name: Optional[str] = None):
+        name = bot_name or settings.DISCORD_BOT_NAME
+        self.collection_name = f"whisperengine_memory_{name}" if name else "whisperengine_memory_default"
         self.embedding_service = EmbeddingService()
 
     async def initialize(self):
@@ -81,21 +82,30 @@ class MemoryManager:
                 """, str(user_id), character_name, role, content, user_name or "User", str(channel_id) if channel_id else None, str(message_id) if message_id else None)
             
             # Also save to vector memory
-            await self._save_vector_memory(user_id, role, content, channel_id, message_id, metadata)
+            await self._save_vector_memory(
+                user_id=user_id, 
+                role=role, 
+                content=content, 
+                metadata=metadata,
+                channel_id=channel_id, 
+                message_id=message_id
+            )
             
         except Exception as e:
             logger.error(f"Failed to save message: {e}")
 
     @retry_db_operation(max_retries=3)
-    async def _save_vector_memory(self, user_id: str, role: str, content: str, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None):
+    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None):
         """
-        Embeds and saves the message to Qdrant using a single vector + metadata.
+        Embeds and saves a memory to Qdrant.
         """
         if not db_manager.qdrant_client:
             return
 
+        target_collection = collection_name or self.collection_name
+
         try:
-            # Generate single content embedding
+            # Generate embedding
             content_embedding = await self.embedding_service.embed_query_async(content)
             
             # Create payload
@@ -117,7 +127,7 @@ class MemoryManager:
             # Upsert to Qdrant
             point_id = str(uuid.uuid4())
             await db_manager.qdrant_client.upsert(
-                collection_name=self.collection_name,
+                collection_name=target_collection,
                 points=[
                     PointStruct(
                         id=point_id,
@@ -126,17 +136,19 @@ class MemoryManager:
                     )
                 ]
             )
-            logger.debug(f"Saved vector memory for user {user_id}")
+            logger.debug(f"Saved vector memory for user {user_id} to {target_collection}")
             
         except Exception as e:
             logger.error(f"Failed to save vector memory: {e}")
 
-    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str]) -> Optional[str]:
+    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], collection_name: Optional[str] = None) -> Optional[str]:
         """
         Embeds and saves a summary to Qdrant.
         """
         if not db_manager.qdrant_client:
             return None
+
+        target_collection = collection_name or self.collection_name
 
         try:
             # Generate embedding
@@ -148,55 +160,57 @@ class MemoryManager:
                 vector=embedding,
                 payload={
                     "type": "summary",
-                    "session_id": session_id,
+                    "session_id": str(session_id),
                     "user_id": str(user_id),
                     "content": content,
                     "meaningfulness_score": meaningfulness_score,
                     "emotions": emotions,
-                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    "timestamp": datetime.datetime.now().isoformat()
                 }
             )
             
             await db_manager.qdrant_client.upsert(
-                collection_name=self.collection_name,
+                collection_name=target_collection,
                 points=[point]
             )
             
-            logger.info(f"Saved summary vector {point_id} for session {session_id}")
             return point_id
             
         except Exception as e:
             logger.error(f"Failed to save summary vector: {e}")
             return None
 
-    async def search_memories(self, query: str, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def search_memories(self, query: str, user_id: str, limit: int = 5, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Searches for relevant memories in Qdrant.
         """
         if not db_manager.qdrant_client:
+            logger.warning("Qdrant client not available for search_memories")
             return []
 
+        target_collection = collection_name or self.collection_name
+
         try:
+            logger.debug(f"Searching memories for user {user_id} with query: {query}")
             embedding = await self.embedding_service.embed_query_async(query)
             
-            # Search with filter for user_id
+            # Build Filter
+            must_conditions = [
+                FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+            ]
             
             search_result = await db_manager.qdrant_client.query_points(
-                collection_name=self.collection_name,
+                collection_name=target_collection,
                 query=embedding,
-                query_filter=Filter(
-                    must=[
-                        FieldCondition(
-                            key="user_id",
-                            match=MatchValue(value=str(user_id))
-                        )
-                    ]
-                ),
+                query_filter=Filter(must=must_conditions),
                 limit=limit
             )
             
+            logger.debug(f"Found {len(search_result.points)} memory results")
+            
             return [
                 {
+                    "id": hit.id,
                     "content": hit.payload.get("content") if hit.payload else None,
                     "role": hit.payload.get("role") if hit.payload else None,
                     "score": hit.score,
@@ -210,13 +224,15 @@ class MemoryManager:
             logger.error(f"Failed to search memories: {e}")
             return []
 
-    async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None) -> List[Dict[str, Any]]:
+    async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Searches for relevant summaries in Qdrant.
         """
         if not db_manager.qdrant_client:
             logger.warning("Qdrant client not available for search_summaries")
             return []
+
+        target_collection = collection_name or self.collection_name
 
         try:
             logger.debug(f"Searching summaries for user {user_id} with query: {query}")
@@ -239,7 +255,7 @@ class MemoryManager:
                 pass 
 
             search_result = await db_manager.qdrant_client.query_points(
-                collection_name=self.collection_name,
+                collection_name=target_collection,
                 query=embedding,
                 query_filter=Filter(must=must_conditions),
                 limit=limit * 2 if start_timestamp else limit # Fetch more if we plan to filter

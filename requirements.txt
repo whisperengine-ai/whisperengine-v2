@@ -46,6 +46,12 @@ influxdb-client>=1.49.0
 fastapi>=0.115.0
 uvicorn>=0.34.0
 
+# Background Workers
+arq>=0.26.0
+
 # Utilities
 alembic>=1.14.0
 tenacity>=9.0.0
+loguru>=0.7.2
+pydantic>=2.0.0
+pydantic-settings>=2.0.0

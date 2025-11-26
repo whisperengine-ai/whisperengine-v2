@@ -1,6 +1,6 @@
 # WhisperEngine v2 - AI Agent Development Guide
 
-**Optimized for solo developer with AI-assisted tools** (Nov 24, 2025)
+**Optimized for solo developer with AI-assisted tools** (Nov 25, 2025)
 
 WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture.
 
@@ -9,13 +9,14 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 ### Runtime Flow
 `run_v2.py elena` → `src_v2/main.py` → `db_manager.connect_all()` → Initialize Memory/Knowledge → Discord Bot + FastAPI
 
-### The "Four Pillars"
+### The "Five Pillars"
 | System | Port | Pattern |
 |--------|------|---------|
 | PostgreSQL | 5432 | Chat history, users, trust scores (Alembic migrations) |
 | Qdrant | 6333 | Vector memory, `whisperengine_memory_{bot_name}` collection |
 | Neo4j | 7687 | Knowledge graph, Cypher queries, constraints on `User.id` |
 | InfluxDB | 8086 | Metrics/analytics (Flux queries in `evolution/feedback.py`) |
+| Redis | 6379 | Cache layer + task queue (arq for background jobs) |
 
 ### Manager Pattern (Every Subsystem)
 ```python
@@ -25,7 +26,7 @@ class XManager:
     async def method(...): pass
 ```
 
-Key singletons: `db_manager`, `memory_manager`, `knowledge_manager`, `character_manager`, `trust_manager`, `AgentEngine` (imported globally after init)
+Key singletons: `db_manager`, `memory_manager`, `knowledge_manager`, `character_manager`, `trust_manager`, `AgentEngine`, `task_queue` (imported globally after init)
 
 ## 🎯 Critical Code Patterns
 
@@ -99,6 +100,17 @@ memories, facts, trust, goals = await asyncio.gather(
 - `src_v2/agents/reflective.py`: ReAct reasoning loop for complex queries (gated by `ENABLE_REFLECTIVE_MODE`)
 - `src_v2/agents/router.py`: Routes to appropriate tools (memory search, fact lookup, etc.)
 - `src_v2/agents/llm_factory.py`: Multi-model LLM setup (main + reflective + router)
+- `src_v2/agents/composite_tools.py`: Meta-tools that compose multiple tool calls (AnalyzeTopicTool)
+
+### Background Workers
+- `src_v2/workers/task_queue.py`: TaskQueue singleton wrapping arq for Redis job queue
+- `src_v2/workers/insight_worker.py`: Shared worker container for ALL background processing
+  - `run_insight_analysis`: Pattern detection and epiphany generation
+  - `run_summarization`: Session summary generation (post-session)
+  - `run_reflection`: User pattern analysis across sessions
+  - `run_knowledge_extraction`: Fact extraction to Neo4j (offloaded from response pipeline)
+- `src_v2/agents/insight_agent.py`: ReAct agent for pattern detection and epiphanies
+- `src_v2/tools/insight_tools.py`: Introspection tools (analyze_patterns, detect_themes, etc.)
 
 ### Character & Evolution
 - `src_v2/core/character.py`: Loads `characters/{name}/character.md`, `.yaml` files
@@ -167,7 +179,14 @@ python run_v2.py elena    # Start bot (loads .env.elena)
 ./bot.sh infra up        # Infrastructure only
 ```
 
-**Key pattern**: `docker-compose.yml` uses profiles. Infrastructure (postgres, qdrant, neo4j, influxdb) has NO profile (always up). Each bot has profile `[name, "all"]`.
+**Key pattern**: `docker-compose.yml` uses profiles. Infrastructure (postgres, qdrant, neo4j, influxdb, redis) has NO profile (always up). Each bot has profile `[name, "all"]`. The shared `insight-worker` has profile `["workers", "all"]`.
+
+### Running Background Workers
+```bash
+./bot.sh start workers    # Start shared insight-worker container
+```
+
+**Worker Architecture:** A single `insight-worker` serves ALL bot instances. Jobs include `bot_name` in the payload so the worker loads the correct character context. No 1:1 bot-to-worker mapping needed.
 
 ### Adding a New Bot
 1. Create `.env.newbot` (copy `.env.example`)
@@ -205,12 +224,15 @@ python run_v2.py elena    # Start bot (loads .env.elena)
 - ✅ Fast semantic classifier (bypass LLM 60% of time)
 - ✅ Native function calling (no regex parsing)
 - ✅ Parallel tool execution (ReAct)
+- ✅ Adaptive max steps (5/10/15 based on complexity)
+- ✅ Composite tools (reduce 4-step queries to 2)
+- ✅ Background insight agent (reasoning traces, epiphanies, pattern learning)
 
 **Next phases** (from IMPLEMENTATION_ROADMAP_OVERVIEW.md):
-1. Redis caching layer (30-50% DB reduction)
-2. Streaming LLM responses (better UX)
-3. Reasoning traces (system learns from itself)
-4. Epiphanies (characters have spontaneous insights)
+1. Grafana dashboards (InfluxDB visualization)
+2. Image generation (DALL-E 3 / Stable Diffusion)
+3. Video processing (clip analysis)
+4. Web dashboard (admin UI)
 
 ## 📞 Key References
 
@@ -221,6 +243,6 @@ python run_v2.py elena    # Start bot (loads .env.elena)
 
 ---
 
-**Version**: 2.0 (Nov 24, 2025 - Solo dev optimized)  
+**Version**: 2.0 (Nov 25, 2025 - Solo dev optimized)  
 **Python Target**: 3.12+  
-**Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`
+**Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

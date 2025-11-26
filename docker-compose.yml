@@ -83,6 +83,7 @@ services:
   redis:
     image: redis:7.4-alpine
     container_name: whisperengine-v2-redis
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
     volumes:
@@ -431,6 +432,50 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - v2_network
+
+  # ========================================
+  # BACKGROUND WORKERS (Shared across all bots)
+  # ========================================
+  # The worker processes ALL background jobs for ALL bot instances:
+  # - Insight Analysis (pattern detection, epiphanies)
+  # - Summarization (post-session summaries)
+  # - Reflection (user pattern analysis across sessions)
+  # - Knowledge Extraction (fact extraction to Neo4j - offloaded from response pipeline)
+  #
+  # Jobs include bot_name in the payload so the worker knows which
+  # character context to use. No need for 1:1 bot-to-worker mapping.
+
+  worker:
+    profiles: ["worker", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # container_name removed to allow scaling (e.g., --scale worker=3)
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.worker
+    environment:
+      - DISCORD_BOT_NAME=worker
+      - DISCORD_TOKEN=not_needed_for_worker
+      - TZ=America/Los_Angeles
+      - REDIS_URL=redis://redis:6379/0
+    command: ["python", "-m", "src_v2.workers.worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - v2_network
 

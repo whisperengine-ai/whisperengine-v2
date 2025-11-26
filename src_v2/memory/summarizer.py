@@ -14,10 +14,10 @@ class SummaryResult(BaseModel):
     emotions: List[str] = Field(description="List of prevailing emotions detected in the conversation.")
 
 class SummaryManager:
-    def __init__(self):
+    def __init__(self, bot_name: Optional[str] = None):
         base_llm = create_llm(temperature=0.3, mode="utility")
         self.llm = base_llm.with_structured_output(SummaryResult)
-        self.memory_manager = MemoryManager()
+        self.memory_manager = MemoryManager(bot_name=bot_name)
         
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert conversation summarizer for an AI companion.

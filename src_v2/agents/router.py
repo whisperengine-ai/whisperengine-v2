@@ -6,6 +6,7 @@ from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
+from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 
 class CognitiveRouter:
@@ -36,7 +37,8 @@ class CognitiveRouter:
             SearchEpisodesTool(user_id=user_id),
             LookupFactsTool(user_id=user_id),
             UpdateFactsTool(user_id=user_id),
-            UpdatePreferencesTool(user_id=user_id, character_name=character_name)
+            UpdatePreferencesTool(user_id=user_id, character_name=character_name),
+            AnalyzeTopicTool(user_id=user_id, bot_name=character_name)
         ]
         
         # 2. Bind tools to LLM
@@ -52,6 +54,7 @@ AVAILABLE TOOLS:
 - lookup_user_facts: For biographical info about the user (name, pets, location, preferences).
 - update_user_facts: For when the user explicitly corrects a fact or says something has changed (e.g., "I moved to Seattle", "I don't like pizza anymore").
 - update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
+- analyze_topic: For comprehensive research on a broad topic. Searches summaries, episodes, and facts simultaneously. Use this for "tell me everything about X" or complex questions.
 
 RULES:
 1. If the user is just saying "hi" or small talk, you MAY call lookup_user_facts to personalize the greeting (e.g. to find their name), but avoid heavy memory searches.

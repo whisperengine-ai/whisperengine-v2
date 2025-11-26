@@ -1,11 +1,60 @@
 # Insight Agent - Background Agentic Processing
 
-**Document Version:** 1.0  
+**Document Version:** 2.0  
 **Created:** November 25, 2025  
-**Status:** 📋 Architecture Design  
+**Last Updated:** November 25, 2025  
+**Status:** ✅ Complete  
 **Priority:** HIGH  
-**Estimated Time:** 5-7 days  
+**Time Taken:** ~4 hours (AI-assisted)  
 **Complexity:** Medium-High
+
+---
+
+## Implementation Status
+
+| Component | Status | File |
+|-----------|--------|------|
+| TaskQueue | ✅ Complete | `src_v2/workers/task_queue.py` |
+| InsightWorker | ✅ Complete | `src_v2/workers/insight_worker.py` |
+| InsightAgent | ✅ Complete | `src_v2/agents/insight_agent.py` |
+| InsightTools | ✅ Complete | `src_v2/tools/insight_tools.py` |
+| Bot Triggers | ✅ Complete | `src_v2/discord/bot.py` |
+| Docker Config | ✅ Complete | `docker-compose.yml` |
+| Unit Tests | ✅ Complete | `tests_v2/test_insight_agent.py` |
+
+---
+
+## Shared Worker Architecture
+
+A single `insight-worker` container serves **all bot instances**:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     MULTI-BOT ARCHITECTURE                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   Bot: Elena ─┐                                                     │
+│               │                                                     │
+│   Bot: Ryan ──┼──→ Redis Queue (arq) ──→ Single Insight Worker     │
+│               │         ↑                        ↓                  │
+│   Bot: Dotty ─┘         │              InsightAgent.analyze()       │
+│                         │                        ↓                  │
+│                    Job Payload:          Store insights to          │
+│                    {                     Qdrant/Neo4j/Postgres      │
+│                      bot_name: "elena",                            │
+│                      user_id: "123",                               │
+│                      session_id: "abc",                            │
+│                      trigger: "positive_feedback"                  │
+│                    }                                                │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Why shared?**
+- Resource efficient (1 container vs N containers)
+- Simpler deployment (no 1:1 bot-to-worker mapping)
+- Jobs include `bot_name` so worker loads correct character context
+- Worker can process jobs from any bot concurrently
 
 ---
 
