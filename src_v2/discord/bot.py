@@ -236,6 +236,9 @@ class WhisperBot(commands.Bot):
 
         logger.info("WhisperEngine is ready and listening.")
 
+        # Check Permissions
+        await self._check_permissions()
+
         # Universe Discovery: Register existing planets
         try:
             from src_v2.universe.manager import universe_manager
@@ -252,6 +255,51 @@ class WhisperBot(commands.Bot):
                 logger.info(f"Discovered planet: {guild.name}")
         except Exception as e:
             logger.error(f"Failed to register planets during startup: {e}")
+
+        # Check permissions
+        await self._check_permissions()
+
+    async def _check_permissions(self) -> None:
+        """Checks if the bot has necessary permissions in connected guilds."""
+        required_permissions = [
+            ("view_channel", "View Channels"),
+            ("send_messages", "Send Messages"),
+            ("read_message_history", "Read Message History"),
+            ("embed_links", "Embed Links"),
+            ("attach_files", "Attach Files"),
+            ("add_reactions", "Add Reactions"),
+            ("use_external_emojis", "Use External Emojis"),
+            ("manage_messages", "Manage Messages (Delete Spam)"),
+            ("connect", "Connect (Voice)"),
+            ("speak", "Speak (Voice)"),
+        ]
+        
+        logger.info("--- Checking Permissions ---")
+        
+        # 1. Check Invite Scopes (Best Effort Warning)
+        logger.info("NOTE: Ensure the bot was invited with 'applications.commands' scope for Slash Commands to work.")
+        
+        for guild in self.guilds:
+            permissions = guild.me.guild_permissions
+            missing = []
+            
+            # Check Administrator
+            if permissions.administrator:
+                logger.info(f"✅ Guild '{guild.name}': Administrator (All permissions granted)")
+                continue
+                
+            # Check individual permissions
+            for perm_code, perm_name in required_permissions:
+                if not getattr(permissions, perm_code):
+                    missing.append(perm_name)
+            
+            if missing:
+                logger.warning(f"⚠️  Guild '{guild.name}': Missing Permissions: {', '.join(missing)}")
+                logger.warning(f"    -> Some features may not work correctly in '{guild.name}'.")
+            else:
+                logger.info(f"✅ Guild '{guild.name}': All required permissions granted.")
+                
+        logger.info("----------------------------")
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
         """Called when the bot joins a new guild (Planet)."""
