@@ -999,7 +999,8 @@ class WhisperBot(commands.Bot):
                 # Trust update (smaller for lurk responses)
                 async def handle_lurk_trust():
                     try:
-                        await trust_manager.update_trust(user_id, character.name, 0.5)
+                        # Use integer 1 for trust update to avoid type conflicts in DBs
+                        await trust_manager.update_trust(user_id, character.name, 1)
                     except Exception as e:
                         logger.error(f"Failed to update trust for lurk: {e}")
                         
