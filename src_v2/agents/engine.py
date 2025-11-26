@@ -9,8 +9,10 @@ import aiofiles
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from loguru import logger
+from influxdb_client import Point
 
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
 from src_v2.config.constants import TRAIT_BEHAVIORS, get_image_format_for_provider
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
@@ -116,7 +118,12 @@ class AgentEngine:
                 chat_history, context_variables, image_urls, callback,
                 max_steps_override=max_steps
             )
-            logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
+            total_time = time.time() - start_time
+            logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {is_complex})")
+            
+            # Log metrics
+            await self._log_metrics(user_id, character.name, total_time, "reflective", is_complex)
+            
             return response
         
         # 4. Fast Mode (Standard Flow)
@@ -177,6 +184,10 @@ class AgentEngine:
             
             total_time = time.time() - start_time
             logger.info(f"Total response time: {total_time:.2f}s (Fast Mode)")
+            
+            # Log metrics
+            await self._log_metrics(user_id, character.name, total_time, "fast", is_complex)
+            
             return str(response.content)
             
         except Exception as e:
@@ -699,3 +710,23 @@ class AgentEngine:
             
         except Exception as e:
             logger.warning(f"Failed to log prompt: {e}")
+
+    async def _log_metrics(self, user_id: str, character_name: str, latency: float, mode: str, complexity: str):
+        """Logs response metrics to InfluxDB."""
+        if db_manager.influxdb_write_api:
+            try:
+                point = Point("response_metrics") \
+                    .tag("user_id", user_id) \
+                    .tag("bot_name", character_name) \
+                    .tag("mode", mode) \
+                    .tag("complexity", str(complexity)) \
+                    .field("latency", latency) \
+                    .time(datetime.datetime.utcnow())
+                
+                db_manager.influxdb_write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET,
+                    org=settings.INFLUXDB_ORG,
+                    record=point
+                )
+            except Exception as e:
+                logger.error(f"Failed to log metrics to InfluxDB: {e}")

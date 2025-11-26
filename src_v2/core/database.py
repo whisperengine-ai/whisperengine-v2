@@ -106,9 +106,18 @@ class DatabaseManager:
                 token=settings.INFLUXDB_TOKEN.get_secret_value() if settings.INFLUXDB_TOKEN else None,
                 org=settings.INFLUXDB_ORG
             )
-            # Create write API (synchronous but fast enough for batching, or we can use async client if needed)
-            # For now, using synchronous write_api with batching
-            self.influxdb_write_api = self.influxdb_client.write_api(write_options=WriteOptions(batch_size=1))
+            # Create write API with batching for performance
+            # batch_size=10: Write to DB after 10 points
+            # flush_interval=1000: Or write every 1 second, whichever comes first
+            self.influxdb_write_api = self.influxdb_client.write_api(write_options=WriteOptions(
+                batch_size=10,
+                flush_interval=1000,
+                jitter_interval=0,
+                retry_interval=5000,
+                max_retries=3,
+                max_retry_delay=15000,
+                exponential_base=2
+            ))
             
             # Verify connection (run ping in thread pool to avoid blocking)
             loop = asyncio.get_event_loop()

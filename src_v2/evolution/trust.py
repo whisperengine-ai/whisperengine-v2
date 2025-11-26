@@ -7,6 +7,8 @@ trust scores, relationship levels, and unlocked personality traits.
 
 from typing import Dict, Optional, Any, List
 from loguru import logger
+from influxdb_client import Point
+from datetime import datetime
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
 from src_v2.evolution.manager import get_evolution_manager
@@ -250,6 +252,24 @@ class TrustManager:
                     
                     # Invalidate cache
                     await cache_manager.delete(f"trust:{character_name}:{user_id}")
+
+                    # Log to InfluxDB
+                    if db_manager.influxdb_write_api:
+                        try:
+                            point = Point("trust_update") \
+                                .tag("user_id", user_id) \
+                                .tag("bot_name", character_name) \
+                                .field("trust_score", new_trust) \
+                                .field("delta", delta) \
+                                .time(datetime.utcnow())
+                            
+                            db_manager.influxdb_write_api.write(
+                                bucket=settings.INFLUXDB_BUCKET,
+                                org=settings.INFLUXDB_ORG,
+                                record=point
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to log trust update to InfluxDB: {e}")
                     
                     if milestone_msg:
                         return milestone_msg
