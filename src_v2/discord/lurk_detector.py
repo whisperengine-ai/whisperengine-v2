@@ -21,6 +21,7 @@ from loguru import logger
 
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
 
 
 @dataclass
@@ -51,6 +52,7 @@ class LurkCooldownManager:
     """
     Manages rate limiting for lurk responses.
     Prevents the bot from responding too frequently in channels or to users.
+    Uses Redis for persistence if available, falls back to in-memory.
     """
     
     def __init__(self):
@@ -58,27 +60,53 @@ class LurkCooldownManager:
         self.user_cooldown_minutes = getattr(settings, 'LURK_USER_COOLDOWN_MINUTES', 60)
         self.max_daily_responses = getattr(settings, 'LURK_DAILY_MAX_RESPONSES', 20)
         
-        # In-memory tracking (could move to Redis for multi-instance)
+        # In-memory fallback
         self._channel_last_response: Dict[str, datetime] = {}
         self._user_last_response: Dict[str, datetime] = {}
         self._daily_count = 0
         self._daily_reset: Optional[datetime] = None
     
-    def _check_daily_reset(self) -> None:
-        """Reset daily counter if it's a new day."""
+    def _check_daily_reset_memory(self) -> None:
+        """Reset in-memory daily counter if it's a new day."""
         now = datetime.now()
         if self._daily_reset is None or now.date() > self._daily_reset.date():
             self._daily_count = 0
             self._daily_reset = now
     
-    def can_respond(self, channel_id: str, user_id: str) -> Tuple[bool, str]:
+    async def can_respond(self, channel_id: str, user_id: str) -> Tuple[bool, str]:
         """
         Check if a lurk response is allowed.
         
         Returns:
             Tuple of (allowed: bool, reason: str)
         """
-        self._check_daily_reset()
+        # Redis Path
+        if db_manager.redis_client:
+            try:
+                today = datetime.now().strftime("%Y-%m-%d")
+                daily_key = f"lurk:daily:{today}"
+                channel_key = f"lurk:cooldown:channel:{channel_id}"
+                user_key = f"lurk:cooldown:user:{user_id}"
+                
+                # Check daily limit
+                daily_count = await db_manager.redis_client.get(daily_key)
+                if daily_count and int(daily_count) >= self.max_daily_responses:
+                    return False, "daily_limit"
+                
+                # Check channel cooldown
+                if await db_manager.redis_client.exists(channel_key):
+                    return False, "channel_cooldown"
+                
+                # Check user cooldown
+                if await db_manager.redis_client.exists(user_key):
+                    return False, "user_cooldown"
+                    
+                return True, "allowed"
+            except Exception as e:
+                logger.error(f"Redis error in can_respond: {e}. Falling back to memory.")
+
+        # In-Memory Fallback
+        self._check_daily_reset_memory()
         now = datetime.now()
         
         # Check global daily limit
@@ -99,22 +127,62 @@ class LurkCooldownManager:
         
         return True, "allowed"
     
-    def record_response(self, channel_id: str, user_id: str) -> None:
+    async def record_response(self, channel_id: str, user_id: str) -> None:
         """Record that a lurk response was sent."""
+        # Redis Path
+        if db_manager.redis_client:
+            try:
+                today = datetime.now().strftime("%Y-%m-%d")
+                daily_key = f"lurk:daily:{today}"
+                channel_key = f"lurk:cooldown:channel:{channel_id}"
+                user_key = f"lurk:cooldown:user:{user_id}"
+                
+                async with db_manager.redis_client.pipeline() as pipe:
+                    # Increment daily count (expire in 48h to be safe)
+                    await pipe.incr(daily_key)
+                    await pipe.expire(daily_key, 172800)
+                    
+                    # Set channel cooldown
+                    await pipe.setex(channel_key, self.channel_cooldown_minutes * 60, "1")
+                    
+                    # Set user cooldown
+                    await pipe.setex(user_key, self.user_cooldown_minutes * 60, "1")
+                    
+                    await pipe.execute()
+                logger.debug(f"Recorded lurk response in Redis.")
+                return
+            except Exception as e:
+                logger.error(f"Redis error in record_response: {e}. Falling back to memory.")
+
+        # In-Memory Fallback
         now = datetime.now()
         self._channel_last_response[channel_id] = now
         self._user_last_response[user_id] = now
         self._daily_count += 1
-        logger.debug(f"Recorded lurk response. Daily count: {self._daily_count}")
+        logger.debug(f"Recorded lurk response in memory. Daily count: {self._daily_count}")
     
-    def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, Any]:
         """Get current cooldown statistics."""
-        self._check_daily_reset()
+        if db_manager.redis_client:
+            try:
+                today = datetime.now().strftime("%Y-%m-%d")
+                daily_key = f"lurk:daily:{today}"
+                daily_count = await db_manager.redis_client.get(daily_key)
+                return {
+                    "daily_count": int(daily_count) if daily_count else 0,
+                    "max_daily": self.max_daily_responses,
+                    "storage": "redis"
+                }
+            except Exception:
+                pass
+
+        self._check_daily_reset_memory()
         return {
             "daily_count": self._daily_count,
             "max_daily": self.max_daily_responses,
             "channels_on_cooldown": len(self._channel_last_response),
-            "users_on_cooldown": len(self._user_last_response)
+            "users_on_cooldown": len(self._user_last_response),
+            "storage": "memory"
         }
 
 
@@ -208,8 +276,6 @@ class LurkDetector:
         self._neo4j_keywords = []
         
         try:
-            from src_v2.core.database import db_manager
-            
             if not db_manager.neo4j_driver:
                 logger.debug("Neo4j not connected, skipping keyword enrichment")
                 return []
@@ -453,7 +519,7 @@ class LurkDetector:
             )
         
         # Check cooldowns
-        can_respond, cooldown_reason = self.cooldown_manager.can_respond(channel_id, user_id)
+        can_respond, cooldown_reason = await self.cooldown_manager.can_respond(channel_id, user_id)
         if not can_respond:
             return LurkResult(
                 should_respond=False,
@@ -541,7 +607,7 @@ class LurkDetector:
     async def get_channel_stats(self, channel_id: str) -> Dict[str, Any]:
         """Get lurking statistics for a channel."""
         # For now, use cooldown manager stats (no per-channel tracking yet)
-        cooldown_stats = self.cooldown_manager.get_stats()
+        cooldown_stats = await self.cooldown_manager.get_stats()
         return {
             "today": cooldown_stats.get("daily_count", 0),
             "total": cooldown_stats.get("daily_count", 0),  # TODO: Query v2_lurk_responses for historical data
@@ -558,7 +624,7 @@ class LurkDetector:
             "guild_id": guild_id,
             "disabled_channels": list(self._disabled_channels),
             "custom_thresholds": self._channel_thresholds,
-            "global_stats": self.cooldown_manager.get_stats()
+            "global_stats": await self.cooldown_manager.get_stats()
         }
     
     async def record_response(
@@ -570,11 +636,11 @@ class LurkDetector:
         trigger_type: str = ""
     ) -> None:
         """Record that a lurk response was sent."""
-        self.cooldown_manager.record_response(channel_id, user_id)
+        await self.cooldown_manager.record_response(channel_id, user_id)
         logger.info(f"Recorded lurk response: channel={channel_id}, user={user_id}, confidence={confidence:.2f}")
         # TODO: Insert into v2_lurk_responses table
     
-    def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, Any]:
         """Get detector statistics."""
         return {
             "character": self.character_name,
@@ -585,7 +651,7 @@ class LurkDetector:
                 "low_relevance": len(self.triggers.low_relevance),
                 "topic_sentences": len(self.triggers.topic_sentences)
             },
-            "cooldown": self.cooldown_manager.get_stats()
+            "cooldown": await self.cooldown_manager.get_stats()
         }
 
 

@@ -140,6 +140,7 @@ class Settings(BaseSettings):
     CROSSPOST_THRESHOLD: int = 3  # Number of unique channels
     CROSSPOST_WINDOW_SECONDS: int = 60  # Time window in seconds
     CROSSPOST_WARNING_MESSAGE: str = "⚠️ Please avoid posting the same message in multiple channels. This is considered spam."
+    CROSSPOST_ACTION: Literal["warn", "delete"] = "warn"
 
     @property
     def dm_allowed_user_ids_list(self) -> list[str]:

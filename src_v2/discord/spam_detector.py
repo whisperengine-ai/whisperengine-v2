@@ -1,7 +1,7 @@
 import hashlib
 import json
 import time
-from typing import Optional, List, Set, Any, Dict
+from typing import Optional, List, Set, Any, Dict, Tuple
 from loguru import logger
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
@@ -17,7 +17,7 @@ class SpamDetector:
         self.threshold = settings.CROSSPOST_THRESHOLD
         self.window = settings.CROSSPOST_WINDOW_SECONDS
         self.warning_message = settings.CROSSPOST_WARNING_MESSAGE
-        self.action = "warn"  # warn or delete
+        self.action = settings.CROSSPOST_ACTION
         # Cache for whitelisted role IDs per guild: {guild_id: {role_id, ...}}
         self._whitelisted_roles: Dict[str, Set[str]] = {} 
         self._whitelist_loaded: Set[str] = set() # Track which guilds have been loaded
@@ -59,17 +59,17 @@ class SpamDetector:
         if db_manager.redis_client:
             await db_manager.redis_client.srem(f"spam:whitelist:{guild_id}", role_id)
 
-    async def check_file_crosspost(self, user_id: str, channel_id: str, attachments: List[Any]) -> bool:
+    async def check_file_crosspost(self, user_id: str, channel_id: str, attachments: List[Any]) -> Tuple[bool, bool]:
         """
         Check if the user is cross-posting the same files to multiple channels.
-        Uses filename + size as a heuristic hash.
+        Returns (is_spam, should_warn).
         """
         if not self.enabled or not attachments:
-            return False
+            return False, False
             
         # Skip if Redis is not available
         if not db_manager.redis_client:
-            return False
+            return False, False
 
         # Create a hash for the files
         # We use filename + size as a proxy for content to avoid downloading
@@ -78,21 +78,21 @@ class SpamDetector:
         
         return await self._process_hash(user_id, channel_id, content_hash, "file")
 
-    async def check_crosspost(self, user_id: str, channel_id: str, content: str) -> bool:
+    async def check_crosspost(self, user_id: str, channel_id: str, content: str) -> Tuple[bool, bool]:
         """
         Check if the user is cross-posting the same message to multiple channels.
-        Returns True if spam is detected.
+        Returns (is_spam, should_warn).
         """
         if not self.enabled:
-            return False
+            return False, False
             
         # Skip if Redis is not available
         if not db_manager.redis_client:
-            return False
+            return False, False
 
         # Ignore short messages (too common, e.g. "lol", "thanks")
         if len(content.strip()) < 10:
-            return False
+            return False, False
 
         # Create a hash of the content
         # We normalize by lowercasing and stripping whitespace
@@ -100,8 +100,11 @@ class SpamDetector:
         
         return await self._process_hash(user_id, channel_id, content_hash, "text")
 
-    async def _process_hash(self, user_id: str, channel_id: str, content_hash: str, type_prefix: str) -> bool:
-        """Internal method to process message/file hashes."""
+    async def _process_hash(self, user_id: str, channel_id: str, content_hash: str, type_prefix: str) -> Tuple[bool, bool]:
+        """
+        Internal method to process message/file hashes.
+        Returns (is_spam, should_warn)
+        """
         key = f"spam:crosspost:{user_id}"
         warn_key = f"spam:warned:{user_id}:{content_hash}"
         now = time.time()
@@ -109,7 +112,9 @@ class SpamDetector:
         try:
             # 1. Check if we already warned about this specific spam wave recently
             if await db_manager.redis_client.exists(warn_key):
-                return False
+                # It IS spam, but we already warned.
+                # Return True (is_spam) so we can delete it, but False (should_warn) to avoid noise.
+                return True, False
 
             # 2. Add current message to history
             entry = json.dumps({
@@ -144,13 +149,13 @@ class SpamDetector:
             if len(seen_channels) >= self.threshold:
                 logger.warning(f"Spam detected ({type_prefix}) for user {user_id}: {len(seen_channels)} channels")
                 await db_manager.redis_client.setex(warn_key, 300, "1")
-                return True
+                return True, True
                 
         except Exception as e:
             logger.error(f"Error in spam detection: {e}")
-            return False
+            return False, False
             
-        return False
+        return False, False
 
 # Global instance
 spam_detector = SpamDetector()

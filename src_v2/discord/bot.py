@@ -412,10 +412,11 @@ class WhisperBot(commands.Bot):
                 
                 if not is_whitelisted:
                     is_spam = False
+                    should_warn = False
                     
                     # Check text spam
                     if message.content:
-                        is_spam = await spam_detector.check_crosspost(
+                        is_spam, should_warn = await spam_detector.check_crosspost(
                             user_id=str(message.author.id),
                             channel_id=str(message.channel.id),
                             content=message.content
@@ -423,7 +424,7 @@ class WhisperBot(commands.Bot):
                     
                     # Check file spam
                     if not is_spam and message.attachments:
-                        is_spam = await spam_detector.check_file_crosspost(
+                        is_spam, should_warn = await spam_detector.check_file_crosspost(
                             user_id=str(message.author.id),
                             channel_id=str(message.channel.id),
                             attachments=message.attachments
@@ -434,20 +435,22 @@ class WhisperBot(commands.Bot):
                         if spam_detector.action == "delete":
                             try:
                                 await message.delete()
-                                warning = f"{message.author.mention} ⚠️ Message deleted for cross-posting spam."
-                                await message.channel.send(warning, delete_after=10)
+                                if should_warn:
+                                    warning = f"{message.author.mention} ⚠️ Message deleted for cross-posting spam."
+                                    await message.channel.send(warning)
                             except Exception as e:
                                 logger.error(f"Failed to delete spam message: {e}")
                         else:
-                            # Warn the user
-                            # Try to get character-specific warning
-                            warning_msg = settings.CROSSPOST_WARNING_MESSAGE
-                            if self.lurk_detector and self.lurk_detector.triggers.spam_warnings:
-                                import random
-                                warning_msg = random.choice(self.lurk_detector.triggers.spam_warnings)
-                            
-                            warning = f"{message.author.mention} {warning_msg}"
-                            await message.channel.send(warning, delete_after=10)
+                            # Warn the user (only if new detection)
+                            if should_warn:
+                                # Try to get character-specific warning
+                                warning_msg = settings.CROSSPOST_WARNING_MESSAGE
+                                if self.lurk_detector and self.lurk_detector.triggers.spam_warnings:
+                                    import random
+                                    warning_msg = random.choice(self.lurk_detector.triggers.spam_warnings)
+                                
+                                warning = f"{message.author.mention} {warning_msg}"
+                                await message.channel.send(warning)
                             
                         logger.warning(f"Actioned user {message.author.id} for cross-posting spam.")
                         return
