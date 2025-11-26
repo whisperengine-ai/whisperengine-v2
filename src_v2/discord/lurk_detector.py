@@ -172,14 +172,21 @@ class LurkDetector:
                 data = yaml.safe_load(f) or {}
             
             keywords = data.get("keywords", {})
+            
+            # Helper to ensure all items are strings (handles numbers like 1989 in YAML)
+            def to_str_list(items: Any) -> List[str]:
+                if not items or not isinstance(items, list):
+                    return []
+                return [str(item) for item in items if item is not None]
+
             return LurkTriggers(
-                high_relevance=keywords.get("high_relevance", []),
-                medium_relevance=keywords.get("medium_relevance", []),
-                low_relevance=keywords.get("low_relevance", []),
-                question_patterns=data.get("question_patterns", []),
-                topic_sentences=data.get("topic_sentences", []),
-                emotional_keywords=data.get("emotional_keywords", {}),
-                spam_warnings=data.get("spam_warnings", [])
+                high_relevance=to_str_list(keywords.get("high_relevance", [])),
+                medium_relevance=to_str_list(keywords.get("medium_relevance", [])),
+                low_relevance=to_str_list(keywords.get("low_relevance", [])),
+                question_patterns=to_str_list(data.get("question_patterns", [])),
+                topic_sentences=to_str_list(data.get("topic_sentences", [])),
+                emotional_keywords={k: to_str_list(v) for k, v in data.get("emotional_keywords", {}).items()},
+                spam_warnings=to_str_list(data.get("spam_warnings", []))
             )
         except Exception as e:
             logger.error(f"Failed to load lurk triggers: {e}")
@@ -379,10 +386,13 @@ class LurkDetector:
         # Emotional keywords bonus
         message_lower = message.lower()
         positive_emotions = self.triggers.emotional_keywords.get("positive", [])
-        for emotion in positive_emotions:
-            if emotion.lower() in message_lower:
-                boost += 0.05
-                break
+        
+        # Ensure positive_emotions is a list of strings
+        if positive_emotions and isinstance(positive_emotions, list):
+            for emotion in positive_emotions:
+                if isinstance(emotion, str) and emotion.lower() in message_lower:
+                    boost += 0.05
+                    break
         
         return min(boost, 0.3)
     
