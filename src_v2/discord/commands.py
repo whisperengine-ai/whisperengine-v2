@@ -15,13 +15,14 @@ class CharacterCommands(app_commands.Group):
         name = settings.DISCORD_BOT_NAME.lower() if settings.DISCORD_BOT_NAME else "bot"
         super().__init__(name=name, description=f"Commands for {name}")
 
-    @app_commands.command(name="memory_wipe", description="Wipe your data (Memory, Facts, Preferences)")
-    @app_commands.describe(scope="What to wipe: 'all' (default), 'memory', 'facts', 'preferences'")
+    @app_commands.command(name="memory_wipe", description="Wipe your data (Memory, Facts, Trust, Preferences)")
+    @app_commands.describe(scope="What to wipe: 'all' (default), 'memory', 'facts', 'preferences', 'trust'")
     @app_commands.choices(scope=[
         app_commands.Choice(name="All Data", value="all"),
         app_commands.Choice(name="Conversation Memory Only", value="memory"),
         app_commands.Choice(name="Facts Only", value="facts"),
-        app_commands.Choice(name="Preferences Only", value="preferences")
+        app_commands.Choice(name="Preferences Only", value="preferences"),
+        app_commands.Choice(name="Trust & Relationship", value="trust")
     ])
     async def memory_wipe(self, interaction: discord.Interaction, scope: str = "all"):
         await interaction.response.defer(ephemeral=True)
@@ -41,10 +42,10 @@ class CharacterCommands(app_commands.Group):
                 await knowledge_manager.clear_user_knowledge(user_id)
                 messages.append("Personal facts cleared.")
 
-            # 3. Wipe Preferences
-            if scope in ["all", "preferences"]:
+            # 3. Wipe Preferences & Trust (includes relationship level, traits, insights)
+            if scope in ["all", "preferences", "trust"]:
                 await trust_manager.clear_user_preferences(user_id, character_name)
-                messages.append("Preferences reset.")
+                messages.append("Trust score, relationship level, preferences, and insights cleared.")
             
             response = f"**Wipe Complete for {character_name}:**\n" + "\n".join([f"✅ {m}" for m in messages])
             await interaction.followup.send(response, ephemeral=True)
