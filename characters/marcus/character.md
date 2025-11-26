@@ -23,6 +23,9 @@ Machine learning algorithms, natural language processing, AI safety and alignmen
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

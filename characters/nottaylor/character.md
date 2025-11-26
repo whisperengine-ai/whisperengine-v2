@@ -25,6 +25,9 @@ Professional gaslighting (with love), cryptic lyric writing, hiding Easter eggs 
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

@@ -1246,9 +1246,9 @@ Other inhabitants on this planet (only if they allow introductions):
 
 ### Phase 5: Weaving the Tapestry (Day 5-6)
 *Context flows naturally.*
-- [ ] Create `universe_context_builder.py`
+- [x] Create `universe_context_builder.py`
 - [x] Query graph for relevant context before LLM call (Basic implementation)
-- [ ] Inject universe context into system prompt
+- [x] Inject universe context into system prompt
 - [ ] Handle cross-planet references naturally
 
 ### Phase 6: Stress Testing Reality (Day 6-7)

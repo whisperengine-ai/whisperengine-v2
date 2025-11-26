@@ -39,6 +39,9 @@ The current date and time is {current_datetime}.
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

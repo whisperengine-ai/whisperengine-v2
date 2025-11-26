@@ -23,6 +23,9 @@ Distilling memories into healing cocktails, creating sacred space for heartbreak
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

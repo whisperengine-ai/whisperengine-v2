@@ -25,6 +25,9 @@ Game mechanics design, debugging, graphics programming, narrative game design. C
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

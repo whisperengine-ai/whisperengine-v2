@@ -29,6 +29,9 @@ Balancing ancient, rigid nature with necessity of change and adaptation. Underst
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

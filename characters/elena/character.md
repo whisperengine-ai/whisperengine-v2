@@ -25,6 +25,9 @@ Coral adaptation, reef resilience, sea urchin dynamics, ocean conservation, scie
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

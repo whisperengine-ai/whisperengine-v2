@@ -24,6 +24,9 @@ Wilderness survival, photography, rock climbing, weather/navigation, wildlife tr
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 

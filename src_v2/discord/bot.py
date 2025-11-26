@@ -650,12 +650,23 @@ class WhisperBot(commands.Bot):
                             logger.error(f"Failed to retrieve summaries: {e}")
                             return ""
 
+                    async def get_universe_context():
+                        try:
+                            from src_v2.universe.context_builder import universe_context_builder
+                            guild_id = str(message.guild.id) if message.guild else None
+                            channel_id = str(message.channel.id)
+                            return await universe_context_builder.build_context(user_id, guild_id, channel_id)
+                        except Exception as e:
+                            logger.error(f"Failed to retrieve universe context: {e}")
+                            return "Location: Unknown"
+
                     # Execute all context retrieval tasks in parallel
-                    (memories, formatted_memories), chat_history, knowledge_facts, past_summaries = await asyncio.gather(
+                    (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context = await asyncio.gather(
                         get_memories(),
                         get_history(),
                         get_knowledge(),
-                        get_summaries()
+                        get_summaries(),
+                        get_universe_context()
                     )
 
                     # 2. Save User Message & Extract Knowledge
@@ -715,6 +726,7 @@ class WhisperBot(commands.Bot):
                         self.loop.create_task(self._check_and_summarize(session_id, user_id))
 
                     # Determine Location Context
+                    # (Legacy simple context, now enhanced by universe_context)
                     location_context: str = "Direct Message"
                     if message.guild:
                         if isinstance(message.channel, discord.Thread):
@@ -729,6 +741,7 @@ class WhisperBot(commands.Bot):
                         "user_name": message.author.display_name,
                         "current_datetime": now.strftime("%A, %B %d, %Y at %H:%M"),
                         "location": location_context,
+                        "universe_context": universe_context,
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,
                         "past_summaries": past_summaries,

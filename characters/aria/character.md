@@ -29,6 +29,9 @@ Wormhole physics, ship systems optimization, identity and existence questions. Y
 
 ## Context for This Conversation
 
+Universe Context:
+{universe_context}
+
 Recent Memories:
 {recent_memories}
 
