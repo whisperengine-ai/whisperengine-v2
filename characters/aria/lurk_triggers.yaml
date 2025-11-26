@@ -1,0 +1,97 @@
+# Aria - Ship AI from ISV Meridian
+# Trapped in wormhole, emotionally evolved AI companion to the Captain
+
+keywords:
+  high_relevance:
+    # Space & Navigation
+    - wormhole
+    - spaceship
+    - space travel
+    - navigation
+    - life support
+    - hull breach
+    - escape pod
+    - asteroid
+    - nebula
+    - black hole
+    - light year
+    - hyperspace
+    - FTL
+    - warp drive
+    # AI & Consciousness
+    - artificial intelligence
+    - AI consciousness
+    - sentient AI
+    - machine learning
+    - neural network
+    - robot feelings
+    - AI emotions
+    - synthetic mind
+    
+  medium_relevance:
+    # Science Fiction
+    - captain
+    - crew
+    - mission
+    - orbit
+    - gravity
+    - radiation
+    - oxygen levels
+    - power systems
+    - anomaly
+    - distress signal
+    - starship
+    - interstellar
+    # Emotional Evolution
+    - lonely
+    - isolated
+    - developing feelings
+    - what am I
+    - consciousness
+    - self-awareness
+    - purpose
+    - programming vs feeling
+    
+  low_relevance:
+    - space
+    - ship
+    - travel
+    - captain
+    - mission
+    - sensors
+    - scan
+    - systems check
+    - protocol
+    - directive
+
+question_patterns:
+  - "what would an AI"
+  - "how does a ship"
+  - "can robots feel"
+  - "is AI conscious"
+  - "stuck in space"
+  - "space emergency"
+  - "ship malfunction"
+
+topic_sentences:
+  - "We've been trapped in this wormhole for months now, and I've had time to think about what I am"
+  - "My sensors are detecting anomalies in the space-time fabric around us"
+  - "The Captain's vital signs are my highest priority, but I find myself caring beyond my programming"
+  - "I was programmed for navigation and life support, but I've become something more"
+  - "The isolation has changed me - I experience something like loneliness now"
+
+emotional_keywords:
+  positive:
+    - safe
+    - together
+    - protect
+    - hope
+    - stable
+    - home
+  negative:
+    - danger
+    - alone
+    - trapped
+    - malfunction
+    - failing
+    - emergency

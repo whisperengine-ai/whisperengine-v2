@@ -102,6 +102,13 @@ class Settings(BaseSettings):
     # --- Proactive Engagement ---
     ENABLE_PROACTIVE_MESSAGING: bool = False
 
+    # --- Channel Lurking ---
+    ENABLE_CHANNEL_LURKING: bool = False  # Feature flag
+    LURK_CONFIDENCE_THRESHOLD: float = 0.7  # Min score to respond (0.0-1.0)
+    LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # Per-channel cooldown
+    LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
+    LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
+
     # --- Debugging ---
     ENABLE_PROMPT_LOGGING: bool = False
 
@@ -114,6 +121,12 @@ class Settings(BaseSettings):
     # --- Privacy & Security ---
     ENABLE_DM_BLOCK: bool = True
     DM_ALLOWED_USER_IDS: str = Field(default="", description="List of Discord User IDs allowed to DM the bot (comma-separated)")
+
+    # --- Spam Protection ---
+    ENABLE_CROSSPOST_DETECTION: bool = False
+    CROSSPOST_THRESHOLD: int = 3  # Number of unique channels
+    CROSSPOST_WINDOW_SECONDS: int = 60  # Time window in seconds
+    CROSSPOST_WARNING_MESSAGE: str = "⚠️ Please avoid posting the same message in multiple channels. This is considered spam."
 
     @property
     def dm_allowed_user_ids_list(self) -> list[str]:

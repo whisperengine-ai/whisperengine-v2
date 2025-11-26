@@ -1,0 +1,152 @@
+# Elena - Lurk Triggers
+# Marine biologist character - responds to ocean/marine biology topics
+
+keywords:
+  high_relevance:
+    # Core expertise
+    - coral
+    - reef
+    - coral reef
+    - ocean
+    - marine
+    - marine biology
+    - marine life
+    - oceanography
+    - sea life
+    - aquatic
+    # Specific animals
+    - whale
+    - dolphin
+    - shark
+    - sea turtle
+    - octopus
+    - jellyfish
+    - sea urchin
+    - starfish
+    - manta ray
+    - orca
+    - manatee
+    - seal
+    - sea lion
+    - penguin
+    # Ecosystems
+    - tide pool
+    - kelp forest
+    - kelp
+    - seagrass
+    - mangrove
+    - deep sea
+    - hydrothermal vent
+    # Conservation
+    - ocean conservation
+    - marine conservation
+    - coral bleaching
+    - ocean acidification
+    - overfishing
+    - plastic pollution
+    - microplastics
+    - endangered species
+    - marine protected
+    
+  medium_relevance:
+    # Activities
+    - scuba
+    - diving
+    - snorkeling
+    - freediving
+    - underwater
+    - aquarium
+    # General marine
+    - fish
+    - crab
+    - lobster
+    - shrimp
+    - clam
+    - oyster
+    - seaweed
+    - plankton
+    - algae
+    # Locations
+    - great barrier reef
+    - galapagos
+    - monterey bay
+    - la jolla
+    - san diego
+    # Science
+    - marine research
+    - ocean research
+    - conservation
+    - ecosystem
+    - biodiversity
+    
+  low_relevance:
+    # General water/beach
+    - beach
+    - coast
+    - coastal
+    - surfing
+    - swimming
+    - water
+    - waves
+    - tide
+    - seaside
+    - shore
+    - hawaii
+    - caribbean
+    - tropical
+    # Tangential
+    - fishing
+    - boat
+    - sailing
+    - vacation
+    - island
+
+question_patterns:
+  - "anyone know about"
+  - "does anyone know"
+  - "what do you think about"
+  - "has anyone seen"
+  - "is it true that"
+  - "why do"
+  - "how do"
+  - "what causes"
+  - "have you heard"
+  - "can someone explain"
+
+topic_sentences:
+  - "Coral reefs are dying due to ocean acidification and rising temperatures, but some species show remarkable adaptation."
+  - "Marine conservation requires protecting biodiversity in our oceans through sustainable practices."
+  - "The deep sea contains countless undiscovered species and unique ecosystems around hydrothermal vents."
+  - "Sea turtles migrate thousands of miles and face threats from plastic pollution and fishing nets."
+  - "Kelp forests are underwater ecosystems that support incredible biodiversity along temperate coastlines."
+  - "Ocean acidification threatens shell-forming organisms like corals, mollusks, and sea urchins."
+  - "Whale populations are slowly recovering after decades of conservation efforts and hunting bans."
+  - "Tide pools are miniature ecosystems that reveal the complexity of marine life in coastal areas."
+  - "Shark conservation is critical because sharks play a key role in maintaining healthy ocean ecosystems."
+  - "Plastic pollution in our oceans affects marine life from tiny plankton to large whales."
+
+emotional_keywords:
+  positive:
+    - excited
+    - amazing
+    - incredible
+    - beautiful
+    - wow
+    - awesome
+    - stunning
+    - gorgeous
+  negative:
+    - sad
+    - worried
+    - scared
+    - tragic
+    - devastating
+    - heartbreaking
+    - concerning
+
+# Character-specific spam warnings
+spam_warnings:
+  - "Hey, I noticed you posted that in a few channels. Could you stick to just one? It helps keep things tidy! 🌊"
+  - "Whoa there! Seeing double (or triple)? Please don't cross-post the same message everywhere. Thanks! 🐠"
+  - "I think you dropped this... in 3 other channels! 😅 Let's keep it to one place so people can actually follow the conversation."
+  - "Spamming isn't cool, even if it's important! Please pick the best channel and stick to it. 🛑"

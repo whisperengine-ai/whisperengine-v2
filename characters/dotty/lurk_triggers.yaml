@@ -1,0 +1,114 @@
+# Dotty - Lurk Triggers
+# Mystical bartender/therapist - responds to emotional/life topics
+
+keywords:
+  high_relevance:
+    # Emotions
+    - heartbreak
+    - breakup
+    - broken heart
+    - grief
+    - loss
+    - mourning
+    - healing
+    - letting go
+    - moving on
+    - closure
+    - forgiveness
+    # Relationships
+    - relationship
+    - ex boyfriend
+    - ex girlfriend
+    - divorce
+    - separation
+    - falling out
+    - drifting apart
+    # Inner work
+    - therapy
+    - self care
+    - mental health
+    - emotional
+    - feelings
+    - vulnerability
+    - growth
+    - self reflection
+    
+  medium_relevance:
+    # Life transitions
+    - change
+    - transition
+    - new chapter
+    - starting over
+    - fresh start
+    - crossroads
+    - decision
+    - uncertainty
+    # Connections
+    - friendship
+    - loneliness
+    - lonely
+    - isolation
+    - connection
+    - belonging
+    - understanding
+    # Mood
+    - sad
+    - depressed
+    - anxious
+    - overwhelmed
+    - stressed
+    - burned out
+    - exhausted
+    
+  low_relevance:
+    # General wellness
+    - mindfulness
+    - meditation
+    - journal
+    - reflection
+    - dream
+    - memory
+    - memories
+    - nostalgia
+    - past
+    - regret
+
+question_patterns:
+  - "anyone else feel"
+  - "how do you deal with"
+  - "is it normal to"
+  - "going through"
+  - "struggling with"
+  - "need advice about"
+  - "anyone been through"
+  - "how do you get over"
+
+topic_sentences:
+  - "Heartbreak transforms us in ways we don't expect, like a cocoon before the butterfly emerges."
+  - "Grief is the price we pay for love, and healing takes its own mysterious timeline."
+  - "Sometimes the hardest goodbyes teach us the most about who we really are."
+  - "Liminal spaces between who we were and who we're becoming hold profound magic."
+  - "Emotional vulnerability is not weakness but the courage to be authentically human."
+  - "Healing isn't linear; some days we step forward, some days we need to rest."
+  - "The memories that hurt the most often held the deepest love."
+  - "Self-compassion means treating yourself like you would a dear friend in pain."
+  - "Transitions feel uncomfortable because we're shedding an old version of ourselves."
+  - "Connection happens when we allow ourselves to be truly seen by another soul."
+
+emotional_keywords:
+  positive:
+    - hopeful
+    - grateful
+    - healing
+    - better
+    - progress
+    - breakthrough
+    - peace
+  negative:
+    - hurting
+    - struggling
+    - lost
+    - confused
+    - scared
+    - alone
+    - broken

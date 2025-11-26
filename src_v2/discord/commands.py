@@ -234,11 +234,247 @@ class CharacterCommands(app_commands.Group):
             logger.error(f"Failed to toggle stats footer: {e}")
             await interaction.followup.send("Failed to toggle stats footer.", ephemeral=True)
 
+    @app_commands.command(name="lurk", description="Configure channel lurking behavior")
+    @app_commands.describe(
+        action="Enable, disable, or check lurking status",
+        threshold="Confidence threshold (0.5-1.0) for jumping into conversations"
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="Enable", value="enable"),
+        app_commands.Choice(name="Disable", value="disable"),
+        app_commands.Choice(name="Status", value="status")
+    ])
+    async def lurk(
+        self, 
+        interaction: discord.Interaction, 
+        action: str,
+        threshold: float = None
+    ):
+        """
+        Configure channel lurking for this channel.
+        When enabled, the bot may join relevant conversations without being @mentioned.
+        
+        Requires Manage Channels permission.
+        """
+        await interaction.response.defer(ephemeral=True)
+        
+        # Check permissions (require Manage Channels)
+        if not interaction.guild:
+            await interaction.followup.send("This command can only be used in a server.", ephemeral=True)
+            return
+            
+        member = cast(discord.Member, interaction.user)
+        if not member.guild_permissions.manage_channels:
+            await interaction.followup.send("You need **Manage Channels** permission to configure lurking.", ephemeral=True)
+            return
+        
+        # Check if lurking is enabled globally
+        if not settings.ENABLE_CHANNEL_LURKING:
+            await interaction.followup.send("⚠️ Channel lurking is disabled globally in bot settings.", ephemeral=True)
+            return
+            
+        channel_id = str(interaction.channel_id)
+        character_name = settings.DISCORD_BOT_NAME or "default"
+        
+        try:
+            from src_v2.discord.lurk_detector import get_lurk_detector
+            lurk_detector = get_lurk_detector(character_name)
+            
+            if action == "status":
+                # Get current status
+                is_enabled = await lurk_detector.is_channel_enabled(channel_id)
+                current_threshold = await lurk_detector.get_channel_threshold(channel_id)
+                stats = await lurk_detector.get_channel_stats(channel_id)
+                
+                status = "✅ Enabled" if is_enabled else "❌ Disabled"
+                embed = discord.Embed(
+                    title=f"Lurking Status: #{interaction.channel.name}",
+                    color=0x00ff00 if is_enabled else 0xff0000
+                )
+                embed.add_field(name="Status", value=status, inline=True)
+                embed.add_field(name="Threshold", value=f"{current_threshold:.2f}", inline=True)
+                embed.add_field(name="Responses Today", value=str(stats.get("today", 0)), inline=True)
+                embed.add_field(name="Total Responses", value=str(stats.get("total", 0)), inline=True)
+                
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                
+            elif action == "enable":
+                # Validate threshold if provided
+                if threshold is not None:
+                    if threshold < 0.5 or threshold > 1.0:
+                        await interaction.followup.send("Threshold must be between 0.5 and 1.0", ephemeral=True)
+                        return
+                    await lurk_detector.set_channel_threshold(channel_id, threshold)
+                    
+                await lurk_detector.enable_channel(channel_id)
+                msg = f"✅ Lurking enabled for #{interaction.channel.name}"
+                if threshold is not None:
+                    msg += f" with threshold {threshold:.2f}"
+                await interaction.followup.send(msg, ephemeral=True)
+                
+            elif action == "disable":
+                await lurk_detector.disable_channel(channel_id)
+                await interaction.followup.send(f"❌ Lurking disabled for #{interaction.channel.name}", ephemeral=True)
+                
+        except Exception as e:
+            logger.error(f"Failed to configure lurking: {e}")
+            await interaction.followup.send("Failed to configure lurking.", ephemeral=True)
+
+    @app_commands.command(name="lurk_stats", description="View lurking statistics")
+    async def lurk_stats(self, interaction: discord.Interaction):
+        """
+        View lurking statistics for this server.
+        Shows global stats and any channel-specific overrides.
+        """
+        await interaction.response.defer(ephemeral=True)
+        
+        if not interaction.guild:
+            await interaction.followup.send("This command can only be used in a server.", ephemeral=True)
+            return
+            
+        if not settings.ENABLE_CHANNEL_LURKING:
+            await interaction.followup.send("⚠️ Channel lurking is disabled globally.", ephemeral=True)
+            return
+            
+        character_name = settings.DISCORD_BOT_NAME or "default"
+        
+        try:
+            from src_v2.discord.lurk_detector import get_lurk_detector
+            lurk_detector = get_lurk_detector(character_name)
+            
+            # Get stats
+            guild_stats = await lurk_detector.get_guild_stats(str(interaction.guild_id))
+            global_stats = guild_stats.get("global_stats", {})
+            disabled_channels = guild_stats.get("disabled_channels", [])
+            custom_thresholds = guild_stats.get("custom_thresholds", {})
+            
+            embed = discord.Embed(
+                title=f"Lurking Statistics: {interaction.guild.name}",
+                description="Channel lurking is **ENABLED** by default on all channels.",
+                color=0x00aaff
+            )
+            
+            # Global Stats
+            daily_count = global_stats.get("daily_count", 0)
+            max_daily = global_stats.get("max_daily", settings.LURK_DAILY_MAX_RESPONSES)
+            embed.add_field(
+                name="Global Limits", 
+                value=f"Daily Responses: {daily_count}/{max_daily}\nCooldowns: {global_stats.get('channels_on_cooldown', 0)} channels, {global_stats.get('users_on_cooldown', 0)} users",
+                inline=False
+            )
+            
+            # Disabled Channels
+            if disabled_channels:
+                disabled_names = []
+                for cid in disabled_channels:
+                    channel = interaction.guild.get_channel(int(cid))
+                    if channel:
+                        disabled_names.append(f"#{channel.name}")
+                    else:
+                        disabled_names.append(f"Unknown ({cid})")
+                embed.add_field(name="❌ Disabled Channels", value=", ".join(disabled_names), inline=False)
+            
+            # Custom Thresholds
+            if custom_thresholds:
+                custom_list = []
+                for cid, thresh in custom_thresholds.items():
+                    channel = interaction.guild.get_channel(int(cid))
+                    if channel:
+                        custom_list.append(f"#{channel.name}: {thresh:.2f}")
+                if custom_list:
+                    embed.add_field(name="⚙️ Custom Thresholds", value="\n".join(custom_list), inline=False)
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Failed to get lurk stats: {e}")
+            await interaction.followup.send("Failed to get lurking statistics.", ephemeral=True)
+
+class SpamCommands(app_commands.Group):
+    """Commands for managing spam detection."""
+    
+    def __init__(self):
+        super().__init__(name="spam", description="Manage spam detection settings")
+
+    @app_commands.command(name="enable", description="Enable spam detection")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def enable(self, interaction: discord.Interaction):
+        from src_v2.discord.spam_detector import spam_detector
+        spam_detector.enabled = True
+        await interaction.response.send_message("✅ Spam detection enabled.", ephemeral=True)
+
+    @app_commands.command(name="disable", description="Disable spam detection")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def disable(self, interaction: discord.Interaction):
+        from src_v2.discord.spam_detector import spam_detector
+        spam_detector.enabled = False
+        await interaction.response.send_message("❌ Spam detection disabled.", ephemeral=True)
+
+    @app_commands.command(name="threshold", description="Set cross-post threshold")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def threshold(self, interaction: discord.Interaction, count: int):
+        if count < 2:
+            await interaction.response.send_message("Threshold must be at least 2.", ephemeral=True)
+            return
+        from src_v2.discord.spam_detector import spam_detector
+        spam_detector.threshold = count
+        await interaction.response.send_message(f"✅ Spam threshold set to {count} channels.", ephemeral=True)
+
+    @app_commands.command(name="action", description="Set spam action (warn or delete)")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.choices(action=[
+        app_commands.Choice(name="Warn User", value="warn"),
+        app_commands.Choice(name="Delete Message", value="delete")
+    ])
+    async def action(self, interaction: discord.Interaction, action: app_commands.Choice[str]):
+        from src_v2.discord.spam_detector import spam_detector
+        spam_detector.action = action.value
+        await interaction.response.send_message(f"✅ Spam action set to: {action.name}", ephemeral=True)
+
+    @app_commands.command(name="whitelist", description="Whitelist a role from spam detection")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def whitelist(self, interaction: discord.Interaction, role: discord.Role):
+        from src_v2.discord.spam_detector import spam_detector
+        await spam_detector.add_whitelist(str(role.id), str(interaction.guild_id))
+        await interaction.response.send_message(f"✅ Role {role.mention} whitelisted from spam detection.", ephemeral=True)
+
+    @app_commands.command(name="unwhitelist", description="Remove a role from whitelist")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def unwhitelist(self, interaction: discord.Interaction, role: discord.Role):
+        from src_v2.discord.spam_detector import spam_detector
+        await spam_detector.remove_whitelist(str(role.id), str(interaction.guild_id))
+        await interaction.response.send_message(f"❌ Role {role.mention} removed from whitelist.", ephemeral=True)
+
+    @app_commands.command(name="stats", description="View spam detection stats")
+    async def stats(self, interaction: discord.Interaction):
+        from src_v2.discord.spam_detector import spam_detector
+        status = "Enabled" if spam_detector.enabled else "Disabled"
+        embed = discord.Embed(title="Spam Detection Stats", color=0xff0000)
+        embed.add_field(name="Status", value=status, inline=True)
+        embed.add_field(name="Threshold", value=f"{spam_detector.threshold} channels", inline=True)
+        embed.add_field(name="Action", value=spam_detector.action.title(), inline=True)
+        embed.add_field(name="Window", value=f"{spam_detector.window} seconds", inline=True)
+        
+        # Get whitelisted roles
+        if interaction.guild:
+            whitelisted_ids = spam_detector._whitelisted_roles.get(str(interaction.guild_id), set())
+            roles = []
+            for rid in whitelisted_ids:
+                role = interaction.guild.get_role(int(rid))
+                if role:
+                    roles.append(role.mention)
+            if roles:
+                embed.add_field(name="Whitelisted Roles", value=", ".join(roles), inline=False)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 class WhisperCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # Register the dynamic group
+        # Register the dynamic groups
         self.bot.tree.add_command(CharacterCommands())
+        self.bot.tree.add_command(SpamCommands())
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(WhisperCommands(bot))

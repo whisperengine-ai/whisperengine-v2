@@ -107,7 +107,7 @@ class MemoryManager:
 
         try:
             # Generate embedding
-            embedding = await self.embedding_service.get_embedding(content)
+            embedding = await self.embedding_service.embed_query_async(content)
             
             # Prepare payload
             payload = {

@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 import discord
 import asyncio
+import time
 from typing import Union, List, Tuple, Any, Optional
 from datetime import datetime
 from discord.ext import commands
@@ -20,6 +21,7 @@ from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.extractor import preference_extractor
 from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
+from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
 from src_v2.workers.task_queue import task_queue
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator
@@ -47,6 +49,7 @@ class WhisperBot(commands.Bot):
         
         self.agent_engine = AgentEngine()
         self.scheduler = ProactiveScheduler(self)
+        self.lurk_detector: Optional[LurkDetector] = None
         
         # Validate Bot Identity
         if not settings.DISCORD_BOT_NAME:
@@ -206,6 +209,13 @@ class WhisperBot(commands.Bot):
         else:
             logger.info("Proactive Scheduler disabled in settings.")
 
+        # Initialize Lurk Detector
+        if settings.ENABLE_CHANNEL_LURKING:
+            self.lurk_detector = get_lurk_detector(self.character_name)
+            logger.info(f"Channel Lurking enabled for {self.character_name}.")
+        else:
+            logger.info("Channel Lurking disabled in settings.")
+
         # Start status update loop
         self.loop.create_task(self.update_status_loop())
 
@@ -235,6 +245,58 @@ class WhisperBot(commands.Bot):
         # Ignore messages from self and other bots to prevent loops
         if message.author.bot:
             return
+
+        # --- Spam Detection (Cross-posting) ---
+        if message.guild and settings.ENABLE_CROSSPOST_DETECTION:
+            try:
+                from src_v2.discord.spam_detector import spam_detector
+                
+                # Check whitelist
+                is_whitelisted = await spam_detector.is_whitelisted(message.author.roles, str(message.guild.id))
+                
+                if not is_whitelisted:
+                    is_spam = False
+                    
+                    # Check text spam
+                    if message.content:
+                        is_spam = await spam_detector.check_crosspost(
+                            user_id=str(message.author.id),
+                            channel_id=str(message.channel.id),
+                            content=message.content
+                        )
+                    
+                    # Check file spam
+                    if not is_spam and message.attachments:
+                        is_spam = await spam_detector.check_file_crosspost(
+                            user_id=str(message.author.id),
+                            channel_id=str(message.channel.id),
+                            attachments=message.attachments
+                        )
+                    
+                    if is_spam:
+                        # Action: Delete or Warn
+                        if spam_detector.action == "delete":
+                            try:
+                                await message.delete()
+                                warning = f"{message.author.mention} ⚠️ Message deleted for cross-posting spam."
+                                await message.channel.send(warning, delete_after=10)
+                            except Exception as e:
+                                logger.error(f"Failed to delete spam message: {e}")
+                        else:
+                            # Warn the user
+                            # Try to get character-specific warning
+                            warning_msg = settings.CROSSPOST_WARNING_MESSAGE
+                            if self.lurk_detector and self.lurk_detector.triggers.spam_warnings:
+                                import random
+                                warning_msg = random.choice(self.lurk_detector.triggers.spam_warnings)
+                            
+                            warning = f"{message.author.mention} {warning_msg}"
+                            await message.channel.send(warning, delete_after=10)
+                            
+                        logger.warning(f"Actioned user {message.author.id} for cross-posting spam.")
+                        return
+            except Exception as e:
+                logger.error(f"Spam detection failed: {e}")
 
         # Process commands first
         await self.process_commands(message)
@@ -607,7 +669,6 @@ class WhisperBot(commands.Bot):
                         user_message += f"\n\n[Attached File Content]:\n{file_content}"
 
                     # Track timing for stats footer
-                    import time
                     start_time = time.time()
                     
                     # Prepare callback for Reflective Mode
@@ -769,6 +830,185 @@ class WhisperBot(commands.Bot):
                 except Exception as e:
                     logger.exception(f"Critical error in on_message: {e}")
                     await message.channel.send("I'm having a bit of trouble processing that right now. Please try again later.")
+
+        # Channel Lurking: Respond to relevant messages without being mentioned
+        elif settings.ENABLE_CHANNEL_LURKING and self.lurk_detector and message.guild:
+            await self._handle_lurk_response(message, sticker_text)
+
+    async def _handle_lurk_response(self, message: discord.Message, sticker_text: str = "") -> None:
+        """Handle potential lurk response for a channel message.
+        
+        This is called for guild messages where the bot was NOT mentioned.
+        We analyze the message for relevance and decide whether to jump in.
+        
+        Args:
+            message: Discord message object
+            sticker_text: Processed sticker text if any
+        """
+        if not self.lurk_detector:
+            return
+            
+        channel_id = str(message.channel.id)
+        user_id = str(message.author.id)
+        
+        # Check if lurking is enabled for this channel
+        channel_enabled = await self.lurk_detector.is_channel_enabled(channel_id)
+        if not channel_enabled:
+            return
+        
+        # Combine message content with sticker text
+        message_content = message.content
+        if sticker_text:
+            message_content += sticker_text
+            
+        if not message_content.strip():
+            return
+            
+        try:
+            # Get channel-specific threshold
+            channel_threshold = await self.lurk_detector.get_channel_threshold(channel_id)
+            
+            # Analyze message for relevance
+            lurk_result = await self.lurk_detector.analyze(
+                message=message_content,
+                channel_id=channel_id,
+                user_id=user_id,
+                author_is_bot=message.author.bot,
+                channel_lurk_enabled=True,  # Already checked above
+                custom_threshold=channel_threshold
+            )
+            
+            if not lurk_result.should_respond:
+                logger.debug(f"Lurk: Not responding to message (score={lurk_result.confidence:.2f}, reason={lurk_result.trigger_reason})")
+                return
+                
+            logger.info(f"Lurk: Responding to message (score={lurk_result.confidence:.2f}, trigger={lurk_result.trigger_reason})")
+            
+            async with message.channel.typing():
+                # Get the character
+                character = character_manager.get_character(self.character_name)
+                if not character:
+                    logger.error(f"Character '{self.character_name}' not loaded for lurk response.")
+                    return
+                    
+                # Session management
+                session_id = await session_manager.get_active_session(user_id, self.character_name)
+                if not session_id:
+                    session_id = await session_manager.create_session(user_id, self.character_name)
+                
+                # Context retrieval (simplified for lurk - less aggressive)
+                async def get_memories():
+                    try:
+                        mems = await memory_manager.search_memories(message_content, user_id)
+                        if mems:
+                            return "\n".join([f"- {m['content']} ({m.get('relative_time', 'unknown time')})" for m in mems[:3]])
+                        return "No relevant memories found."
+                    except Exception as e:
+                        logger.error(f"Failed to search memories for lurk: {e}")
+                        return "No relevant memories found."
+                        
+                async def get_knowledge():
+                    try:
+                        facts = await knowledge_manager.get_user_knowledge(user_id)
+                        if "name" not in facts.lower():
+                            facts += f"\n- User's Discord Display Name: {message.author.display_name}"
+                        return facts
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve knowledge for lurk: {e}")
+                        return ""
+                        
+                async def get_history():
+                    try:
+                        return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id, limit=5)
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve history for lurk: {e}")
+                        return []
+                        
+                formatted_memories, knowledge_facts, chat_history = await asyncio.gather(
+                    get_memories(),
+                    get_knowledge(),
+                    get_history()
+                )
+                
+                # Build context for lurk response
+                # Add special lurk instruction to guide the response style
+                lurk_instruction = (
+                    "\n\n[LURK MODE]: You're jumping into an ongoing conversation organically. "
+                    "The user did NOT mention you directly - you noticed something relevant to your expertise/interests. "
+                    "Be natural, helpful, and non-intrusive. Don't over-explain your presence. "
+                    f"You're responding because: {lurk_result.trigger_reason}."
+                )
+                
+                context_vars = {
+                    "user_name": message.author.display_name,
+                    "recent_memories": formatted_memories,
+                    "knowledge_facts": knowledge_facts,
+                    "lurk_instruction": lurk_instruction
+                }
+                
+                # Generate response (use simpler path, no reflective mode for lurk)
+                start_time = time.time()
+                
+                response = await self.agent_engine.generate_response(
+                    character=character,
+                    user_message=message_content + lurk_instruction,
+                    chat_history=chat_history,
+                    context_variables=context_vars,
+                    user_id=user_id
+                )
+                
+                processing_time_ms = (time.time() - start_time) * 1000
+                
+                # Send response (chunked if needed)
+                message_chunks = self._chunk_message(response)
+                sent_messages = []
+                for chunk in message_chunks:
+                    sent_msg = await message.channel.send(chunk)
+                    sent_messages.append(sent_msg)
+                    
+                # Record the lurk response
+                await self.lurk_detector.record_response(
+                    channel_id=channel_id,
+                    user_id=user_id,
+                    message_id=str(message.id),
+                    confidence=lurk_result.confidence,
+                    trigger_type=lurk_result.trigger_reason
+                )
+                
+                # Save messages to memory
+                await memory_manager.add_message(
+                    user_id,
+                    character.name,
+                    'human',
+                    message_content,
+                    channel_id=channel_id,
+                    message_id=str(message.id),
+                    user_name=message.author.display_name
+                )
+                
+                if sent_messages:
+                    await memory_manager.add_message(
+                        user_id,
+                        character.name,
+                        'ai',
+                        response,
+                        channel_id=channel_id,
+                        message_id=str(sent_messages[-1].id)
+                    )
+                    
+                # Trust update (smaller for lurk responses)
+                async def handle_lurk_trust():
+                    try:
+                        await trust_manager.update_trust(user_id, character.name, 0.5)
+                    except Exception as e:
+                        logger.error(f"Failed to update trust for lurk: {e}")
+                        
+                self.loop.create_task(handle_lurk_trust())
+                
+                logger.info(f"Lurk response sent in {processing_time_ms:.0f}ms (confidence={lurk_result.confidence:.2f})")
+                
+        except Exception as e:
+            logger.error(f"Error in lurk handler: {e}")
 
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         """
