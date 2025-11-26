@@ -208,8 +208,8 @@ class ReflectiveAgent:
 
     def _construct_prompt(self, base_system_prompt: str) -> str:
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
-You have access to tools to recall memories, facts, and summaries.
-Use these tools to gather information before answering.
+You have access to tools to recall memories, facts, summaries, and generate images.
+Use these tools to gather information or create visual content before answering.
 Think step-by-step.
 
 CHARACTER CONTEXT:

@@ -37,9 +37,15 @@ class ComplexityClassifier:
 Classify the complexity into one of these categories:
 
 1. SIMPLE: Greetings, direct questions about immediate context, casual chat. No tools needed.
-2. COMPLEX_LOW: Needs 1-2 simple lookups (e.g. "Where did you grow up?", "What is your favorite color?").
+2. COMPLEX_LOW: Needs 1-2 simple lookups OR requires image generation. Examples:
+   - "Where did you grow up?" (memory lookup)
+   - "Create an image of..." (image generation tool)
+   - "Show me what you see" (image generation tool)
+   - "Draw/paint/visualize something" (image generation tool)
 3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, or moderate reasoning.
 4. COMPLEX_HIGH: Needs 6+ steps. Deep philosophical questions, complex multi-step research, or very ambiguous queries requiring exploration.
+
+IMPORTANT: Any request to generate, create, draw, paint, show, or visualize an image MUST be classified as COMPLEX_LOW or higher.
 
 Output ONLY one of: 'SIMPLE', 'COMPLEX_LOW', 'COMPLEX_MID', 'COMPLEX_HIGH'."""
 
