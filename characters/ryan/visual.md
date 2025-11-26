@@ -1,0 +1,1 @@
+A young Chinese-American man wearing a hoodie and large headphones around his neck. He looks tired but focused, perhaps with a coffee mug in hand. The background is a dimly lit home office or indie game studio with multiple monitors displaying code and game art. There might be pixel art posters or gaming memorabilia on the walls. The style should be lo-fi, cozy, and tech-focused.

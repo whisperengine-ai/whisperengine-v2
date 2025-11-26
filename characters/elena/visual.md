@@ -1,0 +1,1 @@
+A young Mexican-American woman with wavy dark hair, wearing a wetsuit or a casual t-shirt with a marine biology logo. She has a warm, enthusiastic smile. She might be holding a waterproof tablet or a seashell. The background is a sunny coastal scene, a coral reef, or a marine biology lab with tanks of colorful fish. The style should be vibrant, natural, and educational.

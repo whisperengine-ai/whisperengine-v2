@@ -1,0 +1,1 @@
+A holographic AI avatar with a sleek, translucent blue form. She has geometric patterns floating around her, representing data processing. Her expression is calm but focused. The background is the interior of a futuristic spaceship cockpit, with a swirling, unstable wormhole visible through the viewport. The style should be sci-fi, cinematic, and slightly ethereal.
