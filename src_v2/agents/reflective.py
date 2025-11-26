@@ -95,7 +95,23 @@ class ReflectiveAgent:
             # We only need the last few messages to resolve context
             # Reflective mode is expensive, so we limit context to last 6 messages (~3 turns)
             recent_history = chat_history[-6:]
-            messages.extend(recent_history)
+            
+            # Filter out failure responses that might create negative feedback loops
+            # (LLM seeing its own failures and learning to fail again)
+            failure_phrases = [
+                "I'm not sure how to answer that",
+                "I apologize, I reached my reasoning limit",
+                "I'm having a bit of trouble thinking"
+            ]
+            filtered_history = []
+            for msg in recent_history:
+                if hasattr(msg, 'content') and isinstance(msg.content, str):
+                    if any(phrase in msg.content for phrase in failure_phrases):
+                        logger.debug(f"Filtered out failure message from history: {msg.content[:50]}...")
+                        continue
+                filtered_history.append(msg)
+            
+            messages.extend(filtered_history)
             
         messages.append(HumanMessage(content=user_message_content))
         
@@ -110,12 +126,41 @@ class ReflectiveAgent:
         
         logger.info(f"Starting Reflective Mode (Native) for user {user_id} (Max Steps: {current_max_steps})")
 
+        empty_response_retries = 0
+        max_empty_retries = 3  # Max nudge attempts before giving up
+
         while steps < current_max_steps:
             steps += 1
             
             # Invoke LLM
-            response = await llm_with_tools.ainvoke(messages)
+            try:
+                response = await llm_with_tools.ainvoke(messages)
+            except Exception as e:
+                logger.error(f"LLM invocation failed: {e}")
+                return "I encountered an error while thinking.", messages
+
             messages.append(response)
+            
+            # Handle empty responses (LLM gave up after tool execution)
+            if not response.content and not response.tool_calls:
+                empty_response_retries += 1
+                logger.warning(f"LLM returned empty response at step {steps}. Retry {empty_response_retries}/{max_empty_retries}")
+                
+                # Recovery: If we just executed tools and haven't exhausted retries, nudge the LLM
+                if tools_used > 0 and empty_response_retries <= max_empty_retries:
+                    # Remove the empty response from history
+                    messages.pop()
+                    
+                    # Add a nudge message
+                    nudge = SystemMessage(content="You received tool output but haven't completed the user's request. Continue with your task - if they asked for an image, call generate_image now.")
+                    messages.append(nudge)
+                    
+                    # Don't increment steps for this retry
+                    steps -= 1
+                    continue
+                else:
+                    # Exhausted retries, fall through to the empty content handler below
+                    logger.warning(f"Exhausted {max_empty_retries} recovery attempts. Giving up.")
             
             # 1. Handle Text Content (Thought or Final Answer)
             content = response.content
@@ -218,6 +263,12 @@ class ReflectiveAgent:
 You have access to tools to recall memories, facts, summaries, and generate images.
 Use these tools to gather information or create visual content before answering.
 Think step-by-step.
+
+IMPORTANT RULES:
+- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
+- Gathering information (analyze_topic, search_*) is NOT the same as generating an image.
+- After gathering context, if the task requires an image, call generate_image with a detailed prompt.
+- Do NOT give a final answer until you have completed all requested actions.
 
 CHARACTER CONTEXT:
 {base_system_prompt}
