@@ -9,6 +9,7 @@ from influxdb_client import Point
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
+from src_v2.tools.universe_tools import CheckPlanetContextTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -21,7 +22,7 @@ class CognitiveRouter:
     def __init__(self):
         self.llm = create_llm(temperature=0.0, mode="router") # Low temp for deterministic routing
 
-    async def route_and_retrieve(self, user_id: str, query: str, chat_history: Optional[List[BaseMessage]] = None) -> Dict[str, Any]:
+    async def route_and_retrieve(self, user_id: str, query: str, chat_history: Optional[List[BaseMessage]] = None, guild_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Analyzes the query, selects tools, executes them, and returns the context.
         
@@ -42,7 +43,8 @@ class CognitiveRouter:
             LookupFactsTool(user_id=user_id),
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
-            AnalyzeTopicTool(user_id=user_id, bot_name=character_name)
+            AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
+            CheckPlanetContextTool(guild_id=guild_id)
         ]
         
         # 2. Bind tools to LLM
@@ -59,6 +61,7 @@ AVAILABLE TOOLS:
 - update_user_facts: For when the user explicitly corrects a fact or says something has changed (e.g., "I moved to Seattle", "I don't like pizza anymore").
 - update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
 - analyze_topic: For comprehensive research on a broad topic. Searches summaries, episodes, and facts simultaneously. Use this for "tell me everything about X" or complex questions.
+- check_planet_context: For questions about "where are we?", "who is here?", or details about the current server/planet.
 
 RULES:
 1. If the user is just saying "hi" or small talk, you MAY call lookup_user_facts to personalize the greeting (e.g. to find their name), but avoid heavy memory searches.

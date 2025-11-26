@@ -13,6 +13,7 @@ from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.core.cache import cache_manager
 from src_v2.knowledge.extractor import FactExtractor, Fact
 from src_v2.agents.llm_factory import create_llm
+from src_v2.universe.privacy import privacy_manager
 
 class KnowledgeManager:
     def __init__(self):
@@ -56,6 +57,8 @@ RULES:
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
 - For "hobbies" or "interests", ALWAYS check for 'LIKES', 'LOVES', 'ENJOYS'.
 - If the question cannot be answered by the schema (e.g. asking for chat history, weather, time, or general knowledge), return exactly: RETURN "NO_ANSWER"
+
+{privacy_instructions}
 """),
             ("human", "{question}")
         ])
@@ -177,8 +180,25 @@ RULES:
             return "Graph database not available."
 
         try:
-            # 1. Generate Cypher
-            cypher_query = await self.cypher_chain.ainvoke({"question": question})
+            # 1. Check Privacy Settings
+            privacy_settings = await privacy_manager.get_settings(user_id)
+            privacy_instructions = ""
+            
+            if not privacy_settings.get("share_with_other_bots", True):
+                # Restrict to facts learned by this bot OR facts with no source (legacy)
+                privacy_instructions = """
+PRIVACY RESTRICTION ENABLED:
+- The user has disabled sharing data between bots.
+- You MUST append a WHERE clause to filter relationships.
+- ONLY match relationships where `r.source_bot = $bot_name` OR `r.source_bot` IS NULL.
+- Example: MATCH ... WHERE ... AND (r.source_bot = $bot_name OR r.source_bot IS NULL) ...
+"""
+
+            # 2. Generate Cypher
+            cypher_query = await self.cypher_chain.ainvoke({
+                "question": question,
+                "privacy_instructions": privacy_instructions
+            })
             cypher_query = cypher_query.replace("```cypher", "").replace("```", "").strip()
             
             # Handle "NO_ANSWER" case
@@ -341,7 +361,7 @@ RULES:
             return ""
 
     @retry_db_operation(max_retries=3)
-    async def process_user_message(self, user_id: str, message: str):
+    async def process_user_message(self, user_id: str, message: str, bot_name: str = "unknown"):
         """
         Extracts facts from the message and stores them in the Knowledge Graph.
         """
@@ -356,18 +376,18 @@ RULES:
         if not facts:
             return
 
-        logger.info(f"Extracted {len(facts)} facts for user {user_id}")
+        logger.info(f"Extracted {len(facts)} facts for user {user_id} (source: {bot_name})")
 
         # 2. Store in Neo4j
         async with db_manager.neo4j_driver.session() as session:
             for fact in facts:
-                await session.execute_write(self._merge_fact, user_id, fact)
+                await session.execute_write(self._merge_fact, user_id, fact, bot_name)
         
         # Invalidate common ground cache for this user (across all bots)
         await cache_manager.delete_pattern(f"knowledge:common_ground:*:{user_id}")
 
     @staticmethod
-    async def _merge_fact(tx, user_id: str, fact: Fact):
+    async def _merge_fact(tx, user_id: str, fact: Fact, bot_name: str):
         """
         Cypher query to merge the fact into the graph.
         Handles single-value predicates and antonym conflicts.
@@ -409,14 +429,15 @@ RULES:
         MERGE (u:User {id: $user_id})
         MERGE (o:Entity {name: $object_name})
         MERGE (u)-[r:FACT {predicate: $predicate}]->(o)
-        SET r.confidence = $confidence
+        SET r.confidence = $confidence, r.source_bot = $bot_name, r.updated_at = datetime()
         """
         
         await tx.run(query_safe, 
                      user_id=user_id, 
                      object_name=fact.object, 
                      predicate=predicate,
-                     confidence=fact.confidence)
+                     confidence=fact.confidence,
+                     bot_name=bot_name)
 
     async def get_user_knowledge(self, user_id: str, query: Optional[str] = None) -> str:
         """

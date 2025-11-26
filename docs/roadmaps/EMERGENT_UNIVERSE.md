@@ -1214,12 +1214,12 @@ Other inhabitants on this planet (only if they allow introductions):
 
 ### Phase 1: The First Spark (Day 1-2)
 *The universe learns to see.*
-- [ ] Create `src_v2/universe/` module structure
-- [ ] Create `universes/default.yaml` minimal config
-- [ ] Implement `on_guild_join` → auto-create Planet, Channel, UserCharacter nodes
-- [ ] Implement `on_guild_remove` → mark planet inactive (don't delete)
-- [ ] Implement `on_member_join/remove` → update inhabitants
-- [ ] Add Neo4j constraints and indexes for new node types
+- [x] Create `src_v2/universe/` module structure
+- [x] Create `universes/default.yaml` minimal config
+- [x] Implement `on_guild_join` → auto-create Planet, Channel, UserCharacter nodes
+- [x] Implement `on_guild_remove` → mark planet inactive (don't delete)
+- [x] Implement `on_member_join/remove` → update inhabitants
+- [x] Add Neo4j constraints and indexes for new node types
 
 ### Phase 2: Learning to Listen (Day 2-3)
 *The universe begins to understand.*
@@ -1239,7 +1239,7 @@ Other inhabitants on this planet (only if they allow introductions):
 ### Phase 4: Respecting Boundaries (Day 4-5)
 *Trust must be earned.*
 - [ ] Create `PrivacyManager` class
-- [ ] Add PostgreSQL privacy settings table with defaults
+- [x] Add PostgreSQL privacy settings table with defaults
 - [ ] Implement `/privacy` Discord commands
 - [ ] Add privacy filtering to ALL graph queries
 - [ ] Implement `/universe info` transparency command
@@ -1247,7 +1247,7 @@ Other inhabitants on this planet (only if they allow introductions):
 ### Phase 5: Weaving the Tapestry (Day 5-6)
 *Context flows naturally.*
 - [ ] Create `universe_context_builder.py`
-- [ ] Query graph for relevant context before LLM call
+- [x] Query graph for relevant context before LLM call (Basic implementation)
 - [ ] Inject universe context into system prompt
 - [ ] Handle cross-planet references naturally
 

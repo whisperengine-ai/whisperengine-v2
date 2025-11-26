@@ -2,12 +2,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from loguru import logger
-from typing import cast
+from typing import cast, Optional
 from src_v2.memory.manager import memory_manager
 from src_v2.core.character import character_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
+from src_v2.universe.privacy import privacy_manager
 
 class CharacterCommands(app_commands.Group):
     def __init__(self):
@@ -469,12 +470,100 @@ class SpamCommands(app_commands.Group):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
+class PrivacyCommands(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="privacy", description="Manage your privacy settings in the WhisperVerse")
+
+    @app_commands.command(name="view", description="View your current privacy settings")
+    async def view(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            settings_data = await privacy_manager.get_settings(user_id)
+            
+            embed = discord.Embed(title="🔒 Privacy Settings", color=0x3498db)
+            embed.description = "These settings control how your data is shared across the WhisperVerse."
+            
+            # Helper for boolean to emoji
+            def fmt(val): return "✅ Enabled" if val else "❌ Disabled"
+            
+            embed.add_field(
+                name="🤖 Share with Other Bots", 
+                value=f"{fmt(settings_data['share_with_other_bots'])}\n*Allow bots to share what they know about you.*", 
+                inline=False
+            )
+            embed.add_field(
+                name="🪐 Share Across Planets", 
+                value=f"{fmt(settings_data['share_across_planets'])}\n*Allow bots to remember you when you travel to other servers.*", 
+                inline=False
+            )
+            embed.add_field(
+                name="🤝 Allow Introductions", 
+                value=f"{fmt(settings_data['allow_bot_introductions'])}\n*Allow bots to introduce you to other users.*", 
+                inline=False
+            )
+            embed.add_field(
+                name="👻 Invisible Mode", 
+                value=f"{fmt(settings_data['invisible_mode'])}\n*Hide your presence from the universe graph (bots won't track your location).*", 
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error viewing privacy settings: {e}")
+            await interaction.followup.send("Failed to retrieve privacy settings.", ephemeral=True)
+
+    @app_commands.command(name="set", description="Update your privacy settings")
+    @app_commands.describe(
+        share_with_bots="Allow bots to share knowledge about you",
+        share_across_planets="Allow bots to remember you on other servers",
+        allow_introductions="Allow bots to introduce you to others",
+        invisible_mode="Hide your location/presence from the universe"
+    )
+    async def set_privacy(
+        self, 
+        interaction: discord.Interaction, 
+        share_with_bots: Optional[bool] = None,
+        share_across_planets: Optional[bool] = None,
+        allow_introductions: Optional[bool] = None,
+        invisible_mode: Optional[bool] = None
+    ):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            updates = {}
+            
+            if share_with_bots is not None: updates['share_with_other_bots'] = share_with_bots
+            if share_across_planets is not None: updates['share_across_planets'] = share_across_planets
+            if allow_introductions is not None: updates['allow_bot_introductions'] = allow_introductions
+            if invisible_mode is not None: updates['invisible_mode'] = invisible_mode
+            
+            if not updates:
+                await interaction.followup.send("No changes specified.", ephemeral=True)
+                return
+
+            new_settings = await privacy_manager.update_settings(user_id, **updates)
+            
+            # Confirm changes
+            changes = []
+            if share_with_bots is not None: changes.append(f"Share with Bots: {'✅' if share_with_bots else '❌'}")
+            if share_across_planets is not None: changes.append(f"Share Across Planets: {'✅' if share_across_planets else '❌'}")
+            if allow_introductions is not None: changes.append(f"Allow Introductions: {'✅' if allow_introductions else '❌'}")
+            if invisible_mode is not None: changes.append(f"Invisible Mode: {'✅' if invisible_mode else '❌'}")
+            
+            await interaction.followup.send(f"**Privacy Settings Updated:**\n" + "\n".join(changes), ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error updating privacy settings: {e}")
+            await interaction.followup.send("Failed to update privacy settings.", ephemeral=True)
+
 class WhisperCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         # Register the dynamic groups
         self.bot.tree.add_command(CharacterCommands())
         self.bot.tree.add_command(SpamCommands())
+        self.bot.tree.add_command(PrivacyCommands())
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(WhisperCommands(bot))

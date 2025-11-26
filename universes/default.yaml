@@ -1,0 +1,16 @@
+name: whisperverse
+display_name: "WhisperVerse"
+description: "A shared universe where AI characters and humans connect"
+
+# Default privacy settings for new users
+default_privacy:
+  share_with_other_bots: true
+  share_across_planets: true
+  allow_bot_introductions: false  # Opt-in for safety
+
+# Feature flags
+features:
+  cross_bot_knowledge: true
+  cross_planet_memory: true
+  user_introductions: true
+  planet_vibes: true

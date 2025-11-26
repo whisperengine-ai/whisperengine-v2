@@ -7,6 +7,7 @@ from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
+from src_v2.universe.manager import universe_manager
 from src_v2.discord.bot import bot
 from src_v2.api.app import app as api_app
 from src_v2.scripts.migrate import run_migrations
@@ -35,6 +36,9 @@ async def main():
 
         logger.info("Initializing knowledge graph...")
         await knowledge_manager.initialize()
+
+        logger.info("Initializing universe manager...")
+        await universe_manager.initialize()
         
         # Register cleanup tasks
         shutdown_handler.add_cleanup_task(db_manager.disconnect_all)

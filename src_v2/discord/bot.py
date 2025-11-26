@@ -236,6 +236,67 @@ class WhisperBot(commands.Bot):
 
         logger.info("WhisperEngine is ready and listening.")
 
+        # Universe Discovery: Register existing planets
+        try:
+            from src_v2.universe.manager import universe_manager
+            for guild in self.guilds:
+                await universe_manager.register_planet(str(guild.id), guild.name)
+                for channel in guild.channels:
+                    if isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
+                        await universe_manager.register_channel(
+                            str(guild.id), 
+                            str(channel.id), 
+                            channel.name, 
+                            str(channel.type)
+                        )
+                logger.info(f"Discovered planet: {guild.name}")
+        except Exception as e:
+            logger.error(f"Failed to register planets during startup: {e}")
+
+    async def on_guild_join(self, guild: discord.Guild) -> None:
+        """Called when the bot joins a new guild (Planet)."""
+        logger.info(f"Joined new planet: {guild.name} ({guild.id})")
+        try:
+            from src_v2.universe.manager import universe_manager
+            await universe_manager.register_planet(str(guild.id), guild.name)
+            for channel in guild.channels:
+                if isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
+                    await universe_manager.register_channel(
+                        str(guild.id), 
+                        str(channel.id), 
+                        channel.name, 
+                        str(channel.type)
+                    )
+        except Exception as e:
+            logger.error(f"Failed to register new planet {guild.name}: {e}")
+
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        """Called when the bot is removed from a guild (Planet)."""
+        logger.info(f"Left planet: {guild.name} ({guild.id})")
+        try:
+            from src_v2.universe.manager import universe_manager
+            await universe_manager.mark_planet_inactive(str(guild.id))
+        except Exception as e:
+            logger.error(f"Failed to mark planet inactive {guild.name}: {e}")
+
+    async def on_member_join(self, member: discord.Member) -> None:
+        """Called when a member joins a guild."""
+        if member.bot: return
+        try:
+            from src_v2.universe.manager import universe_manager
+            await universe_manager.record_presence(str(member.id), str(member.guild.id))
+        except Exception as e:
+            logger.error(f"Failed to record member join: {e}")
+
+    async def on_member_remove(self, member: discord.Member) -> None:
+        """Called when a member leaves a guild."""
+        if member.bot: return
+        try:
+            from src_v2.universe.manager import universe_manager
+            await universe_manager.remove_inhabitant(str(member.id), str(member.guild.id))
+        except Exception as e:
+            logger.error(f"Failed to record member leave: {e}")
+
     async def on_message(self, message: discord.Message) -> None:
         """Handles incoming Discord messages and generates AI responses.
         
@@ -245,6 +306,15 @@ class WhisperBot(commands.Bot):
         # Ignore messages from self and other bots to prevent loops
         if message.author.bot:
             return
+
+        # Universe Presence
+        if message.guild:
+            try:
+                from src_v2.universe.manager import universe_manager
+                # Fire and forget presence update
+                asyncio.create_task(universe_manager.record_presence(str(message.author.id), str(message.guild.id)))
+            except Exception as e:
+                logger.error(f"Failed to record presence: {e}")
 
         # --- Spam Detection (Cross-posting) ---
         if message.guild and settings.ENABLE_CROSSPOST_DETECTION:
@@ -623,7 +693,8 @@ class WhisperBot(commands.Bot):
                         try:
                             await task_queue.enqueue_knowledge_extraction(
                                 user_id=user_id,
-                                message=raw_user_message
+                                message=raw_user_message,
+                                character_name=self.character_name
                             )
                         except Exception as e:
                             logger.error(f"Failed to enqueue knowledge extraction: {e}")
@@ -660,7 +731,8 @@ class WhisperBot(commands.Bot):
                         "location": location_context,
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,
-                        "past_summaries": past_summaries
+                        "past_summaries": past_summaries,
+                        "guild_id": str(message.guild.id) if message.guild else None
                     }
                     
                     # Inject file content if present
@@ -944,7 +1016,8 @@ class WhisperBot(commands.Bot):
                     "user_name": message.author.display_name,
                     "recent_memories": formatted_memories,
                     "knowledge_facts": knowledge_facts,
-                    "lurk_instruction": lurk_instruction
+                    "lurk_instruction": lurk_instruction,
+                    "guild_id": str(message.guild.id) if message.guild else None
                 }
                 
                 # Generate response (use simpler path, no reflective mode for lurk)

@@ -202,26 +202,24 @@ class TaskQueue:
             character_name=character_name
         )
     
-    async def enqueue_knowledge_extraction(
-        self,
-        user_id: str,
-        message: str
-    ) -> Optional[str]:
+    async def enqueue_knowledge_extraction(self, user_id: str, message: str, character_name: str) -> Optional[str]:
         """
-        Enqueue a knowledge extraction task (fact extraction to Neo4j).
-        
-        This is critical for response latency - knowledge extraction was
-        previously blocking the response pipeline.
+        Queue a job to extract facts from a user message.
         
         Args:
             user_id: Discord user ID
-            message: User message text to extract facts from
+            message: The message content
+            character_name: The name of the bot (for privacy segmentation)
+            
+        Returns:
+            Job ID if queued, None if queue unavailable
         """
         # No job_id deduplication - each message should be processed
         return await self.enqueue(
             "run_knowledge_extraction",
             user_id=user_id,
-            message=message
+            message=message,
+            character_name=character_name
         )
 
 

@@ -533,13 +533,16 @@ class AgentEngine:
         logger.info(f"Engaging Reflective Mode (Max Steps: {max_steps_override or 'Default'})")
         response_text: str
         trace: List[BaseMessage]
+        
+        guild_id = context_variables.get("guild_id")
         response_text, trace = await self.reflective_agent.run(
             user_message, 
             user_id, 
             system_content, 
             callback=callback,
             image_urls=image_urls,
-            max_steps_override=max_steps_override
+            max_steps_override=max_steps_override,
+            guild_id=guild_id
         )
         
         if settings.ENABLE_PROMPT_LOGGING:
@@ -574,7 +577,8 @@ class AgentEngine:
         # Create a copy to avoid race conditions with shared context_variables
         if user_id and not context_variables.get("memory_context"):
             try:
-                router_result: Dict[str, Any] = await self.router.route_and_retrieve(user_id, user_message, chat_history)
+                guild_id = context_variables.get("guild_id")
+                router_result: Dict[str, Any] = await self.router.route_and_retrieve(user_id, user_message, chat_history, guild_id=guild_id)
                 memory_context: str = router_result.get("context", "")
                 reasoning: str = router_result.get("reasoning", "")
                 

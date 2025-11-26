@@ -15,6 +15,7 @@ from src_v2.tools.memory_tools import (
     UpdateFactsTool, 
     UpdatePreferencesTool
 )
+from src_v2.tools.universe_tools import CheckPlanetContextTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 
@@ -34,13 +35,14 @@ class ReflectiveAgent:
         system_prompt: str, 
         callback: Optional[Callable[[str], Awaitable[None]]] = None, 
         image_urls: Optional[List[str]] = None,
-        max_steps_override: Optional[int] = None
+        max_steps_override: Optional[int] = None,
+        guild_id: Optional[str] = None
     ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
         """
         # 1. Initialize Tools
-        tools = self._get_tools(user_id)
+        tools = self._get_tools(user_id, guild_id)
         
         # 2. Construct System Prompt
         full_prompt = self._construct_prompt(system_prompt)
@@ -185,7 +187,7 @@ class ReflectiveAgent:
             name=tool_name
         )
 
-    def _get_tools(self, user_id: str) -> List[BaseTool]:
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None) -> List[BaseTool]:
         character_name = settings.DISCORD_BOT_NAME or "default"
         return [
             SearchSummariesTool(user_id=user_id),
@@ -193,7 +195,8 @@ class ReflectiveAgent:
             LookupFactsTool(user_id=user_id, bot_name=character_name),
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
-            AnalyzeTopicTool(user_id=user_id, bot_name=character_name)
+            AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
+            CheckPlanetContextTool(guild_id=guild_id)
         ]
 
     def _construct_prompt(self, base_system_prompt: str) -> str:
