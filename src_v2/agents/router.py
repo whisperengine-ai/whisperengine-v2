@@ -10,7 +10,6 @@ from influxdb_client import Point
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool
-from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -48,9 +47,7 @@ class CognitiveRouter:
             CheckPlanetContextTool(guild_id=guild_id),
         ]
         
-        # Conditionally add image generation tool
-        if settings.ENABLE_IMAGE_GENERATION:
-            tools.append(GenerateImageTool(character_name=character_name))
+        # Note: Image generation is handled in Reflective Mode only, not in the router
         
         # 2. Bind tools to LLM
         llm_with_tools = self.llm.bind_tools(tools)
@@ -67,7 +64,6 @@ AVAILABLE TOOLS:
 - update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
 - analyze_topic: For comprehensive research on a broad topic. Searches summaries, episodes, and facts simultaneously. Use this for "tell me everything about X" or complex questions.
 - check_planet_context: For questions about "where are we?", "who is here?", or details about the current server/planet.
-- generate_image: For when the user asks to see something, asks for a selfie, or asks you to draw/imagine something.
 
 RULES:
 1. If the user is just saying "hi" or small talk, you MAY call lookup_user_facts to personalize the greeting (e.g. to find their name), but avoid heavy memory searches.

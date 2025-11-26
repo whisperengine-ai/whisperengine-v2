@@ -1,8 +1,72 @@
 import asyncio
 import aiohttp
+import uuid
+from io import BytesIO
 from loguru import logger
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from src_v2.config.settings import settings
+
+class ImageGenerationResult:
+    """Result from image generation containing URL and raw bytes."""
+    
+    def __init__(self, url: str, image_bytes: bytes, filename: str = "generated_image.jpg"):
+        self.url = url
+        self.image_bytes = image_bytes
+        self.filename = filename
+    
+    def to_discord_file(self) -> "discord.File":
+        """Convert to a Discord File object for uploading."""
+        import discord
+        return discord.File(BytesIO(self.image_bytes), filename=self.filename)
+
+
+class PendingImageRegistry:
+    """
+    Thread-safe registry for images generated during response generation.
+    Images are stored temporarily and retrieved by the Discord bot for upload.
+    """
+    
+    def __init__(self):
+        self._images: Dict[str, ImageGenerationResult] = {}
+    
+    def register(self, result: ImageGenerationResult) -> str:
+        """
+        Register an image and return a unique ID for later retrieval.
+        
+        Args:
+            result: The ImageGenerationResult to store
+            
+        Returns:
+            A unique string ID that can be embedded in the response
+        """
+        image_id = str(uuid.uuid4())[:8]  # Short unique ID
+        self._images[image_id] = result
+        logger.debug(f"Registered pending image: {image_id}")
+        return image_id
+    
+    def retrieve(self, image_id: str) -> Optional[ImageGenerationResult]:
+        """
+        Retrieve and remove an image from the registry.
+        
+        Args:
+            image_id: The unique ID returned from register()
+            
+        Returns:
+            The ImageGenerationResult if found, None otherwise
+        """
+        result = self._images.pop(image_id, None)
+        if result:
+            logger.debug(f"Retrieved pending image: {image_id}")
+        return result
+    
+    def clear(self) -> None:
+        """Clear all pending images (cleanup on error)."""
+        self._images.clear()
+
+
+# Global registry instance
+pending_images = PendingImageRegistry()
+
 
 class ImageGenerationService:
     """
@@ -16,10 +80,13 @@ class ImageGenerationService:
         self.api_key = settings.FLUX_API_KEY.get_secret_value() if settings.FLUX_API_KEY else None
         self.base_url = "https://api.bfl.ai/v1"
 
-    async def generate_image(self, prompt: str, width: int = 896, height: int = 1120) -> Optional[str]:
+    async def generate_image(self, prompt: str, width: int = 896, height: int = 1120) -> Optional[ImageGenerationResult]:
         """
-        Generates an image from a prompt and returns the URL.
+        Generates an image from a prompt and returns an ImageGenerationResult with URL and bytes.
         Default is 4:5 portrait (896x1120).
+        
+        Returns:
+            ImageGenerationResult containing URL and raw bytes for Discord upload, or None on failure.
         """
         if not self.api_key:
             logger.error("FLUX_API_KEY is not set. Cannot generate image.")
@@ -31,9 +98,23 @@ class ImageGenerationService:
             logger.warning(f"Provider {self.provider} not implemented yet.")
             return None
 
-    async def _generate_bfl(self, prompt: str, width: int, height: int) -> Optional[str]:
+    async def _download_image(self, url: str, session: aiohttp.ClientSession) -> Optional[bytes]:
+        """Download image bytes from a URL."""
+        try:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    return await response.read()
+                else:
+                    logger.error(f"Failed to download image: HTTP {response.status}")
+                    return None
+        except Exception as e:
+            logger.error(f"Exception downloading image: {e}")
+            return None
+
+    async def _generate_bfl(self, prompt: str, width: int, height: int) -> Optional[ImageGenerationResult]:
         """
         Generates image using BFL API (Async polling pattern).
+        Returns ImageGenerationResult with both URL and downloaded bytes.
         """
         endpoint = f"{self.base_url}/{self.model}"
         headers = {
@@ -91,7 +172,20 @@ class ImageGenerationService:
                             image_url = result.get("result", {}).get("sample")
                             if image_url:
                                 logger.info(f"Image generated successfully: {image_url}")
-                                return image_url
+                                
+                                # Download the image bytes for Discord upload
+                                image_bytes = await self._download_image(image_url, session)
+                                if image_bytes:
+                                    # Generate a unique filename based on task ID
+                                    filename = f"generated_{task_id[:8]}.jpg"
+                                    return ImageGenerationResult(
+                                        url=image_url,
+                                        image_bytes=image_bytes,
+                                        filename=filename
+                                    )
+                                else:
+                                    logger.error("Failed to download generated image bytes")
+                                    return None
                             else:
                                 logger.error(f"BFL returned Ready but no image URL: {result}")
                                 return None

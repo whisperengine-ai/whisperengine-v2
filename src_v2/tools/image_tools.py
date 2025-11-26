@@ -4,9 +4,19 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
 from loguru import logger
 
-from src_v2.image_gen.service import image_service
+from src_v2.image_gen.service import image_service, pending_images
 from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
+
+# Marker format for embedded images in responses
+IMAGE_MARKER_PREFIX = "[WHISPER_IMAGE:"
+IMAGE_MARKER_SUFFIX = "]"
+
+# Regex pattern for extracting image markers
+import re
+IMAGE_MARKER_PATTERN = re.compile(
+    re.escape(IMAGE_MARKER_PREFIX) + r"([a-f0-9]{8})" + re.escape(IMAGE_MARKER_SUFFIX)
+)
 
 class GenerateImageInput(BaseModel):
     prompt: str = Field(description="A description of the image to generate. Be creative and descriptive.")
@@ -60,10 +70,14 @@ class GenerateImageTool(BaseTool):
             logger.info(f"Generating image with prompt: {enhanced_prompt}")
             
             # 3. Call Service
-            image_url = await image_service.generate_image(enhanced_prompt)
+            image_result = await image_service.generate_image(enhanced_prompt)
             
-            if image_url:
-                return f"Image generated successfully: {image_url}\n(SYSTEM: You MUST include this URL in your final response.)"
+            if image_result:
+                # Register the image for later retrieval by the Discord bot
+                image_id = pending_images.register(image_result)
+                # Return a special marker that the bot will parse and replace with an attachment
+                marker = f"{IMAGE_MARKER_PREFIX}{image_id}{IMAGE_MARKER_SUFFIX}"
+                return f"Image generated successfully. {marker}"
             else:
                 return "Failed to generate image. Please try again later."
                 

@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 import discord
 import asyncio
+import re
 import time
 from typing import Union, List, Tuple, Any, Optional
 from datetime import datetime
@@ -23,8 +24,53 @@ from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
 from src_v2.workers.task_queue import task_queue
+from src_v2.image_gen.service import pending_images
+from src_v2.tools.image_tools import IMAGE_MARKER_PREFIX, IMAGE_MARKER_SUFFIX, IMAGE_MARKER_PATTERN
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator
+
+# Regex pattern for BFL image URLs (to strip them out if LLM includes them)
+BFL_IMAGE_URL_PATTERN = re.compile(
+    r'https://bfldelivery\S+\.blob\.core\.windows\.net/results/\S+\.(jpeg|jpg|png)'
+)
+
+
+def extract_pending_images(text: str) -> Tuple[str, List[discord.File]]:
+    """
+    Extract image markers from response text and retrieve the corresponding images.
+    Also strips out any BFL URLs that the LLM might have included.
+    
+    Args:
+        text: The response text that may contain image markers and/or BFL URLs
+        
+    Returns:
+        Tuple of (cleaned_text, list_of_discord_files)
+    """
+    files: List[discord.File] = []
+    
+    # Find all image markers
+    matches = IMAGE_MARKER_PATTERN.findall(text)
+    
+    for image_id in matches:
+        result = pending_images.retrieve(image_id)
+        if result:
+            files.append(result.to_discord_file())
+            logger.info(f"Retrieved pending image {image_id} for Discord upload")
+        else:
+            logger.warning(f"Image ID {image_id} not found in pending_images registry")
+    
+    # Remove the markers from the text
+    cleaned_text = IMAGE_MARKER_PATTERN.sub("", text)
+    
+    # Strip out any BFL URLs that the LLM might have included
+    cleaned_text = BFL_IMAGE_URL_PATTERN.sub("", cleaned_text)
+    
+    # Clean up any double spaces or newlines left behind
+    cleaned_text = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned_text)
+    cleaned_text = re.sub(r'  +', ' ', cleaned_text)
+    
+    return cleaned_text.strip(), files
+
 
 class WhisperBot(commands.Bot):
     """Discord bot with AI character personality and memory systems."""
@@ -879,14 +925,18 @@ class WhisperBot(commands.Bot):
                         if footer_text:
                             final_text = f"{response}\n\n{footer_text}"
                         
+                        # Extract any generated images from the response
+                        cleaned_text, image_files = extract_pending_images(final_text)
+                        
                         # Split response into chunks if it's too long
-                        message_chunks = self._chunk_message(final_text)
+                        message_chunks = self._chunk_message(cleaned_text)
                         
                         # Handle the first chunk (Edit existing or Send new)
                         sent_messages = []
                         
                         if active_message:
-                            # We already have a message, edit it to be the first chunk
+                            # We already have a streaming message
+                            # Just edit the text (files can't be attached to edited messages in discord.py)
                             await active_message.edit(content=message_chunks[0])
                             sent_messages.append(active_message)
                             
@@ -894,10 +944,29 @@ class WhisperBot(commands.Bot):
                             for chunk in message_chunks[1:]:
                                 sent_msg = await message.channel.send(chunk)
                                 sent_messages.append(sent_msg)
+                            
+                            # Send images as a separate message if present
+                            if image_files:
+                                try:
+                                    image_msg = await message.channel.send(files=image_files)
+                                    sent_messages.append(image_msg)
+                                except Exception as e:
+                                    logger.error(f"Failed to send image message: {e}")
                         else:
-                            # No streaming happened (maybe very fast or empty?), send all chunks
-                            for chunk in message_chunks:
-                                sent_msg = await message.channel.send(chunk)
+                            # No streaming happened, send all chunks
+                            # Attach images to the first message only
+                            for i, chunk in enumerate(message_chunks):
+                                if i == 0 and image_files:
+                                    try:
+                                        sent_msg = await message.channel.send(content=chunk, files=image_files)
+                                    except discord.Forbidden as e:
+                                        logger.error(f"Permission denied when sending images: {e}")
+                                        sent_msg = await message.channel.send(content=chunk)
+                                    except Exception as e:
+                                        logger.error(f"Failed to send message with images: {e}")
+                                        sent_msg = await message.channel.send(content=chunk)
+                                else:
+                                    sent_msg = await message.channel.send(chunk)
                                 sent_messages.append(sent_msg)
                         
                         # Save the full response to memory (not chunked)
@@ -1417,13 +1486,13 @@ class WhisperBot(commands.Bot):
         
         # Early Notification for File Count
         if len(attachments) > MAX_FILES and not silent:
-             await channel.send(f"⚠️ Too many files! I can only process the first {MAX_FILES} attachments.")
+            await channel.send(f"⚠️ Too many files! I can only process the first {MAX_FILES} attachments.")
 
         # Early Notification for File Sizes
         oversized_files = [a.filename for a in attachments if a.size > MAX_SIZE_BYTES]
         if oversized_files and not silent:
-             file_list = ", ".join(oversized_files)
-             await channel.send(f"⚠️ Skipping oversized files (> {MAX_SIZE_MB}MB): {file_list}")
+            file_list = ", ".join(oversized_files)
+            await channel.send(f"⚠️ Skipping oversized files (> {MAX_SIZE_MB}MB): {file_list}")
 
         file_count = 0
         

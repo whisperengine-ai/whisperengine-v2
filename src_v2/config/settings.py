@@ -32,6 +32,12 @@ class Settings(BaseSettings):
         description="Model name to use",
         validation_alias=AliasChoices("LLM_MODEL_NAME", "LLM_CHAT_MODEL")
     )
+    LLM_TEMPERATURE: float = Field(
+        default=0.7,
+        description="Temperature for the main character LLM (0.0-2.0)",
+        ge=0.0,
+        le=2.0
+    )
     
     # --- Router LLM Configuration (Optional - for faster/cheaper routing) ---
     ROUTER_LLM_PROVIDER: Optional[Literal["openai", "openrouter", "ollama", "lmstudio"]] = None

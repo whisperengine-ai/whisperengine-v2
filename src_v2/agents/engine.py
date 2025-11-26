@@ -13,7 +13,7 @@ from influxdb_client import Point
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
-from src_v2.config.constants import TRAIT_BEHAVIORS, get_image_format_for_provider
+from src_v2.config.constants import get_image_format_for_provider
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.router import CognitiveRouter
@@ -25,6 +25,7 @@ from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.utils.validation import ValidationError, validator
 from src_v2.evolution.manager import get_evolution_manager
+from src_v2.tools.image_tools import IMAGE_MARKER_PREFIX, IMAGE_MARKER_SUFFIX, IMAGE_MARKER_PATTERN
 
 class AgentEngine:
     """Core cognitive engine for generating AI responses with memory and evolution."""
@@ -140,12 +141,7 @@ class AgentEngine:
         # Inject memory context if it exists
         if context_variables.get("memory_context"):
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
-            
-            # Special handling for generated images
-            if "Image generated successfully" in context_variables['memory_context']:
-                system_content += "\n(SYSTEM INSTRUCTION: You have successfully generated an image. You MUST include the image URL in your response to the user. Do not hide it. Present it enthusiastically!)\n"
-            else:
-                system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+            system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
         # 5. Create Prompt Template
         prompt = ChatPromptTemplate.from_messages([
@@ -291,12 +287,7 @@ class AgentEngine:
         # Inject memory context if it exists
         if context_variables.get("memory_context"):
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
-            
-            # Special handling for generated images
-            if "Image generated successfully" in context_variables['memory_context']:
-                system_content += "\n(SYSTEM INSTRUCTION: You have successfully generated an image. You MUST include the image URL in your response to the user. Do not hide it. Present it enthusiastically!)\n"
-            else:
-                system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+            system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
         # 5. Create Prompt Template
         prompt = ChatPromptTemplate.from_messages([
@@ -578,6 +569,23 @@ class AgentEngine:
             max_steps_override=max_steps_override,
             guild_id=guild_id
         )
+        
+        # Extract image markers from tool outputs in the trace
+        # The LLM doesn't copy these to its final response, so we need to inject them
+        collected_markers = []
+        for msg in trace:
+            if hasattr(msg, 'content') and isinstance(msg.content, str):
+                markers = IMAGE_MARKER_PATTERN.findall(msg.content)
+                for marker_id in markers:
+                    full_marker = f"{IMAGE_MARKER_PREFIX}{marker_id}{IMAGE_MARKER_SUFFIX}"
+                    if full_marker not in collected_markers:
+                        collected_markers.append(full_marker)
+                        logger.debug(f"Found image marker in trace: {marker_id}")
+        
+        # Append any found markers to the response so the bot can extract them
+        if collected_markers:
+            logger.info(f"Injecting {len(collected_markers)} image marker(s) into reflective response")
+            response_text = response_text + "\n" + " ".join(collected_markers)
         
         if settings.ENABLE_PROMPT_LOGGING:
             await self._log_prompt(

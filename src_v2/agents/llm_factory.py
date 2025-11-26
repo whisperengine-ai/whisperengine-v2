@@ -34,8 +34,13 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main") -> BaseC
         base_url = settings.LLM_BASE_URL
         model_name = settings.LLM_MODEL_NAME
     
-    # Use default from settings if not provided, or 0.7 as fallback
-    temp = temperature if temperature is not None else 0.7
+    # Use provided temperature, or settings default for main mode, or 0.7 fallback
+    if temperature is not None:
+        temp = temperature
+    elif mode == "main":
+        temp = settings.LLM_TEMPERATURE
+    else:
+        temp = 0.7
 
     logger.info(f"Initializing LLM ({mode}): {provider} ({model_name}) Temp: {temp}")
 
