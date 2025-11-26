@@ -190,7 +190,7 @@ class ReflectiveAgent:
 
     def _get_tools(self, user_id: str, guild_id: Optional[str] = None) -> List[BaseTool]:
         character_name = settings.DISCORD_BOT_NAME or "default"
-        return [
+        tools = [
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
             LookupFactsTool(user_id=user_id, bot_name=character_name),
@@ -198,8 +198,13 @@ class ReflectiveAgent:
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
             CheckPlanetContextTool(guild_id=guild_id),
-            GenerateImageTool(character_name=character_name)
         ]
+        
+        # Conditionally add image generation tool
+        if settings.ENABLE_IMAGE_GENERATION:
+            tools.append(GenerateImageTool(character_name=character_name))
+        
+        return tools
 
     def _construct_prompt(self, base_system_prompt: str) -> str:
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
