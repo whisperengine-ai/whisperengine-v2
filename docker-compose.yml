@@ -31,6 +31,11 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data_v2:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"] 
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - v2_network
@@ -145,7 +150,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -182,7 +187,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -219,7 +224,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -256,7 +261,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -293,7 +298,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -330,7 +335,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -367,7 +372,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -404,7 +409,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -441,7 +446,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       influxdb:
         condition: service_healthy
     healthcheck:
@@ -493,7 +498,7 @@ services:
       neo4j:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
