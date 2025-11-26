@@ -16,9 +16,10 @@ class ImageGenerationService:
         self.api_key = settings.FLUX_API_KEY.get_secret_value() if settings.FLUX_API_KEY else None
         self.base_url = "https://api.bfl.ai/v1"
 
-    async def generate_image(self, prompt: str, width: int = 1024, height: int = 768) -> Optional[str]:
+    async def generate_image(self, prompt: str, width: int = 896, height: int = 1120) -> Optional[str]:
         """
         Generates an image from a prompt and returns the URL.
+        Default is 4:5 portrait (896x1120).
         """
         if not self.api_key:
             logger.error("FLUX_API_KEY is not set. Cannot generate image.")
@@ -42,7 +43,9 @@ class ImageGenerationService:
         payload = {
             "prompt": prompt,
             "width": width,
-            "height": height
+            "height": height,
+            "prompt_upsampling": True,
+            "safety_tolerance": 5
         }
 
         async with aiohttp.ClientSession() as session:
