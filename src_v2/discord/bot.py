@@ -520,7 +520,7 @@ class WhisperBot(commands.Bot):
                                 if content:
                                     # Smart Truncation: Keep start and end if too long
                                     if len(content) > 500:
-                                        ref_text = content[:225] + " ... [middle truncated] ... " + content[-225:]
+                                        ref_text = content[:225] + " ... " + content[-225:]
                                     else:
                                         ref_text = content
                                         
@@ -558,7 +558,7 @@ class WhisperBot(commands.Bot):
                                 if fwd_content:
                                     # Smart Truncation
                                     if len(fwd_content) > 500:
-                                        fwd_text = fwd_content[:225] + " ... [middle truncated] ... " + fwd_content[-225:]
+                                        fwd_text = fwd_content[:225] + " ... " + fwd_content[-225:]
                                     else:
                                         fwd_text = fwd_content
                                     
