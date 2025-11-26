@@ -39,7 +39,7 @@ class DatabaseManager:
         self.influxdb_write_api = None
         self.redis_client: Optional[redis.Redis] = None
 
-    async def _connect_with_retry(self, name: str, connect_func, max_retries: int = 5, delay: int = 2):
+    async def _connect_with_retry(self, name: str, connect_func, max_retries: int = 30, delay: int = 2):
         """Helper to connect to a database with retry logic."""
         for attempt in range(max_retries):
             try:
@@ -49,13 +49,20 @@ class DatabaseManager:
                 if attempt == max_retries - 1:
                     logger.error(f"Failed to connect to {name} after {max_retries} attempts: {e}")
                     raise
-                logger.warning(f"Failed to connect to {name} (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
-                await asyncio.sleep(delay)
+                
+                # Exponential backoff with a cap
+                wait_time = min(delay * (1.5 ** attempt), 30)
+                logger.warning(f"Failed to connect to {name} (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time:.1f}s...")
+                await asyncio.sleep(wait_time)
 
     async def connect_postgres(self):
         async def _connect():
             logger.info(f"Connecting to PostgreSQL at {settings.POSTGRES_URL}...")
-            self.postgres_pool = await asyncpg.create_pool(settings.POSTGRES_URL)
+            self.postgres_pool = await asyncpg.create_pool(
+                settings.POSTGRES_URL,
+                min_size=settings.POSTGRES_MIN_POOL_SIZE,
+                max_size=settings.POSTGRES_MAX_POOL_SIZE
+            )
             logger.info("Connected to PostgreSQL.")
         
         await self._connect_with_retry("PostgreSQL", _connect)

@@ -12,6 +12,7 @@ services:
       POSTGRES_USER: whisper
       POSTGRES_PASSWORD: password
       POSTGRES_DB: whisperengine_v2
+    command: postgres -c 'max_connections=500'
     volumes:
       - postgres_data_v2:/var/lib/postgresql/data
     healthcheck:

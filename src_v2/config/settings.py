@@ -39,18 +39,14 @@ class Settings(BaseSettings):
     ROUTER_LLM_BASE_URL: Optional[str] = None
     ROUTER_LLM_MODEL_NAME: Optional[str] = None
     
-    # --- Reflective LLM Configuration (Optional - for deep thinking ReAct mode) ---
-    REFLECTIVE_LLM_PROVIDER: Optional[Literal["openai", "openrouter", "ollama", "lmstudio"]] = None
-    REFLECTIVE_LLM_API_KEY: Optional[SecretStr] = None
-    REFLECTIVE_LLM_BASE_URL: Optional[str] = None
-    REFLECTIVE_LLM_MODEL_NAME: Optional[str] = None
-
     # --- Discord ---
     DISCORD_TOKEN: SecretStr = Field(validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
 
     # --- Databases ---
     # PostgreSQL
     POSTGRES_URL: str = Field(default="postgresql://whisper:password@localhost:5432/whisperengine_v2")
+    POSTGRES_MIN_POOL_SIZE: int = Field(default=10, description="Minimum number of connections in the pool")
+    POSTGRES_MAX_POOL_SIZE: int = Field(default=40, description="Maximum number of connections in the pool")
     
     # Qdrant (Vector Store)
     QDRANT_URL: str = Field(default="http://localhost:6333")
