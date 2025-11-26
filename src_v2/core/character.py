@@ -2,6 +2,7 @@ import os
 from typing import Optional, Dict
 from pydantic import BaseModel
 from loguru import logger
+from src_v2.core.database import db_manager
 
 class Character(BaseModel):
     name: str
@@ -56,6 +57,56 @@ class CharacterManager:
         if name not in self.characters:
             return self.load_character(name)
         return self.characters[name]
+
+    async def get_visual_description(self, name: str) -> str:
+        """
+        Gets visual description from DB, falling back to file/memory.
+        """
+        # 1. Try DB
+        if db_manager.postgres_pool:
+            try:
+                row = await db_manager.postgres_pool.fetchrow(
+                    "SELECT visual_description FROM character_profiles WHERE character_name = $1",
+                    name
+                )
+                if row and row['visual_description']:
+                    return row['visual_description']
+            except Exception as e:
+                logger.error(f"Failed to fetch visual description from DB: {e}")
+
+        # 2. Fallback to loaded character (file-based)
+        char = self.get_character(name)
+        if char:
+            return char.visual_description
+        
+        return "A generic AI assistant."
+
+    async def update_visual_description(self, name: str, description: str):
+        """
+        Updates visual description in DB.
+        """
+        if not db_manager.postgres_pool:
+            logger.warning("Postgres not connected, cannot save visual description.")
+            return
+
+        try:
+            await db_manager.postgres_pool.execute(
+                """
+                INSERT INTO character_profiles (character_name, visual_description, updated_at)
+                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                ON CONFLICT (character_name) 
+                DO UPDATE SET visual_description = $2, updated_at = CURRENT_TIMESTAMP
+                """,
+                name, description
+            )
+            logger.info(f"Updated visual description for {name} in DB.")
+            
+            # Update in-memory cache if exists
+            if name in self.characters:
+                self.characters[name].visual_description = description
+                
+        except Exception as e:
+            logger.error(f"Failed to update visual description in DB: {e}")
 
 # Global character manager
 character_manager = CharacterManager()
