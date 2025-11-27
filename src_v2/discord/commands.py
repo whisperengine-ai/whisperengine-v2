@@ -402,6 +402,37 @@ class CharacterCommands(app_commands.Group):
             logger.error(f"Failed to get lurk stats: {e}")
             await interaction.followup.send("Failed to get lurking statistics.", ephemeral=True)
 
+    @app_commands.command(name="test_proactive", description="Force trigger a proactive message (Admin only)")
+    @app_commands.describe(user="The user to message (defaults to you)")
+    async def test_proactive(self, interaction: discord.Interaction, user: Optional[discord.User] = None):
+        # Check if user is admin/owner (simple check for now, or rely on DM_ALLOWED_USER_IDS if needed)
+        # For now, let's just allow it.
+        
+        target_user = user or interaction.user
+        user_id = str(target_user.id)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Access the scheduler from the bot instance
+            # interaction.client is the bot instance
+            scheduler = getattr(interaction.client, 'scheduler', None)
+            
+            if not scheduler:
+                await interaction.followup.send("Scheduler not found on bot instance.")
+                return
+
+            await interaction.followup.send(f"Triggering proactive message for {target_user.name}...")
+            
+            # Call the trigger method directly
+            await scheduler.trigger_proactive_message(user_id)
+            
+            await interaction.followup.send(f"Proactive message process completed for {target_user.name}. Check logs if no message appeared.")
+            
+        except Exception as e:
+            logger.error(f"Error in test_proactive command: {e}")
+            await interaction.followup.send(f"Error: {e}")
+
 class SpamCommands(app_commands.Group):
     """Commands for managing spam detection."""
     

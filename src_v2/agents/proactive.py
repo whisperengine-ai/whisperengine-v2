@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, BaseMessage
@@ -10,6 +11,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
+from src_v2.universe.manager import universe_manager
 
 class ProactiveAgent:
     """
@@ -18,12 +20,13 @@ class ProactiveAgent:
     def __init__(self) -> None:
         self.llm: BaseChatModel = create_llm(temperature=0.8) # Higher temp for creativity
 
-    async def generate_opener(self, user_id: str, character_name: str, is_public: bool = False, channel_id: Optional[str] = None) -> Optional[str]:
+    async def generate_opener(self, user_id: str, user_name: str, character_name: str, is_public: bool = False, channel_id: Optional[str] = None) -> Optional[str]:
         """
         Generates a proactive opening message based on recent memories and knowledge.
         
         Args:
             user_id: Discord user ID
+            user_name: Discord user name
             character_name: Bot character name
             is_public: If True, generates a privacy-safe message for public channels
             channel_id: If provided, retrieves channel-specific conversation history
@@ -46,6 +49,15 @@ class ProactiveAgent:
             else:
                 recent_history = await memory_manager.get_recent_history(user_id, character_name, limit=5)
             
+            # Format recent memories for the prompt
+            recent_memories_str = ""
+            if recent_history:
+                for msg in recent_history:
+                    role = "User" if isinstance(msg, HumanMessage) else character.name
+                    recent_memories_str += f"{role}: {msg.content}\n"
+            else:
+                recent_memories_str = "(No recent history available)"
+
             # We want knowledge facts to ask about specific things (e.g., "How is your cat?")
             knowledge_facts: str = await knowledge_manager.get_user_knowledge(user_id)
             
@@ -94,6 +106,14 @@ Look for unfinished discussions or topics the user didn't respond to - this is y
                 # Private DM - all topics are fair game
                 channel_context = "(Private conversation - all known topics are available)"
             
+            # Prepare variables for the template
+            current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            universe_overview = await universe_manager.get_universe_overview()
+            universe_context = f"Planets: {universe_overview.get('planet_count', 0)}\n"
+            universe_context += f"Inhabitants: {universe_overview.get('total_inhabitants', 0)}\n"
+            universe_context += f"Top Topics: {', '.join(universe_overview.get('top_universal_topics', []))}"
+
             system_prompt = f"""You are {character.name}.
 {character.system_prompt}
 
@@ -120,17 +140,7 @@ Trust: {relationship.get('trust_score', 0)}
 
 [KNOWN FACTS]
 {knowledge_facts}
-
-[RECENT CONVERSATION TOPICS{' IN THIS CHANNEL' if channel_id and is_public else ''}]
 """
-            # Add summary of recent history if available
-            if recent_history:
-                # We just dump the raw messages for context
-                for msg in recent_history:
-                    role = "User" if isinstance(msg, HumanMessage) else character.name
-                    system_prompt += f"{role}: {msg.content}\n"
-            else:
-                system_prompt += "(No recent history available)\n"
 
             prompt: ChatPromptTemplate = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
@@ -139,7 +149,13 @@ Trust: {relationship.get('trust_score', 0)}
 
             # 4. Generate
             chain = prompt | self.llm
-            response = await chain.ainvoke({})
+            response = await chain.ainvoke({
+                "user_name": user_name,
+                "current_datetime": current_datetime,
+                "universe_context": universe_context,
+                "knowledge_context": knowledge_facts,  # Using knowledge_facts for knowledge_context
+                "recent_memories": recent_memories_str
+            })
             
             content = response.content
             opener: str

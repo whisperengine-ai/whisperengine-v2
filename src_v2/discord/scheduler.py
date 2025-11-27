@@ -164,6 +164,7 @@ class ProactiveScheduler:
             # 3. Generate Opener
             opener: Optional[str] = await proactive_agent.generate_opener(
                 user_id, 
+                user.name,
                 character_name, 
                 is_public=not is_dm,
                 channel_id=str(target_channel.id) if target_channel and hasattr(target_channel, 'id') else None
