@@ -31,7 +31,7 @@ class BehaviorProfile(BaseModel):
 {const_str}
 """
 
-def load_behavior_profile(character_dir: str) -> Optional[BehaviorProfile]:
+def load_behavior_profile(character_dir: str, raise_on_error: bool = False) -> Optional[BehaviorProfile]:
     """
     Loads core.yaml from the character directory.
     """
@@ -46,5 +46,7 @@ def load_behavior_profile(character_dir: str) -> Optional[BehaviorProfile]:
             
         return BehaviorProfile(**data)
     except Exception as e:
+        if raise_on_error:
+            raise
         logger.error(f"Failed to load behavior profile from {core_path}: {e}")
         return None

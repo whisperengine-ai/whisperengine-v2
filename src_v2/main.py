@@ -5,6 +5,7 @@ import uvicorn
 from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
+from src_v2.core.character import character_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.universe.manager import universe_manager
@@ -39,6 +40,10 @@ async def main():
 
         logger.info("Initializing universe manager...")
         await universe_manager.initialize()
+        
+        # Initialize Character (Fail Fast)
+        logger.info(f"Loading character: {settings.DISCORD_BOT_NAME}...")
+        character_manager.load_character(settings.DISCORD_BOT_NAME, raise_on_error=True)
         
         # Register cleanup tasks
         shutdown_handler.add_cleanup_task(db_manager.disconnect_all)

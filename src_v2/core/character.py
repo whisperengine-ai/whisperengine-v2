@@ -25,7 +25,7 @@ class CharacterManager:
         self.characters_dir = characters_dir
         self.characters: Dict[str, Character] = {}
 
-    def load_character(self, name: str) -> Optional[Character]:
+    def load_character(self, name: str, raise_on_error: bool = False) -> Optional[Character]:
         """
         Loads a character from the characters directory.
         Expected structure: 
@@ -39,7 +39,10 @@ class CharacterManager:
         visual_path = os.path.join(char_dir, "visual.md")
         
         if not os.path.exists(char_path):
-            logger.warning(f"Character file not found: {char_path}")
+            msg = f"Character file not found: {char_path}"
+            if raise_on_error:
+                raise FileNotFoundError(msg)
+            logger.warning(msg)
             return None
 
         try:
@@ -52,7 +55,7 @@ class CharacterManager:
                     visual_desc = f.read().strip()
             
             # Load behavior profile (Phase B9)
-            behavior = load_behavior_profile(char_dir)
+            behavior = load_behavior_profile(char_dir, raise_on_error=raise_on_error)
             
             # Inject behavior into system prompt if present
             if behavior:
@@ -79,6 +82,8 @@ class CharacterManager:
                             if "manipulation_responses" in ux_config:
                                 manipulation_responses = ux_config["manipulation_responses"]
                 except Exception as e:
+                    if raise_on_error:
+                        raise
                     logger.warning(f"Failed to load ux.yaml from {ux_yaml_path}: {e}")
 
             # Simple parsing: The whole file is the system prompt for now.
@@ -97,6 +102,8 @@ class CharacterManager:
             logger.info(f"Loaded character: {name}")
             return character
         except Exception as e:
+            if raise_on_error:
+                raise
             logger.error(f"Failed to load character {name}: {e}")
             return None
 
