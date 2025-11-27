@@ -311,6 +311,69 @@ async def run_store_observation(
         }
 
 
+async def run_universe_observation(
+    ctx: Dict[str, Any],
+    guild_id: str,
+    channel_id: str,
+    user_id: str,
+    message_content: str,
+    mentioned_user_ids: List[str],
+    reply_to_user_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Observe a message and learn from it for the Emergent Universe.
+    
+    This is Phase B8 - the universe learning from conversations:
+    - Extracts topics from message content
+    - Records user-to-user interactions (mentions, replies)
+    - Updates user last_seen timestamps
+    - Tracks message hour for peak activity learning
+    
+    Args:
+        ctx: arq context
+        guild_id: Discord server ID (Planet)
+        channel_id: Channel ID where message was sent
+        user_id: Author of the message
+        message_content: Text content of the message
+        mentioned_user_ids: List of user IDs mentioned in the message
+        reply_to_user_id: User ID being replied to, if this is a reply
+        
+    Returns:
+        Dict with success status and observation summary
+    """
+    # Skip very short messages
+    if len(message_content.strip()) < 10:
+        return {"success": True, "skipped": True, "reason": "message_too_short"}
+    
+    try:
+        from src_v2.universe.manager import universe_manager
+        
+        await universe_manager.observe_message(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            user_id=user_id,
+            message_content=message_content,
+            mentioned_user_ids=mentioned_user_ids,
+            reply_to_user_id=reply_to_user_id
+        )
+        
+        return {
+            "success": True,
+            "guild_id": guild_id,
+            "user_id": user_id,
+            "message_length": len(message_content)
+        }
+        
+    except Exception as e:
+        logger.debug(f"Universe observation failed (non-fatal): {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "guild_id": guild_id,
+            "user_id": user_id
+        }
+
+
 # Worker configuration for arq
 class WorkerSettings:
     """arq worker settings."""
@@ -325,6 +388,7 @@ class WorkerSettings:
         run_reflection,
         run_knowledge_extraction,
         run_store_observation,
+        run_universe_observation,
     ]
     
     # Startup/shutdown hooks

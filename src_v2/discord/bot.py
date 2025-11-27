@@ -399,14 +399,36 @@ class WhisperBot(commands.Bot):
             logger.debug(f"Ignoring message from blocked user: {message.author.id}")
             return
 
-        # Universe Presence
+        # Universe Presence & Observation
         if message.guild:
             try:
                 from src_v2.universe.manager import universe_manager
-                # Fire and forget presence update
+                from src_v2.workers.task_queue import task_queue
+                
+                # Fire and forget presence update (lightweight, keep in-process)
                 asyncio.create_task(universe_manager.record_presence(str(message.author.id), str(message.guild.id)))
+                
+                # Enqueue message observation to background worker (Phase 2: Learning to Listen)
+                # This extracts topics, tracks interactions, and learns peak hours
+                mentioned_ids = [str(m.id) for m in message.mentions if not m.bot]
+                reply_to_id = None
+                if message.reference and message.reference.resolved:
+                    if isinstance(message.reference.resolved, discord.Message) and not message.reference.resolved.author.bot:
+                        reply_to_id = str(message.reference.resolved.author.id)
+                
+                # Only enqueue if there's meaningful content to observe
+                if message.content and len(message.content.strip()) >= 10:
+                    await task_queue.enqueue(
+                        "run_universe_observation",
+                        guild_id=str(message.guild.id),
+                        channel_id=str(message.channel.id),
+                        user_id=str(message.author.id),
+                        message_content=message.content,
+                        mentioned_user_ids=mentioned_ids,
+                        reply_to_user_id=reply_to_id
+                    )
             except Exception as e:
-                logger.error(f"Failed to record presence: {e}")
+                logger.debug(f"Failed to enqueue universe observation: {e}")
 
         # --- Spam Detection (Cross-posting) ---
         if message.guild and settings.ENABLE_CROSSPOST_DETECTION:
