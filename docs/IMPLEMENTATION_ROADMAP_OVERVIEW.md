@@ -102,7 +102,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase A5: Channel Context Awareness
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
-- ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
+- ⏳ Phase A8: Image Generation Enhancements (portrait mode ✅, iteration memory ⏳)
 - ⏳ Phase C3: Video processing, web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
@@ -454,7 +454,7 @@ User Message
 
 ### Phase A8: Image Generation Enhancements
 **Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Files:** 5 | **LOC:** ~380 | **Status:** ✅ Complete
+**Files:** 5 | **LOC:** ~380 | **Status:** ✅ Partially Complete
 
 **Problem:** Production sessions show users iterate 10-15+ times on portraits due to character self-injection, no iteration memory, and unwanted aesthetic associations.
 
@@ -464,12 +464,21 @@ User Message
 - Users requested "keep X, change Y" which was difficult without memory
 - "Cult leader vibes" feedback on spiritual + cosmic combinations
 
-**Solution (4 Enhancements):**
+**Completed (Nov 26, 2025):**
+- ✅ **Portrait Mode / Self-Portrait Detection** - Fixed character name detection logic
+  - Character name in prompt now overrides user keywords
+  - Removed ambiguous pronouns from user keyword detection
+- ✅ **Visual Description in Tool** - LLM now sees character appearance when calling generate_image
+  - Dynamic tool description includes character's visual.md content
+  - Fallback guidance for characters without visual.md
+- ✅ **All Characters Have visual.md** - 10/10 characters have curated descriptions
+  - Removed Taylor Swift reference from nottaylor (copyright safety)
+  - Created new visual.md for aethys
 
-1. **Portrait Mode Detection** - Detect "portrait of me" requests, skip character self-injection
-2. **Iteration Memory** - Redis session to track previous prompt + user refinements
-3. **Negative Prompt Library** - Category-based negatives (portrait, spiritual, cosmic, fantasy)
-4. **Reference Intent Detection** - Clarify if photo is "this is me" vs "use this style"
+**Remaining:**
+- ⏳ Iteration Memory - Redis session to track previous prompt + user refinements
+- ⏳ Negative Prompt Library - Category-based negatives
+- ⏳ Reference Intent Detection - Clarify if photo is "this is me" vs "use this style"
 
 **Implementation:**
 ```

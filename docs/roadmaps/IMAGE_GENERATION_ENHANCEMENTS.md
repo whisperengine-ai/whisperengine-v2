@@ -1,8 +1,34 @@
 # Phase A8: Image Generation Enhancements
 
 **Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Status:** 📋 Ready for Implementation  
+**Status:** ✅ Partially Complete (Portrait Mode + Visual Description)  
 **Depends On:** Phase B3 (Image Generation) ✅ Complete
+
+---
+
+## Implementation Progress (Nov 26, 2025)
+
+### ✅ Completed
+
+1. **Portrait Mode / Self-Portrait Detection** - Fixed character name detection to properly inject visual description
+   - Character name in prompt now overrides user keywords (fixes false negatives)
+   - Removed ambiguous pronouns (her/she/him/he) from user keyword detection
+   - Added debug logging for self-portrait mode triggers
+
+2. **Visual Description System** - Enhanced tool description with character appearance
+   - Tool description now includes character's visual appearance for self-portraits
+   - Fallback guidance for characters without visual.md files
+   - All 10 characters now have `visual.md` files with optimized descriptions
+
+3. **Database Visual Description Cleanup** - Cleared auto-generated descriptions
+   - Removed Self-Discovery generated descriptions from `character_profiles` table
+   - System now uses curated `visual.md` files as source of truth
+
+### 🔲 Remaining Work
+
+- Iteration memory ("keep X, change Y" refinements)
+- Negative prompting / guardrails
+- Reference photo interpretation improvements
 
 ---
 
