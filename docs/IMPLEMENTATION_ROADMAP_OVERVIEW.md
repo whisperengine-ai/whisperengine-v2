@@ -100,14 +100,14 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 
 **NOT YET IMPLEMENTED:**
 - 🗄️ Phase A5: Channel Context Awareness (ARCHIVED - see note below)
-- ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
+- 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (DEFERRED - low priority)
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
 - ⏳ Phase C3: Video processing, web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase A6 (Vision-to-Knowledge Fact Extraction) - Extract appearance facts from selfies. See [VISION_TO_KNOWLEDGE.md](./roadmaps/VISION_TO_KNOWLEDGE.md)
+**Next focus:** Phase C3 or C5 - core A-tier features complete.
 
 > **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
 
@@ -320,54 +320,18 @@ InfluxDB → Grafana Dashboard + Alerts
 ---
 
 ### Phase A6: Vision-to-Knowledge Fact Extraction
-**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Low-Medium  
-**Files:** 3-4 | **LOC:** ~250 | **Status:** 📋 Planned
+**Priority:** Low | **Time:** 2-3 days | **Complexity:** Low-Medium  
+**Files:** 3-4 | **LOC:** ~250 | **Status:** 🗄️ DEFERRED
 
-**Problem:** When users upload selfies or personal photos, the bot analyzes and stores descriptions in vector memory, but does NOT extract structured facts to the knowledge graph. Bot may hallucinate that it "saved details about your appearance" when it actually didn't.
+> **DEFERRED (Nov 26, 2025):** Low ROI for complexity. Users rarely need bot to remember appearance from photos - they can just say "I have brown hair" in text. Trigger detection is also unreliable (users say "guess who got a haircut" not "this is me"). If needed later, recommended approach: always run extraction via worker, let LLM decide if content is personal.
 
-**Current State:**
-- ✅ Vision LLM analyzes images → descriptions stored in memory
-- ❌ No facts extracted (e.g., "User has brown hair" not in knowledge graph)
-- ❌ Bot can't reliably recall physical appearance details
+**Problem:** When users upload selfies or personal photos, the bot analyzes and stores descriptions in vector memory, but does NOT extract structured facts to the knowledge graph.
 
-**Solution (User-Triggered Extraction):**
-- Detect trigger phrases in user message ("this is me", "here's my cat", etc.)
-- Only extract facts when user explicitly indicates subject identity
-- Avoids false positives (friend's photo incorrectly attributed to user)
-
-**Implementation:**
-```
-Image + User Message → Vision Analysis → Trigger Detection
-                                              ↓
-                           "this is me" → Extract appearance facts
-                           "my cat Luna" → Extract pet facts  
-                           No trigger → Store description only
-```
-
-**Trigger phrases for self:**
-- "this is me", "here's a pic of myself", "that's me", "selfie", "how do I look"
-
-**Trigger phrases for possessions:**
-- "this is my [pet/car/house]", "here's my new...", "meet my [name]"
-
-**Benefit:**
-- Bot can actually remember user appearance
-- Zero false positives (requires explicit user context)
-- No extra LLM calls when no trigger detected
-- Enables "what do I look like?" queries
-
-**Cost Model:**
-- No trigger: $0.003 (vision only, no change)
-- With trigger: $0.008 (vision + fact extraction)
-
-**Dependencies:** Knowledge extraction worker (exists)
-
-**Related Files:**
-- `src_v2/vision/manager.py` (add trigger detection, conditional extraction)
-- `src_v2/discord/bot.py` (pass user message context to vision manager)
-- `src_v2/knowledge/extractor.py` (visual-specific extraction prompts)
-
-**Full Specification:** See [roadmaps/VISION_FACT_EXTRACTION.md](./roadmaps/VISION_FACT_EXTRACTION.md)
+**Why Deferred:**
+- Edge case: most users don't need appearance facts for image gen
+- Text-based fact extraction already works ("I have blue eyes")
+- Trigger detection unreliable without LLM (adds cost to every image)
+- Vision descriptions already stored in memory for context
 
 ---
 
