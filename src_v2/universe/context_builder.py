@@ -181,6 +181,6 @@ class UniverseContextBuilder:
         """
         async with db_manager.neo4j_driver.session() as session:
             result = await session.run(query, guild_id=str(guild_id))
-            return [record.data() for record in await result.data()]
+            return await result.data()
 
 universe_context_builder = UniverseContextBuilder()

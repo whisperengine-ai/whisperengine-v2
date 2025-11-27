@@ -315,6 +315,21 @@ PRIVACY RESTRICTION ENABLED:
                     for r in records_cat:
                         connections.append(f"- You both like {r['category']} (User: {r['user_item']}, You: {r['bot_item']})")
 
+                # 3. Match Traits to Facts (Cross-System: Universe <-> Knowledge)
+                # Matches User Traits (from Universe) with Bot Facts (from Knowledge Graph)
+                if len(connections) < 5:
+                    query_trait_fact = """
+                    MATCH (u:User {id: $user_id})-[r1:HAS_TRAIT]->(t:Trait)
+                    MATCH (c:Character {name: $bot_name})-[r2:FACT]->(e:Entity)
+                    WHERE toLower(t.name) = toLower(e.name)
+                    RETURN t.name as shared, "trait_fact" as type
+                    LIMIT 3
+                    """
+                    result_trait = await session.run(query_trait_fact, user_id=user_id, bot_name=bot_name)
+                    records_trait = await result_trait.data()
+                    for r in records_trait:
+                        connections.append(f"- Shared Interest: {r['shared']} (You know this from your background, User has this trait)")
+
                 result_str = "\n".join(connections) if connections else ""
                 await cache_manager.set(cache_key, result_str)
                 return result_str
