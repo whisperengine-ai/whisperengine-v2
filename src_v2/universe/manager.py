@@ -157,7 +157,8 @@ class UniverseManager:
         user_id: str,
         message_content: str,
         mentioned_user_ids: List[str],
-        reply_to_user_id: Optional[str] = None
+        reply_to_user_id: Optional[str] = None,
+        user_display_name: Optional[str] = None
     ) -> None:
         """
         Observe a message and learn from it. Called for ALL guild messages.
@@ -175,6 +176,7 @@ class UniverseManager:
             message_content: Text content of the message
             mentioned_user_ids: List of user IDs mentioned in the message
             reply_to_user_id: User ID being replied to, if this is a reply
+            user_display_name: Display name of the user
         """
         if not db_manager.neo4j_driver:
             return
@@ -187,7 +189,7 @@ class UniverseManager:
             # Run observations in parallel (non-blocking)
             import asyncio
             await asyncio.gather(
-                self._update_user_activity(user_id, guild_id, channel_id),
+                self._update_user_activity(user_id, guild_id, channel_id, user_display_name),
                 self._extract_and_link_topics(guild_id, message_content),
                 self._record_user_interactions(user_id, mentioned_user_ids, reply_to_user_id, guild_id),
                 self._track_activity_hour(guild_id),
@@ -198,13 +200,25 @@ class UniverseManager:
             logger.debug(f"Universe observation error (non-fatal): {e}")
 
     @retry_db_operation()
-    async def _update_user_activity(self, user_id: str, guild_id: str, channel_id: str) -> None:
+    async def _update_user_activity(
+        self, 
+        user_id: str, 
+        guild_id: str, 
+        channel_id: str,
+        display_name: Optional[str] = None
+    ) -> None:
         """Update user's last seen timestamp and activity on planet/channel."""
         if not db_manager.neo4j_driver: return
         
         query = """
         MERGE (u:User {id: $user_id})
         SET u.last_seen_at = datetime()
+        """
+        
+        if display_name:
+            query += "SET u.display_name = $display_name "
+            
+        query += """
         WITH u
         MATCH (p:Planet {id: $guild_id})
         MERGE (u)-[r:ON_PLANET]->(p)
@@ -215,7 +229,13 @@ class UniverseManager:
         SET a.last_seen = datetime(), a.message_count = COALESCE(a.message_count, 0) + 1
         """
         async with db_manager.neo4j_driver.session() as session:
-            await session.run(query, user_id=str(user_id), guild_id=str(guild_id), channel_id=str(channel_id))
+            await session.run(
+                query, 
+                user_id=str(user_id), 
+                guild_id=str(guild_id), 
+                channel_id=str(channel_id),
+                display_name=display_name
+            )
 
     async def _extract_and_link_topics(self, guild_id: str, message_content: str) -> None:
         """Extract topics from message and link them to the planet."""
@@ -424,6 +444,232 @@ class UniverseManager:
         async with db_manager.neo4j_driver.session() as session:
             result = await session.run(query, **params)
             return [{"user_id": r["user_id"], "count": r["interaction_count"]} for r in await result.data()]
+
+    # ============ Phase 3: Building Relationships ============
+    
+    @retry_db_operation()
+    async def increment_familiarity(
+        self, 
+        character_name: str, 
+        user_id: str, 
+        guild_id: Optional[str] = None,
+        interaction_quality: int = 1
+    ) -> None:
+        """
+        Increment the familiarity between a character (bot) and user.
+        
+        Called after each meaningful conversation. Familiarity grows organically
+        through repeated interactions across planets.
+        
+        Args:
+            character_name: Bot character name (e.g., "elena")
+            user_id: Discord user ID
+            guild_id: Optional guild where interaction happened
+            interaction_quality: Quality multiplier (1=normal, 2=high engagement)
+        """
+        if not db_manager.neo4j_driver: return
+        
+        query = """
+        MERGE (c:Character {name: $character_name})
+        MERGE (u:User {id: $user_id})
+        MERGE (c)-[r:KNOWS_USER]->(u)
+        ON CREATE SET 
+            r.familiarity = $quality,
+            r.interaction_count = 1,
+            r.first_met = datetime(),
+            r.planets_shared = CASE WHEN $guild_id IS NOT NULL THEN [$guild_id] ELSE [] END
+        ON MATCH SET 
+            r.familiarity = r.familiarity + $quality,
+            r.interaction_count = r.interaction_count + 1,
+            r.last_interaction = datetime(),
+            r.planets_shared = CASE 
+                WHEN $guild_id IS NOT NULL AND NOT $guild_id IN r.planets_shared 
+                THEN r.planets_shared + $guild_id 
+                ELSE r.planets_shared 
+            END
+        """
+        async with db_manager.neo4j_driver.session() as session:
+            await session.run(
+                query, 
+                character_name=character_name.lower(),
+                user_id=str(user_id),
+                guild_id=str(guild_id) if guild_id else None,
+                quality=interaction_quality
+            )
+
+    @retry_db_operation()
+    async def add_user_trait(
+        self, 
+        user_id: str, 
+        trait: str, 
+        category: str = "interest",
+        learned_by: Optional[str] = None,
+        confidence: float = 0.7
+    ) -> None:
+        """
+        Add a trait to a user's profile in the universe.
+        
+        Traits are shareable characteristics that can be seen by other bots
+        (respecting privacy settings). They're aggregated from fact extraction.
+        
+        Args:
+            user_id: Discord user ID
+            trait: The trait name (e.g., "astronomy", "dog lover")
+            category: Type of trait - "interest", "personality", "fact"
+            learned_by: Character that learned this (for attribution)
+            confidence: How confident we are in this trait (0-1)
+        """
+        if not db_manager.neo4j_driver: return
+        
+        # Normalize trait name
+        trait = trait.lower().strip()
+        if len(trait) < 2 or len(trait) > 50:
+            return
+        
+        query = """
+        MERGE (u:User {id: $user_id})
+        MERGE (t:Trait {name: $trait})
+        ON CREATE SET t.category = $category, t.created_at = datetime()
+        MERGE (u)-[r:HAS_TRAIT]->(t)
+        ON CREATE SET 
+            r.confidence = $confidence,
+            r.learned_by = $learned_by,
+            r.first_seen = datetime(),
+            r.mention_count = 1
+        ON MATCH SET 
+            r.confidence = CASE WHEN $confidence > r.confidence THEN $confidence ELSE r.confidence END,
+            r.last_seen = datetime(),
+            r.mention_count = r.mention_count + 1
+        """
+        async with db_manager.neo4j_driver.session() as session:
+            await session.run(
+                query,
+                user_id=str(user_id),
+                trait=trait,
+                category=category,
+                learned_by=learned_by,
+                confidence=confidence
+            )
+
+    @retry_db_operation()
+    async def get_user_traits(self, user_id: str, limit: int = 10) -> List[dict]:
+        """Get traits associated with a user."""
+        if not db_manager.neo4j_driver: return []
+        
+        query = """
+        MATCH (u:User {id: $user_id})-[r:HAS_TRAIT]->(t:Trait)
+        RETURN t.name as trait, t.category as category, r.confidence as confidence, r.mention_count as mentions
+        ORDER BY r.confidence DESC, r.mention_count DESC
+        LIMIT $limit
+        """
+        async with db_manager.neo4j_driver.session() as session:
+            result = await session.run(query, user_id=str(user_id), limit=limit)
+            return [dict(r) for r in await result.data()]
+
+    @retry_db_operation()
+    async def get_character_knowledge_of_user(self, character_name: str, user_id: str) -> Optional[dict]:
+        """
+        Get what a specific character knows about a user.
+        
+        Returns familiarity level, shared planets, and interaction history.
+        """
+        if not db_manager.neo4j_driver: return None
+        
+        query = """
+        MATCH (c:Character {name: $character_name})-[r:KNOWS_USER]->(u:User {id: $user_id})
+        OPTIONAL MATCH (u)-[t:HAS_TRAIT]->(trait:Trait)
+        RETURN r.familiarity as familiarity, 
+               r.interaction_count as interactions,
+               r.planets_shared as planets,
+               r.first_met as first_met,
+               collect(DISTINCT {name: trait.name, category: trait.category, confidence: t.confidence})[0..5] as top_traits
+        """
+        async with db_manager.neo4j_driver.session() as session:
+            result = await session.run(
+                query, 
+                character_name=character_name.lower(), 
+                user_id=str(user_id)
+            )
+            record = await result.single()
+            if record:
+                return dict(record)
+            return None
+
+    @retry_db_operation()
+    async def get_cross_bot_knowledge(self, user_id: str, exclude_character: Optional[str] = None) -> List[dict]:
+        """
+        Get what OTHER bots know about this user (for cross-bot sharing).
+        
+        This enables "Elena mentioned you're into astronomy" type interactions.
+        Respects privacy settings (checked by caller).
+        """
+        if not db_manager.neo4j_driver: return []
+        
+        query = """
+        MATCH (c:Character)-[r:KNOWS_USER]->(u:User {id: $user_id})
+        WHERE c.name <> $exclude_character OR $exclude_character IS NULL
+        RETURN c.name as character, 
+               r.familiarity as familiarity,
+               r.interaction_count as interactions,
+               r.planets_shared as planets
+        ORDER BY r.familiarity DESC
+        LIMIT 5
+        """
+        async with db_manager.neo4j_driver.session() as session:
+            result = await session.run(
+                query, 
+                user_id=str(user_id),
+                exclude_character=exclude_character.lower() if exclude_character else None
+            )
+            return [dict(r) for r in await result.data()]
+
+    async def build_relationship_context(
+        self, 
+        character_name: str, 
+        user_id: str,
+        include_cross_bot: bool = True
+    ) -> str:
+        """
+        Build a natural language context about the relationship for the LLM.
+        
+        This is called by the context builder to inject relationship awareness
+        into the system prompt.
+        """
+        lines = []
+        
+        # 1. What this character knows about the user
+        knowledge = await self.get_character_knowledge_of_user(character_name, user_id)
+        if knowledge and knowledge.get("familiarity"):
+            familiarity = knowledge["familiarity"]
+            interactions = knowledge.get("interactions", 0)
+            
+            # Convert familiarity to human-readable level
+            if familiarity >= 50:
+                level = "very well (close friend)"
+            elif familiarity >= 20:
+                level = "fairly well (regular)"
+            elif familiarity >= 5:
+                level = "somewhat (occasional chats)"
+            else:
+                level = "a little (recent acquaintance)"
+            
+            lines.append(f"You know this user {level}. You've had {interactions} conversations.")
+            
+            # Add traits
+            if knowledge.get("top_traits"):
+                traits = [t["name"] for t in knowledge["top_traits"] if t.get("name")]
+                if traits:
+                    lines.append(f"You know they're interested in: {', '.join(traits)}")
+        
+        # 2. What other bots know (cross-bot knowledge)
+        if include_cross_bot:
+            other_knowledge = await self.get_cross_bot_knowledge(user_id, exclude_character=character_name)
+            if other_knowledge:
+                other_bots = [k["character"] for k in other_knowledge if k.get("familiarity", 0) >= 5]
+                if other_bots:
+                    lines.append(f"Other travelers who know this user: {', '.join(other_bots)}")
+        
+        return "\n".join(lines) if lines else ""
 
 
 universe_manager = UniverseManager()

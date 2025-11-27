@@ -3,7 +3,7 @@ Task Queue Manager using arq (Async Redis Queue)
 Provides a lightweight persistent job queue for background tasks.
 """
 import os
-from typing import Any, Dict, Optional, Callable, Awaitable
+from typing import Any, Dict, List, Optional, Callable, Awaitable
 from loguru import logger
 from arq import create_pool
 from arq.connections import RedisSettings, ArqRedis
@@ -220,6 +220,39 @@ class TaskQueue:
             user_id=user_id,
             message=message,
             character_name=character_name
+        )
+
+    async def enqueue_relationship_update(
+        self,
+        character_name: str,
+        user_id: str,
+        guild_id: Optional[str] = None,
+        interaction_quality: int = 1,
+        extracted_traits: Optional[List[str]] = None
+    ) -> Optional[str]:
+        """
+        Queue a job to update the relationship between a character and user.
+        
+        Called after each meaningful conversation to build familiarity
+        and record learned traits.
+        
+        Args:
+            character_name: Bot character name (e.g., "elena")
+            user_id: Discord user ID
+            guild_id: Optional guild where interaction happened
+            interaction_quality: Quality multiplier (1=normal, 2=high engagement)
+            extracted_traits: Optional list of traits to add to user profile
+            
+        Returns:
+            Job ID if queued, None if queue unavailable
+        """
+        return await self.enqueue(
+            "run_relationship_update",
+            character_name=character_name,
+            user_id=user_id,
+            guild_id=guild_id,
+            interaction_quality=interaction_quality,
+            extracted_traits=extracted_traits
         )
 
 

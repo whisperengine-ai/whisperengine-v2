@@ -1223,18 +1223,18 @@ Other inhabitants on this planet (only if they allow introductions):
 
 ### Phase 2: Learning to Listen (Day 2-3)
 *The universe begins to understand.*
-- [ ] Hook lurking to call `universe_manager.observe_message()`
-- [ ] Extract topics from messages using local embeddings
-- [ ] Detect user-to-user interactions (replies, mentions)
-- [ ] Learn planet peak hours from message timestamps
-- [ ] Update user `last_seen_at` on any activity
+- [x] Hook lurking to call `universe_manager.observe_message()`
+- [x] Extract topics from messages using local embeddings
+- [x] Detect user-to-user interactions (replies, mentions)
+- [x] Learn planet peak hours from message timestamps
+- [x] Update user `last_seen_at` on any activity
 
 ### Phase 3: Building Relationships (Day 3-4)
 *Connections begin to form.*
-- [ ] Post-conversation: increment bot-user familiarity
-- [ ] Post-conversation: add discovered traits from fact extraction
-- [ ] Detect cross-planet users and create connections
-- [ ] Note user mentions of other users
+- [x] Post-conversation: increment bot-user familiarity
+- [x] Post-conversation: add discovered traits from fact extraction
+- [x] Detect cross-planet users and create connections
+- [x] Note user mentions of other users
 
 ### Phase 4: Respecting Boundaries (Day 4-5)
 *Trust must be earned.*
@@ -1249,7 +1249,7 @@ Other inhabitants on this planet (only if they allow introductions):
 - [x] Create `universe_context_builder.py`
 - [x] Query graph for relevant context before LLM call (Basic implementation)
 - [x] Inject universe context into system prompt
-- [ ] Handle cross-planet references naturally
+- [x] Handle cross-planet references naturally
 
 ### Phase 6: Stress Testing Reality (Day 6-7)
 *The universe must be resilient.*

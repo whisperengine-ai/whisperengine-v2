@@ -418,14 +418,18 @@ class WhisperBot(commands.Bot):
                 
                 # Only enqueue if there's meaningful content to observe
                 if message.content and len(message.content.strip()) >= 10:
+                    # Use message ID as job ID to prevent duplicate processing
+                    # if multiple bots observe the same message
                     await task_queue.enqueue(
                         "run_universe_observation",
+                        _job_id=f"universe_obs_{message.id}",
                         guild_id=str(message.guild.id),
                         channel_id=str(message.channel.id),
                         user_id=str(message.author.id),
                         message_content=message.content,
                         mentioned_user_ids=mentioned_ids,
-                        reply_to_user_id=reply_to_id
+                        reply_to_user_id=reply_to_id,
+                        user_display_name=message.author.display_name
                     )
             except Exception as e:
                 logger.debug(f"Failed to enqueue universe observation: {e}")
@@ -794,7 +798,8 @@ class WhisperBot(commands.Bot):
                             from src_v2.universe.context_builder import universe_context_builder
                             guild_id = str(message.guild.id) if message.guild else None
                             channel_id = str(message.channel.id)
-                            return await universe_context_builder.build_context(user_id, guild_id, channel_id)
+                            char_name = settings.DISCORD_BOT_NAME
+                            return await universe_context_builder.build_context(user_id, guild_id, channel_id, char_name)
                         except Exception as e:
                             logger.error(f"Failed to retrieve universe context: {e}")
                             return "Location: Unknown"
@@ -1111,6 +1116,19 @@ class WhisperBot(commands.Bot):
                                 logger.error(f"Failed to handle trust update: {e}")
 
                         self.loop.create_task(handle_trust_update())
+                        
+                        # 4.7 Universe Relationship Update (Phase B8)
+                        # Build familiarity between character and user after each conversation
+                        try:
+                            guild_id = str(message.guild.id) if message.guild else None
+                            await task_queue.enqueue_relationship_update(
+                                character_name=self.character_name,
+                                user_id=user_id,
+                                guild_id=guild_id,
+                                interaction_quality=1
+                            )
+                        except Exception as e:
+                            logger.debug(f"Failed to enqueue relationship update: {e}")
                         
                         # 5. Voice Playback (use full response, not chunked)
                         if message.guild and message.guild.voice_client:

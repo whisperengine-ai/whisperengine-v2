@@ -318,7 +318,8 @@ async def run_universe_observation(
     user_id: str,
     message_content: str,
     mentioned_user_ids: List[str],
-    reply_to_user_id: Optional[str] = None
+    reply_to_user_id: Optional[str] = None,
+    user_display_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Observe a message and learn from it for the Emergent Universe.
@@ -337,6 +338,7 @@ async def run_universe_observation(
         message_content: Text content of the message
         mentioned_user_ids: List of user IDs mentioned in the message
         reply_to_user_id: User ID being replied to, if this is a reply
+        user_display_name: Display name of the user
         
     Returns:
         Dict with success status and observation summary
@@ -354,7 +356,8 @@ async def run_universe_observation(
             user_id=user_id,
             message_content=message_content,
             mentioned_user_ids=mentioned_user_ids,
-            reply_to_user_id=reply_to_user_id
+            reply_to_user_id=reply_to_user_id,
+            user_display_name=user_display_name
         )
         
         return {
@@ -374,6 +377,76 @@ async def run_universe_observation(
         }
 
 
+async def run_relationship_update(
+    ctx: Dict[str, Any],
+    character_name: str,
+    user_id: str,
+    guild_id: Optional[str] = None,
+    interaction_quality: int = 1,
+    extracted_traits: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Update the relationship between a character and user after a conversation.
+    
+    This is Phase B8 Phase 3 - Building Relationships:
+    - Increments bot-user familiarity based on interaction
+    - Adds any extracted traits to the user profile
+    - Tracks which planets they've interacted on
+    
+    Args:
+        ctx: arq context
+        character_name: Bot character name (e.g., "elena")
+        user_id: Discord user ID
+        guild_id: Optional guild where interaction happened
+        interaction_quality: Quality multiplier (1=normal, 2=high engagement)
+        extracted_traits: Optional list of traits extracted from the conversation
+        
+    Returns:
+        Dict with success status
+    """
+    try:
+        from src_v2.universe.manager import universe_manager
+        
+        # 1. Increment familiarity
+        await universe_manager.increment_familiarity(
+            character_name=character_name,
+            user_id=user_id,
+            guild_id=guild_id,
+            interaction_quality=interaction_quality
+        )
+        
+        # 2. Add extracted traits
+        traits_added = 0
+        if extracted_traits:
+            for trait in extracted_traits[:5]:  # Limit to 5 traits per call
+                await universe_manager.add_user_trait(
+                    user_id=user_id,
+                    trait=trait,
+                    category="interest",
+                    learned_by=character_name,
+                    confidence=0.7
+                )
+                traits_added += 1
+        
+        logger.debug(f"Updated relationship: {character_name} -> user {user_id} (traits: {traits_added})")
+        
+        return {
+            "success": True,
+            "character_name": character_name,
+            "user_id": user_id,
+            "traits_added": traits_added
+        }
+        
+    except Exception as e:
+        logger.error(f"Relationship update failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "character_name": character_name,
+            "user_id": user_id
+        }
+
+
 # Worker configuration for arq
 class WorkerSettings:
     """arq worker settings."""
@@ -389,6 +462,7 @@ class WorkerSettings:
         run_knowledge_extraction,
         run_store_observation,
         run_universe_observation,
+        run_relationship_update,
     ]
     
     # Startup/shutdown hooks
