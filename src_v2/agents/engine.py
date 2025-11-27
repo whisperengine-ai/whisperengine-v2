@@ -279,6 +279,10 @@ class AgentEngine:
         if is_complex and user_id:
             # 3a. Reflective Mode (Full ReAct Loop) for COMPLEX_MID/HIGH
             if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                # Update status header
+                if callback:
+                    await callback("HEADER:🧠 **Reflective Mode Activated**")
+
                 # Determine max steps based on complexity level
                 max_steps = 10 # Default
                 if is_complex == "COMPLEX_MID":
@@ -298,6 +302,10 @@ class AgentEngine:
             
             # 3b. Character Agency (Tier 2 - Single Tool Call) for COMPLEX_LOW
             elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
+                # Update status header
+                if callback:
+                    await callback("HEADER:✨ **Agency Mode Activated**")
+
                 # CharacterAgent doesn't support streaming yet, yield full response
                 response = await self.character_agent.run(
                     user_input=user_message,

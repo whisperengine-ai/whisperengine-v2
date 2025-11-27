@@ -837,12 +837,27 @@ class WhisperBot(commands.Bot):
                     
                     # Prepare callback for Reflective Mode
                     status_message: Optional[discord.Message] = None
-                    status_content: str = "🧠 **Reflective Mode Activated**\n"
+                    status_header: str = "🧠 **Reflective Mode Activated**"
+                    status_body: str = ""
                     status_lock = asyncio.Lock()
                     
                     async def reflective_callback(text: str):
-                        nonlocal status_message, status_content
+                        nonlocal status_message, status_header, status_body
                         async with status_lock:
+                            # Check for header update
+                            if text.startswith("HEADER:"):
+                                status_header = text.replace("HEADER:", "").strip()
+                                # If we have a message, update it immediately to reflect header change
+                                if status_message:
+                                    full_content = f"{status_header}\n{status_body}"
+                                    if len(full_content) > 1900:
+                                        full_content = full_content[:1900] + "\n... (truncated)"
+                                    try:
+                                        await status_message.edit(content=full_content)
+                                    except Exception as e:
+                                        logger.error(f"Failed to update status header: {e}")
+                                return
+
                             # Clean up text slightly
                             clean_text = text.strip()
                             if not clean_text:
@@ -851,17 +866,20 @@ class WhisperBot(commands.Bot):
                             # Format: Quote block for thoughts
                             formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
                             
-                            status_content += f"\n{formatted_text}"
+                            status_body += f"\n{formatted_text}"
+                            
+                            # Construct full content
+                            full_content = f"{status_header}\n{status_body}"
                             
                             # Truncate if too long for Discord (2000 chars)
-                            if len(status_content) > 1900:
-                                status_content = status_content[:1900] + "\n... (truncated)"
+                            if len(full_content) > 1900:
+                                full_content = full_content[:1900] + "\n... (truncated)"
                             
                             try:
                                 if status_message:
-                                    await status_message.edit(content=status_content)
+                                    await status_message.edit(content=full_content)
                                 else:
-                                    status_message = await message.channel.send(status_content)
+                                    status_message = await message.channel.send(full_content)
                             except Exception as e:
                                 logger.error(f"Failed to update reflective status: {e}")
 
