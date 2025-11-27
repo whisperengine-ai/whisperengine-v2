@@ -123,11 +123,14 @@ class AgentEngine:
                     max_steps = 10
                 elif is_complex == "COMPLEX_HIGH":
                     max_steps = 15
+                
+                enable_verification = (is_complex == "COMPLEX_HIGH")
                     
                 response = await self._run_reflective_mode(
                     character, user_message, user_id, system_content, 
                     chat_history, context_variables, image_urls, callback,
-                    max_steps_override=max_steps
+                    max_steps_override=max_steps,
+                    enable_verification=enable_verification
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {is_complex})")
@@ -665,7 +668,8 @@ class AgentEngine:
         context_variables: Dict[str, Any], 
         image_urls: Optional[List[str]], 
         callback: Optional[Callable[[str], Awaitable[None]]],
-        max_steps_override: Optional[int] = None
+        max_steps_override: Optional[int] = None,
+        enable_verification: bool = False
     ) -> str:
         """Runs the reflective reasoning mode for complex queries.
         
@@ -679,11 +683,12 @@ class AgentEngine:
             image_urls: Optional list of image URLs
             callback: Optional callback for streaming responses
             max_steps_override: Optional override for max reasoning steps
+            enable_verification: Whether to enable self-correction/critic step
             
         Returns:
             Generated response text
         """
-        logger.info(f"Engaging Reflective Mode (Max Steps: {max_steps_override or 'Default'})")
+        logger.info(f"Engaging Reflective Mode (Max Steps: {max_steps_override or 'Default'}, Verification: {enable_verification})")
         response_text: str
         trace: List[BaseMessage]
         
@@ -696,7 +701,8 @@ class AgentEngine:
             callback=callback,
             image_urls=image_urls,
             max_steps_override=max_steps_override,
-            guild_id=guild_id
+            guild_id=guild_id,
+            enable_verification=enable_verification
         )
         
         if settings.ENABLE_PROMPT_LOGGING:

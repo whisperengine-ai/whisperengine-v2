@@ -45,7 +45,8 @@ class ReflectiveAgent:
         callback: Optional[Callable[[str], Awaitable[None]]] = None, 
         image_urls: Optional[List[str]] = None,
         max_steps_override: Optional[int] = None,
-        guild_id: Optional[str] = None
+        guild_id: Optional[str] = None,
+        enable_verification: bool = False
     ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
@@ -135,6 +136,7 @@ class ReflectiveAgent:
 
         empty_response_retries = 0
         max_empty_retries = 3  # Max nudge attempts before giving up
+        has_verified = False
 
         while steps < current_max_steps:
             steps += 1
@@ -211,6 +213,33 @@ class ReflectiveAgent:
                 # If content is empty (rare but possible with some models), return a fallback
                 if not content:
                     return "I'm not sure how to answer that.", messages
+                
+                # --- SELF-CORRECTION LOGIC ---
+                if enable_verification and not has_verified:
+                    logger.info("Triggering Self-Correction/Critic Step")
+                    if callback:
+                        await callback("🤔 Reviewing answer for accuracy...")
+                    
+                    has_verified = True
+                    
+                    critic_prompt = (
+                        "CRITIC STEP: Review your last response above. "
+                        "Does it fully answer the user's request based on the tool outputs? "
+                        "Are there any hallucinations? "
+                        "If it is correct, respond with exactly: 'VERIFIED'. "
+                        "If it needs work, respond with: 'CORRECTION NEEDED: <explanation>' "
+                        "and then use tools or provide a corrected answer."
+                    )
+                    messages.append(SystemMessage(content=critic_prompt))
+                    continue
+
+                if enable_verification and "VERIFIED" in str(content):
+                    # The PREVIOUS message was the actual answer.
+                    # History: [..., ProposedAnswer, CriticPrompt, "VERIFIED"]
+                    if len(messages) >= 3:
+                        final_answer_msg = messages[-3]
+                        logger.info(f"Reflective Mode verified in {steps} steps.")
+                        return str(final_answer_msg.content), messages
                 
                 logger.info(f"Reflective Mode finished in {steps} steps using {tools_used} tools.")
                 return str(content), messages
