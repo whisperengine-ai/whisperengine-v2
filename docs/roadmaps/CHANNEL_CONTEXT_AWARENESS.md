@@ -1,66 +1,46 @@
 # Channel Context Awareness
 
-**Document Version:** 1.3  
+**Document Version:** 1.2  
 **Created:** November 25, 2025  
 **Last Updated:** November 26, 2025  
-**Status:** ✅ Complete  
-**Priority:** Medium  
-**Complexity:** Low-Medium  
-**Estimated Time:** 3-5 days (all phases)
+**Status:** 🗄️ ARCHIVED  
+**Priority:** N/A  
+**Complexity:** N/A  
+**Estimated Time:** N/A
 
 ---
 
-## Implementation Summary (Nov 26, 2025)
+## ⚠️ ARCHIVED - Feature Removed
 
-### ✅ Completed
+**Archived Date:** November 26, 2025  
+**Reason:** Feature complexity outweighed benefits for current use case.
 
-1. **Channel Cache** (`src_v2/discord/channel_cache.py`)
-   - Redis-backed rolling buffer with semantic search
-   - Local embeddings via `all-MiniLM-L6-v2` (384-dim, ~5ms, $0 cost)
-   - Python-side cosine similarity calculation
-   - 30 min TTL, 50 messages per channel max
-   - Threads automatically separated (unique channel IDs)
-   - Smart truncation: keeps beginning + end of long messages
-   - Methods: `add_message()`, `search_semantic()`, `get_recent()`, `clear_channel()`
+### Why We Removed This Feature
 
-2. **Context Detection & Formatting** (`src_v2/discord/context.py`)
-   - `needs_channel_context()` - Pattern matching to detect explicit channel queries
-   - `_smart_truncate()` - Keeps beginning and end of long messages
-   - `format_channel_context()` - Formats messages for LLM injection
-   - `fetch_channel_context()` - Discord API fallback for cold start
+1. **User expectations don't match**: Users are already accustomed to per-user scoped memory. They don't expect the bot to "overhear" channel conversations.
 
-3. **Settings** (`src_v2/config/settings.py`)
-   - `ENABLE_CHANNEL_CONTEXT: bool = True`
-   - `CHANNEL_CONTEXT_MAX_MESSAGES: int = 50`
-   - `CHANNEL_CONTEXT_TTL_SECONDS: int = 1800` (30 min)
-   - `CHANNEL_CONTEXT_MAX_TOKENS: int = 500`
-   - `CHANNEL_CONTEXT_MIN_SIMILARITY: float = 0.3`
+2. **Architecture mismatch**: The existing routing system (SIMPLE/MODERATE/COMPLEX) uses tools like `search_specific_memories` which perform semantic search on Qdrant. Channel context queries like "what did I say?" don't semantically match the actual message content ("I'm making turkey"), causing retrieval failures.
 
-4. **Bot Integration** (`src_v2/discord/bot.py`)
-   - **Passive caching:** ALL non-mentioned channel messages cached (fire-and-forget)
-   - **Always-inject:** Recent 10 messages always injected for channel/thread conversations
-   - **Semantic search:** Used when user explicitly asks about channel activity
-   - Fallback chain: Cache → Discord API (cold start)
+3. **Duplicate data paths**: Chat history is already passed to the LLM in the `chat_history` context variable. Adding a separate Redis channel cache creates redundant storage and potential staleness issues.
 
-5. **Engine Integration** (`src_v2/agents/engine.py`)
-   - `recent_channel_context` always injected into system prompt for channels/threads
-   - LLM guidance: "You can see what others have been saying"
+4. **Complexity vs. value**: Implementing proper channel awareness would require:
+   - New dedicated tools for channel history search
+   - Router changes to distinguish channel queries from memory queries
+   - Cache invalidation logic for message edits/deletes
+   - Cold-start handling when Redis is empty
 
-### ⚠️ Future Considerations
+5. **Privacy considerations**: "Overhearing" conversations raises questions about whether users expect their non-mentioned messages to be remembered.
 
-- **Channel Filtering:** Currently caches ALL channels the bot can see. May need allowlist/blocklist for high-traffic servers or noisy channels (#memes, #off-topic). Monitor Redis memory usage.
-- **Redis Stack:** If semantic search becomes slow with many channels, consider upgrading to Redis Stack for native vector indexing.
-- **LLM Tool (Phase 2):** Could expose `get_channel_context` as a tool for complex queries where LLM decides when to fetch more context.
+### Alternative Approaches (If Needed Later)
 
-### ❌ Skipped/Deferred
-
-- **Redis Stack upgrade** - Not needed; Python-side similarity works for 50 msgs/channel
-- **Phase 2: LLM Tool** - Deferred; always-inject approach is sufficient
-- **Channel allowlist/blocklist** - Deferred; monitor performance first
+If this feature is reconsidered in the future:
+- Increase `chat_history` limit from 10 to 20-30 messages
+- Improve router prompts to use existing chat history for "what did I say" queries
+- Consider opt-in channel awareness per server
 
 ---
 
-## 🎯 Problem Statement
+## 🎯 Original Problem Statement (Historical Reference)
 
 When users mention the bot and reference recent channel activity ("What did I just say about turtles?"), the bot has no knowledge of messages that weren't directed at it. This creates a disconnect where the bot appears unaware of the conversation happening around it.
 

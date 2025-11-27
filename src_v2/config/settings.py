@@ -116,13 +116,6 @@ class Settings(BaseSettings):
     # --- Proactive Engagement ---
     ENABLE_PROACTIVE_MESSAGING: bool = False
 
-    # --- Channel Context Awareness (Phase A5) ---
-    ENABLE_CHANNEL_CONTEXT: bool = True  # Cache non-mentioned messages for context
-    CHANNEL_CONTEXT_MAX_MESSAGES: int = 50  # Max messages per channel in cache
-    CHANNEL_CONTEXT_TTL_SECONDS: int = 1800  # 30 minutes TTL
-    CHANNEL_CONTEXT_MAX_TOKENS: int = 500  # Token budget for injected context
-    CHANNEL_CONTEXT_MIN_SIMILARITY: float = 0.3  # Min similarity for semantic search
-
     # --- Channel Lurking ---
     ENABLE_CHANNEL_LURKING: bool = False  # Feature flag
     LURK_CONFIDENCE_THRESHOLD: float = 0.7  # Min score to respond (0.0-1.0)

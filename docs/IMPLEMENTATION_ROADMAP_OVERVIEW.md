@@ -99,7 +99,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ✅ Phase A5: Channel Context Awareness (semantic search of non-mentioned messages)
+- 🗄️ Phase A5: Channel Context Awareness (ARCHIVED - see note below)
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
@@ -107,7 +107,9 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase A6 (Vision-to-Knowledge Fact Extraction) - Extract appearance facts from selfies. See [VISION_FACT_EXTRACTION.md](./roadmaps/VISION_FACT_EXTRACTION.md)
+**Next focus:** Phase A6 (Vision-to-Knowledge Fact Extraction) - Extract appearance facts from selfies. See [VISION_TO_KNOWLEDGE.md](./roadmaps/VISION_TO_KNOWLEDGE.md)
+
+> **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
 
 ---
 
@@ -289,49 +291,14 @@ InfluxDB → Grafana Dashboard + Alerts
 ---
 
 ### Phase A5: Channel Context Awareness
-**Priority:** Medium | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Files:** 4 | **LOC:** ~500 | **Status:** ✅ Complete (Nov 26, 2025)
+**Priority:** N/A | **Time:** N/A | **Complexity:** N/A  
+**Files:** N/A | **LOC:** N/A | **Status:** 🗄️ ARCHIVED
 
-**Problem:** Bot only sees messages directed at it (mentions/DMs), so it appears oblivious to the conversation happening around it.
-
-**Solution Implemented:**
-
-**Passive Caching (all non-mentioned messages):**
-- `src_v2/discord/channel_cache.py` - Redis-backed rolling buffer with semantic search
-- Local embeddings via `all-MiniLM-L6-v2` (384-dim, ~5ms, $0 cost)
-- Smart truncation: keeps beginning + end of long messages
-- 30 min TTL, 50 messages per channel max
-- Thread messages stored separately (unique channel IDs)
-
-**Always-Inject Context (bot is "present"):**
-- Recent 10 messages always injected for channel/thread conversations
-- Bot naturally aware of conversation flow without explicit queries
-- ~300 tokens passive context budget
-
-**Semantic Search (explicit queries):**
-- Used when user asks "what did I say about X?"
-- Finds "turtles" when asked about "reptiles"
-- Discord API fallback for cold start
-
-**Future Considerations:**
-- Monitor Redis memory for high-traffic servers
-- May need channel allowlist/blocklist for noisy channels (#memes, #off-topic)
-
-**Implementation:**
-```
-Non-mentioned message → Local embed (~5ms) → Redis cache (30min TTL)
-                                                    ↓
-Bot mentioned → Always inject recent 10 messages (passive awareness)
-                                                    ↓
-              + Explicit query? → Semantic search for relevance
-                                                    ↓
-                                  If empty → Discord API fallback (50-200ms)
-```
-
-**Benefit:**
-- Bot feels "aware" of channel conversations
-- Semantic search finds related content
-- Zero embedding API cost (local model)
+> **ARCHIVED (Nov 26, 2025):** This feature was implemented and then removed. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for the full rationale.
+>
+> **Summary:** Users are accustomed to per-user scoped memory and don't expect the bot to "overhear" channel conversations. The feature's complexity (new routing logic, dedicated tools, cache management) outweighed its benefits. The existing `chat_history` context variable already provides the last 10 messages for continuity.
+>
+> **If reconsidered later:** Increase chat_history limit, improve router prompts to use existing history for "what did I say" queries.
 - Fast (15-20ms primary, 50-200ms fallback)
 
 **Cost Model:**
