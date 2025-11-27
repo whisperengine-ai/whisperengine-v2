@@ -29,11 +29,20 @@ Extract facts in the format: (Subject)-[PREDICATE]->(Object).
 - Predicates should be UPPERCASE verbs (e.g., LIKES, OWNS, LIVES_IN, HAS_JOB, HAS_PET_NAMED, IS_A).
 - Objects should be specific entities.
 
-CRITICAL DISTINCTIONS:
-- If user says "my cat's name is Luna": Extract (User)-[HAS_PET_NAMED]->(Luna) AND (Luna)-[IS_A]->(Cat)
-  Do NOT extract (User)-[IS_A]->(Cat) - the user is not a cat, they own a cat.
-- If user says "I am a developer": Extract (User)-[IS_A]->(Developer)
-- If user says "I own a car": Extract (User)-[OWNS]->(Car)
+CRITICAL - COMMON MISTAKES TO AVOID:
+1. PET OWNERSHIP: When user mentions having a pet with a name:
+   - "I have a cat named Luna" → (User)-[HAS_PET_NAMED]->(Luna) AND (Luna)-[IS_A]->(Cat)
+   - "My dog Max" → (User)-[HAS_PET_NAMED]->(Max) AND (Max)-[IS_A]->(Dog)
+   - NEVER extract (User)-[IS_A]->(Cat) or (User)-[IS_A]->(Dog) - the USER is a HUMAN, not an animal!
+   
+2. IS_A should only be used for the USER when describing their profession, role, or identity:
+   - "I am a developer" → (User)-[IS_A]->(Developer) ✓
+   - "I am a teacher" → (User)-[IS_A]->(Teacher) ✓
+   - "I have a cat" → (User)-[IS_A]->(Cat) ✗ WRONG! Use HAS_PET instead.
+
+3. For pets, always create TWO facts:
+   - One linking User to the pet's name (HAS_PET_NAMED)
+   - One describing what kind of animal the pet is (PetName IS_A Animal)
 
 Only extract facts that are explicitly stated and have long-term value (e.g., names, pets, location, preferences, identity traits).
 Ignore transient states (e.g., "I am hungry", "I am walking").
