@@ -126,8 +126,8 @@ Files exceeding these limits are:
 User: [uploads report.pdf] Can you summarize this?
 Bot: [COMPLEX_MID triggered]
      📄 Reading report.pdf...
-     ✨ Agency Mode Activated
-     > 💭 Thinking...
+     💭 **Looking something up...**
+     > 🔍 Checking my memory...
      
      This quarterly report shows three key points:
      1. Revenue grew 20% YoY
@@ -149,9 +149,10 @@ Bot: [Searches vector memory]
 ```
 User: [uploads doc1.pdf, doc2.txt] Compare these two documents
 Bot: [COMPLEX_HIGH triggered - multi-document analysis]
-     🧠 Reflective Mode Activated
+     🧠 **Deep Thinking**
      > 💭 Analyzing both documents...
-     > 🛠️ Using search_specific_memories...
+     > 🛠️ *Using search_memories...*
+     > ✅ *search_memories*: Found document content...
      
      Comparing the two documents:
      - Document 1 focuses on...

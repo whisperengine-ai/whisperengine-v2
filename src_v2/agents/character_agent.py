@@ -100,7 +100,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         try:
             # 3. First LLM Call - Decide to use tool or not
             if callback:
-                await callback("💭 *Thinking...*")
+                await callback("🔍 *Checking my memory...*")
                 
             response = await llm_with_tools.ainvoke(messages)
             messages.append(response)

@@ -688,13 +688,12 @@ Two approaches to character-specific agency:
 Reflective Mode already shows thinking steps, and user experience has been positive:
 
 ```
-🧠 Reflective Mode Activated
+🧠 **Deep Thinking**
 
-> Analyzing the question...
-> *searching memories*
-> Found relevant context from last week
-> *looking up facts*
-> ...
+> 💭 Analyzing the question...
+> 🛠️ *Using search_memories...*
+> ✅ *search_memories*: Found relevant context from last week
+> 💭 I see the pattern now...
 
 [Final thoughtful response]
 ```
@@ -702,7 +701,10 @@ Reflective Mode already shows thinking steps, and user experience has been posit
 **This pattern can extend to Tier 2 (CharacterAgent):**
 
 ```
-💭 *thinking about our conversations...*
+💭 **Looking something up...**
+
+> 🔍 *Checking my memory...*
+> 🛠️ *Using lookup_facts...*
 
 [Tool-augmented response with recalled context]
 ```
@@ -969,13 +971,13 @@ Production data strongly validates that WhisperEngine attracts users who engage 
 - Complex multi-layered discussions requiring memory of prior context
 - Song/poetry creation based on relationship history
 
-### Reflective Mode Triggers Frequently
+### Deep Thinking Triggers Frequently
 
-The bot enters Reflective Mode (`🧠 Reflective Mode Activated`) for:
+The bot enters deep thinking mode (🧠 **Deep Thinking**) for:
 - Philosophical/spiritual content
 - Questions referencing past conversations
 - Complex conceptual queries
-- **Image generation requests** (always triggers Reflective Mode)
+- **Image generation requests** (always triggers deep thinking)
 - Messages where users explicitly reference shared history
 
 **Observed Latency Range:** 4-35 seconds per response

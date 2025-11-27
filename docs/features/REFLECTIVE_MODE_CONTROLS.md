@@ -11,12 +11,12 @@ Instead of a "typing..." indicator for 10-30 seconds, the user sees a dynamic st
 
 **Status Message Format:**
 ```markdown
-🧠 **Reflective Mode Activated**
+🧠 **Deep Thinking**
 
-> Thought: Need to check user's past conversations about "stress".
-> Action: search_memories(query="stress work pressure")
-> Observation: Found 5 recent messages mentioning deadlines.
-> Thought: I see a pattern. Checking for physiological symptoms.
+> 💭 Need to check user's past conversations about "stress".
+> 🛠️ *Using search_memories...*
+> ✅ *search_memories*: Found 5 recent messages mentioning deadlines.
+> 💭 I see a pattern. Checking for physiological symptoms.
 ...
 ```
 

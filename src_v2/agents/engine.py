@@ -281,7 +281,7 @@ class AgentEngine:
             if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
                 # Update status header
                 if callback:
-                    await callback("HEADER:🧠 **Reflective Mode Activated**")
+                    await callback("HEADER:🧠 **Deep Thinking**")
 
                 # Determine max steps based on complexity level
                 max_steps = 10 # Default
@@ -304,7 +304,7 @@ class AgentEngine:
             elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
                 # Update status header
                 if callback:
-                    await callback("HEADER:✨ **Agency Mode Activated**")
+                    await callback("HEADER:💭 **Looking something up...**")
 
                 # CharacterAgent doesn't support streaming yet, yield full response
                 response = await self.character_agent.run(

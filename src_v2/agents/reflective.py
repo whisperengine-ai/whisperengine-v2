@@ -181,9 +181,9 @@ class ReflectiveAgent:
                 # Only stream if it's NOT the final answer (i.e., if there are tool calls)
                 # If there are no tool calls, this content IS the final answer, so we shouldn't stream it to the "thinking" block.
                 if response.tool_calls and callback:
-                    await callback(content_str)
+                    await callback(f"💭 {content_str}")
                 
-                logger.debug(f"Reflective Step {steps} content: {content_str[:100]}...")
+                logger.debug(f"Reflective Step {steps} content: {content_str[:100]}..."))
 
             # 2. Handle Tool Calls
             if response.tool_calls:
@@ -243,7 +243,7 @@ class ReflectiveAgent:
         if callback:
             obs_str = str(observation)
             preview = (obs_str[:100] + "...") if len(obs_str) > 100 else obs_str
-            await callback(f"Observation ({tool_name}): {preview}")
+            await callback(f"✅ *{tool_name}*: {preview}")
 
         return ToolMessage(
             content=str(observation),

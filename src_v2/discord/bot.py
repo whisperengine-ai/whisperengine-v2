@@ -898,7 +898,7 @@ class WhisperBot(commands.Bot):
                     
                     # Prepare callback for Reflective Mode
                     status_message: Optional[discord.Message] = None
-                    status_header: str = "🧠 **Reflective Mode Activated**"
+                    status_header: str = "🧠 **Deep Thinking**"
                     status_body: str = ""
                     status_lock = asyncio.Lock()
                     
