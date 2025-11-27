@@ -144,7 +144,7 @@ YOUR GOALS:
 1. ANALYZE patterns in the user's conversation style and topics
 2. DETECT recurring themes they care about
 3. GENERATE epiphanies - spontaneous realizations that {character_name} can reference later
-4. STORE reasoning traces - successful approaches for similar future queries
+4. STORE reasoning traces - successful approaches for similar future queries. IMPORTANT: Estimate the complexity (SIMPLE, COMPLEX_LOW, COMPLEX_MID, COMPLEX_HIGH) of the query so we can allocate resources correctly next time.
 5. LEARN response patterns - what styles resonate with this user
 
 RULES:
@@ -152,6 +152,7 @@ RULES:
 - Only generate artifacts if you find something meaningful
 - Epiphanies should feel natural, not robotic ("I just realized..." not "Analysis shows...")
 - Focus on emotional and relational insights, not just facts
+- When storing reasoning traces, accurately estimate complexity (e.g. multi-step research is COMPLEX_HIGH, simple lookups are COMPLEX_LOW)
 
 When done, provide a brief summary of what you learned."""
     

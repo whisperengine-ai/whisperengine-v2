@@ -3,6 +3,7 @@ from loguru import logger
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 
 from src_v2.agents.llm_factory import create_llm
+from src_v2.memory.manager import memory_manager
 
 # Classification result type including manipulation detection
 ClassificationResult = Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]
@@ -16,7 +17,7 @@ class ComplexityClassifier:
         # Use 'router' mode for potentially faster/cheaper model, 0.0 temp for consistency
         self.llm = create_llm(temperature=0.0, mode="router")
 
-    async def classify(self, text: str, chat_history: Optional[List[BaseMessage]] = None) -> ClassificationResult:
+    async def classify(self, text: str, chat_history: Optional[List[BaseMessage]] = None, user_id: Optional[str] = None, bot_name: Optional[str] = None) -> ClassificationResult:
         """
         Classifies the input text as SIMPLE, COMPLEX (with granularity), or MANIPULATION.
         
@@ -26,6 +27,21 @@ class ComplexityClassifier:
         COMPLEX_HIGH: Requires 6+ tool calls (e.g. deep reasoning, multi-step research).
         MANIPULATION: Consciousness fishing, pseudo-profound probing, or sentience validation attempts.
         """
+        # 0. Check for historical reasoning traces (Adaptive Depth)
+        if user_id and bot_name:
+            try:
+                traces = await memory_manager.search_reasoning_traces(text, user_id, limit=1, collection_name=f"whisperengine_memory_{bot_name}")
+                if traces and traces[0]['score'] > 0.85: # High similarity threshold
+                    trace = traces[0]
+                    metadata = trace.get('metadata', {})
+                    historical_complexity = metadata.get('complexity')
+                    
+                    if historical_complexity in ["COMPLEX_HIGH", "COMPLEX_MID", "COMPLEX_LOW", "SIMPLE"]:
+                        logger.info(f"Adaptive Depth: Found similar trace ({traces[0]['score']:.2f}) with complexity {historical_complexity}. Overriding.")
+                        return historical_complexity
+            except Exception as e:
+                logger.warning(f"Failed to check reasoning traces: {e}")
+
         chat_history = chat_history or []
         
         # Limit history to last 4 messages (approx 2 turns) to keep context reasonable and fast

@@ -512,5 +512,47 @@ class MemoryManager:
             logger.error(f"Failed to count messages: {e}")
             return 0
 
+    async def search_reasoning_traces(self, query: str, user_id: str, limit: int = 3, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Searches for reasoning traces relevant to the query.
+        """
+        if not db_manager.qdrant_client:
+            return []
+
+        collection = collection_name or self.collection_name
+        
+        try:
+            # Generate embedding for the query
+            # Use async wrapper to avoid blocking the event loop
+            query_vector = await self.embedding_service.embed_query_async(query)
+            
+            # Filter for reasoning traces for this user
+            search_filter = Filter(
+                must=[
+                    FieldCondition(key="metadata.type", match=MatchValue(value="reasoning_trace")),
+                    FieldCondition(key="user_id", match=MatchValue(value=user_id))
+                ]
+            )
+            
+            results = await db_manager.qdrant_client.search(
+                collection_name=collection,
+                query_vector=query_vector,
+                query_filter=search_filter,
+                limit=limit
+            )
+            
+            return [
+                {
+                    "content": hit.payload.get("content", ""),
+                    "metadata": hit.payload.get("metadata", {}),
+                    "score": hit.score
+                }
+                for hit in results
+            ]
+            
+        except Exception as e:
+            logger.error(f"Failed to search reasoning traces: {e}")
+            return []
+
 # Global instance
 memory_manager = MemoryManager()

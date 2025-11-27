@@ -100,7 +100,7 @@ class AgentEngine:
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
-        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
+        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective, character.name)
         logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
 
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
@@ -275,7 +275,7 @@ class AgentEngine:
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
-        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
+        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective, character.name)
         logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
 
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
@@ -433,7 +433,7 @@ class AgentEngine:
             "• Never collect personal info (phone/address/name)\n"
         )
 
-    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]:
+    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool, character_name: Optional[str] = None) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]:
         """Determines if the query requires complex reasoning and returns the level.
         
         Returns:
@@ -461,7 +461,7 @@ class AgentEngine:
             return "COMPLEX_HIGH"
             
         try:
-            complexity_level = await self.classifier.classify(user_message, chat_history)
+            complexity_level = await self.classifier.classify(user_message, chat_history, user_id=user_id, bot_name=character_name)
             
             if complexity_level == "SIMPLE":
                 logger.info("Complexity Analysis: SIMPLE")

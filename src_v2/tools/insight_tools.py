@@ -153,6 +153,7 @@ class StoreReasoningTraceInput(BaseModel):
     query_pattern: str = Field(description="A summary of the type of query (e.g., 'emotional support request').")
     successful_approach: str = Field(description="The reasoning approach that worked well.")
     tools_used: str = Field(description="Comma-separated list of tools that were effective.")
+    complexity: str = Field(default="COMPLEX_MID", description="The complexity level of the query (SIMPLE, COMPLEX_LOW, COMPLEX_MID, COMPLEX_HIGH).")
 
 
 class StoreReasoningTraceTool(BaseTool):
@@ -164,13 +165,13 @@ class StoreReasoningTraceTool(BaseTool):
     user_id: str = Field(exclude=True)
     character_name: str = Field(default="default", exclude=True)
 
-    def _run(self, query_pattern: str, successful_approach: str, tools_used: str) -> str:
+    def _run(self, query_pattern: str, successful_approach: str, tools_used: str, complexity: str = "COMPLEX_MID") -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, query_pattern: str, successful_approach: str, tools_used: str) -> str:
+    async def _arun(self, query_pattern: str, successful_approach: str, tools_used: str, complexity: str = "COMPLEX_MID") -> str:
         try:
             # Store trace as a vector memory
-            trace_content = f"[REASONING TRACE] Pattern: {query_pattern}\nApproach: {successful_approach}\nTools: {tools_used}"
+            trace_content = f"[REASONING TRACE] Pattern: {query_pattern}\nApproach: {successful_approach}\nTools: {tools_used}\nComplexity: {complexity}"
             
             await memory_manager._save_vector_memory(
                 user_id=self.user_id,
@@ -180,12 +181,13 @@ class StoreReasoningTraceTool(BaseTool):
                     "type": "reasoning_trace",
                     "character_name": self.character_name,
                     "query_pattern": query_pattern,
-                    "tools_used": tools_used.split(",")
+                    "tools_used": tools_used.split(","),
+                    "complexity": complexity
                 },
                 collection_name=f"whisperengine_memory_{self.character_name}"
             )
             
-            logger.info(f"Stored reasoning trace for pattern: {query_pattern}")
+            logger.info(f"Stored reasoning trace for pattern: {query_pattern} ({complexity})")
             return f"Reasoning trace stored for pattern: {query_pattern}"
             
         except Exception as e:

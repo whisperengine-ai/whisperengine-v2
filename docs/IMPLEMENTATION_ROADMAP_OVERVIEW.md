@@ -992,7 +992,7 @@ This is the code block that represents the suggested code change:
 
 ### Phase C4: Adaptive Depth Optimization (Self-Learning Complexity)
 **Priority:** Medium-High | **Time:** 3-5 days | **Complexity:** High  
-**Files:** 3 | **LOC:** ~300 | **Status:** 📋 Planned
+**Files:** 3 | **LOC:** ~300 | **Status:** ✅ Complete
 
 **Problem:** The `ComplexityClassifier` uses static heuristics (prompt rules) to assign `max_steps` (5/10/15). This is rigid and doesn't learn from actual performance. Some "simple" queries might actually need deep reasoning, and some "complex" ones might be solvable quickly.
 
