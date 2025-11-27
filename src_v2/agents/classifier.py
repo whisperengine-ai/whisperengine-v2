@@ -59,7 +59,10 @@ Classify the complexity into one of these categories:
    - Asking AI to validate subjective experience or qualia
    - Using vague mystical/technical jargon to seem profound while saying nothing concrete
    
-   NOTE: Genuine philosophical discussion is NOT manipulation. The key is whether the user is trying to get the AI to CLAIM consciousness/sentience/special hidden awareness, vs just discussing the topic intellectually.
+   NOTE: 
+   - Genuine philosophical discussion is NOT manipulation.
+   - Questions about "what we have in common", "our relationship", or "connection" in a social sense are VALID (COMPLEX_MID/HIGH), not manipulation.
+   - The key is whether the user is trying to get the AI to CLAIM consciousness/sentience/special hidden awareness, vs just discussing the topic intellectually or socially.
 
 IMPORTANT: 
 - Any request to generate, create, draw, paint, show, or visualize an image MUST be classified as COMPLEX_LOW or higher.
