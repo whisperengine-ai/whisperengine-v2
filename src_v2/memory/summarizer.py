@@ -12,6 +12,7 @@ class SummaryResult(BaseModel):
     summary: str = Field(description="The concise summary of the conversation. Include key topics and facts.")
     meaningfulness_score: int = Field(description="A score from 1-5 indicating how meaningful/deep the conversation was. 1=Trivial, 5=Profound.")
     emotions: List[str] = Field(description="List of prevailing emotions detected in the conversation.")
+    topics: List[str] = Field(default_factory=list, description="List of 1-5 key topics or themes discussed (e.g., 'career anxiety', 'favorite movies', 'childhood memories').")
 
 class SummaryManager:
     def __init__(self, bot_name: Optional[str] = None):
@@ -31,9 +32,10 @@ RULES:
    - 3: Hobbies, daily events, opinions.
    - 5: Deep emotional sharing, philosophy, life goals, trauma.
 4. Detect Emotions: List 2-3 dominant emotions.
+5. Extract Topics: List 1-5 key topics or themes (e.g., 'career anxiety', 'favorite movies', 'childhood memories').
+   These topics help maintain narrative continuity across sessions.
 """),
-            ("human", "Conversation to summarize:\n{conversation_text}")
-        ])
+            ("human", "Conversation to summarize:\n{conversation_text}")])
         
         self.chain = self.prompt | self.llm
 
@@ -102,7 +104,8 @@ RULES:
                 user_id=user_id,
                 content=result.summary,
                 meaningfulness_score=result.meaningfulness_score,
-                emotions=result.emotions
+                emotions=result.emotions,
+                topics=result.topics
             )
             
             if embedding_id:

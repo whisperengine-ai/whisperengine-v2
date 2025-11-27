@@ -161,7 +161,7 @@ class MemoryManager:
             logger.error(f"Failed to save vector memory: {e}")
             raise e
 
-    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], collection_name: Optional[str] = None) -> Optional[str]:
+    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], topics: Optional[List[str]] = None, collection_name: Optional[str] = None) -> Optional[str]:
         """
         Embeds and saves a summary to Qdrant.
         """
@@ -185,6 +185,7 @@ class MemoryManager:
                     "content": content,
                     "meaningfulness_score": meaningfulness_score,
                     "emotions": emotions,
+                    "topics": topics or [],
                     "timestamp": datetime.datetime.now().isoformat()
                 }
             )
@@ -346,7 +347,8 @@ class MemoryManager:
             
             for hit in search_result.points:
                 # Parse timestamp from payload
-                ts_str = hit.payload.get("timestamp")
+                payload = hit.payload or {}
+                ts_str = payload.get("timestamp")
                 
                 # Post-retrieval filtering for safety
                 if start_timestamp and ts_str:
@@ -361,7 +363,7 @@ class MemoryManager:
                 semantic_score = hit.score  # 0-1 (cosine similarity)
                 
                 # Meaningfulness: 1-10 → 0.5-1.0 (floor of 0.5 so important memories never vanish)
-                raw_meaningfulness = hit.payload.get("meaningfulness_score", 5)
+                raw_meaningfulness = payload.get("meaningfulness_score", 5)
                 meaningfulness_multiplier = 0.5 + (raw_meaningfulness / 20.0)  # 1→0.55, 5→0.75, 10→1.0
                 
                 # Recency: Exponential decay with 30-day half-life
@@ -380,11 +382,12 @@ class MemoryManager:
                 weighted_score = semantic_score * meaningfulness_multiplier * recency_multiplier
 
                 results.append({
-                    "content": hit.payload.get("content"),
+                    "content": payload.get("content"),
                     "score": weighted_score,
                     "semantic_score": semantic_score,
                     "meaningfulness": raw_meaningfulness,
                     "recency_multiplier": round(recency_multiplier, 3),
+                    "topics": payload.get("topics", []),
                     "timestamp": ts_str,
                     "relative_time": get_relative_time(ts_str) if ts_str else "unknown time"
                 })
