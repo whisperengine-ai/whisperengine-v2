@@ -57,6 +57,7 @@ RULES:
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
 - For "hobbies" or "interests", ALWAYS check for 'LIKES', 'LOVES', 'ENJOYS'.
 - If the question cannot be answered by the schema (e.g. asking for chat history, weather, time, or general knowledge), return exactly: RETURN "NO_ANSWER"
+- Do NOT use UNION queries. Instead, use a single MATCH with OR conditions or multiple patterns separated by commas.
 
 {privacy_instructions}
 """),
