@@ -497,6 +497,28 @@ class WhisperBot(commands.Bot):
                         pass
             except Exception as e:
                 logger.warning(f"Failed to check reply reference: {e}")
+
+        # Check for Thread Context (Thread started on bot message)
+        # If the thread was started on a message sent by the bot, we should reply in it
+        if not is_mentioned and isinstance(message.channel, discord.Thread):
+            try:
+                # The ID of the thread is the ID of the starter message
+                # We need to check if that starter message was sent by us
+                # Try to get from cache first
+                starter_msg = message.channel.starter_message
+                
+                # If not in cache, try to fetch from parent channel
+                if not starter_msg and message.channel.parent:
+                    try:
+                        starter_msg = await message.channel.parent.fetch_message(message.channel.id)
+                    except (discord.NotFound, discord.Forbidden):
+                        pass # Message might be deleted or we lack permissions
+                
+                if starter_msg and starter_msg.author.id == (self.user.id if self.user else None):
+                    is_mentioned = True
+                    logger.info("Detected message in thread started on bot message.")
+            except Exception as e:
+                logger.warning(f"Failed to check thread starter: {e}")
         
         # Privacy: Block DMs if enabled and user is not allowlisted
         if is_dm and settings.ENABLE_DM_BLOCK:
@@ -761,14 +783,36 @@ class WhisperBot(commands.Bot):
 
                     # 2. Save User Message & Extract Knowledge
                     try:
+                        # Determine what to save to memory
+                        # If file content is present, we save it to memory so it can be recalled later (RAG)
+                        # This allows the bot to answer questions about the file in future turns
+                        memory_content = user_message
+                        metadata = {}
+                        
+                        if file_content:
+                            memory_content += f"\n\n[Attached File Content]:\n{file_content}"
+                            # Add file names to metadata for better searchability
+                            if processed_files:
+                                metadata["has_attachments"] = True
+                                # Extract filenames from processed text headers (format: "--- File: filename.pdf ---")
+                                import re
+                                filenames = []
+                                for pf in processed_files:
+                                    match = re.search(r'--- (?:File|Referenced File): (.+?) ---', pf)
+                                    if match:
+                                        filenames.append(match.group(1))
+                                if filenames:
+                                    metadata["filenames"] = filenames
+
                         await memory_manager.add_message(
                             user_id, 
                             character.name, 
                             'human', 
-                            user_message, 
+                            memory_content, 
                             channel_id=channel_id, 
                             message_id=str(message.id),
-                            user_name=message.author.display_name
+                            user_name=message.author.display_name,
+                            metadata=metadata
                         )
                         
                         # Log Message Event to InfluxDB
@@ -817,6 +861,20 @@ class WhisperBot(commands.Bot):
 
                     # 3. Generate response
                     now = datetime.now()
+                    
+                    # Determine channel context
+                    channel_name = "DM"
+                    parent_channel_name = None
+                    is_thread = False
+                    
+                    if isinstance(message.channel, discord.Thread):
+                        is_thread = True
+                        channel_name = message.channel.name
+                        if message.channel.parent:
+                            parent_channel_name = message.channel.parent.name
+                    elif hasattr(message.channel, 'name'):
+                        channel_name = message.channel.name
+
                     context_vars = {
                         "user_name": message.author.display_name,
                         "current_datetime": now.strftime("%A, %B %d, %Y at %H:%M"),
@@ -824,7 +882,10 @@ class WhisperBot(commands.Bot):
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,
                         "past_summaries": past_summaries,
-                        "guild_id": str(message.guild.id) if message.guild else None
+                        "guild_id": str(message.guild.id) if message.guild else None,
+                        "channel_name": channel_name,
+                        "parent_channel_name": parent_channel_name,
+                        "is_thread": is_thread
                     }
                     
                     # Inject file content if present

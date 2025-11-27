@@ -43,9 +43,13 @@ Classify the complexity into one of these categories:
    - "Show me what you see" (image generation tool)
    - "Draw/paint/visualize something" (image generation tool)
 3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, or moderate reasoning.
+   - Analysis of attached files/documents ([Attached File Content]).
+   - Summarization of long text.
 4. COMPLEX_HIGH: Needs 6+ steps. Deep philosophical questions, complex multi-step research, or very ambiguous queries requiring exploration.
 
-IMPORTANT: Any request to generate, create, draw, paint, show, or visualize an image MUST be classified as COMPLEX_LOW or higher.
+IMPORTANT: 
+- Any request to generate, create, draw, paint, show, or visualize an image MUST be classified as COMPLEX_LOW or higher.
+- If the input contains [Attached File Content], default to COMPLEX_MID unless the user just wants a simple acknowledgement.
 
 Output ONLY one of: 'SIMPLE', 'COMPLEX_LOW', 'COMPLEX_MID', 'COMPLEX_HIGH'."""
 

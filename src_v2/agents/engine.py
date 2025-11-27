@@ -536,6 +536,23 @@ class AgentEngine:
             if context_variables.get("user_name"):
                 system_content += f"\n\nIMPORTANT: You are talking to {context_variables['user_name']}. Do NOT confuse them with anyone mentioned in the chat history or reply context."
 
+            # 2.8.5 Channel Context
+            channel_name = context_variables.get("channel_name", "DM")
+            parent_channel_name = context_variables.get("parent_channel_name")
+            is_thread = context_variables.get("is_thread", False)
+            
+            if channel_name == "DM":
+                channel_context = "\n\n[CHANNEL CONTEXT]\nYou are in a PRIVATE DIRECT MESSAGE with the user."
+            elif is_thread:
+                channel_context = f"\n\n[CHANNEL CONTEXT]\nYou are in a THREAD named: '{channel_name}'"
+                if parent_channel_name:
+                    channel_context += f"\nParent Channel: #{parent_channel_name}"
+                channel_context += "\n(This is a focused sub-conversation. Stay on topic.)"
+            else:
+                channel_context = f"\n\n[CHANNEL CONTEXT]\nYou are in the MAIN CHANNEL: #{channel_name}"
+            
+            system_content += channel_context
+
             # 2.9 Meta-Instructions (Anti-AI-Break)
             system_content += self._get_meta_instructions()
 
