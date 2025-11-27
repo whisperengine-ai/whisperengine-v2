@@ -73,8 +73,10 @@ Your character folder will contain:
 characters/mybot/
 ├── character.md       # Required: Main personality (system prompt)
 ├── goals.yaml         # Required: Conversation objectives
-├── background.yaml    # Recommended: Knowledge Graph facts (Neo4j)
-└── evolution.yaml     # Recommended: Trust-based personality evolution
+├── core.yaml          # Optional: Core identity (purpose, drives, constitution)
+├── ux.yaml            # Optional: UX config (thinking indicators, response style)
+├── background.yaml    # Optional: Knowledge Graph facts (Neo4j)
+└── evolution.yaml     # Optional: Trust-based personality evolution
 ```
 
 > **Note**: Templates exist for all files. Copy and customize them.
@@ -292,7 +294,85 @@ ENABLE_PROMPT_LOGGING=true           # Log prompts for debugging
 
 ---
 
-## 🧠 Step 5: Add Background Facts (`background.yaml`) - Recommended
+## 🎨 Step 5: Customize UX Presentation (`ux.yaml`) - Optional
+
+Character-specific thinking indicators and response style preferences. Each character can have unique ways of showing their thinking process.
+
+```bash
+cp characters/ux.yaml.template characters/mybot/ux.yaml
+```
+
+### What Goes in `ux.yaml`?
+
+**Thinking Indicators** - How the character shows they're working:
+- `reflective_mode`: Status shown during complex reasoning (reflective mode)
+- `tool_use`: Status shown when using tools (memory search, fact lookup, etc.)
+
+### Examples by Character Type
+
+**Nostalgic/Warm Character (like Elena):**
+```yaml
+thinking_indicators:
+  reflective_mode:
+    icon: "🌙"
+    text: "Lost in thought..."
+  tool_use:
+    icon: "✨"
+    text: "Remembering something..."
+```
+
+**Analytical Character (like Marcus):**
+```yaml
+thinking_indicators:
+  reflective_mode:
+    icon: "🔍"
+    text: "Analyzing this..."
+  tool_use:
+    icon: "🛠️"
+    text: "Checking my notes..."
+```
+
+**Creative/Mystical Character (like Aria):**
+```yaml
+thinking_indicators:
+  reflective_mode:
+    icon: "🔮"
+    text: "Channeling inspiration..."
+  tool_use:
+    icon: "💫"
+    text: "Weaving ideas together..."
+```
+
+**Playful Character (like Dotty):**
+```yaml
+thinking_indicators:
+  reflective_mode:
+    icon: "💭"
+    text: "Hmm, let me think..."
+  tool_use:
+    icon: "🎵"
+    text: "Vibing with this..."
+```
+
+### When Users See These
+
+**Reflective Mode** appears when:
+- User asks complex questions
+- Bot needs to search through memories
+- Philosophical or multi-layered queries
+- Takes 5-30 seconds
+
+**Tool Use** appears when:
+- Bot searches memories
+- Bot looks up facts
+- Bot generates images
+- Usually 2-4 seconds
+
+> **Note:** If you don't create `ux.yaml`, the character uses defaults (🧠 "Reflective Mode Activated" / ✨ "Using my abilities...")
+
+---
+
+## 🧠 Step 6: Add Background Facts (`background.yaml`) - Optional
 
 Background facts are stored in Neo4j and enable **deep character memory** without bloating the system prompt. This is the character's **semantic memory** - facts they "know" about themselves.
 
@@ -395,7 +475,7 @@ facts:
 
 ---
 
-## 🔄 Step 6: Add to Docker Compose (For Production)
+## 🔄 Step 7: Add to Docker Compose (For Production)
 
 Edit `docker-compose.yml` to add your bot:
 
@@ -454,7 +534,7 @@ Each bot needs a unique port. Current assignments:
 
 ---
 
-## ▶️ Step 7: Run Your Bot
+## ▶️ Step 8: Run Your Bot
 
 ### Option A: Local Development (Recommended for Testing)
 

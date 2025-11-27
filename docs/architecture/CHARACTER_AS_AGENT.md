@@ -709,6 +709,8 @@ Reflective Mode already shows thinking steps, and user experience has been posit
 [Tool-augmented response with recalled context]
 ```
 
+**Note:** As of Phase A8, thinking indicators are character-specific and defined in `characters/{name}/ux.yaml`. Each character can have their own unique icons and text that reflect their personality.
+
 Visible effort = perceived care = better UX, even with added latency.
 
 ### Revised Cost Analysis

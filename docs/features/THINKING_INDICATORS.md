@@ -4,12 +4,13 @@ When you chat with the bot, you might sometimes see status messages appear befor
 
 ## What Do They Mean?
 
-### 🧠 **Reflective Mode**
+### Character-Specific Indicators
 
-You'll see this when you ask something complex—like questions about your past conversations, philosophical topics, or requests that need the bot to search through memories and piece things together.
+Each character has their own unique way of showing they're thinking or using tools. This reflects their personality and makes interactions more authentic.
 
+**Example - Elena (nostalgic, warm):**
 ```
-🧠 **Reflective Mode**
+🌙 **Lost in thought...**
 
 > 💭 Let me think about what we discussed before...
 > 🛠️ *Using search_memories...*
@@ -17,22 +18,29 @@ You'll see this when you ask something complex—like questions about your past 
 > 💭 I see a pattern here...
 ```
 
-**What's happening:** The bot is going through multiple steps of reasoning, searching memories, and connecting dots. This might take 5-30 seconds depending on complexity.
-
----
-
-### ✨ **Using my abilities...**
-
-You'll see this when the bot uses one of its tools—like searching memories, looking up facts, or generating images.
-
+**Example - Marcus (analytical):**
 ```
-✨ **Using my abilities...**
+🔍 **Analyzing this...**
 
-> 🔍 *Checking my memory...*
 > 🛠️ *Using lookup_facts...*
+> ✅ *lookup_facts*: Found relevant information
 ```
 
-**What's happening:** A quick one-step tool use. Usually takes just a few seconds.
+**Example - Aria (creative, mystical):**
+```
+🔮 **Channeling inspiration...**
+
+> 🛠️ *Using generate_image...*
+> ✅ Image created!
+```
+
+### Two Types of Thinking
+
+**Deep/Complex Thinking (Reflective Mode):**
+When you ask something complex—like questions about your past conversations, philosophical topics, or requests that need the bot to search through memories and piece things together. Takes 5-30 seconds depending on complexity.
+
+**Quick Tool Use:**
+When the bot uses one of its tools—like searching memories, looking up facts, or generating images. Usually takes just a few seconds.
 
 ---
 
