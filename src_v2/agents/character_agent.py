@@ -1,28 +1,77 @@
 import asyncio
-from typing import List, Optional, Callable, Awaitable, Tuple, Any
+from typing import List, Optional, Callable, Awaitable
 from loguru import logger
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
+from src_v2.config.settings import settings
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
     LookupFactsTool, 
     ExploreGraphTool,
-    DiscoverCommonGroundTool
+    DiscoverCommonGroundTool,
+    CharacterEvolutionTool
 )
 from src_v2.tools.image_tools import GenerateImageTool
-from src_v2.config.settings import settings
 
 class CharacterAgent:
     """
     Tier 2 Agent: Capable of a single tool call before responding.
     Used for 'MODERATE' complexity queries where full ReAct loop is overkill.
+    
+    Design Philosophy:
+    - Characters have agency (they decide to look things up)
+    - But not unlimited agency (one tool max, no loops)
+    - Tool usage reflects personality (emergent from prompt)
+    - Fast enough for conversation (2-4 seconds added latency)
     """
+    
+    # Base prompt - image generation line is added dynamically based on feature flag
+    AGENCY_PROMPT_BASE = """
+
+## Tool Usage (Your Agency)
+
+You have access to tools that let you look things up. Use them when:
+- The user asks about something you might have discussed before
+- You want to recall a specific detail to make the conversation more personal
+- You genuinely need information to give a good response
+- The user asks about your relationship or how close you are
+- You want to find common ground or shared interests
+
+Available tools:
+- search_archived_summaries: Past conversations and topics
+- search_specific_memories: Specific details and quotes
+- lookup_user_facts: Facts about the user from the knowledge graph
+- explore_knowledge_graph: Explore connections and relationships
+- discover_common_ground: Find what you have in common
+- get_character_evolution: Check your relationship level and trust
+"""
+
+    AGENCY_PROMPT_IMAGE = """- generate_image: Create images for the user
+"""
+
+    AGENCY_PROMPT_FOOTER = """
+Don't use tools for:
+- Simple greetings or casual chat
+- Questions you can answer from general knowledge
+- When the conversation is flowing naturally
+
+If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
+"""
+
     def __init__(self):
         # Use main LLM (usually faster/cheaper than reflective)
         self.llm = create_llm(temperature=0.7, mode="main")
+    
+    def _get_agency_prompt(self) -> str:
+        """Builds the agency prompt, including image generation only if enabled."""
+        prompt = self.AGENCY_PROMPT_BASE
+        if settings.ENABLE_IMAGE_GENERATION:
+            prompt += self.AGENCY_PROMPT_IMAGE
+        prompt += self.AGENCY_PROMPT_FOOTER
+        return prompt
 
     async def run(
         self, 
@@ -31,17 +80,19 @@ class CharacterAgent:
         system_prompt: str, 
         chat_history: Optional[List[BaseMessage]] = None,
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
-        guild_id: Optional[str] = None
+        guild_id: Optional[str] = None,
+        character_name: Optional[str] = None
     ) -> str:
         """
         Executes a single-step tool lookup if needed, then generates response.
         """
         # 1. Initialize Tools (Subset of full tools)
-        tools = self._get_tools(user_id, guild_id)
+        tools = self._get_tools(user_id, guild_id, character_name)
         llm_with_tools = self.llm.bind_tools(tools)
         
-        # 2. Construct Messages
-        messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
+        # 2. Construct Messages with agency guidance (dynamically built based on feature flags)
+        enhanced_prompt = system_prompt + self._get_agency_prompt()
+        messages: List[BaseMessage] = [SystemMessage(content=enhanced_prompt)]
         if chat_history:
             messages.extend(chat_history)
         messages.append(HumanMessage(content=user_input))
@@ -105,15 +156,38 @@ class CharacterAgent:
                 content=f"Error: {str(e)}"
             ))
 
-    def _get_tools(self, user_id: str, guild_id: Optional[str] = None) -> List[BaseTool]:
-        """Returns the subset of tools available to CharacterAgent."""
-        # guild_id is reserved for future guild-specific tools
-        _ = guild_id 
-        return [
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None) -> List[BaseTool]:
+        """Returns the subset of tools available to CharacterAgent.
+        
+        Tier 2 tools are a curated subset focused on:
+        - Memory retrieval (summaries, episodes, facts)
+        - Graph exploration (relationships, common ground)
+        - Image generation (if enabled)
+        - Relationship awareness
+        
+        Excludes:
+        - Update tools (UpdateFactsTool, UpdatePreferencesTool) - complex operations
+        - Introspection tools (AnalyzePatternsTool, DetectThemesTool) - background only
+        - Universe tools (CheckPlanetContextTool) - rarely needed at Tier 2
+        """
+        # Note: bot_name and character_name are used interchangeably across tools
+        # (historical inconsistency). They refer to the same value.
+        bot_name = character_name or "default"
+        
+        tools: List[BaseTool] = [
+            # Memory & Knowledge Tools
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
-            LookupFactsTool(user_id=user_id),
-            ExploreGraphTool(user_id=user_id),
-            DiscoverCommonGroundTool(user_id=user_id),
-            GenerateImageTool(user_id=user_id)
+            LookupFactsTool(user_id=user_id, bot_name=bot_name),
+            
+            # Graph & Relationship Tools
+            ExploreGraphTool(user_id=user_id, bot_name=bot_name),
+            DiscoverCommonGroundTool(user_id=user_id, bot_name=bot_name),
+            CharacterEvolutionTool(user_id=user_id, character_name=bot_name),
         ]
+        
+        # Conditionally add image generation tool (respects feature flag)
+        if settings.ENABLE_IMAGE_GENERATION:
+            tools.append(GenerateImageTool(user_id=user_id, character_name=bot_name))
+        
+        return tools

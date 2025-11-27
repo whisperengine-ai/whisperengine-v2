@@ -282,6 +282,17 @@ class ReflectiveAgent:
         return tools
 
     def _construct_prompt(self, base_system_prompt: str) -> str:
+        # Dynamic sections based on feature flags
+        creative_category = ""
+        image_rules = ""
+        
+        if settings.ENABLE_IMAGE_GENERATION:
+            creative_category = "5. Creative: generate_image\n"
+            image_rules = """- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
+- Gathering information is NOT the same as generating an image.
+- After gathering context, if the task requires an image, call generate_image with a detailed prompt.
+"""
+
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
 You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, and generate images.
 Use these tools to gather information or create visual content before answering.
@@ -292,16 +303,12 @@ AVAILABLE TOOL CATEGORIES:
 2. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
 3. Introspection: analyze_conversation_patterns, detect_recurring_themes
 4. Context: check_planet_context
-5. Creative: generate_image (if enabled)
-
+{creative_category}
 IMPORTANT RULES:
-- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
-- If the user asks about connections, relationships, what's connected, or to explore the network/graph, use the explore_knowledge_graph tool.
+{image_rules}- If the user asks about connections, relationships, what's connected, or to explore the network/graph, use the explore_knowledge_graph tool.
 - If the user asks what you have in common, shared interests, or you want to find connection points, use the discover_common_ground tool.
 - If the user asks about your relationship, trust level, or how close you are, use get_character_evolution.
 - If the user asks about patterns, themes, or what topics come up often, use analyze_conversation_patterns or detect_recurring_themes.
-- Gathering information is NOT the same as generating an image.
-- After gathering context, if the task requires an image, call generate_image with a detailed prompt.
 - Do NOT give a final answer until you have completed all requested actions.
 - When asked to search or explore, USE THE TOOLS - don't just describe what you would do.
 

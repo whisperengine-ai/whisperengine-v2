@@ -40,7 +40,7 @@ class CognitiveRouter:
         tools = [
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
-            LookupFactsTool(user_id=user_id),
+            LookupFactsTool(user_id=user_id, bot_name=character_name),
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),

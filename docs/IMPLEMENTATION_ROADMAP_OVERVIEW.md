@@ -101,13 +101,13 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 **NOT YET IMPLEMENTED:**
 - ⏳ Phase A5: Channel Context Awareness
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
-- ⏳ Phase A7: Character Agency (Tier 2 tool-augmented responses)
+- ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
 - ⏳ Phase C3: Video processing, web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase A7 (Character Agency) - Characters decide to use tools. See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
+**Next focus:** Phase A5 (Channel Context Awareness) - Bot sees non-mentioned channel messages. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md)
 
 ---
 
@@ -400,7 +400,7 @@ Image + User Message → Vision Analysis → Trigger Detection
 
 ### Phase A7: Character Agency (Tier 2 Tool-Augmented Responses)
 **Priority:** High | **Time:** 2-3 days | **Complexity:** Low-Medium  
-**Files:** 3-4 | **LOC:** ~300 | **Status:** 📋 Ready for Implementation
+**Files:** 3-4 | **LOC:** ~300 | **Status:** ✅ Complete (Nov 26, 2025)
 
 **Problem:** Characters are currently reactive (context pre-fetched, single LLM call). They can't *decide* to look something up, which limits authenticity and depth.
 

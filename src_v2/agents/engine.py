@@ -139,7 +139,8 @@ class AgentEngine:
                     user_id=user_id,
                     system_prompt=system_content,
                     chat_history=chat_history,
-                    callback=callback
+                    callback=callback,
+                    character_name=character.name
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {is_complex})")
@@ -274,26 +275,46 @@ class AgentEngine:
         system_content = await self._build_system_context(character, user_message, user_id, context_variables)
         logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
-        # 3. Branching Logic: Reflective Mode
-        if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
-            # Determine max steps based on complexity level
-            max_steps = 10 # Default
-            if is_complex == "COMPLEX_LOW":
-                max_steps = 5
-            elif is_complex == "COMPLEX_MID":
-                max_steps = 10
-            elif is_complex == "COMPLEX_HIGH":
-                max_steps = 15
+        # 3. Branching Logic: Complex Modes
+        if is_complex and user_id:
+            # 3a. Reflective Mode (Full ReAct Loop) for COMPLEX_MID/HIGH
+            if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                # Determine max steps based on complexity level
+                max_steps = 10 # Default
+                if is_complex == "COMPLEX_MID":
+                    max_steps = 10
+                elif is_complex == "COMPLEX_HIGH":
+                    max_steps = 15
 
-            # Reflective mode doesn't support true streaming yet, so we yield the full response
-            response = await self._run_reflective_mode(
-                character, user_message, user_id, system_content, 
-                chat_history, context_variables, image_urls, callback,
-                max_steps_override=max_steps
-            )
-            logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
-            yield response
-            return
+                # Reflective mode doesn't support true streaming yet, so we yield the full response
+                response = await self._run_reflective_mode(
+                    character, user_message, user_id, system_content, 
+                    chat_history, context_variables, image_urls, callback,
+                    max_steps_override=max_steps
+                )
+                logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
+                yield response
+                return
+            
+            # 3b. Character Agency (Tier 2 - Single Tool Call) for COMPLEX_LOW
+            elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
+                # CharacterAgent doesn't support streaming yet, yield full response
+                response = await self.character_agent.run(
+                    user_input=user_message,
+                    user_id=user_id,
+                    system_prompt=system_content,
+                    chat_history=chat_history,
+                    callback=callback,
+                    character_name=character.name
+                )
+                total_time = time.time() - start_time
+                logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {is_complex})")
+                
+                # Log metrics
+                await self._log_metrics(user_id, character.name, total_time, "agency", is_complex)
+                
+                yield response
+                return
         
         # 4. Fast Mode (Standard Flow)
         
@@ -391,13 +412,30 @@ class AgentEngine:
         )
 
     async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH"]:
-        """Determines if the query requires complex reasoning and returns the level."""
-        if not (user_id and settings.ENABLE_REFLECTIVE_MODE):
+        """Determines if the query requires complex reasoning and returns the level.
+        
+        Returns:
+            False: Simple/trivial message (Tier 1 - Fast Mode)
+            COMPLEX_LOW: Moderate query benefiting from 1 tool (Tier 2 - CharacterAgent)
+            COMPLEX_MID: Complex query needing 3-5 steps (Tier 3 - ReflectiveAgent)
+            COMPLEX_HIGH: Very complex query needing 6+ steps (Tier 3 - ReflectiveAgent)
+        """
+        # No user ID = can't use personalized tools
+        if not user_id:
+            return False
+        
+        # Neither agency nor reflective mode enabled = fast mode only
+        if not (settings.ENABLE_REFLECTIVE_MODE or settings.ENABLE_CHARACTER_AGENCY):
+            return False
+        
+        # Trivial message detection (bypass LLM classifier for speed)
+        if self._is_trivial_message(user_message):
+            logger.info("Complexity Analysis: TRIVIAL (fast path)")
             return False
             
         if force_reflective:
             logger.info("Complexity Analysis: FORCED COMPLEX by user")
-            return "COMPLEX_HIGH" # Assume high complexity if forced
+            return "COMPLEX_HIGH"
             
         try:
             complexity_level = await self.classifier.classify(user_message, chat_history)
@@ -412,6 +450,36 @@ class AgentEngine:
         except Exception as e:
             logger.error(f"Complexity classifier failed: {e}")
             return False
+    
+    def _is_trivial_message(self, message: str) -> bool:
+        """Fast check for trivial messages that don't need complexity classification.
+        
+        Trivial messages:
+        - Very short (<5 words, not questions)
+        - Pure greetings
+        - Single emoji or reaction
+        - Single word responses
+        """
+        msg = message.strip().lower()
+        
+        # Single emoji or very short
+        if len(msg) <= 3:
+            return True
+        
+        # Word count check (allow short questions through)
+        words = msg.split()
+        if len(words) < 5 and '?' not in msg:
+            # Check if it's a greeting
+            greetings = {'hi', 'hey', 'hello', 'yo', 'sup', 'hiya', 'heya', 'morning', 'evening', 'night', 'gm', 'gn'}
+            if words[0] in greetings or msg in greetings:
+                return True
+            
+            # Single word acknowledgments
+            acknowledgments = {'ok', 'okay', 'sure', 'yes', 'no', 'yeah', 'yep', 'nope', 'cool', 'nice', 'thanks', 'ty', 'thx', 'lol', 'lmao', 'haha', 'hehe'}
+            if len(words) == 1 and msg in acknowledgments:
+                return True
+        
+        return False
 
     async def _build_system_context(self, character: Character, user_message: str, user_id: Optional[str], context_variables: Dict[str, Any]) -> str:
         """Constructs the full system prompt including evolution, goals, and knowledge."""

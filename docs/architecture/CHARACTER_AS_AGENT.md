@@ -1,8 +1,9 @@
 # Character as Agent - Design Analysis
 
-**Document Version:** 1.4  
+**Document Version:** 1.5  
 **Created:** November 25, 2025  
-**Status:** ✅ Ready for Implementation (Phase A7)  
+**Last Updated:** November 26, 2025
+**Status:** ✅ Implemented (Phase A7 Complete)  
 **Type:** Architectural Decision Record (ADR)
 
 ---
@@ -11,10 +12,12 @@
 
 This document explores whether WhisperEngine characters (Elena, Marcus, Aria, etc.) should be **agentic** - capable of autonomous tool use, planning, and goal-directed behavior - rather than **reactive** text generators that simply respond to prompts with injected context.
 
-**Current State:** Characters are reactive (prompt + context → LLM → response)  
-**Proposed Exploration:** Characters as agents (prompt + context + tools → LLM decides actions → response)
+**Current State:** Characters use a 3-tier response system:
+- **Tier 1 (Fast Mode):** Trivial messages (greetings, emoji, <5 words) → No tools
+- **Tier 2 (CharacterAgent):** Moderate messages → Single tool call optional
+- **Tier 3 (ReflectiveAgent):** Complex messages → Full ReAct loop with multiple tools
 
-**Key Question:** Does making characters more agentic improve the user experience enough to justify the added latency and cost?
+**Key Finding:** Production data validated that users tolerate 10-30s response times and value depth over speed.
 
 ---
 
