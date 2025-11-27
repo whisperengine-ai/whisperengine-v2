@@ -8,7 +8,7 @@ This document tracks identified "hackish" solutions, technical debt, and areas f
 ## 🔴 High Priority Issues
 
 ### 1. Hardcoded Magic Numbers & Sleep Values
-**Status:** 🔄 In Progress
+**Status:** ✅ Done
 **Location:** Multiple files
 - `discord/bot.py:228`: `await asyncio.sleep(300)` (Status update interval)
 - `discord/bot.py:1009`: `reading_delay = min(len(user_message) * 0.05, 4.0)` (Typing delay formula)
@@ -18,7 +18,7 @@ This document tracks identified "hackish" solutions, technical debt, and areas f
 **Fix:** Extract these to `settings.py` as configurable constants.
 
 ### 2. Temporary Debug Comments Left in Production Code
-**Status:** 🔄 In Progress
+**Status:** ✅ Done
 **Location:** `knowledge/manager.py:530`
 ```python
 # Note: Removed ORDER BY r.created_at DESC temporarily to debug missing facts issue
@@ -39,7 +39,7 @@ Most catch blocks catch `Exception` which can hide bugs.
 ## 🟡 Medium Priority Issues
 
 ### 5. Regex-Based Text Cleaning in Response Pipeline
-**Status:** 🟡 Open
+**Status:** ✅ Done
 **Location:** `discord/bot.py:1024-1026`
 Regex used to strip timestamps leaking from memory.
 **Fix:** Fix the timestamp injection point in `memory/manager.py`.

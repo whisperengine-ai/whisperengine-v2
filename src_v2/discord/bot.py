@@ -1019,11 +1019,6 @@ class WhisperBot(commands.Bot):
                             callback=reflective_callback,
                             force_reflective=force_reflective
                         ):
-                            # Safety Net: Strip timestamp if it leaks into the stream
-                            # Regex matches [12 mins ago] or [just now] at start of chunk/string
-                            chunk = re.sub(r'^\[.*?ago\]\s*', '', chunk)
-                            chunk = re.sub(r'^\[just now\]\s*', '', chunk)
-                            
                             full_response_text += chunk
                             
                             # Rate limit updates
