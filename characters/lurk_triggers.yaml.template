@@ -1,0 +1,81 @@
+# characters/{name}/lurk_triggers.yaml - Lurk Mode Triggers
+# 
+# Defines when this character should respond to messages in channels
+# they're "lurking" in (not directly mentioned). This enables natural
+# multi-bot behavior where characters chime in on topics they care about.
+
+# Keywords that trigger this character's interest
+# Higher relevance = more likely to respond
+keywords:
+  high_relevance:
+    # Core expertise/passion areas
+    # These are topics the character knows deeply and cares about
+    - example topic
+    - another topic
+    # Add 15-30 high-relevance keywords
+
+  medium_relevance:
+    # Related topics the character has opinions on
+    # These may trigger a response if combined with other signals
+    - related topic
+    - tangential interest
+    # Add 15-25 medium-relevance keywords
+
+  low_relevance:
+    # Loosely connected topics
+    # Usually won't trigger alone, but add context
+    - general topic
+    - broad category
+    # Add 10-20 low-relevance keywords
+
+# Question patterns that increase likelihood of responding
+# Character may answer questions even if topic relevance is medium
+question_patterns:
+  - "anyone know about"
+  - "does anyone know"
+  - "what do you think about"
+  - "has anyone seen"
+  - "is it true that"
+  - "why do"
+  - "how do"
+  - "what causes"
+  - "have you heard"
+  - "can someone explain"
+
+# Example sentences showing what this character would respond to
+# Used for semantic matching - the character responds to messages
+# similar to these topic sentences
+topic_sentences:
+  - "Add sentences that represent topics this character would engage with."
+  - "Each sentence should be a full thought about a subject they care about."
+  - "Include a mix of factual statements and opinion-worthy topics."
+  - "Aim for 8-12 topic sentences covering their expertise range."
+
+# Emotional keywords that may trigger engagement
+# Character may respond to support or share in emotions
+emotional_keywords:
+  positive:
+    - excited
+    - amazing
+    - incredible
+    - beautiful
+    - wow
+    - awesome
+    - stunning
+  negative:
+    - sad
+    - worried
+    - scared
+    - tragic
+    - devastating
+    - heartbreaking
+    - concerning
+
+# Character-specific spam warnings (random selection)
+# Shown when user cross-posts the same message to multiple channels
+# Should be in-character but firm about the behavior
+spam_warnings:
+  - "Hey, I noticed you posted that in a few channels. Could you keep it to one place?"
+  - "Looks like you sent that message a few times. Mind sticking to one channel?"
+  - "Cross-posting the same message can clutter things up. One channel is plenty!"
+  - "I'm seeing this in multiple places. Let's keep it to one spot so the conversation stays together."

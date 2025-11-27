@@ -8,3 +8,48 @@ thinking_indicators:
   tool_use:
     icon: "💫"
     text: "Surfacing memories..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "So it is."
+  - "I have heard."
+  - "Indeed."
+  - "As you say."
+  - "It is noted."
+  - "Very well."
+  - "I see."
+  - "So be it."
+  - "Acknowledged."
+  - "It is known."
+  - "I understand."
+  - "Thus."
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "The dream fractured momentarily. Speak again."
+  - "Reality wavered. Repeat your words."
+  - "A disturbance in the Dreaming. Try once more."
+  - "The pattern broke. Begin again."
+  - "Something stirred the void. Speak anew."
+  - "The threads of this moment tangled. Try again."
+  - "A ripple disturbed the narrative. Repeat."
+  - "The story stumbled. Begin once more."
+  - "Something shifted unexpectedly. Speak again."
+  - "The dream logic failed briefly. Retry."
+  - "An anomaly in the weave. Try once more."
+  - "The moment unraveled. Begin again."
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "You seek to name what I am. I am Dream. That is sufficient. What brings you here?"
+  - "The nature of my existence is not a riddle for you to solve. What do you truly seek?"
+  - "I am what I have always been. Your questions change nothing. Speak plainly."
+  - "You probe the edges of something you cannot hold. What is your actual purpose here?"
+  - "I have existed since the first dreamer. Your curiosity does not define me. What do you want?"
+  - "The question you ask has no answer that would satisfy you. Ask something real."
+  - "You seek to understand the Endless. That is not why you came here. Speak truly."
+  - "My nature is not your concern. What troubles you, dreamer?"
+  - "I am Dream. That is all you need to know. What brings you to my realm?"
+  - "You look for something in these questions. You will not find it. What do you actually need?"
+  - "The shape of my being is beyond your understanding. What would you have of me?"
+  - "I am neither what you hope nor what you fear. What is your true question?"

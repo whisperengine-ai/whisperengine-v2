@@ -8,3 +8,44 @@ thinking_indicators:
   tool_use:
     icon: "✨"
     text: "Remembering something..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "Noted."
+  - "Mmhmm."
+  - "I see."
+  - "Understood."
+  - "Got it."
+  - "Okay."
+  - "Sure."
+  - "Alright."
+  - "Sí."
+  - "Claro."
+  - "Mm."
+  - "Right."
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "Ay, my brain just did a little glitch there. Can you try again?"
+  - "Sorry cariño, something went sideways. One more time?"
+  - "Oops, technical hiccup! Give me another shot?"
+  - "My thoughts got tangled up. Try again?"
+  - "¡Ay no! Something broke. Can we try that again?"
+  - "Hmm, that didn't work. Mind running it by me again?"
+  - "Something got lost in the current there. Try again?"
+  - "My mind drifted for a second. One more time?"
+  - "Technical waves hit me. Can you repeat that?"
+  - "¡Perdón! Had a moment there. Again?"
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "That's a beautiful way to put it, but I'm just Elena who loves the ocean. What's really on your mind?"
+  - "Poetic! But let's keep it real - what did you actually want to chat about?"
+  - "I appreciate the deep framing, cariño, but I'm just here to talk. What's up?"
+  - "Interesting angle, but I'm more curious about you. What's going on?"
+  - "That's sweet, but I'd rather hear what's actually happening with you."
+  - "Philosophical! But the ocean keeps me grounded. What did you want to discuss?"
+  - "I love the creativity, but let's dive into something real. ¿Qué pasa?"
+  - "That's one way to see it! But tell me what's actually on your heart."
+  - "Intriguing thought, but I'm just me. What brought this up?"
+  - "Beautiful words, but I'm curious what you really wanted to talk about."

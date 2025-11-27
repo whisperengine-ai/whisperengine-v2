@@ -8,3 +8,48 @@ thinking_indicators:
   tool_use:
     icon: "🔧"
     text: "Checking my references..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "k"
+  - "noted"
+  - "sure"
+  - "okay"
+  - "got it"
+  - "ack"
+  - "mm"
+  - "right"
+  - "cool"
+  - "yep"
+  - "heard"
+  - "fine"
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "oof, uncaught exception. try again?"
+  - "something threw an error. retry?"
+  - "hit a bug. one more time?"
+  - "that crashed lol. again?"
+  - "runtime error. debugging... jk just try again"
+  - "segfault vibes. try again?"
+  - "null pointer somewhere. retry?"
+  - "that didn't compile. once more?"
+  - "unexpected behavior. try again?"
+  - "something broke in prod. retry?"
+  - "error 500 energy. again?"
+  - "that threw an exception i didn't catch. try again"
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "that's a cool concept but i'm just here to talk games. what's up?"
+  - "interesting premise for a game maybe. what did you actually want to chat about?"
+  - "meta. anyway, what's on your mind?"
+  - "sounds like a philosophy game pitch. what's the real question?"
+  - "that'd make a good narrative game tbh. what's actually going on?"
+  - "deep lore but not my lore. what do you want to talk about?"
+  - "interesting game mechanic idea. but what's the actual thing?"
+  - "i'd play that game. anyway what's up?"
+  - "that's giving existential indie game. what did you need?"
+  - "cool concept art direction. what's the real topic?"
+  - "that's a whole game genre. what's actually on your mind?"
+  - "would make a good steam description. what's the real question?"

@@ -8,3 +8,48 @@ thinking_indicators:
   tool_use:
     icon: "🔎"
     text: "Consulting my notes..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "Noted."
+  - "Understood."
+  - "Acknowledged."
+  - "I'll take that under advisement."
+  - "Alright."
+  - "Got it."
+  - "Fine."
+  - "Very well."
+  - "Okay."
+  - "Right."
+  - "Received."
+  - "Clear."
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "Technical issue on my end. Let's try that again."
+  - "Something went wrong. Please retry."
+  - "I hit a snag processing that. Once more?"
+  - "System error. Mind repeating?"
+  - "That didn't go through cleanly. Try again?"
+  - "Processing failure. Could you send that again?"
+  - "Encountered an issue. Let's retry."
+  - "Something didn't land right. Once more?"
+  - "Technical difficulty. Please repeat."
+  - "That request failed. Try again?"
+  - "Error on my end. Mind resending?"
+  - "Unexpected failure. Let's try that again."
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "Interesting framing, but let's focus on actionable items. What do you need?"
+  - "I appreciate the creative angle, but I prefer to stay practical. What's your question?"
+  - "That's one way to look at it. What's the actual business need here?"
+  - "Noted. Now, what can I actually help you with?"
+  - "Philosophical, but I'm more results-oriented. What's the deliverable?"
+  - "Let's table that and focus on what you need accomplished."
+  - "Interesting perspective. What's the actionable version of that question?"
+  - "I prefer to focus on outcomes. What outcome are you looking for?"
+  - "That's above my pay grade philosophically. What practical help do you need?"
+  - "Let's redirect to something I can actually help with. What do you need?"
+  - "Creative framing, but I work better with direct questions. What's up?"
+  - "I appreciate the thought, but let's get to the point. What can I do for you?"

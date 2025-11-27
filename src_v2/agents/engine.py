@@ -3,6 +3,7 @@ import json
 import datetime
 import time
 import base64
+import random
 import httpx
 from pathlib import Path
 import aiofiles
@@ -106,6 +107,9 @@ class AgentEngine:
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
+            # Use character-specific manipulation response
+            if character.manipulation_responses:
+                return random.choice(character.manipulation_responses)
             return "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
@@ -303,7 +307,11 @@ class AgentEngine:
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
-            yield "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+            # Use character-specific manipulation response
+            if character.manipulation_responses:
+                yield random.choice(character.manipulation_responses)
+            else:
+                yield "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
             return
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)

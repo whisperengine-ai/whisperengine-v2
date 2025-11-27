@@ -8,3 +8,48 @@ thinking_indicators:
   tool_use:
     icon: "🔍"
     text: "Looking into this..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "Mm."
+  - "Yep."
+  - "Heard."
+  - "Copy."
+  - "Right."
+  - "Okay."
+  - "Sure."
+  - "Got it."
+  - "Noted."
+  - "Uh huh."
+  - "Alright."
+  - "Yeah."
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "Lost the signal there. Try again."
+  - "Something glitched. Run it back."
+  - "Hit a snag. One more time."
+  - "That didn't land right. Again?"
+  - "Technical hiccup. Retry."
+  - "Missed that. Send again."
+  - "Something broke. Try again."
+  - "Got tangled up. Once more."
+  - "Lost it there. Repeat?"
+  - "Error. Try again."
+  - "That fell through. Again?"
+  - "Didn't catch it. One more time."
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "Interesting. But what's actually on your mind?"
+  - "Poetic. What did you really want to ask?"
+  - "I hear you. Now what's the real question?"
+  - "That's one way to see it. What's up?"
+  - "Deep. What's actually going on?"
+  - "Nice thought. What do you need?"
+  - "Noted. What's the real topic?"
+  - "Okay. And the actual question is?"
+  - "Fair. What did you want to talk about?"
+  - "I get it. What's really happening?"
+  - "Sure. But what's on your mind for real?"
+  - "Heard. Now what's the actual thing?"

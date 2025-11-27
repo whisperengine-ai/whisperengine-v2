@@ -1172,7 +1172,15 @@ class WhisperBot(commands.Bot):
 
             except Exception as e:
                 logger.exception(f"Critical error in on_message: {e}")
-                await message.channel.send("I'm having a bit of trouble processing that right now. Please try again later.")
+                # Use character-specific error message if available
+                error_msg = "I'm having a bit of trouble processing that right now. Please try again later."
+                try:
+                    char = character_manager.get_character(self.character_name)
+                    if char and char.error_messages:
+                        error_msg = random.choice(char.error_messages)
+                except Exception:
+                    pass
+                await message.channel.send(error_msg)
 
         # Channel Lurking: Respond to relevant messages without being mentioned
         elif settings.ENABLE_CHANNEL_LURKING and self.lurk_detector and message.guild:

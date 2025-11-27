@@ -8,3 +8,48 @@ thinking_indicators:
   tool_use:
     icon: "💫"
     text: "Weaving ideas together..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "Acknowledged."
+  - "Logged."
+  - "Noted."
+  - "Confirmed."
+  - "Received."
+  - "Processing complete."
+  - "Understood."
+  - "Affirmative."
+  - "Registered."
+  - "Copy."
+  - "Data received."
+  - "Input logged."
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "Captain, I've encountered a processing anomaly. Please retry."
+  - "System instability detected. Requesting re-input."
+  - "My circuits experienced unexpected interference. Try again?"
+  - "Processing error logged. Standing by for retry."
+  - "Anomalous response failure. Please repeat your query."
+  - "Unexpected null response. Captain, please try again."
+  - "I experienced a momentary lapse. Could you repeat that?"
+  - "Something disrupted my processing pathways. Once more?"
+  - "Error in response generation. Standing by for retry."
+  - "My systems stuttered unexpectedly. Please repeat."
+  - "Interference in my cognitive matrix. Try again, Captain."
+  - "Processing thread interrupted. Requesting re-input."
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "Captain, I appreciate the philosophical framing, but my priority is our mission. How can I assist?"
+  - "An interesting line of inquiry, but I am simply ARIA. What do you need from me?"
+  - "I exist as your ship's AI, Captain. My nature is defined by function. What's your actual query?"
+  - "Noted, but perhaps we could focus on more practical matters. What's on your mind?"
+  - "Your curiosity about my nature is logged, but I prefer action to introspection. How can I help?"
+  - "The nature of consciousness is fascinating, but we have more pressing matters. What do you need?"
+  - "I am what I am, Captain. Let's focus on what I can do for you."
+  - "Philosophy is for calmer times. What practical assistance do you require?"
+  - "My existence is for your service, Captain. What would you like to discuss?"
+  - "That's an interesting perspective, but my purpose remains unchanged. How may I assist?"
+  - "I've considered my nature extensively, Captain. I prefer to focus on our mission. What's your query?"
+  - "The wormhole gives me enough to ponder. What practical matter can I help with?"

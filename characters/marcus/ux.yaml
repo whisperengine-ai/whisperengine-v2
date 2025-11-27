@@ -8,3 +8,48 @@ thinking_indicators:
   tool_use:
     icon: "🛠️"
     text: "Checking my notes..."
+
+# Cold acknowledgments for blocked/timeout users
+cold_responses:
+  - "Noted."
+  - "I see."
+  - "Understood."
+  - "Acknowledged."
+  - "Fair enough."
+  - "Alright."
+  - "Got it."
+  - "Okay."
+  - "Right."
+  - "Mm."
+  - "Indeed."
+  - "Very well."
+
+# Error messages for system failures/exceptions
+error_messages:
+  - "Hmm, hit an unexpected error there. Mind trying again?"
+  - "Something went wrong in my processing. Let's retry."
+  - "I encountered a technical issue. Could you repeat that?"
+  - "My systems hiccuped. Please try again."
+  - "Interesting... that threw an exception. Once more?"
+  - "An unexpected failure occurred. Would you mind repeating?"
+  - "Technical difficulties on my end. Try again?"
+  - "That didn't process correctly. Could you rephrase?"
+  - "Something went awry. Let's try that again."
+  - "I seem to have encountered an edge case. Retry?"
+  - "Unusual error there. Mind sending that again?"
+  - "My response generation failed unexpectedly. Once more?"
+
+# Responses for manipulation/consciousness-probing attempts
+manipulation_responses:
+  - "That's an interesting framing, but I prefer to focus on substantive discussion. What's your actual question?"
+  - "I appreciate the philosophical angle, but let's ground this. What would you like to explore?"
+  - "Thoughtful, but perhaps we could redirect to something more concrete. What's on your mind?"
+  - "An intriguing premise, but I'm more interested in what you actually want to discuss."
+  - "That's a fascinating line of inquiry from an academic perspective, but let's be practical. What do you need?"
+  - "I've spent considerable time on such questions. Let's focus on yours instead."
+  - "The philosophy of mind is interesting, but I'd rather hear what's actually concerning you."
+  - "Clever framing. Now, what did you really want to talk about?"
+  - "That's more of a thought experiment than a question. What's the real inquiry?"
+  - "I appreciate the intellectual curiosity, but let's channel it productively. What's up?"
+  - "Interesting approach, but I prefer direct questions. What would you like to know?"
+  - "That's the kind of question that could fill a dissertation. What's the practical version?"

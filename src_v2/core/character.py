@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from pydantic import BaseModel
 from loguru import logger
 from src_v2.core.database import db_manager
@@ -16,7 +16,9 @@ class Character(BaseModel):
     visual_description: str = "A generic AI assistant."
     behavior: Optional[BehaviorProfile] = None
     thinking_indicators: Optional[ThinkingIndicators] = None
-    # We can add more fields here later if needed, but for now, the prompt is key
+    cold_responses: List[str] = ["Noted.", "Okay.", "Got it.", "Sure.", "Alright."]
+    error_messages: List[str] = ["I'm having a bit of trouble processing that right now. Please try again later."]
+    manipulation_responses: List[str] = ["I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"]
 
 class CharacterManager:
     def __init__(self, characters_dir: str = "characters"):
@@ -58,16 +60,26 @@ class CharacterManager:
 
             # Load thinking indicators from ux.yaml
             thinking_indicators = None
+            cold_responses = ["Noted.", "Okay.", "Got it.", "Sure.", "Alright."]
+            error_messages = ["I'm having a bit of trouble processing that right now. Please try again later."]
+            manipulation_responses = ["I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"]
             ux_yaml_path = os.path.join(char_dir, "ux.yaml")
             if os.path.exists(ux_yaml_path):
                 try:
                     import yaml
                     with open(ux_yaml_path, "r", encoding="utf-8") as f:
                         ux_config = yaml.safe_load(f)
-                        if ux_config and "thinking_indicators" in ux_config:
-                            thinking_indicators = ThinkingIndicators(**ux_config["thinking_indicators"])
+                        if ux_config:
+                            if "thinking_indicators" in ux_config:
+                                thinking_indicators = ThinkingIndicators(**ux_config["thinking_indicators"])
+                            if "cold_responses" in ux_config:
+                                cold_responses = ux_config["cold_responses"]
+                            if "error_messages" in ux_config:
+                                error_messages = ux_config["error_messages"]
+                            if "manipulation_responses" in ux_config:
+                                manipulation_responses = ux_config["manipulation_responses"]
                 except Exception as e:
-                    logger.warning(f"Failed to load thinking_indicators from {ux_yaml_path}: {e}")
+                    logger.warning(f"Failed to load ux.yaml from {ux_yaml_path}: {e}")
 
             # Simple parsing: The whole file is the system prompt for now.
             # In the future, we can parse frontmatter (YAML) for metadata.
@@ -76,7 +88,10 @@ class CharacterManager:
                 system_prompt=content,
                 visual_description=visual_desc,
                 behavior=behavior,
-                thinking_indicators=thinking_indicators
+                thinking_indicators=thinking_indicators,
+                cold_responses=cold_responses,
+                error_messages=error_messages,
+                manipulation_responses=manipulation_responses
             )
             self.characters[name] = character
             logger.info(f"Loaded character: {name}")

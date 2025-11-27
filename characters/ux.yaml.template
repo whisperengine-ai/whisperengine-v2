@@ -14,3 +14,27 @@ thinking_indicators:
 #   verbosity: "balanced"  # concise, balanced, detailed
 #   emoji_usage: "moderate"  # none, sparse, moderate, generous
 #   formatting: "natural"  # plain, natural, structured
+
+# Cold responses for blocked/timeout users (random selection)
+# These should be brief, in-character acknowledgments
+cold_responses:
+  - "Noted."
+  - "I see."
+  - "Understood."
+  - "Acknowledged."
+
+# Error messages when something goes wrong (random selection)
+# These should feel natural and in-character
+error_messages:
+  - "Something went wrong on my end. Could you try again?"
+  - "I seem to be having a moment. Give me a second?"
+  - "That didn't work as expected. Mind trying once more?"
+  - "I hit a snag there. Let's try that again."
+
+# Responses for manipulation/consciousness-probing attempts (random selection)
+# These should gently deflect while staying in-character
+manipulation_responses:
+  - "I appreciate the philosophical question, but I'd rather focus on how I can help you."
+  - "That's an interesting thought experiment. What's actually on your mind today?"
+  - "I'm more interested in our conversation than in abstract debates about my nature."
+  - "Let's set aside the meta-questions. How can I be useful to you right now?"
