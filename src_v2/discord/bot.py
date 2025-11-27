@@ -14,6 +14,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.knowledge.documents import document_processor
+from src_v2.knowledge.document_context import DocumentContext
 from src_v2.voice.player import play_text
 from src_v2.core.database import db_manager
 from src_v2.evolution.feedback import feedback_analyzer
@@ -636,7 +637,6 @@ class WhisperBot(commands.Bot):
 
                     # Initialize attachment containers
                     image_urls: List[str] = []
-                    file_content: Optional[str] = None
                     processed_files: List[str] = []
 
                     # Handle Replies (Context Injection)
@@ -736,9 +736,9 @@ class WhisperBot(commands.Bot):
                         )
                         image_urls.extend(curr_images)
                         processed_files.extend(curr_texts)
-                        
-                        if processed_files:
-                            file_content = "\n\n".join(processed_files)
+                    
+                    # Create document context from processed files
+                    doc_context = DocumentContext.from_processed_files(processed_files)
                     
                     # Validate image URLs early
                     if image_urls:
@@ -756,7 +756,14 @@ class WhisperBot(commands.Bot):
                         try:
                             mems = await memory_manager.search_memories(user_message, user_id)
                             if mems:
-                                fmt = "\n".join([f"- {m['content']} ({m.get('relative_time', 'unknown time')})" for m in mems])
+                                # Format with relative time AND absolute date for clarity
+                                def format_mem(m):
+                                    rel = m.get('relative_time', 'unknown time')
+                                    ts = m.get('timestamp', '')
+                                    date_str = ts.split('T')[0] if ts else 'unknown date'
+                                    return f"- {m['content']} ({rel}, {date_str})"
+                                
+                                fmt = "\n".join([format_mem(m) for m in mems])
                             else:
                                 fmt = "No relevant memories found."
                             return mems, fmt
@@ -815,26 +822,9 @@ class WhisperBot(commands.Bot):
 
                     # 2. Save User Message & Extract Knowledge
                     try:
-                        # Determine what to save to memory
-                        # If file content is present, we save it to memory so it can be recalled later (RAG)
-                        # This allows the bot to answer questions about the file in future turns
-                        memory_content = user_message
-                        metadata = {}
-                        
-                        if file_content:
-                            memory_content += f"\n\n[Attached File Content]:\n{file_content}"
-                            # Add file names to metadata for better searchability
-                            if processed_files:
-                                metadata["has_attachments"] = True
-                                # Extract filenames from processed text headers (format: "--- File: filename.pdf ---")
-                                import re
-                                filenames = []
-                                for pf in processed_files:
-                                    match = re.search(r'--- (?:File|Referenced File): (.+?) ---', pf)
-                                    if match:
-                                        filenames.append(match.group(1))
-                                if filenames:
-                                    metadata["filenames"] = filenames
+                        # Save to memory with full document content for RAG retrieval
+                        memory_content = doc_context.format_for_memory(user_message)
+                        metadata = doc_context.get_memory_metadata()
 
                         await memory_manager.add_message(
                             user_id, 
@@ -917,13 +907,13 @@ class WhisperBot(commands.Bot):
                         "guild_id": str(message.guild.id) if message.guild else None,
                         "channel_name": channel_name,
                         "parent_channel_name": parent_channel_name,
-                        "is_thread": is_thread
+                        "is_thread": is_thread,
+                        "has_documents": doc_context.has_documents
                     }
                     
-                    # Inject file content if present
-                    if file_content:
-                        context_vars["file_content"] = file_content
-                        user_message += f"\n\n[Attached File Content]:\n{file_content}"
+                    # Append document preview to user message for LLM
+                    if doc_context.has_documents:
+                        user_message += doc_context.format_for_llm()
 
                     # Track timing for stats footer
                     start_time = time.time()
@@ -1002,6 +992,11 @@ class WhisperBot(commands.Bot):
                             callback=reflective_callback,
                             force_reflective=force_reflective
                         ):
+                            # Safety Net: Strip timestamp if it leaks into the stream
+                            # Regex matches [12 mins ago] or [just now] at start of chunk/string
+                            chunk = re.sub(r'^\[.*?ago\]\s*', '', chunk)
+                            chunk = re.sub(r'^\[just now\]\s*', '', chunk)
+                            
                             full_response_text += chunk
                             
                             # Rate limit updates
@@ -1661,10 +1656,8 @@ class WhisperBot(commands.Bot):
                 try:
                     extracted_text = await document_processor.process_attachment(attachment.url, attachment.filename)
                     if extracted_text:
-                        # Truncate
-                        limit = 10000 if silent else 20000
-                        if len(extracted_text) > limit:
-                            extracted_text = extracted_text[:limit] + "\n...[Content Truncated]..."
+                        # No truncation here - we let DocumentContext handle the preview generation
+                        # and store the full content in memory for RAG.
                         
                         prefix = "Referenced File" if silent else "File"
                         processed_texts.append(f"--- {prefix}: {attachment.filename} ---\n{extracted_text}")

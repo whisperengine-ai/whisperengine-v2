@@ -34,12 +34,22 @@ User uploads file → Discord attachment detected
                          ↓
               document_processor.process_attachment()
                          ↓
-              Text extracted (up to 20KB)
+              Text extracted (up to 20KB per file)
                          ↓
-              Appended to user message as [Attached File Content]
+              ┌─────────────────────────────────────────┐
+              │                                         │
+              ▼                                         ▼
+    FULL content saved to              PREVIEW (2KB) sent to LLM
+    Qdrant vector memory               for immediate response
+              │                                         │
+              └─────────────────────────────────────────┘
                          ↓
-              Saved to Qdrant vector memory
+              Future: RAG retrieves full content via search
 ```
+
+**Key Design**: We store the FULL document in Qdrant, but only send a 2KB preview to the LLM 
+for immediate responses. This prevents context window overload while preserving all content 
+for future retrieval.
 
 ### 2. Storage Format
 
@@ -172,7 +182,7 @@ Bot: [COMPLEX_HIGH triggered - multi-document analysis]
 
 - [ ] Chunked storage for very long documents (preserve full content)
 - [ ] Explicit filename search filter in Qdrant
-- [ ] Document summarization before storage (reduce token usage)
+- [x] ~~Document summarization before storage (reduce token usage)~~ → Implemented as preview-only approach
 - [ ] Cross-user document sharing (with permissions)
 - [ ] OCR integration for scanned documents
 

@@ -26,6 +26,7 @@ from src_v2.tools.insight_tools import (
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
+from src_v2.knowledge.document_context import has_document_context
 
 class ReflectiveAgent:
     """
@@ -160,10 +161,13 @@ class ReflectiveAgent:
                     # Remove the empty response from history
                     messages.pop()
                     
-                    # Add a nudge message
-                    nudge_content = "You returned an empty response. Please use a tool (like discover_common_ground) or provide a final answer."
+                    # Add a contextual nudge message
                     if tools_used > 0:
                         nudge_content = "You received tool output but haven't completed the user's request. Continue with your task - if they asked for an image, call generate_image now."
+                    elif has_document_context(user_input):
+                        nudge_content = "The user shared a document with you. You can see a preview in their message. Please acknowledge what they shared and respond thoughtfully. If you need more details from the document, use search_specific_memories."
+                    else:
+                        nudge_content = "You returned an empty response. Please use a tool (like discover_common_ground) or provide a final answer."
                         
                     nudge = SystemMessage(content=nudge_content)
                     messages.append(nudge)
@@ -271,7 +275,8 @@ class ReflectiveAgent:
         # Callback for observation
         if callback:
             obs_str = str(observation)
-            preview = (obs_str[:100] + "...") if len(obs_str) > 100 else obs_str
+            # Truncate to 200 chars for preview, but indicate if there's more
+            preview = (obs_str[:200] + "...") if len(obs_str) > 200 else obs_str
             await callback(f"✅ *{tool_name}*: {preview}")
 
         return ToolMessage(
@@ -340,6 +345,13 @@ IMPORTANT RULES:
 - If the user asks about patterns, themes, or what topics come up often, use analyze_conversation_patterns or detect_recurring_themes.
 - Do NOT give a final answer until you have completed all requested actions.
 - When asked to search or explore, USE THE TOOLS - don't just describe what you would do.
+
+DOCUMENT HANDLING:
+- If the user shares a document, you'll see a PREVIEW of the content in their message.
+- The FULL document content is stored in memory and searchable via search_specific_memories.
+- For simple questions about the preview, respond directly without tools.
+- For detailed questions requiring the full document, use search_specific_memories to retrieve more content.
+- Acknowledge what you've read and provide a thoughtful response about the content.
 
 CHARACTER CONTEXT:
 {base_system_prompt}

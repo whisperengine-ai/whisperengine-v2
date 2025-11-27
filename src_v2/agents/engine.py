@@ -171,8 +171,24 @@ class AgentEngine:
             system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
         # 5. Create Prompt Template
+        # We manually replace variables in system_content to avoid LangChain templating issues
+        # with complex content (like JSON or code blocks in knowledge/memories).
+        
+        # Manual Replacement of Template Variables
+        if context_variables:
+            for key, value in context_variables.items():
+                if isinstance(value, str):
+                    # Replace {key} with value
+                    system_content = system_content.replace(f"{{{key}}}", value)
+        
+        # Fallback: If {current_datetime} is still present (e.g. not in context_vars), replace it
+        if "{current_datetime}" in system_content:
+            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+            system_content = system_content.replace("{current_datetime}", now_str)
+
+        # Use SystemMessage directly to prevent further templating attempts by LangChain
         prompt = ChatPromptTemplate.from_messages([
-            ("system", system_content),
+            SystemMessage(content=system_content),
             MessagesPlaceholder(variable_name="chat_history"),
             MessagesPlaceholder(variable_name="user_input_message")
         ])
@@ -351,8 +367,24 @@ class AgentEngine:
             system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
         # 5. Create Prompt Template
+        # We manually replace variables in system_content to avoid LangChain templating issues
+        # with complex content (like JSON or code blocks in knowledge/memories).
+        
+        # Manual Replacement of Template Variables
+        if context_variables:
+            for key, value in context_variables.items():
+                if isinstance(value, str):
+                    # Replace {key} with value
+                    system_content = system_content.replace(f"{{{key}}}", value)
+        
+        # Fallback: If {current_datetime} is still present (e.g. not in context_vars), replace it
+        if "{current_datetime}" in system_content:
+            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+            system_content = system_content.replace("{current_datetime}", now_str)
+
+        # Use SystemMessage directly to prevent further templating attempts by LangChain
         prompt = ChatPromptTemplate.from_messages([
-            ("system", system_content),
+            SystemMessage(content=system_content),
             MessagesPlaceholder(variable_name="chat_history"),
             MessagesPlaceholder(variable_name="user_input_message")
         ])
@@ -575,6 +607,9 @@ class AgentEngine:
 
             # 2.9 Meta-Instructions (Anti-AI-Break)
             system_content += self._get_meta_instructions()
+            
+            # 2.10 Timestamp Instruction (Anti-Hallucination)
+            system_content += "\n\n[SYSTEM NOTE]\nChat history messages are prefixed with relative timestamps (e.g. [2 mins ago]). These are for your context only. DO NOT generate these timestamps in your response."
 
         except Exception as e:
             logger.error(f"Failed to inject evolution/goal state: {e}")

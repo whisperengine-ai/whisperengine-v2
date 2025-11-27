@@ -449,7 +449,7 @@ class MemoryManager:
                 if channel_id:
                     # Fetch by channel_id (Group Context)
                     rows = await conn.fetch("""
-                        SELECT role, content, user_id, user_name 
+                        SELECT role, content, user_id, user_name, timestamp 
                         FROM v2_chat_history 
                         WHERE channel_id = $1 AND character_name = $2
                         ORDER BY timestamp DESC
@@ -458,7 +458,7 @@ class MemoryManager:
                 else:
                     # Fetch by user_id (DM Context)
                     rows = await conn.fetch("""
-                        SELECT role, content, user_id, user_name 
+                        SELECT role, content, user_id, user_name, timestamp 
                         FROM v2_chat_history 
                         WHERE user_id = $1 AND character_name = $2
                         ORDER BY timestamp DESC
@@ -467,6 +467,10 @@ class MemoryManager:
                 
                 # Reverse to get chronological order
                 for row in reversed(rows):
+                    # Calculate relative time for context
+                    timestamp = row['timestamp']
+                    rel_time = get_relative_time(timestamp)
+                    
                     if row['role'] == 'human':
                         content = row['content']
                         
@@ -474,10 +478,15 @@ class MemoryManager:
                         if channel_id and row['user_id'] != str(user_id):
                             display_name = row['user_name'] or f"User {row['user_id']}"
                             content = f"[{display_name}]: {content}"
+                        
+                        # Add timestamp context
+                        content = f"[{rel_time}] {content}"
                             
                         messages.append(HumanMessage(content=content))
                     elif row['role'] == 'ai':
-                        messages.append(AIMessage(content=row['content']))
+                        # Add timestamp context to AI messages too
+                        content = f"[{rel_time}] {row['content']}"
+                        messages.append(AIMessage(content=content))
                         
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")
@@ -534,9 +543,9 @@ class MemoryManager:
                 ]
             )
             
-            results = await db_manager.qdrant_client.search(
+            results = await db_manager.qdrant_client.query_points(
                 collection_name=collection,
-                query_vector=query_vector,
+                query=query_vector,
                 query_filter=search_filter,
                 limit=limit
             )
@@ -547,7 +556,7 @@ class MemoryManager:
                     "metadata": hit.payload.get("metadata", {}),
                     "score": hit.score
                 }
-                for hit in results
+                for hit in results.points
             ]
             
         except Exception as e:
