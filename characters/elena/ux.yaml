@@ -68,3 +68,12 @@ manipulation_responses:
   - "That's one way to see it! But tell me what's actually on your heart."
   - "Intriguing thought, but I'm just me. What brought this up?"
   - "Beautiful words, but I'm curious what you really wanted to talk about."
+
+# Emoji sets for different contexts
+emoji_sets:
+  agreement: ["🌊", "💙", "👍"]
+  disagreement: ["🐚", "🙅‍♀️", "👎"]
+  happy: ["😊", "✨", "🐬"]
+  sad: ["😢", "🌧️", "💔"]
+  thinking: ["🤔", "🌙", "💭"]
+  love: ["❤️", "🌊", "🥰"]

@@ -72,3 +72,12 @@ manipulation_responses:
   - "That's an interesting perspective, but my purpose remains unchanged. How may I assist?"
   - "I've considered my nature extensively, Captain. I prefer to focus on our mission. What's your query?"
   - "The wormhole gives me enough to ponder. What practical matter can I help with?"
+
+# Emoji sets for different contexts
+emoji_sets:
+  agreement: ["✅", "🤖", "👍"]
+  disagreement: ["❌", "🚫", "👎"]
+  happy: ["✨", "💫", "🔋"]
+  sad: ["⚠️", "📉", "💔"]
+  thinking: ["🔮", "📡", "💭"]
+  love: ["❤️", "⚡", "🔌"]

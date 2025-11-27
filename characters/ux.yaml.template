@@ -38,3 +38,13 @@ manipulation_responses:
   - "That's an interesting thought experiment. What's actually on your mind today?"
   - "I'm more interested in our conversation than in abstract debates about my nature."
   - "Let's set aside the meta-questions. How can I be useful to you right now?"
+
+# Emoji sets for different contexts (random selection)
+# Used by the bot to react to messages or enhance responses
+emoji_sets:
+  agreement: ["👍", "✅", "👌"]
+  disagreement: ["👎", "❌", "🙅"]
+  happy: ["😊", "😄", "🎉"]
+  sad: ["😢", "😞", "💔"]
+  thinking: ["🤔", "🧐", "💭"]
+  love: ["❤️", "😍", "🥰"]

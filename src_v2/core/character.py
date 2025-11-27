@@ -19,6 +19,7 @@ class Character(BaseModel):
     cold_responses: List[str] = ["Noted.", "Okay.", "Got it.", "Sure.", "Alright."]
     error_messages: List[str] = ["I'm having a bit of trouble processing that right now. Please try again later."]
     manipulation_responses: List[str] = ["I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"]
+    emoji_sets: Dict[str, List[str]] = {}
 
 class CharacterManager:
     def __init__(self, characters_dir: str = "characters"):
@@ -56,16 +57,13 @@ class CharacterManager:
             
             # Load behavior profile (Phase B9)
             behavior = load_behavior_profile(char_dir, raise_on_error=raise_on_error)
-            
-            # Inject behavior into system prompt if present
-            if behavior:
-                content += behavior.to_prompt_section()
 
             # Load thinking indicators from ux.yaml
             thinking_indicators = None
             cold_responses = ["Noted.", "Okay.", "Got it.", "Sure.", "Alright."]
             error_messages = ["I'm having a bit of trouble processing that right now. Please try again later."]
             manipulation_responses = ["I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"]
+            emoji_sets = {}
             ux_yaml_path = os.path.join(char_dir, "ux.yaml")
             if os.path.exists(ux_yaml_path):
                 try:
@@ -81,10 +79,24 @@ class CharacterManager:
                                 error_messages = ux_config["error_messages"]
                             if "manipulation_responses" in ux_config:
                                 manipulation_responses = ux_config["manipulation_responses"]
+                            if "emoji_sets" in ux_config:
+                                emoji_sets = ux_config["emoji_sets"]
                 except Exception as e:
                     if raise_on_error:
                         raise
                     logger.warning(f"Failed to load ux.yaml from {ux_yaml_path}: {e}")
+
+            # Inject behavior into system prompt if present
+            if behavior:
+                content += behavior.to_prompt_section()
+
+            # Inject emoji sets into system prompt if present
+            if emoji_sets:
+                emoji_section = "\n\n## Signature Emojis\n"
+                emoji_section += "You have a set of signature emojis that reflect your personality. Use them naturally in your responses to convey emotion, but do not overuse them.\n"
+                for category, emojis in emoji_sets.items():
+                    emoji_section += f"- **{category.title()}**: {' '.join(emojis)}\n"
+                content += emoji_section
 
             # Simple parsing: The whole file is the system prompt for now.
             # In the future, we can parse frontmatter (YAML) for metadata.
@@ -96,7 +108,8 @@ class CharacterManager:
                 thinking_indicators=thinking_indicators,
                 cold_responses=cold_responses,
                 error_messages=error_messages,
-                manipulation_responses=manipulation_responses
+                manipulation_responses=manipulation_responses,
+                emoji_sets=emoji_sets
             )
             self.characters[name] = character
             logger.info(f"Loaded character: {name}")
