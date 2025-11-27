@@ -102,7 +102,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase A5: Channel Context Awareness
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
-- ⏳ Phase A8: Image Generation Enhancements (portrait mode ✅, iteration memory ⏳)
+- ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
 - ⏳ Phase C3: Video processing, web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
@@ -454,7 +454,7 @@ User Message
 
 ### Phase A8: Image Generation Enhancements
 **Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Files:** 5 | **LOC:** ~380 | **Status:** ✅ Partially Complete
+**Files:** 5 | **LOC:** ~380 | **Status:** ✅ Complete (Nov 26, 2025)
 
 **Problem:** Production sessions show users iterate 10-15+ times on portraits due to character self-injection, no iteration memory, and unwanted aesthetic associations.
 
@@ -474,11 +474,14 @@ User Message
 - ✅ **All Characters Have visual.md** - 10/10 characters have curated descriptions
   - Removed Taylor Swift reference from nottaylor (copyright safety)
   - Created new visual.md for aethys
+- ✅ **Smart Iteration Memory** - Redis session with intelligent refinement parsing
+  - Auto-detects refinement patterns ("same but", "keep X change Y", "remove the")
+  - Parses keep/remove instructions and applies to previous prompt
+  - Reuses seed for visual consistency across iterations
 
-**Remaining:**
-- ⏳ Iteration Memory - Redis session to track previous prompt + user refinements
-- ⏳ Negative Prompt Library - Category-based negatives
-- ⏳ Reference Intent Detection - Clarify if photo is "this is me" vs "use this style"
+**Skipped (by design):**
+- ❌ Negative Prompt Library - Decided to allow full user creativity
+- ❌ Reference Intent Detection - Deferred to future iteration
 
 **Implementation:**
 ```

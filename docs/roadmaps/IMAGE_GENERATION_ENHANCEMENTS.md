@@ -1,7 +1,7 @@
 # Phase A8: Image Generation Enhancements
 
 **Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Status:** ✅ Partially Complete (Portrait Mode + Visual Description)  
+**Status:** ✅ Complete (Nov 26, 2025)  
 **Depends On:** Phase B3 (Image Generation) ✅ Complete
 
 ---
@@ -24,11 +24,17 @@
    - Removed Self-Discovery generated descriptions from `character_profiles` table
    - System now uses curated `visual.md` files as source of truth
 
-### 🔲 Remaining Work
+4. **Smart Iteration Memory** - Intelligent refinement parsing and prompt modification
+   - Auto-detects refinement patterns ("same but", "keep X", "change the", "remove the", etc.)
+   - Parses keep/remove instructions from user prompt
+   - Applies structured changes to previous prompt (keeps confirmed elements, removes rejected)
+   - Reuses seed for visual consistency across iterations
+   - Redis session with 1-hour TTL
 
-- Iteration memory ("keep X, change Y" refinements)
-- Negative prompting / guardrails
-- Reference photo interpretation improvements
+### ❌ Skipped (By Design)
+
+- **Negative Prompt Library** - Decided to allow full user creativity without guardrails
+- **Reference Photo Intent Detection** - Deferred to future iteration
 
 ---
 

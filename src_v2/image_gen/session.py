@@ -1,8 +1,109 @@
 import json
+import re
 import redis.asyncio as redis
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from loguru import logger
 from src_v2.config.settings import settings
+
+
+# Patterns that indicate the user is refining a previous image
+REFINEMENT_PATTERNS = [
+    r"^same\s+but",           # "same but with glasses"
+    r"^keep\s+",              # "keep the hair, change the dress"
+    r"^change\s+the",         # "change the background"
+    r"^remove\s+the",         # "remove the hat"
+    r"^add\s+",               # "add a scarf"
+    r"^make\s+(?:it|her|him|them)", # "make it darker", "make her smile"
+    r"^try\s+(?:again|with)", # "try again with blue eyes"
+    r"^more\s+",              # "more dramatic lighting"
+    r"^less\s+",              # "less saturated"
+    r"^different\s+",         # "different outfit"
+    r"like\s+(?:the\s+)?(?:last|before|previous)", # "like the last one but..."
+]
+
+
+def is_refinement_request(prompt: str) -> bool:
+    """
+    Detect if the prompt is a refinement of a previous generation.
+    Returns True if the prompt matches common refinement patterns.
+    """
+    prompt_lower = prompt.lower().strip()
+    
+    for pattern in REFINEMENT_PATTERNS:
+        if re.search(pattern, prompt_lower):
+            return True
+    
+    return False
+
+
+def parse_refinement_instructions(prompt: str) -> Tuple[List[str], List[str], str]:
+    """
+    Parse a refinement prompt to extract:
+    - elements to keep (confirmed)
+    - elements to remove/change (rejected)  
+    - the actual modification request
+    
+    Returns: (keep_elements, remove_elements, modification)
+    """
+    prompt_lower = prompt.lower().strip()
+    keep_elements = []
+    remove_elements = []
+    modification = prompt
+    
+    # Extract "keep X" patterns
+    keep_matches = re.findall(r"keep\s+(?:the\s+)?([^,\.]+?)(?:,|\.|$|but)", prompt_lower)
+    keep_elements.extend([m.strip() for m in keep_matches if m.strip()])
+    
+    # Extract "remove X" or "no X" patterns  
+    remove_matches = re.findall(r"(?:remove|no|without|lose)\s+(?:the\s+)?([^,\.]+?)(?:,|\.|$)", prompt_lower)
+    remove_elements.extend([m.strip() for m in remove_matches if m.strip()])
+    
+    # Extract "change X to Y" patterns - X goes to remove, Y goes to modification
+    change_matches = re.findall(r"change\s+(?:the\s+)?([^,\.]+?)\s+to\s+([^,\.]+?)(?:,|\.|$)", prompt_lower)
+    for old, _new in change_matches:
+        remove_elements.append(old.strip())
+    
+    return keep_elements, remove_elements, modification
+
+
+def apply_refinement_to_prompt(previous_prompt: str, refinement: str, keep: List[str], remove: List[str]) -> str:
+    """
+    Intelligently merge a refinement request with the previous prompt.
+    
+    Strategy:
+    1. Start with previous prompt
+    2. Remove explicitly rejected elements
+    3. Append modification instruction
+    4. Add emphasis on kept elements
+    """
+    result = previous_prompt
+    
+    # Remove rejected elements (simple string matching for now)
+    for element in remove:
+        # Try to remove the element and surrounding punctuation
+        patterns = [
+            rf",?\s*{re.escape(element)}\s*,?",
+            rf"\b{re.escape(element)}\b",
+        ]
+        for pattern in patterns:
+            result = re.sub(pattern, "", result, flags=re.IGNORECASE)
+    
+    # Clean up any double commas or spaces
+    result = re.sub(r",\s*,", ",", result)
+    result = re.sub(r"\s+", " ", result).strip()
+    result = result.strip(",").strip()
+    
+    # Append the refinement instruction
+    if refinement and len(refinement) > 3:
+        result = f"{result}. {refinement}"
+    
+    # Emphasize kept elements by moving them to the end with emphasis
+    if keep:
+        kept_str = ", ".join(keep)
+        result = f"{result}. Maintain: {kept_str}"
+    
+    return result
+
 
 class ImageSessionManager:
     """

@@ -5,7 +5,12 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from loguru import logger
 
 from src_v2.image_gen.service import image_service, pending_images
-from src_v2.image_gen.session import image_session
+from src_v2.image_gen.session import (
+    image_session, 
+    is_refinement_request, 
+    parse_refinement_instructions,
+    apply_refinement_to_prompt
+)
 from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.evolution.trust import trust_manager
@@ -167,24 +172,39 @@ class GenerateImageTool(BaseTool):
                 logger.info("User/Other subject mode: Using prompt as-is (no character injection)")
             
             # 4. Handle Refinement Mode
-            # If refining, try to reuse the previous seed for consistency
+            # Check for explicit refine flag OR detect refinement patterns in prompt
             seed_to_use = None
-            if refine:
+            is_refining = refine or is_refinement_request(prompt)
+            
+            if is_refining:
                 previous = await image_session.get_session(self.user_id)
                 if previous:
                     seed_to_use = previous.get("seed")
                     previous_prompt = previous.get("prompt", "")
                     
-                    # If refining, we might want to append the new prompt to the old one
-                    # or just use the new one if it's a full description.
-                    # For now, let's assume the user provides a full new prompt or a delta.
-                    # If the new prompt is very short (< 20 chars), assume it's a delta.
-                    if len(prompt) < 20:
-                        enhanced_prompt = f"{previous_prompt}, {prompt}"
+                    # Parse refinement instructions to extract keep/remove/change elements
+                    keep_elements, remove_elements, modification = parse_refinement_instructions(prompt)
+                    
+                    if keep_elements or remove_elements:
+                        # Smart refinement: apply structured changes to previous prompt
+                        enhanced_prompt = apply_refinement_to_prompt(
+                            previous_prompt, 
+                            modification, 
+                            keep_elements, 
+                            remove_elements
+                        )
+                        logger.info(f"Smart refinement: keep={keep_elements}, remove={remove_elements}")
+                    elif len(prompt) < 30:
+                        # Short prompt without explicit keep/remove - treat as simple addition
+                        enhanced_prompt = f"{previous_prompt}. {prompt}"
+                        logger.info("Simple refinement: appending to previous prompt")
+                    else:
+                        # Longer prompt - assume it's a full new description but keep seed
+                        logger.info("Full prompt refinement: using new prompt with previous seed")
                     
                     logger.info(f"Refine mode: Reusing seed {seed_to_use} from previous generation")
                 else:
-                    logger.info("Refine mode requested but no previous prompt found. Using new seed.")
+                    logger.info("Refine mode requested but no previous session found. Using new seed.")
             
             logger.info(f"Generating image with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
             
