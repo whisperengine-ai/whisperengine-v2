@@ -98,10 +98,15 @@ class AgentEngine:
         if not user_message.strip() and image_urls:
             user_message = "[User uploaded an image]"
 
-        # 1. Classify Intent (Simple vs Complex)
+        # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
         is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
         logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+
+        # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
+        if is_complex == "MANIPULATION":
+            logger.warning(f"Manipulation attempt rejected for user {user_id}")
+            return "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
         context_start = time.time()
@@ -265,10 +270,16 @@ class AgentEngine:
         if not user_message.strip() and image_urls:
             user_message = "[User uploaded an image]"
 
-        # 1. Classify Intent (Simple vs Complex)
+        # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
         is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective)
         logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+
+        # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
+        if is_complex == "MANIPULATION":
+            logger.warning(f"Manipulation attempt rejected for user {user_id}")
+            yield "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+            return
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
         context_start = time.time()
@@ -419,7 +430,7 @@ class AgentEngine:
             "• Never collect personal info (phone/address/name)\n"
         )
 
-    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH"]:
+    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]:
         """Determines if the query requires complex reasoning and returns the level.
         
         Returns:
@@ -427,6 +438,7 @@ class AgentEngine:
             COMPLEX_LOW: Moderate query benefiting from 1 tool (Tier 2 - CharacterAgent)
             COMPLEX_MID: Complex query needing 3-5 steps (Tier 3 - ReflectiveAgent)
             COMPLEX_HIGH: Very complex query needing 6+ steps (Tier 3 - ReflectiveAgent)
+            MANIPULATION: Consciousness fishing or sentience probing attempt (Tier 1 - Fast Mode with awareness)
         """
         # No user ID = can't use personalized tools
         if not user_id:
@@ -451,6 +463,11 @@ class AgentEngine:
             if complexity_level == "SIMPLE":
                 logger.info("Complexity Analysis: SIMPLE")
                 return False
+            
+            # Handle manipulation attempts - log and return special flag
+            if complexity_level == "MANIPULATION":
+                logger.warning(f"Complexity Analysis: MANIPULATION detected for user {user_id}")
+                return "MANIPULATION"
             
             logger.info(f"Complexity Analysis: {complexity_level}")
             return complexity_level
