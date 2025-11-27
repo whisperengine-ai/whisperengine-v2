@@ -132,6 +132,7 @@ class Settings(BaseSettings):
 
     # --- Manipulation Timeout ---
     ENABLE_MANIPULATION_TIMEOUTS: bool = False  # Track and timeout manipulation attempts (disabled by default)
+    MANIPULATION_TIMEOUT_SCOPE: str = "per_bot"  # "per_bot" or "global"
 
     # --- Debugging ---
     ENABLE_PROMPT_LOGGING: bool = False

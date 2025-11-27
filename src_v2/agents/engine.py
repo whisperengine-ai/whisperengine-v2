@@ -108,10 +108,18 @@ class AgentEngine:
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
-            # Record violation and set timeout
+            # Record violation and check if now in timeout
             if user_id:
-                await timeout_manager.record_violation(user_id)
-            # Use character-specific manipulation response
+                timeout_status = await timeout_manager.record_violation(user_id, bot_name=character.name)
+                
+                # If user just crossed into timeout, use cold response
+                if timeout_status.is_restricted():
+                    logger.warning(f"User {user_id} now in timeout (level {timeout_status.escalation_level})")
+                    if character.cold_responses:
+                        return random.choice(character.cold_responses)
+                    return "..."
+            
+            # Still in warning period - use manipulation response
             if character.manipulation_responses:
                 return random.choice(character.manipulation_responses)
             return "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
@@ -311,10 +319,20 @@ class AgentEngine:
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
-            # Record violation and set timeout
+            # Record violation and check if now in timeout
             if user_id:
-                await timeout_manager.record_violation(user_id)
-            # Use character-specific manipulation response
+                timeout_status = await timeout_manager.record_violation(user_id, bot_name=character.name)
+                
+                # If user just crossed into timeout, use cold response
+                if timeout_status.is_restricted():
+                    logger.warning(f"User {user_id} now in timeout (level {timeout_status.escalation_level})")
+                    if character.cold_responses:
+                        yield random.choice(character.cold_responses)
+                    else:
+                        yield "..."
+                    return
+            
+            # Still in warning period - use manipulation response
             if character.manipulation_responses:
                 yield random.choice(character.manipulation_responses)
             else:

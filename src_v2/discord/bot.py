@@ -586,7 +586,7 @@ class WhisperBot(commands.Bot):
                     # Check manipulation timeout before any processing
                     if settings.ENABLE_MANIPULATION_TIMEOUTS:
                         user_id = str(message.author.id)
-                        timeout_status = await timeout_manager.check_user_status(user_id)
+                        timeout_status = await timeout_manager.check_user_status(user_id, bot_name=self.character_name)
                         if timeout_status.is_restricted():
                             # User is in timeout - return cold response only
                             if character.cold_responses:
