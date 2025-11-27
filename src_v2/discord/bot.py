@@ -403,7 +403,7 @@ class WhisperBot(commands.Bot):
         if message.guild:
             try:
                 from src_v2.universe.manager import universe_manager
-                from src_v2.workers.task_queue import task_queue
+                # task_queue is already imported globally
                 
                 # Fire and forget presence update (lightweight, keep in-process)
                 asyncio.create_task(universe_manager.record_presence(str(message.author.id), str(message.guild.id)))
