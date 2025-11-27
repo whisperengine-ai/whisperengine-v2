@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     
     # --- Discord ---
     DISCORD_TOKEN: SecretStr = Field(validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
+    STATUS_UPDATE_INTERVAL_SECONDS: int = 300  # 5 minutes
+    TYPING_SPEED_CHAR_PER_SEC: float = 0.05  # Seconds per character
+    TYPING_MAX_DELAY_SECONDS: float = 4.0  # Maximum typing delay
 
     # --- Databases ---
     # PostgreSQL
@@ -105,6 +108,7 @@ class Settings(BaseSettings):
     IMAGE_GEN_MIN_TRUST: int = 20  # Minimum trust level required to request image generation (0 = no restriction)
     IMAGE_GEN_PROVIDER: Literal["bfl", "replicate", "fal"] = "bfl"
     IMAGE_GEN_MODEL: str = "flux-pro-1.1"
+    IMAGE_GEN_POLL_INTERVAL_SECONDS: float = 1.0  # Polling interval for async generation
     FLUX_API_KEY: Optional[SecretStr] = None
 
     # --- Knowledge Graph ---
@@ -115,6 +119,9 @@ class Settings(BaseSettings):
 
     # --- Proactive Engagement ---
     ENABLE_PROACTIVE_MESSAGING: bool = False
+    PROACTIVE_CHECK_INTERVAL_MINUTES: int = 60
+    PROACTIVE_MIN_TRUST_SCORE: int = 20
+    PROACTIVE_SILENCE_THRESHOLD_HOURS: int = 24
 
     # --- Channel Lurking ---
     ENABLE_CHANNEL_LURKING: bool = False  # Feature flag

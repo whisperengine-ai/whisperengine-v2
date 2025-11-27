@@ -16,9 +16,9 @@ class ProactiveScheduler:
     
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
-        self.check_interval_minutes: int = 60 # Check every hour
-        self.min_trust_score: int = 20 # Only message Acquaintances or higher
-        self.silence_threshold_hours: int = 24 # Don't message if we spoke recently
+        self.check_interval_minutes: int = settings.PROACTIVE_CHECK_INTERVAL_MINUTES
+        self.min_trust_score: int = settings.PROACTIVE_MIN_TRUST_SCORE
+        self.silence_threshold_hours: int = settings.PROACTIVE_SILENCE_THRESHOLD_HOURS
         self.is_running: bool = False
 
     def start(self) -> None:

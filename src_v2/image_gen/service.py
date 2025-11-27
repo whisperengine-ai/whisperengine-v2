@@ -233,7 +233,7 @@ class ImageGenerationService:
             # 2. Poll for Result
             max_retries = 30  # 30 seconds max
             for _ in range(max_retries):
-                await asyncio.sleep(1)  # Wait 1s between polls
+                await asyncio.sleep(settings.IMAGE_GEN_POLL_INTERVAL_SECONDS)
                 
                 poll_url = f"{self.base_url}/get_result"
                 try:

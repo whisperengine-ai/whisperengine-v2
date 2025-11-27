@@ -165,7 +165,7 @@ RULES:
                     MATCH (c:Character {name: $name})
                     MERGE (e:Entity {name: $obj})
                     MERGE (c)-[r:FACT {predicate: $predicate}]->(e)
-                    ON CREATE SET r.mention_count = 1, r.confidence = 1.0
+                    ON CREATE SET r.mention_count = 1, r.confidence = 1.0, r.created_at = datetime()
                     ON MATCH SET r.mention_count = coalesce(r.mention_count, 1)
                     """
                     await session.run(query, name=bot_name, obj=obj, predicate=predicate)
@@ -527,10 +527,10 @@ PRIVACY RESTRICTION ENABLED:
                 else:
                     # Default: Get all facts about the user
                     # Limit to requested number (default 10)
-                    # Note: Removed ORDER BY r.created_at DESC temporarily to debug missing facts issue
                     result = await session.run("""
                         MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
                         RETURN r.predicate, e.name
+                        ORDER BY r.created_at DESC
                         LIMIT $limit
                     """, user_id=user_id, limit=limit)
                     

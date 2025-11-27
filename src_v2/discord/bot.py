@@ -225,7 +225,7 @@ class WhisperBot(commands.Bot):
             except Exception as e:
                 logger.error(f"Failed to update status: {e}")
             
-            await asyncio.sleep(300) # Update every 5 minutes
+            await asyncio.sleep(settings.STATUS_UPDATE_INTERVAL_SECONDS)
 
     async def setup_hook(self) -> None:
         """Called during bot startup to load extensions and sync commands."""
@@ -1001,7 +1001,7 @@ class WhisperBot(commands.Bot):
                     
                     # Start typing indicator only when generation begins
                     # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
-                    reading_delay = min(len(user_message) * 0.05, 4.0)
+                    reading_delay = min(len(user_message) * settings.TYPING_SPEED_CHAR_PER_SEC, settings.TYPING_MAX_DELAY_SECONDS)
                     reading_delay += random.uniform(0, 1.0) # Add jitter
                     
                     elapsed = time.time() - processing_start
