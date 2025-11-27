@@ -4,7 +4,8 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
 from loguru import logger
 
-from src_v2.image_gen.service import image_service, pending_images, image_prompt_memory
+from src_v2.image_gen.service import image_service, pending_images
+from src_v2.image_gen.session import image_session
 from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.evolution.trust import trust_manager
@@ -112,6 +113,10 @@ class GenerateImageTool(BaseTool):
             
             # Only include character visual description for self-portraits
             # NOT when creating images for/of the user or other subjects
+            # Phase A8: Enhanced Portrait Mode Detection
+            # We inject the character description if it's clearly about the character (is_self_image)
+            # AND it's not explicitly about the user or someone else (is_user_image).
+            # We do NOT block injection just because it's a "portrait" category - that was a bug.
             if is_self_image and not is_user_image:
                 enhanced_prompt = f"{visual_desc}. {prompt}"
                 logger.info("Self-portrait mode: Including character visual description")
@@ -123,12 +128,19 @@ class GenerateImageTool(BaseTool):
             # If refining, try to reuse the previous seed for consistency
             seed_to_use = None
             if refine:
-                previous = await image_prompt_memory.get(self.user_id)
+                previous = await image_session.get_session(self.user_id)
                 if previous:
                     seed_to_use = previous.get("seed")
                     previous_prompt = previous.get("prompt", "")
+                    
+                    # If refining, we might want to append the new prompt to the old one
+                    # or just use the new one if it's a full description.
+                    # For now, let's assume the user provides a full new prompt or a delta.
+                    # If the new prompt is very short (< 20 chars), assume it's a delta.
+                    if len(prompt) < 20:
+                        enhanced_prompt = f"{previous_prompt}, {prompt}"
+                    
                     logger.info(f"Refine mode: Reusing seed {seed_to_use} from previous generation")
-                    logger.debug(f"Previous prompt was: {previous_prompt[:100]}...")
                 else:
                     logger.info("Refine mode requested but no previous prompt found. Using new seed.")
             
@@ -139,7 +151,12 @@ class GenerateImageTool(BaseTool):
             
             if image_result:
                 # Save prompt and seed for future refinement
-                await image_prompt_memory.save(self.user_id, enhanced_prompt, image_result.seed)
+                await image_session.save_session(
+                    self.user_id, 
+                    enhanced_prompt,
+                    image_result.seed,
+                    {"width": width, "height": height}
+                )
                 
                 # Register the image for later retrieval by the Discord bot
                 await pending_images.add(self.user_id, image_result)

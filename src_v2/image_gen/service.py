@@ -8,6 +8,7 @@ from io import BytesIO
 from pathlib import Path
 from loguru import logger
 from typing import Optional, List
+from src_v2.image_gen.session import image_session
 from src_v2.config.settings import settings
 
 # Resolve storage directory relative to project root (works in Docker and local)
@@ -129,66 +130,6 @@ class PendingImageRegistry:
             
 # Global registry instance
 pending_images = PendingImageRegistry()
-
-
-class ImagePromptMemory:
-    """
-    Stores the last image generation prompt and seed per user.
-    Enables iterative refinement by letting the LLM see what was generated before.
-    """
-    
-    def __init__(self):
-        self._redis = None
-        self._ttl = 3600  # 1 hour - refinement sessions shouldn't last longer
-    
-    async def _get_redis(self):
-        if not self._redis:
-            self._redis = redis.from_url(settings.REDIS_URL)
-        return self._redis
-    
-    async def save(self, user_id: str, prompt: str, seed: int) -> None:
-        """
-        Save the last generated prompt and seed for a user.
-        """
-        try:
-            r = await self._get_redis()
-            key = f"image_prompt_memory:{user_id}"
-            data = json.dumps({"prompt": prompt, "seed": seed})
-            await r.setex(key, self._ttl, data)
-            logger.debug(f"Saved image prompt memory for user {user_id} (seed: {seed})")
-        except Exception as e:
-            logger.error(f"Failed to save image prompt memory: {e}")
-    
-    async def get(self, user_id: str) -> Optional[dict]:
-        """
-        Retrieve the last prompt and seed for a user.
-        Returns: {"prompt": str, "seed": int} or None
-        """
-        try:
-            r = await self._get_redis()
-            key = f"image_prompt_memory:{user_id}"
-            data = await r.get(key)
-            if data:
-                return json.loads(data)
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get image prompt memory: {e}")
-            return None
-    
-    async def clear(self, user_id: str) -> None:
-        """
-        Clear the prompt memory for a user (e.g., when they start a new image).
-        """
-        try:
-            r = await self._get_redis()
-            key = f"image_prompt_memory:{user_id}"
-            await r.delete(key)
-            logger.debug(f"Cleared image prompt memory for user {user_id}")
-        except Exception as e:
-            logger.error(f"Failed to clear image prompt memory: {e}")
-
-# Global prompt memory instance
-image_prompt_memory = ImagePromptMemory()
 
 
 class ImageGenerationService:

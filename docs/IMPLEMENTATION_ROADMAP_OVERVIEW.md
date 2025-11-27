@@ -102,7 +102,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase A5: Channel Context Awareness
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ⏳ Phase A7: Character Agency (Tier 2 tool-augmented responses)
-- ⏳ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
+- ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
 - ⏳ Phase C3: Video processing, web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
@@ -454,7 +454,7 @@ User Message
 
 ### Phase A8: Image Generation Enhancements
 **Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Files:** 5 | **LOC:** ~380 | **Status:** 📋 Ready for Implementation
+**Files:** 5 | **LOC:** ~380 | **Status:** ✅ Complete
 
 **Problem:** Production sessions show users iterate 10-15+ times on portraits due to character self-injection, no iteration memory, and unwanted aesthetic associations.
 
