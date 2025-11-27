@@ -521,7 +521,7 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 - 40-50% cost reduction on moderate queries
 - Faster responses for simple queries
 - Better resource allocation
-- User override capability for deep thinking
+- User override capability for reflective mode
 
 **Dependencies:** ComplexityClassifier exists, needs enhancement
 

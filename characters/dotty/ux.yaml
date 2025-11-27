@@ -1,0 +1,10 @@
+# characters/dotty/ux.yaml - User Experience & Presentation
+
+# How do I show thinking? (Status indicators)
+thinking_indicators:
+  reflective_mode:
+    icon: "💭"
+    text: "Hmm, let me think..."
+  tool_use:
+    icon: "🎵"
+    text: "Vibing with this..."

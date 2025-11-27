@@ -11,7 +11,7 @@ Instead of a "typing..." indicator for 10-30 seconds, the user sees a dynamic st
 
 **Status Message Format:**
 ```markdown
-🧠 **Deep Thinking**
+🧠 **Reflective Mode**
 
 > 💭 Need to check user's past conversations about "stress".
 > 🛠️ *Using search_memories...*

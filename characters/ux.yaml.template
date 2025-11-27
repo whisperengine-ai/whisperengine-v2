@@ -1,0 +1,16 @@
+# characters/{name}/ux.yaml - User Experience & Presentation
+
+# How do I show thinking? (Status indicators)
+thinking_indicators:
+  reflective_mode:
+    icon: "🧠"
+    text: "Reflective Mode Activated"
+  tool_use:
+    icon: "✨"
+    text: "Using my abilities..."
+
+# Response style preferences (future use)
+# response_style:
+#   verbosity: "balanced"  # concise, balanced, detailed
+#   emoji_usage: "moderate"  # none, sparse, moderate, generous
+#   formatting: "natural"  # plain, natural, structured

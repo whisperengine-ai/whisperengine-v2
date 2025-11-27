@@ -12,7 +12,7 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main") -> BaseC
     
     Args:
         temperature: The temperature to use for the model.
-        mode: "main" for the character model, "router" for the cognitive router, "reflective" for deep thinking, "utility" for structured tasks.
+        mode: "main" for the character model, "router" for the cognitive router, "reflective" for reflective mode, "utility" for structured tasks.
     """
     # Determine which settings to use
     if mode == "reflective" and settings.REFLECTIVE_LLM_PROVIDER:

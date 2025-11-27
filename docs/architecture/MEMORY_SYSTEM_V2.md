@@ -71,7 +71,7 @@ In AI systems, there's an inherent tension:
 *   **Process**: Router -> Single Tool (if needed) -> Response.
 *   **Use Case**: Casual chat, greetings, simple questions.
 
-### 2. Reflective Mode (Deep Thinking) ✅ IMPLEMENTED
+### 2. Reflective Mode ✅ IMPLEMENTED
 *   **Goal**: Depth, philosophical consistency, complex reasoning.
 *   **Process**: Complexity Classifier -> ReAct Loop (Thought -> Action -> Observation) -> Synthesis -> Response.
 *   **Trigger**: Complex user queries ("What do you think about the concept of soul?", "How has our relationship changed?") detected by the Complexity Classifier.

@@ -275,7 +275,7 @@ API_PORT=8000  # Use unique port for each bot in Docker (see Step 6 for allocati
 
 ```dotenv
 # Feature flags
-ENABLE_REFLECTIVE_MODE=false         # Deep thinking (costs more, ~$0.02-0.03/query)
+ENABLE_REFLECTIVE_MODE=false         # Reflective mode (costs more, ~$0.02-0.03/query)
 ENABLE_RUNTIME_FACT_EXTRACTION=true  # Learn facts from chat
 ENABLE_PREFERENCE_EXTRACTION=true    # Learn user preferences
 LLM_SUPPORTS_VISION=true             # Image analysis (requires GPT-4V/Claude 3)

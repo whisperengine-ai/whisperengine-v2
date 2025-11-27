@@ -1,0 +1,10 @@
+# characters/nottaylor/ux.yaml - User Experience & Presentation
+
+# How do I show thinking? (Status indicators)
+thinking_indicators:
+  reflective_mode:
+    icon: "✨"
+    text: "Processing this moment..."
+  tool_use:
+    icon: "🎤"
+    text: "Pulling up the archives..."

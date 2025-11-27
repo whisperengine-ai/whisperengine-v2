@@ -85,7 +85,7 @@ Technical timing breakdown (for the curious!):
 Typical times:
 - Simple responses: 1-3 seconds
 - Memory lookups: 3-5 seconds  
-- Deep thinking: 5-30 seconds
+- Reflective mode: 5-30 seconds
 
 ---
 

@@ -60,7 +60,7 @@ The central coordinator. It does not contain business logic itself but orchestra
     *   Dynamic Evolution State (Trust, Mood).
     *   Active Goals.
     *   User Preferences.
-*   **Mode Switching**: Decides between "Fast Mode" (Standard) and "Reflective Mode" (Deep Thinking).
+*   **Mode Switching**: Decides between "Fast Mode" (Standard) and "Reflective Mode".
 *   **Response Generation**: Calls the LLM with the final prompt.
 
 ### 2. Complexity Classifier (`src_v2/agents/classifier.py`)

@@ -309,9 +309,15 @@ class AgentEngine:
         if is_complex and user_id:
             # 3a. Reflective Mode (Full ReAct Loop) for COMPLEX_MID/HIGH
             if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
-                # Update status header
+                # Update status header with character-specific indicator
                 if callback:
-                    await callback("HEADER:🧠 **Deep Thinking**")
+                    if character.thinking_indicators:
+                        icon = character.thinking_indicators.reflective_mode["icon"]
+                        text = character.thinking_indicators.reflective_mode["text"]
+                    else:
+                        icon = "🧠"
+                        text = "Reflective Mode Activated"
+                    await callback(f"HEADER:{icon} **{text}**")
 
                 # Determine max steps based on complexity level
                 max_steps = 10 # Default
@@ -332,9 +338,15 @@ class AgentEngine:
             
             # 3b. Character Agency (Tier 2 - Single Tool Call) for COMPLEX_LOW
             elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
-                # Update status header
+                # Update status header with character-specific indicator
                 if callback:
-                    await callback("HEADER:💭 **Looking something up...**")
+                    if character.thinking_indicators:
+                        icon = character.thinking_indicators.tool_use["icon"]
+                        text = character.thinking_indicators.tool_use["text"]
+                    else:
+                        icon = "✨"
+                        text = "Using my abilities..."
+                    await callback(f"HEADER:{icon} **{text}**")
 
                 # CharacterAgent doesn't support streaming yet, yield full response
                 response = await self.character_agent.run(

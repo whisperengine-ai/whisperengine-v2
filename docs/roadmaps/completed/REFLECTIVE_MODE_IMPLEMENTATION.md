@@ -1,7 +1,7 @@
 # Reflective Mode Implementation Plan
 
 ## 1. Overview
-**Reflective Mode** enables WhisperEngine characters to handle complex, philosophical, or multi-layered queries by engaging in a "Deep Thinking" process. Unlike the standard "Fast Mode" (which performs a single retrieval pass), Reflective Mode uses a **ReAct (Reasoning + Acting)** loop to formulate plans, gather evidence across multiple steps, and synthesize a nuanced response.
+**Reflective Mode** enables WhisperEngine characters to handle complex, philosophical, or multi-layered queries by engaging in a "Reflective Mode" process. Unlike the standard "Fast Mode" (which performs a single retrieval pass), Reflective Mode uses a **ReAct (Reasoning + Acting)** loop to formulate plans, gather evidence across multiple steps, and synthesize a nuanced response.
 
 ### Theoretical Foundation: Dual Process Theory in AI
 

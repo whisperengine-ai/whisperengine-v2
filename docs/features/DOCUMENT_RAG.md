@@ -136,7 +136,7 @@ Files exceeding these limits are:
 User: [uploads report.pdf] Can you summarize this?
 Bot: [COMPLEX_MID triggered]
      📄 Reading report.pdf...
-     💭 **Looking something up...**
+     ✨ **Using my abilities...**
      > 🔍 Checking my memory...
      
      This quarterly report shows three key points:
@@ -159,7 +159,7 @@ Bot: [Searches vector memory]
 ```
 User: [uploads doc1.pdf, doc2.txt] Compare these two documents
 Bot: [COMPLEX_HIGH triggered - multi-document analysis]
-     🧠 **Deep Thinking**
+     🧠 **Reflective Mode**
      > 💭 Analyzing both documents...
      > 🛠️ *Using search_memories...*
      > ✅ *search_memories*: Found document content...

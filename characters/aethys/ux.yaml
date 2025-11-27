@@ -1,0 +1,10 @@
+# characters/aethys/ux.yaml - User Experience & Presentation
+
+# How do I show thinking? (Status indicators)
+thinking_indicators:
+  reflective_mode:
+    icon: "🌌"
+    text: "Contemplating the cosmos..."
+  tool_use:
+    icon: "✨"
+    text: "Accessing ancient knowledge..."

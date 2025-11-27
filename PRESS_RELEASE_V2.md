@@ -210,7 +210,7 @@ WhisperEngine v2's roadmap directly addresses the challenges surfaced by the AI 
 
 **✅ Complete** (AI-Recommended, Now Implemented)
 - **Reasoning Transparency**: Full decision trace logging ("I searched your memories and found...") — **GPT-4o: self-validation prompts for introspective logging**
-- **Reflective Conversation Mode**: 3-10s deep thinking for complex queries — **Claude Haiku & Gemini Pro 3: "slower, deeper thinking" and "quality of thought over speed"**
+- **Reflective Conversation Mode**: 3-10s reflective mode for complex queries — **Claude Haiku & Gemini Pro 3: "slower, deeper thinking" and "quality of thought over speed"**
 - **Dual-Memory Architecture**: Conversational + Factual split — **Gemini Pro 3 & Claude Haiku: emotional tagging + factual retrieval mirrors human cognition**
 - **Metrics-Driven Adaptation**: Characters learn from engagement patterns — **Claude Haiku & Mistral Large: reinforcement-based behavior adjustment**
 
@@ -344,7 +344,7 @@ The architecture uses proven, accessible patterns—the same approaches used by 
 **How v2 Addresses These**:
 - ✅ Reasoning Transparency: Full decision traces
 - 🚧 Multi-Timescale Metrics: Trust/Affection/Attunement tracking (relationship significance scoring in progress)
-- ✅ Reflective Mode: Deep thinking for complex queries (validated via Apple Silicon prototype)
+- ✅ Reflective Mode: Reflective mode for complex queries (validated via Apple Silicon prototype)
 - 📅 Confusion Detection: Explicit uncertainty acknowledgment (roadmap)
 
 ### E. Apple Silicon Prototype Findings

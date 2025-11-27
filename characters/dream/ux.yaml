@@ -1,0 +1,10 @@
+# characters/dream/ux.yaml - User Experience & Presentation
+
+# How do I show thinking? (Status indicators)
+thinking_indicators:
+  reflective_mode:
+    icon: "🌙"
+    text: "Drifting through thoughts..."
+  tool_use:
+    icon: "💫"
+    text: "Surfacing memories..."

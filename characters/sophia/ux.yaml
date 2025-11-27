@@ -1,0 +1,10 @@
+# characters/sophia/ux.yaml - User Experience & Presentation
+
+# How do I show thinking? (Status indicators)
+thinking_indicators:
+  reflective_mode:
+    icon: "📚"
+    text: "Gathering my thoughts..."
+  tool_use:
+    icon: "🔎"
+    text: "Consulting my notes..."

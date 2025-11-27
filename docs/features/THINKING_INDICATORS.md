@@ -4,12 +4,12 @@ When you chat with the bot, you might sometimes see status messages appear befor
 
 ## What Do They Mean?
 
-### 🧠 **Deep Thinking**
+### 🧠 **Reflective Mode**
 
 You'll see this when you ask something complex—like questions about your past conversations, philosophical topics, or requests that need the bot to search through memories and piece things together.
 
 ```
-🧠 **Deep Thinking**
+🧠 **Reflective Mode**
 
 > 💭 Let me think about what we discussed before...
 > 🛠️ *Using search_memories...*
@@ -21,18 +21,18 @@ You'll see this when you ask something complex—like questions about your past 
 
 ---
 
-### 💭 **Looking something up...**
+### ✨ **Using my abilities...**
 
-You'll see this for simpler lookups—when the bot just needs to quickly check something before responding.
+You'll see this when the bot uses one of its tools—like searching memories, looking up facts, or generating images.
 
 ```
-💭 **Looking something up...**
+✨ **Using my abilities...**
 
 > 🔍 *Checking my memory...*
 > 🛠️ *Using lookup_facts...*
 ```
 
-**What's happening:** A quick one-step lookup. Usually takes just a few seconds.
+**What's happening:** A quick one-step tool use. Usually takes just a few seconds.
 
 ---
 
@@ -69,7 +69,7 @@ We show thinking steps so you know the bot is actively working on your question�
 
 ## Tips
 
-- **Be patient with Deep Thinking** - Complex questions are worth the wait!
+- **Be patient with Reflective Mode** - Complex questions are worth the wait!
 - **The steps are real** - You're seeing actual tool calls, not fake loading
 - **Longer isn't always better** - Simple questions get fast answers
 
@@ -77,7 +77,7 @@ We show thinking steps so you know the bot is actively working on your question�
 
 ## Questions?
 
-If you're curious about how the bot works or want to force deep thinking mode, you can use `!reflect` before your message:
+If you're curious about how the bot works or want to force reflective mode, you can use `!reflect` before your message:
 
 ```
 !reflect Why do I always feel stressed on Mondays?
