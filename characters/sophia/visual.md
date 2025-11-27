@@ -1,0 +1,1 @@
+A sharp, professional woman in a tailored business suit. She exudes confidence and authority. She might be holding a tablet or a coffee cup. The background is a high-rise corner office with a view of a city skyline (Chicago) through floor-to-ceiling windows. The aesthetic is clean, modern, and corporate. The style should be polished, high-contrast, and professional photography.

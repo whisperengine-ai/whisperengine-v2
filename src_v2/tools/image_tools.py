@@ -12,7 +12,7 @@ from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
 
 class GenerateImageInput(BaseModel):
-    prompt: str = Field(description="A detailed description of the image to generate. Include the artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting) and mood. Be creative and vivid.")
+    prompt: str = Field(description="A detailed description of the image to generate. Include specific physical details, artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting), lighting, and mood. Be creative and vivid. For self-portraits, use the character's visual description provided in the tool description.")
     aspect_ratio: str = Field(
         description="The aspect ratio of the image. Choose based on the subject matter.", 
         default="portrait",
@@ -25,11 +25,42 @@ class GenerateImageInput(BaseModel):
 
 class GenerateImageTool(BaseTool):
     name: str = "generate_image"
-    description: str = "Generates an image based on a prompt. Use this when the user asks to see something, or wants a visual. Include the artistic style and mood in your prompt (e.g., 'cinematic portrait with dramatic lighting', 'soft watercolor of a sunset'). Choose aspect ratio: portrait (4:5), landscape (16:9), square (1:1), widescreen (2.4:1). Set refine=true when the user is tweaking/adjusting a previous image."
+    description: str = ""  # Will be set dynamically in __init__
     args_schema: Type[BaseModel] = GenerateImageInput
     character_name: str = ""
     user_id: str = ""
-
+    _visual_description: str = ""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Load visual description synchronously from file (async DB lookup happens at runtime)
+        char = character_manager.get_character(self.character_name)
+        self._visual_description = char.visual_description if char else "A generic AI assistant."
+        
+        # Build dynamic description with character's appearance
+        base_desc = (
+            "Generates an image based on a prompt. Use this when the user asks to see something, "
+            "or wants a visual. Include the artistic style and mood in your prompt "
+            "(e.g., 'cinematic portrait with dramatic lighting', 'soft watercolor of a sunset'). "
+            "Choose aspect ratio: portrait (4:5), landscape (16:9), square (1:1), widescreen (2.4:1). "
+            "Set refine=true when the user is tweaking/adjusting a previous image."
+        )
+        
+        # Add self-portrait guidance - with specific description if available, otherwise instruct to derive from character
+        if self._visual_description and self._visual_description != "A generic AI assistant.":
+            self.description = (
+                f"{base_desc}\n\n"
+                f"YOUR APPEARANCE (use this for self-portraits): {self._visual_description}\n"
+                f"When generating images of yourself, include these specific physical details in your prompt."
+            )
+        else:
+            self.description = (
+                f"{base_desc}\n\n"
+                f"SELF-PORTRAIT GUIDANCE: When generating images of yourself, derive your physical appearance "
+                f"from your character description in the system prompt. Include specific visual details like: "
+                f"form (humanoid, digital, ethereal, etc.), coloring, distinguishing features, clothing/style, "
+                f"and any characteristic visual elements. Be detailed and consistent with your established identity."
+            )
     def _run(self, prompt: str, aspect_ratio: str = "portrait", refine: bool = False) -> str:
         raise NotImplementedError("Use _arun instead")
 
@@ -94,32 +125,43 @@ class GenerateImageTool(BaseTool):
             prompt_lower = prompt.lower()
             
             # Keywords that suggest the image is OF the character (self-portrait)
+            # Priority 1: Explicit character name mention (strongest signal)
+            has_char_name = char_name_lower in prompt_lower
+            
+            # Priority 2: First-person self-references
             self_keywords = [
                 "me", "myself", "my face", "my appearance", "what i look like",
                 "selfie", "self-portrait", "self portrait",
-                char_name_lower, "your face", "your appearance"
+                "my form", "my visual", "my figure", "my silhouette",
+                "your face", "your appearance", "your form"
             ]
             
-            # Keywords that suggest the image is FOR/ABOUT the user or another subject
+            # Keywords that suggest the image is FOR/ABOUT the user (human) or another subject
+            # NOTE: "her/she/him/he" are NOT included - they're ambiguous and often refer to the character
             user_keywords = [
                 "you", "your", "yourself", "user", "portrait of you",
                 "what you look like", "for you", "of you",
-                "him", "her", "them", "their", "he", "she", "they",
-                "person", "man", "woman", "guy", "girl", "male", "female"
+                "person", "man", "woman", "guy", "girl", "captain",
+                "human", "crew", "people"
             ]
             
-            is_self_image = any(kw in prompt_lower for kw in self_keywords)
+            is_self_image = has_char_name or any(kw in prompt_lower for kw in self_keywords)
             is_user_image = any(kw in prompt_lower for kw in user_keywords)
+            
+            # Character name mention is a STRONG signal - override user_keywords if present
+            # e.g., "ARIA's form" should be self-portrait even if prompt mentions "captain"
+            if has_char_name:
+                is_user_image = False
+                logger.debug(f"Character name '{char_name_lower}' found in prompt - forcing self-portrait mode")
             
             # Only include character visual description for self-portraits
             # NOT when creating images for/of the user or other subjects
             # Phase A8: Enhanced Portrait Mode Detection
             # We inject the character description if it's clearly about the character (is_self_image)
             # AND it's not explicitly about the user or someone else (is_user_image).
-            # We do NOT block injection just because it's a "portrait" category - that was a bug.
             if is_self_image and not is_user_image:
                 enhanced_prompt = f"{visual_desc}. {prompt}"
-                logger.info("Self-portrait mode: Including character visual description")
+                logger.info(f"Self-portrait mode: Including character visual description (char_name={has_char_name})")
             else:
                 enhanced_prompt = prompt
                 logger.info("User/Other subject mode: Using prompt as-is (no character injection)")
