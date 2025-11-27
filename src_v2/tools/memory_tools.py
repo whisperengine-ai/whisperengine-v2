@@ -256,12 +256,13 @@ class CharacterEvolutionTool(BaseTool):
         try:
             relationship = await trust_manager.get_relationship_level(self.user_id, self.character_name)
             
+            level_label = relationship.get('level_label', 'Stranger')
             output = f"""Current Relationship State:
 - Trust Score: {relationship['trust_score']}/150
-- Relationship Level: {relationship['level']}
+- Relationship Level: {level_label}
 - Unlocked Traits: {', '.join(relationship['unlocked_traits']) if relationship['unlocked_traits'] else 'None yet'}
 
-This means you should behave as a {relationship['level'].lower()} with this user."""
+This means you should behave as a {level_label.lower()} with this user."""
             
             return output
         except Exception as e:
