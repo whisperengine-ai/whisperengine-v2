@@ -135,6 +135,7 @@ class Settings(BaseSettings):
     # --- Privacy & Security ---
     ENABLE_DM_BLOCK: bool = True
     DM_ALLOWED_USER_IDS: str = Field(default="", description="List of Discord User IDs allowed to DM the bot (comma-separated)")
+    BLOCKED_USER_IDS: str = Field(default="", description="List of Discord User IDs to completely ignore (comma-separated)")
 
     # --- Spam Protection ---
     ENABLE_CROSSPOST_DETECTION: bool = False
@@ -156,6 +157,20 @@ class Settings(BaseSettings):
             except json.JSONDecodeError:
                 pass
         # Support comma-separated list
+        return [id.strip() for id in v.split(",") if id.strip()]
+
+    @property
+    def blocked_user_ids_list(self) -> list[str]:
+        """Parse blocked user IDs from comma-separated string."""
+        v = self.BLOCKED_USER_IDS
+        if not v.strip():
+            return []
+        if v.strip().startswith("["):
+            import json
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
         return [id.strip() for id in v.split(",") if id.strip()]
 
     model_config = SettingsConfigDict(

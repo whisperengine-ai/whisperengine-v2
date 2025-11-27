@@ -394,6 +394,11 @@ class WhisperBot(commands.Bot):
         if message.author.bot:
             return
 
+        # Ignore messages from blocked users
+        if str(message.author.id) in settings.blocked_user_ids_list:
+            logger.debug(f"Ignoring message from blocked user: {message.author.id}")
+            return
+
         # Universe Presence
         if message.guild:
             try:
