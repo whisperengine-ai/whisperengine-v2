@@ -28,6 +28,7 @@ from src_v2.workers.task_queue import task_queue
 from src_v2.image_gen.service import pending_images
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator
+import random
 
 # Regex pattern for BFL image URLs (to strip them out if LLM includes them)
 BFL_IMAGE_URL_PATTERN = re.compile(
@@ -306,8 +307,7 @@ class WhisperBot(commands.Bot):
             ("read_message_history", "Read Message History"),
             ("embed_links", "Embed Links"),
             ("attach_files", "Attach Files"),
-            ("add_reactions", "Add Reactions"),
-            ("use_external_emojis", "Use External Emojis"),
+            ("add_reactions", "Use External Emojis"),
             ("manage_messages", "Manage Messages (Delete Spam)"),
             ("connect", "Connect (Voice)"),
             ("speak", "Speak (Voice)"),
@@ -447,7 +447,6 @@ class WhisperBot(commands.Bot):
                                 # Try to get character-specific warning
                                 warning_msg = settings.CROSSPOST_WARNING_MESSAGE
                                 if self.lurk_detector and self.lurk_detector.triggers.spam_warnings:
-                                    import random
                                     warning_msg = random.choice(self.lurk_detector.triggers.spam_warnings)
                                 
                                 warning = f"{message.author.mention} {warning_msg}"
@@ -518,8 +517,9 @@ class WhisperBot(commands.Bot):
                 return
 
         if is_dm or is_mentioned:
-            async with message.channel.typing():
-                try:
+            # Typing indicator delayed to mimic natural reading time
+            processing_start = time.time()
+            try:
                     # Get the character
                     character = character_manager.get_character(self.character_name)
                     
@@ -871,6 +871,17 @@ class WhisperBot(commands.Bot):
                     last_update_time = 0
                     update_interval = 0.7  # Seconds between edits to avoid rate limits
                     
+                    # Start typing indicator only when generation begins
+                    # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
+                    reading_delay = min(len(user_message) * 0.05, 4.0)
+                    reading_delay += random.uniform(0, 1.0) # Add jitter
+                    
+                    elapsed = time.time() - processing_start
+                    if elapsed < reading_delay:
+                        await asyncio.sleep(reading_delay - elapsed)
+                        
+                    await message.channel.trigger_typing()
+                    
                     async for chunk in self.agent_engine.generate_response_stream(
                         character=character,
                         user_message=user_message,
@@ -1014,9 +1025,9 @@ class WhisperBot(commands.Bot):
                     except Exception as e:
                         logger.error(f"Failed to send/save AI response: {e}")
 
-                except Exception as e:
-                    logger.exception(f"Critical error in on_message: {e}")
-                    await message.channel.send("I'm having a bit of trouble processing that right now. Please try again later.")
+            except Exception as e:
+                logger.exception(f"Critical error in on_message: {e}")
+                await message.channel.send("I'm having a bit of trouble processing that right now. Please try again later.")
 
         # Channel Lurking: Respond to relevant messages without being mentioned
         elif settings.ENABLE_CHANNEL_LURKING and self.lurk_detector and message.guild:
@@ -1072,7 +1083,8 @@ class WhisperBot(commands.Bot):
                 
             logger.info(f"Lurk: Responding to message (score={lurk_result.confidence:.2f}, trigger={lurk_result.trigger_reason})")
             
-            async with message.channel.typing():
+            # Typing indicator delayed
+            if True:
                 # Get the character
                 character = character_manager.get_character(self.character_name)
                 if not character:
@@ -1137,6 +1149,13 @@ class WhisperBot(commands.Bot):
                 
                 # Generate response (use simpler path, no reflective mode for lurk)
                 start_time = time.time()
+                
+                # Humanize Lurk: Wait for "reading" time
+                reading_delay = min(len(message_content) * 0.05, 3.0)
+                reading_delay += random.uniform(0, 1.0)
+                await asyncio.sleep(reading_delay)
+                
+                await message.channel.trigger_typing()
                 
                 response = await self.agent_engine.generate_response(
                     character=character,
