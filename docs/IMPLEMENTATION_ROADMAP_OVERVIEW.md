@@ -103,13 +103,11 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ⏳ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ⏳ Phase A8: Image Generation Enhancements (portrait mode, iteration memory)
-- ⏳ Phase A9: Advanced Memory Retrieval (emotional priority, recency, hybrid search)
-- ⏳ Phase B9: Emergent Behavior Architecture 🌱 (purpose, drives, constitution → emergence)
 - ⏳ Phase C3: Video processing, web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase B9 (Emergent Behavior Architecture) - Strategic Foundation. Then Phase A7 (Character Agency). See [PURPOSE_DRIVEN_EMERGENCE.md](./roadmaps/PURPOSE_DRIVEN_EMERGENCE.md) and [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
+**Next focus:** Phase A7 (Character Agency) - Characters decide to use tools. See [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
 
 ---
 
@@ -879,7 +877,7 @@ THE WHISPERVERSE
 
 ### B9: Emergent Behavior Architecture 🌱
 **Priority:** 🔴 High (Strategic Foundation) | **Time:** 4-5 days | **Complexity:** Low-Medium  
-**Files:** 5 | **LOC:** ~300 | **Status:** 📋 Planned
+**Files:** 5 | **LOC:** ~300 | **Status:** ✅ Complete
 
 > *"Plant the seed. Tend the soil. Let it grow."*
 

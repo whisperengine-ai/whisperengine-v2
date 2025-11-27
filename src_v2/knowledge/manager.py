@@ -706,6 +706,173 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Graph exploration failed: {e}")
             return f"Error exploring graph: {e}"
 
+    # ========== STIGMERGIC TRACES (Phase B9: Emergent Behavior) ==========
+    
+    @retry_db_operation(max_retries=3)
+    async def store_observation(
+        self, 
+        observer_bot: str, 
+        observation_type: str, 
+        subject: str, 
+        content: str,
+        metadata: Optional[dict] = None
+    ) -> bool:
+        """
+        Stores an observation that other characters can discover.
+        
+        This is stigmergy - indirect communication through the environment.
+        Characters don't talk to each other; they leave traces and discover traces.
+        
+        Examples:
+        - store_observation("elena", "user_mood", "user123", "seemed excited about astronomy")
+        - store_observation("marcus", "topic_trend", "channel456", "lots of music discussion today")
+        - store_observation("elena", "relationship", "user123", "we had a deep conversation about loss")
+        
+        Args:
+            observer_bot: The character making the observation
+            observation_type: Category of observation (user_mood, topic_trend, relationship, etc.)
+            subject: What/who the observation is about (user_id, channel_id, topic name)
+            content: The observation content
+            metadata: Optional additional data
+        """
+        if not db_manager.neo4j_driver:
+            return False
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                query = """
+                MERGE (c:Character {name: $observer_bot})
+                MERGE (s:Subject {id: $subject})
+                CREATE (c)-[o:OBSERVED {
+                    type: $observation_type,
+                    content: $content,
+                    timestamp: datetime(),
+                    metadata: $metadata
+                }]->(s)
+                """
+                await session.run(
+                    query,
+                    observer_bot=observer_bot,
+                    subject=subject,
+                    observation_type=observation_type,
+                    content=content,
+                    metadata=metadata or {}
+                )
+                logger.debug(f"Stored observation: {observer_bot} observed {observation_type} about {subject}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to store observation: {e}")
+            return False
+    
+    @retry_db_operation(max_retries=3)
+    async def get_observations_about(
+        self, 
+        subject: str, 
+        exclude_observer: Optional[str] = None,
+        observation_type: Optional[str] = None,
+        limit: int = 5
+    ) -> List[dict]:
+        """
+        Gets observations that OTHER characters have made about a subject.
+        
+        This allows characters to discover what their peers have noticed.
+        
+        Args:
+            subject: The subject to get observations about (user_id, channel_id, etc.)
+            exclude_observer: Exclude observations from this character (usually self)
+            observation_type: Filter by observation type (optional)
+            limit: Maximum observations to return
+        
+        Returns:
+            List of observation dicts with observer, type, content, timestamp
+        """
+        if not db_manager.neo4j_driver:
+            return []
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                # Build query with optional filters
+                where_clauses = ["s.id = $subject"]
+                if exclude_observer:
+                    where_clauses.append("c.name <> $exclude_observer")
+                if observation_type:
+                    where_clauses.append("o.type = $observation_type")
+                
+                where_str = " AND ".join(where_clauses)
+                
+                query = f"""
+                MATCH (c:Character)-[o:OBSERVED]->(s:Subject)
+                WHERE {where_str}
+                RETURN c.name as observer, o.type as type, o.content as content, 
+                       o.timestamp as timestamp, o.metadata as metadata
+                ORDER BY o.timestamp DESC
+                LIMIT $limit
+                """
+                
+                result = await session.run(
+                    query,
+                    subject=subject,
+                    exclude_observer=exclude_observer,
+                    observation_type=observation_type,
+                    limit=limit
+                )
+                records = await result.data()
+                
+                observations = []
+                for r in records:
+                    observations.append({
+                        "observer": r["observer"],
+                        "type": r["type"],
+                        "content": r["content"],
+                        "timestamp": str(r["timestamp"]) if r["timestamp"] else None,
+                        "metadata": r.get("metadata", {})
+                    })
+                
+                return observations
+                
+        except Exception as e:
+            logger.error(f"Failed to get observations: {e}")
+            return []
+    
+    @retry_db_operation(max_retries=3)
+    async def get_recent_observations_by(
+        self, 
+        observer_bot: str, 
+        limit: int = 10
+    ) -> List[dict]:
+        """
+        Gets recent observations made BY a specific character.
+        Useful for the character to recall what they've noticed.
+        """
+        if not db_manager.neo4j_driver:
+            return []
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                query = """
+                MATCH (c:Character {name: $observer_bot})-[o:OBSERVED]->(s:Subject)
+                RETURN s.id as subject, o.type as type, o.content as content, 
+                       o.timestamp as timestamp
+                ORDER BY o.timestamp DESC
+                LIMIT $limit
+                """
+                result = await session.run(query, observer_bot=observer_bot, limit=limit)
+                records = await result.data()
+                
+                return [
+                    {
+                        "subject": r["subject"],
+                        "type": r["type"],
+                        "content": r["content"],
+                        "timestamp": str(r["timestamp"]) if r["timestamp"] else None
+                    }
+                    for r in records
+                ]
+                
+        except Exception as e:
+            logger.error(f"Failed to get observations by {observer_bot}: {e}")
+            return []
+
     @staticmethod
     async def _fetch_facts(tx, user_id: str, limit: int) -> List[str]:
         query = """
