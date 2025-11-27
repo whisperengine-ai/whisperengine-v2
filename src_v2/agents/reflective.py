@@ -3,7 +3,7 @@ import base64
 import httpx
 from typing import List, Optional, Callable, Awaitable, Tuple, Dict, Any
 from loguru import logger
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
@@ -36,6 +36,36 @@ class ReflectiveAgent:
     def __init__(self):
         self.llm = create_llm(temperature=0.1, mode="reflective")
         self.max_steps = settings.REFLECTIVE_MAX_STEPS
+
+    def _sanitize_history(self, messages: List[BaseMessage]) -> List[BaseMessage]:
+        """
+        Ensures message history complies with strict LLM provider rules (e.g. Anthropic).
+        - Merges consecutive User messages.
+        - Ensures proper User/Assistant alternation (excluding ToolMessages which follow AIMessages).
+        """
+        sanitized: List[BaseMessage] = []
+        for msg in messages:
+            if not sanitized:
+                sanitized.append(msg)
+                continue
+            
+            last_msg = sanitized[-1]
+            
+            # Merge consecutive HumanMessages
+            if isinstance(msg, HumanMessage) and isinstance(last_msg, HumanMessage):
+                last_content = str(last_msg.content)
+                new_content = str(msg.content)
+                merged_content = f"{last_content}\n\n{new_content}"
+                # Create NEW message to avoid mutating shared state
+                sanitized[-1] = HumanMessage(content=merged_content)
+            # Skip consecutive AIMessages (keep only the last one)
+            elif isinstance(msg, AIMessage) and isinstance(last_msg, AIMessage):
+                logger.debug("Sanitizer: Skipping duplicate AIMessage")
+                sanitized[-1] = msg  # Replace with newer one
+            else:
+                sanitized.append(msg)
+        
+        return sanitized
 
     async def run(
         self, 
@@ -97,7 +127,7 @@ class ReflectiveAgent:
                     })
 
         # 4. Initialize Loop
-        messages = [SystemMessage(content=full_prompt)]
+        messages: List[BaseMessage] = [SystemMessage(content=full_prompt)]
         
         # Inject Chat History
         if chat_history:
@@ -144,8 +174,19 @@ class ReflectiveAgent:
             
             # Invoke LLM
             try:
-                response = await llm_with_tools.ainvoke(messages)
+                safe_messages = self._sanitize_history(messages)
+                if settings.DEBUG:
+                    logger.debug(f"Sanitized message types: {[type(m).__name__ for m in safe_messages]}")
+                response = await llm_with_tools.ainvoke(safe_messages)
             except Exception as e:
+                # Safety Fallback: If we already have an answer (tools were used), return it
+                if tools_used > 0:
+                    # Find the last AIMessage with content (the proposed answer)
+                    for msg in reversed(messages):
+                        if isinstance(msg, AIMessage) and msg.content and not getattr(msg, 'tool_calls', None):
+                            logger.warning(f"LLM failed ({e}). Falling back to last AI response.")
+                            return str(msg.content), messages
+                
                 logger.error(f"LLM invocation failed: {e}")
                 return "I encountered an error while thinking.", messages
 
@@ -168,9 +209,14 @@ class ReflectiveAgent:
                         nudge_content = "The user shared a document with you. You can see a preview in their message. Please acknowledge what they shared and respond thoughtfully. If you need more details from the document, use search_specific_memories."
                     else:
                         nudge_content = "You returned an empty response. Please use a tool (like discover_common_ground) or provide a final answer."
-                        
-                    nudge = SystemMessage(content=nudge_content)
-                    messages.append(nudge)
+                    
+                    # Avoid User->User sequence which crashes some providers
+                    if messages and isinstance(messages[-1], HumanMessage):
+                        # Create NEW message to avoid mutating shared state
+                        merged = str(messages[-1].content) + f"\n\n(SYSTEM NOTE: {nudge_content})"
+                        messages[-1] = HumanMessage(content=merged)
+                    else:
+                        messages.append(HumanMessage(content=nudge_content))
                     
                     # Don't increment steps for this retry
                     steps -= 1
@@ -234,7 +280,7 @@ class ReflectiveAgent:
                         "If it needs work, respond with: 'CORRECTION NEEDED: <explanation>' "
                         "and then use tools or provide a corrected answer."
                     )
-                    messages.append(SystemMessage(content=critic_prompt))
+                    messages.append(HumanMessage(content=critic_prompt))
                     continue
 
                 if enable_verification and "VERIFIED" in str(content):
@@ -330,8 +376,11 @@ class ReflectiveAgent:
 
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
 You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, and generate images.
-Use these tools to gather information or create visual content before answering.
-Think step-by-step.
+
+CRITICAL: When asked to search, explore, analyze, or look up information, you MUST call the appropriate tool IMMEDIATELY in your response. Do not describe what you will do - just do it by including the tool call.
+
+CHARACTER CONTEXT:
+{base_system_prompt}
 
 AVAILABLE TOOL CATEGORIES:
 1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic
@@ -339,22 +388,14 @@ AVAILABLE TOOL CATEGORIES:
 3. Introspection: analyze_conversation_patterns, detect_recurring_themes
 4. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
 {creative_category}
-IMPORTANT RULES:
-{image_rules}- If the user asks about connections, relationships, what's connected, or to explore the network/graph, use the explore_knowledge_graph tool.
-- If the user asks what you have in common, shared interests, or you want to find connection points, use the discover_common_ground tool.
-- If the user asks about your relationship, trust level, or how close you are, use get_character_evolution.
-- If the user asks about patterns, themes, or what topics come up often, use analyze_conversation_patterns or detect_recurring_themes.
-- If the user asks what's happening 'across all planets', 'everywhere in the universe', or to tell another bot about the universe state, use get_universe_overview.
-- Do NOT give a final answer until you have completed all requested actions.
-- When asked to search or explore, USE THE TOOLS - don't just describe what you would do.
+TOOL USAGE RULES:
+{image_rules}- explore_knowledge_graph: Use when asked about connections, relationships, network, or graph exploration.
+- discover_common_ground: Use when asked about shared interests or common ground.
+- get_character_evolution: Use when asked about your relationship, trust level, or closeness.
+- analyze_conversation_patterns / detect_recurring_themes: Use for patterns, themes, or frequent topics.
+- get_universe_overview: Use for questions about 'all planets', 'everywhere', or 'the universe'.
 
 DOCUMENT HANDLING:
-- If the user shares a document, you'll see a PREVIEW of the content in their message.
-- The FULL document content is stored in memory and searchable via search_specific_memories.
-- For simple questions about the preview, respond directly without tools.
-- For detailed questions requiring the full document, use search_specific_memories to retrieve more content.
-- Acknowledge what you've read and provide a thoughtful response about the content.
-
-CHARACTER CONTEXT:
-{base_system_prompt}
+- If the user shares a document, you'll see a PREVIEW in their message.
+- Use search_specific_memories to retrieve full document content if needed.
 """

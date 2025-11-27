@@ -335,16 +335,25 @@ class AgentEngine:
 
                 # Determine max steps based on complexity level
                 max_steps = 10 # Default
+                should_verify = False
+                
                 if is_complex == "COMPLEX_MID":
                     max_steps = 10
                 elif is_complex == "COMPLEX_HIGH":
                     max_steps = 15
+                    # Only enable verification for OpenAI-native models
+                    # Anthropic/Claude via OpenRouter has strict message format that breaks with critic step
+                    reflective_provider = settings.REFLECTIVE_LLM_PROVIDER or settings.LLM_PROVIDER
+                    reflective_model = settings.REFLECTIVE_LLM_MODEL_NAME or settings.LLM_MODEL_NAME
+                    is_anthropic = "anthropic" in reflective_model.lower() or "claude" in reflective_model.lower()
+                    should_verify = not is_anthropic  # Only verify for non-Anthropic models
 
                 # Reflective mode doesn't support true streaming yet, so we yield the full response
                 response = await self._run_reflective_mode(
                     character, user_message, user_id, system_content, 
                     chat_history, context_variables, image_urls, callback,
-                    max_steps_override=max_steps
+                    max_steps_override=max_steps,
+                    enable_verification=should_verify
                 )
                 logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
                 yield response
