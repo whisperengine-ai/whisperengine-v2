@@ -30,6 +30,41 @@ def retry_db_operation(max_retries: int = 3, delay: int = 1):
         return wrapper
     return decorator
 
+def require_db(db_type: str, default_return=None):
+    """
+    Decorator to check if a specific DB connection is available.
+    db_type: 'postgres', 'qdrant', 'neo4j', 'redis', 'influxdb'
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Access the global db_manager defined in this module
+            # We use globals() to avoid reference before assignment issues if defined above
+            manager = globals().get('db_manager')
+            if not manager:
+                logger.error("DatabaseManager not initialized")
+                return default_return
+
+            is_connected = False
+            if db_type == 'postgres':
+                is_connected = manager.postgres_pool is not None
+            elif db_type == 'qdrant':
+                is_connected = manager.qdrant_client is not None
+            elif db_type == 'neo4j':
+                is_connected = manager.neo4j_driver is not None
+            elif db_type == 'redis':
+                is_connected = manager.redis_client is not None
+            elif db_type == 'influxdb':
+                is_connected = manager.influxdb_client is not None
+            
+            if not is_connected:
+                logger.warning(f"Skipping {func.__name__}: {db_type} not available.")
+                return default_return
+                
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
 class DatabaseManager:
     def __init__(self):
         self.postgres_pool: Optional[asyncpg.Pool] = None

@@ -1,7 +1,7 @@
 from typing import Optional, List
 from datetime import datetime
 from loguru import logger
-from src_v2.core.database import db_manager, retry_db_operation
+from src_v2.core.database import db_manager, retry_db_operation, require_db
 
 
 class UniverseManager:
@@ -26,12 +26,9 @@ class UniverseManager:
             self._embedding_service = EmbeddingService()
         return self._embedding_service
 
+    @require_db("neo4j")
     async def initialize(self):
         """Initialize constraints for the Universe graph."""
-        if not db_manager.neo4j_driver:
-            logger.warning("Neo4j driver not available. Universe features disabled.")
-            return
-
         queries = [
             "CREATE CONSTRAINT IF NOT EXISTS FOR (p:Planet) REQUIRE p.id IS UNIQUE",
             "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Channel) REQUIRE c.id IS UNIQUE",
@@ -58,10 +55,9 @@ class UniverseManager:
             logger.error(f"Failed to initialize Universe constraints: {e}")
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def register_planet(self, guild_id: str, name: str):
         """Register or update a Discord server as a Planet."""
-        if not db_manager.neo4j_driver: return
-
         query = """
         MERGE (p:Planet {id: $guild_id})
         SET p.name = $name, p.last_seen = datetime(), p.active = true
@@ -71,10 +67,9 @@ class UniverseManager:
             await session.run(query, guild_id=str(guild_id), name=name)
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def register_channel(self, guild_id: str, channel_id: str, name: str, channel_type: str):
         """Register a channel on a planet."""
-        if not db_manager.neo4j_driver: return
-
         query = """
         MATCH (p:Planet {id: $guild_id})
         MERGE (c:Channel {id: $channel_id})
@@ -85,10 +80,9 @@ class UniverseManager:
             await session.run(query, guild_id=str(guild_id), channel_id=str(channel_id), name=name, channel_type=channel_type)
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def record_presence(self, user_id: str, guild_id: str):
         """Record that a user is on a planet."""
-        if not db_manager.neo4j_driver: return
-
         query = """
         MATCH (u:User {id: $user_id})
         MATCH (p:Planet {id: $guild_id})
@@ -125,10 +119,9 @@ class UniverseManager:
             return None
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def mark_planet_inactive(self, guild_id: str):
         """Mark a planet as inactive (bot removed)."""
-        if not db_manager.neo4j_driver: return
-
         query = """
         MATCH (p:Planet {id: $guild_id})
         SET p.active = false, p.left_at = datetime()
@@ -137,10 +130,9 @@ class UniverseManager:
             await session.run(query, guild_id=str(guild_id))
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def remove_inhabitant(self, user_id: str, guild_id: str):
         """Remove a user's presence from a planet."""
-        if not db_manager.neo4j_driver: return
-
         query = """
         MATCH (u:User {id: $user_id})-[r:ON_PLANET]->(p:Planet {id: $guild_id})
         DELETE r
@@ -150,6 +142,7 @@ class UniverseManager:
 
     # ============ Phase 2: Learning to Listen ============
     
+    @require_db("neo4j")
     async def observe_message(
         self, 
         guild_id: str, 
@@ -178,9 +171,6 @@ class UniverseManager:
             reply_to_user_id: User ID being replied to, if this is a reply
             user_display_name: Display name of the user
         """
-        if not db_manager.neo4j_driver:
-            return
-            
         # Skip very short messages (greetings, reactions, etc.)
         if len(message_content.strip()) < 10:
             return
@@ -200,6 +190,7 @@ class UniverseManager:
             logger.debug(f"Universe observation error (non-fatal): {e}")
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def _update_user_activity(
         self, 
         user_id: str, 
@@ -208,8 +199,6 @@ class UniverseManager:
         display_name: Optional[str] = None
     ) -> None:
         """Update user's last seen timestamp and activity on planet/channel."""
-        if not db_manager.neo4j_driver: return
-        
         query = """
         MERGE (u:User {id: $user_id})
         SET u.last_seen_at = datetime()
@@ -239,8 +228,6 @@ class UniverseManager:
 
     async def _extract_and_link_topics(self, guild_id: str, message_content: str) -> None:
         """Extract topics from message and link them to the planet."""
-        if not db_manager.neo4j_driver: return
-        
         # Extract meaningful topics (simple keyword extraction)
         topics = self._extract_topics(message_content)
         if not topics:
@@ -306,9 +293,10 @@ class UniverseManager:
         return unique_topics
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def _link_topics_to_planet(self, guild_id: str, topics: List[str]) -> None:
         """Create or update Topic nodes and link them to the planet."""
-        if not db_manager.neo4j_driver or not topics: return
+        if not topics: return
         
         query = """
         MATCH (p:Planet {id: $guild_id})
@@ -325,6 +313,7 @@ class UniverseManager:
             await session.run(query, guild_id=str(guild_id), topics=topics)
 
     @retry_db_operation()
+    @require_db("neo4j")
     async def _record_user_interactions(
         self, 
         author_id: str, 
@@ -333,8 +322,6 @@ class UniverseManager:
         guild_id: str
     ) -> None:
         """Record user-to-user interactions (mentions and replies)."""
-        if not db_manager.neo4j_driver: return
-        
         # Combine mentions and reply target
         interacted_with = set(mentioned_user_ids)
         if reply_to_user_id:
@@ -365,10 +352,9 @@ class UniverseManager:
             )
 
     @retry_db_operation()
+    @require_db("redis")
     async def _track_activity_hour(self, guild_id: str) -> None:
         """Track the current hour for peak activity learning."""
-        if not db_manager.redis_client: return
-        
         # Use Redis to track hourly activity counts
         current_hour = datetime.now().hour
         key = f"universe:planet:{guild_id}:activity_hours"
@@ -381,10 +367,9 @@ class UniverseManager:
         except Exception as e:
             logger.debug(f"Failed to track activity hour: {e}")
 
+    @require_db("redis", default_return=[])
     async def get_planet_peak_hours(self, guild_id: str) -> List[int]:
         """Get the top 3 peak activity hours for a planet."""
-        if not db_manager.redis_client: return []
-        
         try:
             key = f"universe:planet:{guild_id}:activity_hours"
             hour_counts = await db_manager.redis_client.hgetall(key)

@@ -9,7 +9,7 @@ from typing import Dict, Optional, Any, List
 from loguru import logger
 from influxdb_client import Point
 from datetime import datetime
-from src_v2.core.database import db_manager
+from src_v2.core.database import db_manager, require_db
 from src_v2.config.settings import settings
 from src_v2.evolution.manager import get_evolution_manager
 from src_v2.core.cache import cache_manager
@@ -24,6 +24,7 @@ class TrustManager:
     def __init__(self):
         logger.info("TrustManager initialized")
 
+    @require_db("postgres", default_return={"trust_score": 0, "level": 1, "level_label": "Stranger", "unlocked_traits": [], "preferences": {}})
     async def get_relationship_level(self, user_id: str, character_name: str) -> Dict:
         """
         Retrieves the current relationship level and trust score.
@@ -36,9 +37,6 @@ class TrustManager:
         if cached_data:
             return cached_data
 
-        if not db_manager.postgres_pool:
-            return {"trust_score": 0, "level": 1, "level_label": "Stranger", "unlocked_traits": [], "preferences": {}}
-            
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 # Check if relationship exists
@@ -122,13 +120,11 @@ class TrustManager:
             logger.error(f"Failed to get relationship level: {e}")
             return {"trust_score": 0, "level": 1, "level_label": "Stranger", "unlocked_traits": [], "preferences": {}}
 
+    @require_db("postgres")
     async def update_preference(self, user_id: str, character_name: str, key: str, value: Any):
         """
         Updates a specific preference setting.
         """
-        if not db_manager.postgres_pool:
-            return
-            
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await self.get_relationship_level(user_id, character_name)
@@ -152,13 +148,11 @@ class TrustManager:
         except Exception as e:
             logger.error(f"Failed to update preference: {e}")
 
+    @require_db("postgres")
     async def delete_preference(self, user_id: str, character_name: str, key: str):
         """
         Deletes a specific preference setting.
         """
-        if not db_manager.postgres_pool:
-            return
-            
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
@@ -175,13 +169,11 @@ class TrustManager:
         except Exception as e:
             logger.error(f"Failed to delete preference: {e}")
 
+    @require_db("postgres")
     async def clear_user_preferences(self, user_id: str, character_name: str):
         """
         Clears user preferences and resets trust score.
         """
-        if not db_manager.postgres_pool:
-            return
-
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
@@ -196,6 +188,7 @@ class TrustManager:
         except Exception as e:
             logger.error(f"Failed to clear preferences: {e}")
 
+    @require_db("postgres", default_return=None)
     async def update_trust(self, user_id: str, character_name: str, delta: int) -> Optional[str]:
         """
         Adjusts trust score by delta amount.
@@ -206,9 +199,6 @@ class TrustManager:
             character_name: Character name
             delta: Amount to change trust by (can be negative)
         """
-        if not db_manager.postgres_pool:
-            return None
-            
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 # Ensure relationship exists and get current score
@@ -280,6 +270,7 @@ class TrustManager:
             logger.error(f"Failed to update trust: {e}")
             return None
 
+    @require_db("postgres")
     async def unlock_trait(self, user_id: str, character_name: str, trait: str):
         """
         Unlocks a new personality trait for this relationship.
@@ -287,9 +278,6 @@ class TrustManager:
         Args:
             trait: Name of the trait (e.g., "vulnerable", "protective")
         """
-        if not db_manager.postgres_pool:
-            return
-            
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 # Append trait to unlocked_traits array

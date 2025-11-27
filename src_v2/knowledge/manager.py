@@ -9,7 +9,7 @@ import time
 from influxdb_client import Point
 
 from src_v2.config.settings import settings
-from src_v2.core.database import db_manager, retry_db_operation
+from src_v2.core.database import db_manager, retry_db_operation, require_db
 from src_v2.core.cache import cache_manager
 from src_v2.knowledge.extractor import FactExtractor, Fact
 from src_v2.agents.llm_factory import create_llm
@@ -97,14 +97,11 @@ RULES:
         ])
         self.correction_chain = self.correction_prompt | self.llm | StrOutputParser()
 
+    @require_db("neo4j")
     async def initialize(self):
         """
         Initializes the Knowledge Graph schema (constraints and indexes).
         """
-        if not db_manager.neo4j_driver:
-            logger.warning("Neo4j driver not available. Skipping Knowledge Graph initialization.")
-            return
-
         try:
             async with db_manager.neo4j_driver.session() as session:
                 # Create constraints (which also create indexes)
@@ -132,6 +129,7 @@ RULES:
         except Exception as e:
             logger.error(f"Failed to initialize Knowledge Graph schema: {e}")
 
+    @require_db("neo4j")
     @retry_db_operation(max_retries=3)
     async def ingest_character_background(self, bot_name: str):
         """
@@ -175,13 +173,11 @@ RULES:
         except Exception as e:
             logger.error(f"Failed to ingest background for {bot_name}: {e}")
 
+    @require_db("neo4j", default_return="Graph database not available.")
     async def query_graph(self, user_id: str, question: str, bot_name: str = "default") -> str:
         """
         Generates and executes a Cypher query based on a natural language question.
         """
-        if not db_manager.neo4j_driver:
-            return "Graph database not available."
-
         try:
             # 1. Check Privacy Settings
             privacy_settings = await privacy_manager.get_settings(user_id)
@@ -337,13 +333,11 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Common ground check failed: {e}")
             return ""
 
+    @require_db("neo4j", default_return="")
     async def search_bot_background(self, bot_name: str, user_message: str) -> str:
         """
         Checks if the user's message mentions anything related to the bot's background.
         """
-        if not db_manager.neo4j_driver:
-            return ""
-
         # Simple keyword extraction (split by space, filter small words)
         keywords = [w for w in user_message.lower().split() if len(w) > 4]
         if not keywords:
@@ -379,14 +373,12 @@ PRIVACY RESTRICTION ENABLED:
             return ""
 
     @retry_db_operation(max_retries=3)
+    @require_db("neo4j")
     async def process_user_message(self, user_id: str, message: str, bot_name: str = "unknown"):
         """
         Extracts facts from the message and stores them in the Knowledge Graph.
         """
         if not settings.ENABLE_RUNTIME_FACT_EXTRACTION:
-            return
-
-        if not db_manager.neo4j_driver:
             return
 
         # 1. Extract Facts
@@ -467,6 +459,7 @@ PRIVACY RESTRICTION ENABLED:
                      confidence=fact.confidence,
                      bot_name=bot_name)
 
+    @require_db("neo4j", default_return="")
     async def get_user_knowledge(self, user_id: str, query: Optional[str] = None, limit: int = 10) -> str:
         """
         Retrieves relevant facts about the user from the Knowledge Graph.
@@ -474,8 +467,6 @@ PRIVACY RESTRICTION ENABLED:
         Otherwise, it returns general facts.
         """
         start_time = time.time()
-        if not db_manager.neo4j_driver:
-            return ""
 
         try:
             async with db_manager.neo4j_driver.session() as session:
@@ -568,13 +559,11 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Failed to retrieve user knowledge: {e}")
             return ""
 
+    @require_db("neo4j")
     async def clear_user_knowledge(self, user_id: str):
         """
         Deletes all facts associated with a user.
         """
-        if not db_manager.neo4j_driver:
-            return
-
         query = """
         MATCH (u:User {id: $user_id})-[r:FACT]->()
         DELETE r
@@ -587,6 +576,7 @@ PRIVACY RESTRICTION ENABLED:
         except Exception as e:
             logger.error(f"Failed to clear user knowledge: {e}")
 
+    @require_db("neo4j", default_return="Graph database not available.")
     async def explore_graph(
         self, 
         user_id: str, 
@@ -606,9 +596,6 @@ PRIVACY RESTRICTION ENABLED:
         Returns:
             Formatted string of connected entities and relationships
         """
-        if not db_manager.neo4j_driver:
-            return "Graph database not available."
-        
         depth = min(max(depth, 1), 3)  # Clamp between 1-3
         
         try:
@@ -725,6 +712,7 @@ PRIVACY RESTRICTION ENABLED:
     # ========== STIGMERGIC TRACES (Phase B9: Emergent Behavior) ==========
     
     @retry_db_operation(max_retries=3)
+    @require_db("neo4j", default_return=False)
     async def store_observation(
         self, 
         observer_bot: str, 
@@ -751,9 +739,6 @@ PRIVACY RESTRICTION ENABLED:
             content: The observation content
             metadata: Optional additional data
         """
-        if not db_manager.neo4j_driver:
-            return False
-        
         try:
             async with db_manager.neo4j_driver.session() as session:
                 query = """
@@ -781,6 +766,7 @@ PRIVACY RESTRICTION ENABLED:
             return False
     
     @retry_db_operation(max_retries=3)
+    @require_db("neo4j", default_return=[])
     async def get_observations_about(
         self, 
         subject: str, 
@@ -802,9 +788,6 @@ PRIVACY RESTRICTION ENABLED:
         Returns:
             List of observation dicts with observer, type, content, timestamp
         """
-        if not db_manager.neo4j_driver:
-            return []
-        
         try:
             async with db_manager.neo4j_driver.session() as session:
                 # Build query with optional filters
@@ -851,6 +834,7 @@ PRIVACY RESTRICTION ENABLED:
             return []
     
     @retry_db_operation(max_retries=3)
+    @require_db("neo4j", default_return=[])
     async def get_recent_observations_by(
         self, 
         observer_bot: str, 
@@ -860,9 +844,6 @@ PRIVACY RESTRICTION ENABLED:
         Gets recent observations made BY a specific character.
         Useful for the character to recall what they've noticed.
         """
-        if not db_manager.neo4j_driver:
-            return []
-        
         try:
             async with db_manager.neo4j_driver.session() as session:
                 query = """

@@ -4,7 +4,7 @@ import datetime
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from loguru import logger
 from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
-from src_v2.core.database import db_manager, retry_db_operation
+from src_v2.core.database import db_manager, retry_db_operation, require_db
 from src_v2.config.settings import settings
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.utils.time_utils import get_relative_time
@@ -67,6 +67,7 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to initialize Qdrant: {e}")
 
+    @require_db("postgres")
     @retry_db_operation(max_retries=3)
     async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None, importance_score: int = 3):
         """
@@ -74,9 +75,6 @@ class MemoryManager:
         role: 'human' or 'ai'
         importance_score: 1-10 scale of how important this message is (default 3 for raw chat)
         """
-        if not db_manager.postgres_pool:
-            return
-
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
@@ -98,15 +96,14 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to save message: {e}")
 
+    @require_db("qdrant")
     @retry_db_operation(max_retries=3)
     async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3):
         """
         Embeds and saves a memory to Qdrant.
         """
         start_time = time.time()
-        if not db_manager.qdrant_client:
-            return
-
+        
         try:
             # Generate embedding
             embedding = await self.embedding_service.embed_query_async(content)

@@ -45,7 +45,7 @@ Regex used to strip timestamps leaking from memory.
 **Fix:** Fix the timestamp injection point in `memory/manager.py`.
 
 ### 6. Duplicate Initialization Pattern Across Managers
-**Status:** 🟡 Open
+**Status:** ✅ Done
 **Location:** `memory/manager.py`, `knowledge/manager.py`, etc.
 **Fix:** Create a `@require_db` decorator in `core/database.py`.
 
@@ -55,7 +55,7 @@ Regex used to strip timestamps leaking from memory.
 **Fix:** Standardize on one pattern across all managers.
 
 ### 8. Repeated JSON Parsing for Comma-Separated Lists
-**Status:** 🟡 Open
+**Status:** ✅ Done
 **Location:** `config/settings.py`
 **Fix:** Extract to a utility function.
 

@@ -151,34 +151,28 @@ class Settings(BaseSettings):
     CROSSPOST_WARNING_MESSAGE: str = "⚠️ Please avoid posting the same message in multiple channels. This is considered spam."
     CROSSPOST_ACTION: Literal["warn", "delete"] = "warn"
 
-    @property
-    def dm_allowed_user_ids_list(self) -> list[str]:
-        v = self.DM_ALLOWED_USER_IDS
-        if not v.strip():
+    def _parse_list_string(self, value: str) -> list[str]:
+        """Helper to parse comma-separated string or JSON list."""
+        if not value.strip():
             return []
         # Support JSON format for backward compatibility
-        if v.strip().startswith("["):
+        if value.strip().startswith("["):
             import json
             try:
-                return json.loads(v)
+                return json.loads(value)
             except json.JSONDecodeError:
                 pass
         # Support comma-separated list
-        return [id.strip() for id in v.split(",") if id.strip()]
+        return [id.strip() for id in value.split(",") if id.strip()]
+
+    @property
+    def dm_allowed_user_ids_list(self) -> list[str]:
+        return self._parse_list_string(self.DM_ALLOWED_USER_IDS)
 
     @property
     def blocked_user_ids_list(self) -> list[str]:
         """Parse blocked user IDs from comma-separated string."""
-        v = self.BLOCKED_USER_IDS
-        if not v.strip():
-            return []
-        if v.strip().startswith("["):
-            import json
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                pass
-        return [id.strip() for id in v.split(",") if id.strip()]
+        return self._parse_list_string(self.BLOCKED_USER_IDS)
 
     model_config = SettingsConfigDict(
         env_file=".env", 
