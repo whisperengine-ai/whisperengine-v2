@@ -58,6 +58,7 @@ characters/**/*.backup_*.json
 *.sqlite
 *.sqlite3
 
+
 # Cache
 .cache/
 .pytest_cache/
@@ -65,6 +66,9 @@ htmlcov/
 
 # Docker
 .dockerignore
+
+# Backups
+backups/
 
 # OS
 .DS_Store

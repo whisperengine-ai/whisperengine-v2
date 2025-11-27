@@ -29,6 +29,8 @@ show_help() {
     echo "  logs [bot|all]        Show logs"
     echo "  ps                    Show status of all containers"
     echo "  build                 Rebuild bot images"
+    echo "  backup                Backup all databases"
+    echo "  restore <dir>         Restore databases from backup"
     echo ""
     echo "Examples:"
     echo "  ./bot.sh infra up     # Start just databases"
@@ -38,6 +40,8 @@ show_help() {
     echo "  ./bot.sh start elena  # Start Elena"
     echo "  ./bot.sh logs elena   # Watch Elena's logs"
     echo "  ./bot.sh restart elena # Restart Elena"
+    echo "  ./bot.sh backup       # Backup all databases"
+    echo "  ./bot.sh restore ./backups/20251126_120000  # Restore from backup"
     echo ""
 }
 
@@ -171,6 +175,22 @@ case "$1" in
         echo -e "${YELLOW}Building bot images...${NC}"
         docker compose build
         echo -e "${GREEN}✓ Build complete${NC}"
+        ;;
+    
+    backup)
+        ./scripts/backup.sh
+        ;;
+    
+    restore)
+        if [ -z "$2" ]; then
+            echo -e "${RED}Error: Please specify backup directory${NC}"
+            echo "Usage: ./bot.sh restore <backup_directory>"
+            echo ""
+            echo "Available backups:"
+            ls -d ./backups/*/ 2>/dev/null || echo "  No backups found"
+            exit 1
+        fi
+        ./scripts/restore.sh "$2"
         ;;
     
     help|--help|-h|"")
