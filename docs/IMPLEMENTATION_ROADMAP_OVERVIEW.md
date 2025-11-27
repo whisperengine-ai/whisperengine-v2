@@ -109,7 +109,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase A9 (Advanced Memory Retrieval) - Critical for emotional depth. Then Phase B9 (Emergent Behavior Architecture) and Phase A7 (Character Agency). See [ADVANCED_MEMORY_RETRIEVAL.md](./roadmaps/ADVANCED_MEMORY_RETRIEVAL.md), [PURPOSE_DRIVEN_EMERGENCE.md](./roadmaps/PURPOSE_DRIVEN_EMERGENCE.md) and [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
+**Next focus:** Phase B9 (Emergent Behavior Architecture) - Strategic Foundation. Then Phase A7 (Character Agency). See [PURPOSE_DRIVEN_EMERGENCE.md](./roadmaps/PURPOSE_DRIVEN_EMERGENCE.md) and [CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
 
 ---
 
@@ -514,7 +514,7 @@ User Request + Image?
 
 ### Phase A9: Advanced Memory Retrieval
 **Priority:** High | **Time:** 2-3 days | **Complexity:** Medium
-**Files:** 6 | **LOC:** ~400 | **Status:** 📝 Proposed
+**Files:** 6 | **LOC:** ~400 | **Status:** ✅ Complete
 
 **Problem:** Memory retrieval is purely semantic across all stores. No emotional priority, recency decay, or cross-store blending.
 

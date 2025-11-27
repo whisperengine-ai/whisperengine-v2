@@ -3,11 +3,13 @@ from typing import Optional, Dict
 from pydantic import BaseModel
 from loguru import logger
 from src_v2.core.database import db_manager
+from src_v2.core.behavior import BehaviorProfile, load_behavior_profile
 
 class Character(BaseModel):
     name: str
     system_prompt: str
     visual_description: str = "A generic AI assistant."
+    behavior: Optional[BehaviorProfile] = None
     # We can add more fields here later if needed, but for now, the prompt is key
 
 class CharacterManager:
@@ -21,6 +23,7 @@ class CharacterManager:
         Expected structure: 
         - characters/{name}/character.md (System Prompt)
         - characters/{name}/visual.md (Visual Description - Optional)
+        - characters/{name}/core.yaml (Behavior Profile - Optional)
         """
         char_dir = os.path.join(self.characters_dir, name)
         char_path = os.path.join(char_dir, "character.md")
@@ -39,12 +42,20 @@ class CharacterManager:
                 with open(visual_path, "r", encoding="utf-8") as f:
                     visual_desc = f.read().strip()
             
+            # Load behavior profile (Phase B9)
+            behavior = load_behavior_profile(char_dir)
+            
+            # Inject behavior into system prompt if present
+            if behavior:
+                content += behavior.to_prompt_section()
+
             # Simple parsing: The whole file is the system prompt for now.
             # In the future, we can parse frontmatter (YAML) for metadata.
             character = Character(
                 name=name,
                 system_prompt=content,
-                visual_description=visual_desc
+                visual_description=visual_desc,
+                behavior=behavior
             )
             self.characters[name] = character
             logger.info(f"Loaded character: {name}")
