@@ -130,6 +130,9 @@ class Settings(BaseSettings):
     LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
     LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
 
+    # --- Manipulation Timeout ---
+    ENABLE_MANIPULATION_TIMEOUTS: bool = False  # Track and timeout manipulation attempts (disabled by default)
+
     # --- Debugging ---
     ENABLE_PROMPT_LOGGING: bool = False
 

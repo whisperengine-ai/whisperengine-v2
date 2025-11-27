@@ -27,6 +27,7 @@ from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
 from src_v2.workers.task_queue import task_queue
 from src_v2.image_gen.service import pending_images
+from src_v2.moderation.timeout_manager import timeout_manager
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator, smart_truncate
 import random
@@ -581,6 +582,20 @@ class WhisperBot(commands.Bot):
                         logger.error(f"Character '{self.character_name}' not loaded.")
                         await message.channel.send("Error: Character not loaded.")
                         return
+
+                    # Check manipulation timeout before any processing
+                    if settings.ENABLE_MANIPULATION_TIMEOUTS:
+                        user_id = str(message.author.id)
+                        timeout_status = await timeout_manager.check_user_status(user_id)
+                        if timeout_status.is_restricted():
+                            # User is in timeout - return cold response only
+                            if character.cold_responses:
+                                response = random.choice(character.cold_responses)
+                            else:
+                                response = "..."
+                            await message.channel.send(response)
+                            logger.debug(f"User {user_id} in timeout ({timeout_status.format_remaining()} remaining), served cold response")
+                            return
 
                     # 0. Session Management
                     user_id = str(message.author.id)

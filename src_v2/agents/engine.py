@@ -27,6 +27,7 @@ from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.utils.validation import ValidationError, validator
 from src_v2.evolution.manager import get_evolution_manager
+from src_v2.moderation.timeout_manager import timeout_manager
 
 class AgentEngine:
     """Core cognitive engine for generating AI responses with memory and evolution."""
@@ -107,6 +108,9 @@ class AgentEngine:
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
+            # Record violation and set timeout
+            if user_id:
+                await timeout_manager.record_violation(user_id)
             # Use character-specific manipulation response
             if character.manipulation_responses:
                 return random.choice(character.manipulation_responses)
@@ -307,6 +311,9 @@ class AgentEngine:
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
+            # Record violation and set timeout
+            if user_id:
+                await timeout_manager.record_violation(user_id)
             # Use character-specific manipulation response
             if character.manipulation_responses:
                 yield random.choice(character.manipulation_responses)
