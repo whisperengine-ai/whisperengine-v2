@@ -103,6 +103,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (DEFERRED - low priority)
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
+- 📋 Phase A10: Triggered Voice Responses (TTS audio attachments)
 - 🗄️ Phase C3: Video processing (DEFERRED - rare on Discord)
 - ✅ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
@@ -493,6 +494,66 @@ FinalScore = Semantic × Meaningfulness × Recency × Confidence
 - New: `src_v2/memory/importance.py` (episode scoring)
 
 **Full Specification:** See [roadmaps/ADVANCED_MEMORY_RETRIEVAL.md](./roadmaps/ADVANCED_MEMORY_RETRIEVAL.md)
+
+---
+
+### Phase A10: Triggered Voice Responses (TTS Audio Attachments)
+**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Low  
+**Files:** 4 | **LOC:** ~300 | **Status:** 📋 Proposed
+
+**Problem:** Characters can only respond with text. Users who want to "hear" the character must use voice channels, which isn't always convenient.
+
+**Solution:**
+- Detect voice triggers in messages ("speak to me", "tell me how you felt", etc.)
+- Generate TTS audio using existing ElevenLabs integration (`TTSManager`)
+- Attach MP3 file to Discord response alongside text
+- Per-character voice configuration in `ux.yaml` (voice_id, intro template, trigger keywords)
+
+**User Experience:**
+```
+User: @Elena tell me about how you felt when you first saw a whale shark
+
+Elena: 🔊 *Elena takes a breath... her voice carries across the waves...*
+
+🌊✨ Elena speaks...
+
+The first time I saw a whale shark, my heart stopped for a moment...
+
+📎 elena_voice.mp3 (276 KB)
+▶️ 0:00 / 0:18
+```
+
+**Implementation:**
+```
+Message → Voice Trigger Check → Generate Response → Generate TTS → Attach MP3 → Send
+```
+
+**Benefit:**
+- Richer, more immersive character interactions
+- Voice without requiring voice channel presence
+- Per-character voice personalities
+- Leverages existing ElevenLabs infrastructure
+
+**Cost Model:**
+- ~$0.17-0.22 per 1K characters (ElevenLabs)
+- Trigger-only mode recommended (vs always-on)
+- Feature flag + trust gating for cost control
+
+**Feature Flags:**
+- `ENABLE_VOICE_RESPONSES` (default: false)
+- `VOICE_RESPONSE_MAX_LENGTH` (default: 1000 chars)
+- `VOICE_RESPONSE_MIN_TRUST` (default: 0)
+
+**Dependencies:** ElevenLabs API Key (already configured)
+
+**Related Files:**
+- New: `src_v2/voice/trigger.py` (voice trigger detection)
+- New: `src_v2/voice/response.py` (voice response generator)
+- `src_v2/voice/tts.py` (existing TTSManager)
+- `src_v2/discord/bot.py` (integration)
+- `characters/{name}/ux.yaml` (voice config section)
+
+**Full Specification:** See [roadmaps/TRIGGERED_VOICE_RESPONSES.md](./roadmaps/TRIGGERED_VOICE_RESPONSES.md)
 
 ---
 
