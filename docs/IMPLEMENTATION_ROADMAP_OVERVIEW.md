@@ -948,4 +948,88 @@ A unified **Insight Agent** that runs periodically in the background using a ReA
 │         store_reasoning_trace, learn_response_pattern              │
 │                                  ↓                                  │
 │  Outputs: Stored as vector memories with special types             |
+````
+This is the description of what the code block changes:
+<changeDescription>
+Adding Phase C4: Adaptive Depth Optimization to the roadmap.
+</changeDescription>
+
+This is the code block that represents the suggested code change:
+````markdown
+│  Outputs: Stored as vector memories with special types             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Benefit:**
+- 3x efficiency (one pass for all insights)
+- Deeper insights (can correlate facts + memories)
+- No impact on user response latency (background)
+
+**Dependencies:** arq (Redis queue)
+
+**Related Files:**
+- New: `src_v2/agents/insight_agent.py`
+- New: `src_v2/tools/insight_tools.py`
+- `src_v2/workers/insight_worker.py`
+- `src_v2/discord/bot.py` (triggers)
+
+**Full Specification:** See [roadmaps/INSIGHT_AGENT.md](./roadmaps/INSIGHT_AGENT.md)
+
+---
+
+### Phase C2: Epiphanies (Spontaneous Realizations)
+**Status:** ✅ Complete (Consolidated into C1)
+
+---
+
+### Phase C3: Video Processing
+**Priority:** Low | **Time:** 5-7 days | **Complexity:** High  
+**Status:** 🗄️ DEFERRED
+
+**Reason:** Video sharing is rare compared to images/text. High computational cost for low frequency use case.
+
+---
+
+### Phase C4: Adaptive Depth Optimization (Self-Learning Complexity)
+**Priority:** Medium-High | **Time:** 3-5 days | **Complexity:** High  
+**Files:** 3 | **LOC:** ~300 | **Status:** 📋 Planned
+
+**Problem:** The `ComplexityClassifier` uses static heuristics (prompt rules) to assign `max_steps` (5/10/15). This is rigid and doesn't learn from actual performance. Some "simple" queries might actually need deep reasoning, and some "complex" ones might be solvable quickly.
+
+**Solution:**
+- Leverage "Reasoning Traces" stored by the Insight Agent (Phase C1).
+- Before classification, search vector memory for "similar past queries" that had successful reasoning traces.
+- If a similar query required 12 steps previously, override the static classifier and assign `COMPLEX_HIGH` (15 steps).
+- If a similar query was solved in 2 steps, downgrade to `COMPLEX_LOW` (5 steps) to save cost.
+
+**Implementation:**
+```
+Query → Vector Search (Reasoning Traces) → Found Similar?
+  YES → Use historical step count as baseline → Classifier (with context) → Dynamic Max Steps
+  NO → Standard Classifier → Static Max Steps
+```
+
+**Benefit:**
+- **Cost Efficiency**: Don't over-allocate steps for solvable problems.
+- **Reliability**: Allocate more steps to historically difficult problems.
+- **Self-Optimization**: The system gets smarter at resource allocation the more it runs.
+
+**Dependencies:** Phase C1 (Insight Agent - Reasoning Traces)
+
+**Related Files:**
+- `src_v2/agents/classifier.py` (inject traces)
+- `src_v2/memory/manager.py` (search traces)
+- `src_v2/agents/engine.py` (orchestration)
+
+---
+
+### Phase C5: Operational Hardening (Backups & Optimization)
+**Priority:** Medium | **Time:** 3-5 days | **Complexity:** Medium  
+**Status:** ✅ Complete
+
+**Goal:** Ensure production reliability.
+
+- Database Backups (Postgres, Qdrant, Neo4j)
+- Connection Pooling Optimization
+- Error Handling Standardization
 
