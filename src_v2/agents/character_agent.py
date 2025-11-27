@@ -14,6 +14,7 @@ from src_v2.tools.memory_tools import (
     DiscoverCommonGroundTool,
     CharacterEvolutionTool
 )
+from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.image_tools import GenerateImageTool
 
 class CharacterAgent:
@@ -47,6 +48,8 @@ Available tools:
 - explore_knowledge_graph: Explore connections and relationships
 - discover_common_ground: Find what you have in common
 - get_character_evolution: Check your relationship level and trust
+- check_planet_context: See the current server/planet context
+- get_universe_overview: View all planets and channels across the universe
 """
 
     AGENCY_PROMPT_IMAGE = """- generate_image: Create images for the user
@@ -162,13 +165,13 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         Tier 2 tools are a curated subset focused on:
         - Memory retrieval (summaries, episodes, facts)
         - Graph exploration (relationships, common ground)
+        - Universe context (planet/channel awareness)
         - Image generation (if enabled)
         - Relationship awareness
         
         Excludes:
         - Update tools (UpdateFactsTool, UpdatePreferencesTool) - complex operations
         - Introspection tools (AnalyzePatternsTool, DetectThemesTool) - background only
-        - Universe tools (CheckPlanetContextTool) - rarely needed at Tier 2
         """
         # Note: bot_name and character_name are used interchangeably across tools
         # (historical inconsistency). They refer to the same value.
@@ -184,6 +187,10 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             ExploreGraphTool(user_id=user_id, bot_name=bot_name),
             DiscoverCommonGroundTool(user_id=user_id, bot_name=bot_name),
             CharacterEvolutionTool(user_id=user_id, character_name=bot_name),
+            
+            # Universe Context Tools
+            CheckPlanetContextTool(guild_id=guild_id),
+            GetUniverseOverviewTool(),
         ]
         
         # Conditionally add image generation tool (respects feature flag)

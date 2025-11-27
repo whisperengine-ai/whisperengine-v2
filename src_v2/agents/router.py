@@ -9,7 +9,7 @@ from influxdb_client import Point
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
-from src_v2.tools.universe_tools import CheckPlanetContextTool
+from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -45,6 +45,7 @@ class CognitiveRouter:
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
             CheckPlanetContextTool(guild_id=guild_id),
+            GetUniverseOverviewTool(),
         ]
         
         # Note: Image generation is handled in Reflective Mode only, not in the router
@@ -64,6 +65,7 @@ AVAILABLE TOOLS:
 - update_user_preferences: For when the user explicitly changes a configuration setting (e.g., "stop calling me Captain", "change verbosity to short").
 - analyze_topic: For comprehensive research on a broad topic. Searches summaries, episodes, and facts simultaneously. Use this for "tell me everything about X" or complex questions.
 - check_planet_context: For questions about "where are we?", "who is here?", or details about the current server/planet.
+- get_universe_overview: For questions about all planets, channels across the universe, or "what's happening everywhere".
 
 RULES:
 1. If the user is just saying "hi" or small talk, you MAY call lookup_user_facts to personalize the greeting (e.g. to find their name), but avoid heavy memory searches.

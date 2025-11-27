@@ -671,5 +671,121 @@ class UniverseManager:
         
         return "\n".join(lines) if lines else ""
 
+    @retry_db_operation()
+    async def get_universe_overview(self) -> dict:
+        """
+        Get a comprehensive overview of the entire universe.
+        
+        Returns aggregated data about ALL active planets, channels, topics, 
+        and inhabitants. Useful for cross-universe awareness queries like
+        "what's happening across all planets?" or "tell elena what you see everywhere".
+        
+        Returns:
+            dict with keys:
+                - planet_count: Total number of active planets
+                - planets: List of planet summaries (name, channels, inhabitant_count, top_topics)
+                - total_inhabitants: Unique user count across universe
+                - top_universal_topics: Most discussed topics across all planets
+        """
+        if not db_manager.neo4j_driver:
+            return {
+                "error": "Universe tracking unavailable (Neo4j not connected)",
+                "planet_count": 0,
+                "planets": [],
+                "total_inhabitants": 0,
+                "top_universal_topics": []
+            }
+        
+        try:
+            # Query 1: Get all active planets with basic stats
+            planet_query = """
+            MATCH (p:Planet {active: true})
+            OPTIONAL MATCH (p)-[:HAS_CHANNEL]->(c:Channel)
+            OPTIONAL MATCH (u:User)-[:ON_PLANET]->(p)
+            WITH p, 
+                 count(DISTINCT c) as channel_count,
+                 collect(DISTINCT c.name)[0..10] as channels,
+                 count(DISTINCT u) as inhabitant_count
+            RETURN p.id as id, 
+                   p.name as name, 
+                   channel_count, 
+                   channels,
+                   inhabitant_count
+            ORDER BY inhabitant_count DESC
+            """
+            
+            # Query 2: Get top topics for each planet (run separately to avoid cartesian explosion)
+            topic_query = """
+            MATCH (p:Planet {active: true})-[r:HAS_TOPIC]->(t:Topic)
+            WITH p.id as planet_id, t.name as topic, r.count as count
+            ORDER BY count DESC
+            WITH planet_id, collect({topic: topic, count: count})[0..5] as topics
+            RETURN planet_id, topics
+            """
+            
+            # Query 3: Get universal topics across all planets
+            universal_topics_query = """
+            MATCH (p:Planet {active: true})-[r:HAS_TOPIC]->(t:Topic)
+            WITH t.name as topic, sum(r.count) as total_mentions
+            RETURN topic, total_mentions
+            ORDER BY total_mentions DESC
+            LIMIT 10
+            """
+            
+            # Query 4: Get unique inhabitant count
+            inhabitant_query = """
+            MATCH (u:User)-[:ON_PLANET]->(p:Planet {active: true})
+            RETURN count(DISTINCT u) as total_inhabitants
+            """
+            
+            async with db_manager.neo4j_driver.session() as session:
+                # Execute all queries in parallel
+                planet_result = await session.run(planet_query)
+                planet_records = await planet_result.data()
+                
+                topic_result = await session.run(topic_query)
+                topic_records = await topic_result.data()
+                
+                universal_result = await session.run(universal_topics_query)
+                universal_records = await universal_result.data()
+                
+                inhabitant_result = await session.run(inhabitant_query)
+                inhabitant_record = await inhabitant_result.single()
+            
+            # Build topic lookup map
+            topics_by_planet = {r["planet_id"]: r["topics"] for r in topic_records}
+            
+            # Build planet summaries
+            planets = []
+            for p in planet_records:
+                planet_id = p["id"]
+                planet_topics = topics_by_planet.get(planet_id, [])
+                
+                planets.append({
+                    "id": planet_id,
+                    "name": p["name"],
+                    "channel_count": p["channel_count"],
+                    "channels": p["channels"],
+                    "inhabitant_count": p["inhabitant_count"],
+                    "top_topics": [t["topic"] for t in planet_topics]
+                })
+            
+            return {
+                "planet_count": len(planets),
+                "planets": planets,
+                "total_inhabitants": inhabitant_record["total_inhabitants"] if inhabitant_record else 0,
+                "top_universal_topics": [r["topic"] for r in universal_records]
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get universe overview: {e}")
+            return {
+                "error": f"Failed to query universe: {str(e)}",
+                "planet_count": 0,
+                "planets": [],
+                "total_inhabitants": 0,
+                "top_universal_topics": []
+            }
+
 
 universe_manager = UniverseManager()

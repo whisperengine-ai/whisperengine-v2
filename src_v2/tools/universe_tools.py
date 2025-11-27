@@ -33,3 +33,52 @@ class CheckPlanetContextTool(BaseTool):
             )
         except Exception as e:
             return f"Error checking planet context: {e}"
+
+
+class GetUniverseOverviewInput(BaseModel):
+    pass  # No input needed, returns global universe state
+
+class GetUniverseOverviewTool(BaseTool):
+    name: str = "get_universe_overview"
+    description: str = """Get a comprehensive overview of ALL planets, channels, and inhabitants across the entire universe. 
+    Use this when the user asks about what's happening 'everywhere', 'across all planets', 'in the universe', or wants you to tell another bot about the universe state.
+    Returns: planet count, list of planets with their channels/topics/inhabitants, and top topics across the universe."""
+    args_schema: Type[BaseModel] = GetUniverseOverviewInput
+
+    def _run(self) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self) -> str:
+        try:
+            data = await universe_manager.get_universe_overview()
+            
+            if data.get("error"):
+                return f"⚠️ {data['error']}"
+            
+            # Format the response for the LLM
+            lines = []
+            lines.append("🌌 UNIVERSE OVERVIEW")
+            lines.append(f"Active Planets: {data['planet_count']}")
+            lines.append(f"Total Inhabitants: {data['total_inhabitants']} souls across the cosmos\n")
+            
+            if data.get("top_universal_topics"):
+                lines.append(f"🔥 Hot Topics Universe-Wide: {', '.join(data['top_universal_topics'][:5])}\n")
+            
+            lines.append("📍 PLANETS:")
+            for planet in data.get("planets", []):
+                lines.append(f"\n  • {planet['name']} ({planet['inhabitant_count']} inhabitants)")
+                if planet.get("channels"):
+                    channels_preview = planet["channels"][:5]
+                    channels_str = ", ".join(channels_preview)
+                    if planet["channel_count"] > 5:
+                        channels_str += f" (+{planet['channel_count'] - 5} more)"
+                    lines.append(f"    Channels: {channels_str}")
+                if planet.get("top_topics"):
+                    lines.append(f"    Topics: {', '.join(planet['top_topics'][:3])}")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            logger.error(f"get_universe_overview tool failed: {e}")
+            return f"Error retrieving universe overview: {str(e)}"
+
