@@ -880,33 +880,32 @@ class WhisperBot(commands.Bot):
                     if elapsed < reading_delay:
                         await asyncio.sleep(reading_delay - elapsed)
                         
-                    await message.channel.trigger_typing()
-                    
-                    async for chunk in self.agent_engine.generate_response_stream(
-                        character=character,
-                        user_message=user_message,
-                        chat_history=chat_history,
-                        context_variables=context_vars,
-                        user_id=user_id,
-                        image_urls=image_urls,
-                        callback=reflective_callback,
-                        force_reflective=force_reflective
-                    ):
-                        full_response_text += chunk
-                        
-                        # Rate limit updates
-                        now = time.time()
-                        if now - last_update_time > update_interval:
-                            # Only stream if length is safe
-                            if len(full_response_text) < 1950:
-                                try:
-                                    if not active_message:
-                                        active_message = await message.channel.send(full_response_text)
-                                    else:
-                                        await active_message.edit(content=full_response_text)
-                                except Exception as e:
-                                    logger.warning(f"Failed to stream update: {e}")
-                            last_update_time = now
+                    async with message.channel.typing():
+                        async for chunk in self.agent_engine.generate_response_stream(
+                            character=character,
+                            user_message=user_message,
+                            chat_history=chat_history,
+                            context_variables=context_vars,
+                            user_id=user_id,
+                            image_urls=image_urls,
+                            callback=reflective_callback,
+                            force_reflective=force_reflective
+                        ):
+                            full_response_text += chunk
+                            
+                            # Rate limit updates
+                            now = time.time()
+                            if now - last_update_time > update_interval:
+                                # Only stream if length is safe
+                                if len(full_response_text) < 1950:
+                                    try:
+                                        if not active_message:
+                                            active_message = await message.channel.send(full_response_text)
+                                        else:
+                                            await active_message.edit(content=full_response_text)
+                                    except Exception as e:
+                                        logger.warning(f"Failed to stream update: {e}")
+                                last_update_time = now
                     
                     response = full_response_text
                     
@@ -1155,15 +1154,14 @@ class WhisperBot(commands.Bot):
                 reading_delay += random.uniform(0, 1.0)
                 await asyncio.sleep(reading_delay)
                 
-                await message.channel.trigger_typing()
-                
-                response = await self.agent_engine.generate_response(
-                    character=character,
-                    user_message=message_content + lurk_instruction,
-                    chat_history=chat_history,
-                    context_variables=context_vars,
-                    user_id=user_id
-                )
+                async with message.channel.typing():
+                    response = await self.agent_engine.generate_response(
+                        character=character,
+                        user_message=message_content + lurk_instruction,
+                        chat_history=chat_history,
+                        context_variables=context_vars,
+                        user_id=user_id
+                    )
                 
                 processing_time_ms = (time.time() - start_time) * 1000
                 
