@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     
     # --- Reflective Mode Configuration ---
     ENABLE_REFLECTIVE_MODE: bool = False
+    ENABLE_CHARACTER_AGENCY: bool = True  # Phase A7: Tier 2 Tool Usage
     REFLECTIVE_LLM_PROVIDER: str = "openrouter"
     REFLECTIVE_LLM_MODEL_NAME: str = "anthropic/claude-3.5-sonnet"
     REFLECTIVE_LLM_BASE_URL: str = "https://openrouter.ai/api/v1"

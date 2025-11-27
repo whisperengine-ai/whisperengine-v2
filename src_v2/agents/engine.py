@@ -19,6 +19,7 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.router import CognitiveRouter
 from src_v2.agents.classifier import ComplexityClassifier
 from src_v2.agents.reflective import ReflectiveAgent
+from src_v2.agents.character_agent import CharacterAgent
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
@@ -48,6 +49,7 @@ class AgentEngine:
         self.router: CognitiveRouter = CognitiveRouter()
         self.classifier: ComplexityClassifier = ComplexityClassifier()
         self.reflective_agent: ReflectiveAgent = ReflectiveAgent()
+        self.character_agent: CharacterAgent = CharacterAgent()
         
         # Dependency Injection or Default to Global Instances
         self.trust_manager: Any = trust_manager_dep or trust_manager
@@ -107,28 +109,45 @@ class AgentEngine:
         logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
         # 3. Branching Logic: Reflective Mode
-        if is_complex and user_id and settings.ENABLE_REFLECTIVE_MODE:
-            # Determine max steps based on complexity level
-            max_steps = 10 # Default
-            if is_complex == "COMPLEX_LOW":
-                max_steps = 5
-            elif is_complex == "COMPLEX_MID":
-                max_steps = 10
-            elif is_complex == "COMPLEX_HIGH":
-                max_steps = 15
+        if is_complex and user_id:
+            # 3a. Reflective Mode (Full ReAct Loop)
+            if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                # Determine max steps based on complexity level
+                max_steps = 10 # Default
+                if is_complex == "COMPLEX_MID":
+                    max_steps = 10
+                elif is_complex == "COMPLEX_HIGH":
+                    max_steps = 15
+                    
+                response = await self._run_reflective_mode(
+                    character, user_message, user_id, system_content, 
+                    chat_history, context_variables, image_urls, callback,
+                    max_steps_override=max_steps
+                )
+                total_time = time.time() - start_time
+                logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {is_complex})")
                 
-            response = await self._run_reflective_mode(
-                character, user_message, user_id, system_content, 
-                chat_history, context_variables, image_urls, callback,
-                max_steps_override=max_steps
-            )
-            total_time = time.time() - start_time
-            logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {is_complex})")
+                # Log metrics
+                await self._log_metrics(user_id, character.name, total_time, "reflective", is_complex)
+                
+                return response
             
-            # Log metrics
-            await self._log_metrics(user_id, character.name, total_time, "reflective", is_complex)
-            
-            return response
+            # 3b. Character Agency (Tier 2 - Single Tool Call)
+            elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
+                response = await self.character_agent.run(
+                    user_input=user_message,
+                    user_id=user_id,
+                    system_prompt=system_content,
+                    chat_history=chat_history,
+                    callback=callback
+                )
+                total_time = time.time() - start_time
+                logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {is_complex})")
+                
+                # Log metrics
+                await self._log_metrics(user_id, character.name, total_time, "agency", is_complex)
+                
+                return response
         
         # 4. Fast Mode (Standard Flow)
         

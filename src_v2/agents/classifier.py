@@ -66,6 +66,8 @@ Output ONLY one of: 'SIMPLE', 'COMPLEX_LOW', 'COMPLEX_MID', 'COMPLEX_HIGH'."""
                 return "COMPLEX_MID"
             elif "COMPLEX_LOW" in content:
                 return "COMPLEX_LOW"
+            elif "MODERATE" in content: # Alias for COMPLEX_LOW/MID
+                return "COMPLEX_LOW"
             elif "COMPLEX" in content: # Fallback for older models
                 return "COMPLEX_MID"
             return "SIMPLE"
