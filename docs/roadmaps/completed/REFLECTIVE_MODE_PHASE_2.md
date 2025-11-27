@@ -2,7 +2,7 @@
 
 This roadmap outlines the implementation plan for the next phase of Reflective Mode (System 2) enhancements. The features are ordered by implementation priority, starting with infrastructure upgrades that pave the way for advanced capabilities.
 
-> **Status Update (Nov 23, 2025)**: Phase 1 (Native Functions) and Phase 2.3 (Parallel Execution) are complete. The system is currently in **User Testing** to validate stability before proceeding with Adaptive Max Steps.
+> **Status Update (Nov 27, 2025)**: Phase 1 (Native Functions), Phase 2 (Efficiency), and Phase 3 (Advanced Capabilities) are **Complete**. The system now supports Adaptive Max Steps, Parallel Execution, Tool Composition, and Self-Correction. Phase 4 (Memory of Reasoning) is partially implemented (Capture & Classification).
 
 ## Phase 1: Foundation & Infrastructure
 
@@ -15,7 +15,7 @@ This roadmap outlines the implementation plan for the next phase of Reflective M
 
 ## Phase 2: Efficiency & Optimization
 
-### 2. Adaptive Max Steps (Heuristic-Based) - ⏸️ On Hold (Pending Testing)
+### 2. Adaptive Max Steps (Heuristic-Based) - ✅ Completed
 Currently, `REFLECTIVE_MAX_STEPS` is a static global setting (default: 10). This feature aims to dynamically adjust the step limit based on the complexity of the query.
 
 *   **Goal**: Reduce latency for "moderately complex" queries while allowing "deeply complex" queries enough runway.
@@ -36,7 +36,7 @@ Currently, the ReAct loop executes tools sequentially. If the agent needs to sea
 
 ## Phase 3: Advanced Capabilities
 
-### 4. Tool Composition (Hierarchical Reasoning)
+### 4. Tool Composition (Hierarchical Reasoning) - ✅ Completed
 Tool composition allows for more efficient data gathering by creating "Meta-Actions".
 
 *   **Goal**: Allow the agent to perform high-level actions that combine multiple low-level tool calls, reducing LLM round-trips.
@@ -44,7 +44,7 @@ Tool composition allows for more efficient data gathering by creating "Meta-Acti
     1.  **Define Composite Tools**: Create tools like `AnalyzeTopic(topic)` that internally call `SearchMemories` + `LookupFacts`.
     2.  **Recursive Execution**: Allow tools to return `AgentAction` objects for immediate execution without re-prompting the LLM.
 
-### 5. Self-Correction / Verification
+### 5. Self-Correction / Verification - ✅ Completed
 *   **Goal**: Prevent hallucinations or incomplete answers for high-stakes queries.
 *   **Implementation**:
     *   For `COMPLEX_HIGH` queries, add a final "Critic" step.

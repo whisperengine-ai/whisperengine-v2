@@ -595,6 +595,45 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 
 ---
 
+### Phase B3: Autonomous Agents (Phase 3)
+**Priority:** High | **Time:** 5-7 days | **Complexity:** High
+**Files:** 8 | **LOC:** ~600 | **Status:** 📋 Planned
+
+**Problem:** Characters are currently reactive or rely on simple timers. They lack internal drives, long-term strategies, and cross-bot awareness.
+
+**Solution:**
+1.  **Proactive Drives:** Replace timers with internal state (curiosity, social need) to trigger initiation.
+2.  **Goal Strategy:** Background worker that formulates active strategies for long-term goals.
+3.  **Universe Agent:** Event bus for cross-bot coordination (gossip/context sharing).
+4.  **Memory of Reasoning:** Inject past successful reasoning traces as few-shot examples.
+
+**Implementation:**
+```
+Drive System → Proactive Agent
+Goal Strategist → Context Injection
+Universe Bus → Cross-Bot Memory
+Trace Retrieval → Reflective Agent
+```
+
+**Benefit:**
+- Characters feel "alive" with their own agenda
+- Long-term engagement through goal pursuit
+- Coherent multi-bot storytelling
+- Self-improving reasoning capabilities
+
+**Dependencies:** Phase A7 (Character Agency)
+
+**Related Files:**
+- New: `src_v2/evolution/drives.py`
+- New: `src_v2/workers/strategist.py`
+- New: `src_v2/universe/bus.py`
+- `src_v2/agents/proactive.py`
+- `src_v2/agents/reflective.py`
+
+**Full Specification:** See [roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md](./roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md)
+
+---
+
 ### Phase B2: Tool Composition / Hierarchical Reasoning
 **Priority:** High | **Time:** 5-7 days | **Complexity:** Medium  
 **Files:** 5 | **LOC:** ~400 | **Status:** ✅ Complete
