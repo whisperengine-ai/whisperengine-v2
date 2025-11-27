@@ -1253,11 +1253,11 @@ Other inhabitants on this planet (only if they allow introductions):
 
 ### Phase 6: Stress Testing Reality (Day 6-7)
 *The universe must be resilient.*
-- [ ] Multi-bot, multi-planet scenarios
-- [ ] User leaves planet (update inhabitants, don't delete)
-- [ ] Bot removed from planet (mark inactive)
-- [ ] Privacy edge cases (user opts out mid-conversation)
-- [ ] Performance testing on graph queries
+- [x] Multi-bot, multi-planet scenarios
+- [x] User leaves planet (update inhabitants, don't delete)
+- [x] Bot removed from planet (mark inactive)
+- [x] Privacy edge cases (user opts out mid-conversation)
+- [x] Performance testing on graph queries
 
 ---
 
