@@ -102,7 +102,7 @@ class Settings(BaseSettings):
 
     # --- Image Generation ---
     ENABLE_IMAGE_GENERATION: bool = True  # Feature flag to enable/disable image generation per character
-    IMAGE_GEN_MIN_TRUST: int = 0  # Minimum trust level required to request image generation (0 = no restriction)
+    IMAGE_GEN_MIN_TRUST: int = 20  # Minimum trust level required to request image generation (0 = no restriction)
     IMAGE_GEN_PROVIDER: Literal["bfl", "replicate", "fal"] = "bfl"
     IMAGE_GEN_MODEL: str = "flux-pro-1.1"
     FLUX_API_KEY: Optional[SecretStr] = None
