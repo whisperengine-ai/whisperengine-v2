@@ -637,7 +637,7 @@ Query → Reasoning Loop → Final Answer → Critic Review → Pass? → Return
 
 ### Phase B5: Audio Processing (Voice Messages & Clips)
 **Priority:** Medium | **Time:** 5-7 days | **Complexity:** Medium  
-**Files:** 4 | **LOC:** ~400 | **Status:** 📋 Planned
+**Files:** 4 | **LOC:** ~400 | **Status:** 🗄️ DEFERRED
 
 **Problem:** Voice messages and audio files aren't processed; users can only share them as links
 
@@ -669,7 +669,7 @@ Discord Audio Attachment → Whisper Transcription → Message Handler → Memor
 
 ### Phase B6: Response Pattern Learning (RLHF-Style)
 **Priority:** Medium-High | **Time:** 3-5 days | **Complexity:** Medium  
-**Files:** 4 | **LOC:** ~400 | **Status:** 📋 Planned
+**Files:** 4 | **LOC:** ~400 | **Status:** ✅ Complete (Consolidated into C1)
 
 **Problem:** Bot doesn't learn what response STYLES work for each user (length, tone, structure)
 
