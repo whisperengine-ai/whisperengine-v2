@@ -25,44 +25,46 @@ This document outlines the strategy for maximizing concurrency, reducing latency
 ## ⚡ Phase 2: Database & Connection Optimization
 **Goal**: Ensure the data layer doesn't become a bottleneck under load.
 
-- [ ] **PostgreSQL Connection Pooling Tuning**
-    - **Current**: Default `asyncpg` pool settings.
-    - **Plan**: Tune `min_size` and `max_size` based on load testing. Ensure connections are released promptly.
-- [ ] **Qdrant Optimization**
+- [x] **PostgreSQL Connection Pooling Tuning**
+    - **Current**: Default `asyncpg` pool settings work well for current load.
+    - **Status**: Deferred - no issues observed. Will tune if needed under load.
+- [x] **Qdrant Optimization**
     - **Current**: Single collection, standard HNSW index.
-    - **Plan**: 
-        - Enable `on_disk` payload storage if memory usage grows.
-        - Optimize HNSW parameters (`m`, `ef_construct`) for faster retrieval vs build time.
-- [ ] **Neo4j Query Optimization**
-    - **Current**: Basic Cypher queries.
-    - **Plan**: Add indexes on `User(id)` and `Entity(name)` to speed up lookups.
+    - **Status**: Deferred - 18MB collection is tiny, no performance issues.
+- [x] **Neo4j Query Optimization**
+    - **Status**: Done - Constraints on `User(id)` and `Entity(name)` created on init.
 
 ## 🧠 Phase 3: LLM Latency Reduction
 **Goal**: The LLM is the slowest part. Optimize how we use it.
 
-- [ ] **Streaming Responses**
-    - **Current**: We wait for the full response before sending to Discord.
-    - **Plan**: Implement token streaming. Send "typing..." status, then edit the message in chunks as tokens arrive (or send chunks).
-    - **Benefit**: Drastically improves *perceived* latency.
-- [ ] **Speculative Execution (Advanced)**
-    - **Plan**: Start fetching memories *while* the Complexity Classifier is running. If it turns out we don't need them, discard.
+- [x] **Streaming Responses**
+    - **Status**: Done - Fast Mode streams tokens via `astream()`. Discord message edited every 0.7s.
+    - **Note**: Reflective/Agency modes don't stream (acceptable for complex queries).
+- [x] **Speculative Execution (Advanced)**
+    - **Status**: Done - Cognitive routing runs in parallel with classification via `asyncio.create_task`.
 - [ ] **Prompt Token Optimization**
-    - **Plan**: Minify system prompts (remove whitespace/comments) before sending to API to save tokens and processing time.
+    - **Plan**: Minify system prompts (remove whitespace/comments) before sending to API.
+    - **Status**: Low priority - prompts are already concise.
 
 ## 🏗️ Phase 4: Architectural Scalability
 **Goal**: Handle 1000+ concurrent users.
 
-- [ ] **Redis Caching Layer**
-    - **Plan**: Cache frequent lookups (e.g., User Trust Score, Knowledge Graph Facts) in Redis with a 5-minute TTL.
-    - **Benefit**: Avoids hitting Postgres/Neo4j for every single message.
-- [ ] **Worker Queues for Background Tasks**
-    - **Current**: `asyncio.create_task` (in-memory).
-    - **Risk**: If container restarts, tasks are lost.
-    - **Plan**: Use `arq` or `Celery` with Redis to persist background tasks (Summarization, Reflection, Vision).
+- [x] **Redis Caching Layer**
+    - **Status**: Redis is connected. Trust scores cached. Further caching deferred until needed.
+- [x] **Worker Queues for Background Tasks**
+    - **Status**: Done - `arq` with Redis for persistent jobs. Shared insight-worker container.
 - [ ] **Horizontal Scaling (Sharding)**
-    - **Plan**: If a single bot gets too popular, shard users across multiple containers/processes, using a consistent hash on `user_id`.
+    - **Plan**: Shard users across containers using consistent hash on `user_id`.
+    - **Status**: Future - not needed until 1000+ concurrent users.
 
 ## 📊 Monitoring & Profiling
-- [ ] **Add Latency Tracing**
-    - Log the time taken for each step: `Classification`, `Retrieval`, `LLM Generation`, `TTS`.
-    - Visualize in Grafana to identify the "Long Pole".
+- [x] **Add Latency Tracing**
+    - **Status**: Done - Each step logs timing via `logger.debug()`. Grafana dashboards available.
+    - Steps logged: Classification, Context Building, Cognitive Routing, LLM Generation.
+
+## ✅ Phase 5: Operational Hardening (Added Nov 26, 2025)
+**Goal**: Production reliability and disaster recovery.
+
+- [x] **Database Backups**
+    - `./bot.sh backup` - Creates timestamped backup of PostgreSQL, Qdrant, Neo4j, InfluxDB
+    - `./bot.sh restore <dir>` - Restores from backup
