@@ -68,10 +68,11 @@ class MemoryManager:
             logger.error(f"Failed to initialize Qdrant: {e}")
 
     @retry_db_operation(max_retries=3)
-    async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None):
+    async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None, importance_score: int = 3):
         """
         Adds a message to the history.
         role: 'human' or 'ai'
+        importance_score: 1-10 scale of how important this message is (default 3 for raw chat)
         """
         if not db_manager.postgres_pool:
             return
@@ -90,14 +91,15 @@ class MemoryManager:
                 content=content, 
                 metadata=metadata,
                 channel_id=channel_id, 
-                message_id=message_id
+                message_id=message_id,
+                importance_score=importance_score
             )
             
         except Exception as e:
             logger.error(f"Failed to save message: {e}")
 
     @retry_db_operation(max_retries=3)
-    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None):
+    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3):
         """
         Embeds and saves a memory to Qdrant.
         """
@@ -116,7 +118,8 @@ class MemoryManager:
                 "content": content,
                 "timestamp": datetime.datetime.now().isoformat(),
                 "channel_id": str(channel_id) if channel_id else None,
-                "message_id": str(message_id) if message_id else None
+                "message_id": str(message_id) if message_id else None,
+                "importance_score": importance_score
             }
             
             if metadata:
@@ -199,7 +202,13 @@ class MemoryManager:
 
     async def search_memories(self, query: str, user_id: str, limit: int = 5, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Searches for relevant memories in Qdrant.
+        Searches for relevant episode memories in Qdrant with recency weighting.
+        
+        Weighted Score = Semantic × Recency
+        - Semantic: Raw cosine similarity (0-1)  
+        - Recency: Exponential decay (1.0 for today → 0.5 for 7 days ago for episodes)
+        
+        Episodes decay faster than summaries since they're raw conversation fragments.
         """
         start_time = time.time()
         if not db_manager.qdrant_client:
@@ -217,14 +226,17 @@ class MemoryManager:
                 FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
             ]
             
+            # Fetch more for re-ranking
+            fetch_limit = max(limit * 3, 15)
+            
             search_result = await db_manager.qdrant_client.query_points(
                 collection_name=target_collection,
                 query=embedding,
                 query_filter=Filter(must=must_conditions),
-                limit=limit
+                limit=fetch_limit
             )
             
-            logger.debug(f"Found {len(search_result.points)} memory results")
+            logger.debug(f"Found {len(search_result.points)} memory results for re-ranking")
             
             # Log metrics
             if db_manager.influxdb_write_api:
@@ -245,17 +257,48 @@ class MemoryManager:
                 except Exception as e:
                     logger.error(f"Failed to log memory metrics: {e}")
 
-            return [
-                {
+            # === WEIGHTED SCORING FOR EPISODES ===
+            now = datetime.datetime.now()
+            results = []
+            
+            for hit in search_result.points:
+                semantic_score = hit.score
+                ts_str = hit.payload.get("timestamp") if hit.payload else None
+                
+                # Recency: Episodes decay faster (7-day half-life vs 30-day for summaries)
+                recency_multiplier = 1.0
+                if ts_str:
+                    try:
+                        dt = datetime.datetime.fromisoformat(str(ts_str))
+                        age_days = (now - dt).total_seconds() / 86400
+                        # Floor at 0.2 for episodes (they fade more than summaries)
+                        recency_multiplier = max(0.2, 0.5 ** (age_days / 7.0))
+                    except Exception:
+                        pass
+                
+                # Importance: 1-10 → 0.5-1.0 (default 3 -> 0.65)
+                payload = hit.payload or {}
+                raw_importance = payload.get("importance_score", 3)
+                importance_multiplier = 0.5 + (raw_importance / 20.0)
+
+                weighted_score = semantic_score * recency_multiplier * importance_multiplier
+                
+                results.append({
                     "id": hit.id,
-                    "content": hit.payload.get("content") if hit.payload else None,
-                    "role": hit.payload.get("role") if hit.payload else None,
-                    "score": hit.score,
-                    "timestamp": hit.payload.get("timestamp") if hit.payload else None,
-                    "relative_time": get_relative_time(hit.payload.get("timestamp")) if (hit.payload and hit.payload.get("timestamp")) else "unknown time"  # type: ignore[arg-type]
-                }
-                for hit in search_result.points
-            ]
+                    "content": payload.get("content"),
+                    "role": payload.get("role"),
+                    "score": weighted_score,
+                    "semantic_score": semantic_score,
+                    "recency_multiplier": round(recency_multiplier, 3),
+                    "importance_multiplier": round(importance_multiplier, 3),
+                    "timestamp": ts_str,
+                    "relative_time": get_relative_time(ts_str) if ts_str else "unknown time"
+                })
+            
+            # Re-rank by weighted score
+            results.sort(key=lambda x: x["score"], reverse=True)
+            
+            return results[:limit]
             
         except Exception as e:
             logger.error(f"Failed to search memories: {e}")
@@ -263,7 +306,12 @@ class MemoryManager:
 
     async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Searches for relevant summaries in Qdrant.
+        Searches for relevant summaries in Qdrant with weighted scoring.
+        
+        Weighted Score = Semantic × Meaningfulness × Recency
+        - Semantic: Raw cosine similarity (0-1)
+        - Meaningfulness: Normalized from 1-10 scale → 0.5-1.0 (important memories never fully suppressed)
+        - Recency: Exponential decay based on age (1.0 for today → 0.5 for 30 days ago)
         """
         if not db_manager.qdrant_client:
             logger.warning("Qdrant client not available for search_summaries")
@@ -281,26 +329,21 @@ class MemoryManager:
                 FieldCondition(key="type", match=MatchValue(value="summary"))
             ]
             
-            # Add Time Filter if provided
-            if start_timestamp:
-                # Assuming 'timestamp' field in Qdrant is stored as ISO string or float.
-                # Based on add_summary, it seems to be ISO string. Qdrant Range filter works on numbers.
-                # If it's a string, we can't easily range filter without converting schema.
-                # Let's check how it's stored. 
-                # If it's stored as string, we might need to filter in Python (post-retrieval) or rely on Qdrant's datetime support (if enabled).
-                # For safety/simplicity in this defensive pass, let's filter in Python if we can't be sure of Qdrant schema.
-                pass 
+            # Fetch more results to allow for re-ranking
+            fetch_limit = max(limit * 3, 10)
 
             search_result = await db_manager.qdrant_client.query_points(
                 collection_name=target_collection,
                 query=embedding,
                 query_filter=Filter(must=must_conditions),
-                limit=limit * 2 if start_timestamp else limit # Fetch more if we plan to filter
+                limit=fetch_limit
             )
             
-            logger.debug(f"Found {len(search_result.points)} summary results")
+            logger.debug(f"Found {len(search_result.points)} summary results for re-ranking")
             
+            now = datetime.datetime.now()
             results = []
+            
             for hit in search_result.points:
                 # Parse timestamp from payload
                 ts_str = hit.payload.get("timestamp")
@@ -308,20 +351,46 @@ class MemoryManager:
                 # Post-retrieval filtering for safety
                 if start_timestamp and ts_str:
                     try:
-                        # Handle "2023-01-01T12:00:00" format
                         dt = datetime.datetime.fromisoformat(str(ts_str))
                         if dt.timestamp() < start_timestamp:
                             continue
                     except Exception:
-                        pass # If parsing fails, include it to be safe
+                        pass
+                
+                # === WEIGHTED SCORING ===
+                semantic_score = hit.score  # 0-1 (cosine similarity)
+                
+                # Meaningfulness: 1-10 → 0.5-1.0 (floor of 0.5 so important memories never vanish)
+                raw_meaningfulness = hit.payload.get("meaningfulness_score", 5)
+                meaningfulness_multiplier = 0.5 + (raw_meaningfulness / 20.0)  # 1→0.55, 5→0.75, 10→1.0
+                
+                # Recency: Exponential decay with 30-day half-life
+                recency_multiplier = 1.0
+                if ts_str:
+                    try:
+                        dt = datetime.datetime.fromisoformat(str(ts_str))
+                        age_days = (now - dt).total_seconds() / 86400
+                        # Decay: 1.0 at day 0, ~0.5 at day 30, ~0.25 at day 60
+                        # Floor at 0.3 so old memories can still surface if highly relevant
+                        recency_multiplier = max(0.3, 0.5 ** (age_days / 30.0))
+                    except Exception:
+                        pass
+                
+                # Combined weighted score
+                weighted_score = semantic_score * meaningfulness_multiplier * recency_multiplier
 
                 results.append({
                     "content": hit.payload.get("content"),
-                    "score": hit.score,
-                    "meaningfulness": hit.payload.get("meaningfulness_score"),
+                    "score": weighted_score,
+                    "semantic_score": semantic_score,
+                    "meaningfulness": raw_meaningfulness,
+                    "recency_multiplier": round(recency_multiplier, 3),
                     "timestamp": ts_str,
                     "relative_time": get_relative_time(ts_str) if ts_str else "unknown time"
                 })
+            
+            # Re-rank by weighted score
+            results.sort(key=lambda x: x["score"], reverse=True)
             
             return results[:limit]
             
