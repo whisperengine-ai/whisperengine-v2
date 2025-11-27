@@ -103,11 +103,11 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (DEFERRED - low priority)
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
-- ⏳ Phase C3: Video processing, web dashboard
+- 🗄️ Phase C3: Video processing (DEFERRED - rare on Discord), web dashboard
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase C3 or C5 - core A-tier features complete.
+**Next focus:** Phase C5 (Operational Hardening) or web dashboard.
 
 > **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
 
