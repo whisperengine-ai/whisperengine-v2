@@ -28,7 +28,7 @@ from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
 from src_v2.workers.task_queue import task_queue
 from src_v2.image_gen.service import pending_images
 from influxdb_client.client.write.point import Point
-from src_v2.utils.validation import ValidationError, validator
+from src_v2.utils.validation import ValidationError, validator, smart_truncate
 import random
 
 # Regex pattern for BFL image URLs (to strip them out if LLM includes them)
@@ -391,7 +391,7 @@ class WhisperBot(commands.Bot):
         Args:
             message: Discord message object
         """
-        # Ignore messages from self and other bots to prevent loops
+        # Ignore messages from bots to prevent loops
         if message.author.bot:
             return
 
@@ -661,11 +661,7 @@ class WhisperBot(commands.Bot):
                                     content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
 
                                 if content:
-                                    # Smart Truncation: Keep start and end if too long
-                                    if len(content) > 500:
-                                        ref_text = content[:225] + " ... " + content[-225:]
-                                    else:
-                                        ref_text = content
+                                    ref_text = smart_truncate(content, 500)
                                         
                                     ref_author = ref_msg.author.display_name
                                     user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
@@ -699,11 +695,7 @@ class WhisperBot(commands.Bot):
                                     fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
 
                                 if fwd_content:
-                                    # Smart Truncation
-                                    if len(fwd_content) > 500:
-                                        fwd_text = fwd_content[:225] + " ... " + fwd_content[-225:]
-                                    else:
-                                        fwd_text = fwd_content
+                                    fwd_text = smart_truncate(fwd_content, 500)
                                     
                                     user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
                                     logger.info(f"Injected forwarded context: {user_message}")
@@ -811,13 +803,47 @@ class WhisperBot(commands.Bot):
                             logger.error(f"Failed to retrieve universe context: {e}")
                             return "Location: Unknown"
 
+                    async def get_channel_context():
+                        """Fetch recent channel messages for multi-bot awareness."""
+                        if is_dm or not message.guild:
+                            return ""
+                        try:
+                            # Fetch last 10 messages from Discord API (includes bot messages)
+                            recent_msgs = []
+                            async for msg in message.channel.history(limit=10, before=message):
+                                # Skip the current message and empty messages
+                                if msg.id == message.id or not msg.content:
+                                    continue
+                                
+                                author_name = msg.author.display_name
+                                is_bot = msg.author.bot
+                                
+                                content = smart_truncate(msg.content, 300)
+                                
+                                # Format: [Author (Bot)]: content or [Author]: content
+                                if is_bot:
+                                    recent_msgs.append(f"[{author_name} (Bot)]: {content}")
+                                else:
+                                    recent_msgs.append(f"[{author_name}]: {content}")
+                            
+                            if not recent_msgs:
+                                return ""
+                            
+                            # Reverse to chronological order
+                            recent_msgs.reverse()
+                            return "\n".join(recent_msgs)
+                        except Exception as e:
+                            logger.debug(f"Failed to fetch channel context: {e}")
+                            return ""
+
                     # Execute all context retrieval tasks in parallel
-                    (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context = await asyncio.gather(
+                    (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, channel_context = await asyncio.gather(
                         get_memories(),
                         get_history(),
                         get_knowledge(),
                         get_summaries(),
-                        get_universe_context()
+                        get_universe_context(),
+                        get_channel_context()
                     )
 
                     # 2. Save User Message & Extract Knowledge
@@ -904,6 +930,7 @@ class WhisperBot(commands.Bot):
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,
                         "past_summaries": past_summaries,
+                        "channel_context": channel_context,  # Multi-bot awareness
                         "guild_id": str(message.guild.id) if message.guild else None,
                         "channel_name": channel_name,
                         "parent_channel_name": parent_channel_name,

@@ -9,6 +9,28 @@ from typing import Optional, Tuple, List
 from loguru import logger
 
 
+def smart_truncate(text: str, max_length: int = 500) -> str:
+    """
+    Truncates text by keeping the start and end, cutting the middle.
+    
+    This preserves context better than simple truncation because the beginning
+    often contains the topic/subject and the end often contains the conclusion/question.
+    
+    Args:
+        text: The text to truncate
+        max_length: Maximum total length (default 500)
+        
+    Returns:
+        Truncated text with " ... " in the middle if needed, otherwise original text
+    """
+    if len(text) <= max_length:
+        return text
+    
+    # Keep slightly less than half on each side to account for " ... " (5 chars)
+    half = (max_length - 5) // 2
+    return text[:half] + " ... " + text[-half:]
+
+
 class ValidationError(Exception):
     """Custom exception for validation failures with user-friendly messages."""
     def __init__(self, message: str, user_message: str):
