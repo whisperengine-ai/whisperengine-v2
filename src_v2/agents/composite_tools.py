@@ -1,9 +1,6 @@
 from typing import Type, Optional, List
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
-import asyncio
-
-from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool
 
 class AnalyzeTopicInput(BaseModel):
     topic: str = Field(description="The topic, concept, or person to analyze deeply.")
@@ -20,29 +17,48 @@ class AnalyzeTopicTool(BaseTool):
         raise NotImplementedError("Use _arun instead")
 
     async def _arun(self, topic: str) -> str:
-        # Instantiate sub-tools
-        summaries_tool = SearchSummariesTool(user_id=self.user_id)
-        episodes_tool = SearchEpisodesTool(user_id=self.user_id)
-        facts_tool = LookupFactsTool(user_id=self.user_id, bot_name=self.bot_name)
+        from src_v2.memory.context_builder import context_builder
         
-        # Run in parallel
-        results = await asyncio.gather(
-            summaries_tool.ainvoke({"query": topic}),
-            episodes_tool.ainvoke({"query": topic}),
-            facts_tool.ainvoke({"query": topic})
+        # Fetch context using the new builder
+        context = await context_builder.build_context(
+            user_id=self.user_id,
+            character_name=self.bot_name,
+            query=topic,
+            limit_memories=5,
+            limit_summaries=3
         )
         
-        summaries, episodes, facts = results
+        # Format Summaries
+        summaries_list = context.get("summaries", [])
+        if summaries_list:
+            summaries_formatted = "\n".join([
+                f"- [Score: {r.get('meaningfulness', '?')}/5] {r.get('content', '')} ({r.get('timestamp', '')[:10]})" 
+                for r in summaries_list
+            ])
+            summaries_str = f"Found {len(summaries_list)} Summaries:\n{summaries_formatted}"
+        else:
+            summaries_str = "No relevant summaries found."
+
+        # Format Episodes
+        episodes_list = context.get("memories", [])
+        if episodes_list:
+            episodes_formatted = "\n".join([f"- {r.get('content', '')}" for r in episodes_list])
+            episodes_str = f"Found {len(episodes_list)} Episodes:\n{episodes_formatted}"
+        else:
+            episodes_str = "No specific memories found."
+
+        # Format Facts
+        facts_str = f"Graph Query Result: {context.get('knowledge', 'No facts found.')}"
         
         return f"""
 [ANALYSIS FOR: {topic}]
 
 --- SUMMARIES ---
-{summaries}
+{summaries_str}
 
 --- EPISODES ---
-{episodes}
+{episodes_str}
 
 --- FACTS ---
-{facts}
+{facts_str}
 """

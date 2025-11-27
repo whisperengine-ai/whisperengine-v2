@@ -13,7 +13,7 @@
 | Phase 2 | Temporal Decay (Recency) | ✅ Complete |
 | Phase 3 | Episode Scoring | ✅ Complete |
 | Phase 4 | Hybrid Retrieval (ContextBuilder) | ✅ Complete |
-| Phase 5 | Neo4j Confidence | 📋 Planned |
+| Phase 5 | Neo4j Confidence | ✅ Complete |
 | Phase 6 | Continuity Markers | 📋 Planned |
 
 ---

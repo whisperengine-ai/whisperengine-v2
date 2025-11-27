@@ -164,6 +164,8 @@ RULES:
                     MATCH (c:Character {name: $name})
                     MERGE (e:Entity {name: $obj})
                     MERGE (c)-[r:FACT {predicate: $predicate}]->(e)
+                    ON CREATE SET r.mention_count = 1, r.confidence = 1.0
+                    ON MATCH SET r.mention_count = coalesce(r.mention_count, 1)
                     """
                     await session.run(query, name=bot_name, obj=obj, predicate=predicate)
             
@@ -425,11 +427,21 @@ PRIVACY RESTRICTION ENABLED:
                          antonyms=antonyms)
 
         # 3. Merge New Fact
+        # We use ON CREATE / ON MATCH to handle mention_count reinforcement
         query_safe = """
         MERGE (u:User {id: $user_id})
         MERGE (o:Entity {name: $object_name})
         MERGE (u)-[r:FACT {predicate: $predicate}]->(o)
-        SET r.confidence = $confidence, r.source_bot = $bot_name, r.updated_at = datetime()
+        ON CREATE SET 
+            r.confidence = $confidence, 
+            r.source_bot = $bot_name, 
+            r.created_at = datetime(), 
+            r.updated_at = datetime(),
+            r.mention_count = 1
+        ON MATCH SET 
+            r.updated_at = datetime(),
+            r.mention_count = coalesce(r.mention_count, 1) + 1,
+            r.confidence = CASE WHEN $confidence > r.confidence THEN $confidence ELSE r.confidence END
         """
         
         await tx.run(query_safe, 
