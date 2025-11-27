@@ -553,6 +553,13 @@ class AgentEngine:
             
             system_content += channel_context
 
+            # 2.8.6 Recent Channel Activity (Phase A5)
+            # Always injected for channel/thread conversations so bot is "present"
+            recent_channel_context = context_variables.get("recent_channel_context", "")
+            if recent_channel_context:
+                system_content += f"\n\n{recent_channel_context}"
+                system_content += "\n(You can see what others have been saying. Use this to stay contextually aware of the conversation.)"
+
             # 2.9 Meta-Instructions (Anti-AI-Break)
             system_content += self._get_meta_instructions()
 

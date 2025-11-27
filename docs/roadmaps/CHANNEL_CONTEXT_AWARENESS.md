@@ -1,12 +1,62 @@
 # Channel Context Awareness
 
-**Document Version:** 1.1  
+**Document Version:** 1.3  
 **Created:** November 25, 2025  
-**Last Updated:** November 25, 2025  
-**Status:** 📋 Planned  
+**Last Updated:** November 26, 2025  
+**Status:** ✅ Complete  
 **Priority:** Medium  
 **Complexity:** Low-Medium  
 **Estimated Time:** 3-5 days (all phases)
+
+---
+
+## Implementation Summary (Nov 26, 2025)
+
+### ✅ Completed
+
+1. **Channel Cache** (`src_v2/discord/channel_cache.py`)
+   - Redis-backed rolling buffer with semantic search
+   - Local embeddings via `all-MiniLM-L6-v2` (384-dim, ~5ms, $0 cost)
+   - Python-side cosine similarity calculation
+   - 30 min TTL, 50 messages per channel max
+   - Threads automatically separated (unique channel IDs)
+   - Smart truncation: keeps beginning + end of long messages
+   - Methods: `add_message()`, `search_semantic()`, `get_recent()`, `clear_channel()`
+
+2. **Context Detection & Formatting** (`src_v2/discord/context.py`)
+   - `needs_channel_context()` - Pattern matching to detect explicit channel queries
+   - `_smart_truncate()` - Keeps beginning and end of long messages
+   - `format_channel_context()` - Formats messages for LLM injection
+   - `fetch_channel_context()` - Discord API fallback for cold start
+
+3. **Settings** (`src_v2/config/settings.py`)
+   - `ENABLE_CHANNEL_CONTEXT: bool = True`
+   - `CHANNEL_CONTEXT_MAX_MESSAGES: int = 50`
+   - `CHANNEL_CONTEXT_TTL_SECONDS: int = 1800` (30 min)
+   - `CHANNEL_CONTEXT_MAX_TOKENS: int = 500`
+   - `CHANNEL_CONTEXT_MIN_SIMILARITY: float = 0.3`
+
+4. **Bot Integration** (`src_v2/discord/bot.py`)
+   - **Passive caching:** ALL non-mentioned channel messages cached (fire-and-forget)
+   - **Always-inject:** Recent 10 messages always injected for channel/thread conversations
+   - **Semantic search:** Used when user explicitly asks about channel activity
+   - Fallback chain: Cache → Discord API (cold start)
+
+5. **Engine Integration** (`src_v2/agents/engine.py`)
+   - `recent_channel_context` always injected into system prompt for channels/threads
+   - LLM guidance: "You can see what others have been saying"
+
+### ⚠️ Future Considerations
+
+- **Channel Filtering:** Currently caches ALL channels the bot can see. May need allowlist/blocklist for high-traffic servers or noisy channels (#memes, #off-topic). Monitor Redis memory usage.
+- **Redis Stack:** If semantic search becomes slow with many channels, consider upgrading to Redis Stack for native vector indexing.
+- **LLM Tool (Phase 2):** Could expose `get_channel_context` as a tool for complex queries where LLM decides when to fetch more context.
+
+### ❌ Skipped/Deferred
+
+- **Redis Stack upgrade** - Not needed; Python-side similarity works for 50 msgs/channel
+- **Phase 2: LLM Tool** - Deferred; always-inject approach is sufficient
+- **Channel allowlist/blocklist** - Deferred; monitor performance first
 
 ---
 

@@ -24,6 +24,8 @@ from src_v2.evolution.emoji_taxonomy import emoji_taxonomy
 from src_v2.vision.manager import vision_manager
 from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
+from src_v2.discord.channel_cache import channel_cache
+from src_v2.discord.context import needs_channel_context, format_channel_context, fetch_channel_context
 from src_v2.workers.task_queue import task_queue
 from src_v2.image_gen.service import pending_images
 from influxdb_client.client.write.point import Point
@@ -255,6 +257,16 @@ class WhisperBot(commands.Bot):
             logger.info(f"Channel Lurking enabled for {self.character_name}.")
         else:
             logger.info("Channel Lurking disabled in settings.")
+
+        # Initialize Channel Context Cache (Phase A5)
+        if settings.ENABLE_CHANNEL_CONTEXT:
+            try:
+                await channel_cache.initialize()
+                logger.info("Channel Context Cache enabled and initialized.")
+            except Exception as e:
+                logger.error(f"Failed to initialize Channel Context Cache: {e}")
+        else:
+            logger.info("Channel Context Cache disabled in settings.")
 
         # Start status update loop
         self.loop.create_task(self.update_status_loop())
@@ -537,6 +549,29 @@ class WhisperBot(commands.Bot):
                 )
                 await message.channel.send(embed=embed)
                 return
+
+        # --- Phase A5: Channel Context Awareness ---
+        # Cache non-mentioned messages for context awareness (passive, fire-and-forget)
+        if not is_dm and not is_mentioned and settings.ENABLE_CHANNEL_CONTEXT:
+            try:
+                is_thread = isinstance(message.channel, discord.Thread)
+                parent_id = None
+                if is_thread and message.channel.parent:
+                    parent_id = str(message.channel.parent.id)
+                
+                # Fire-and-forget: cache message asynchronously
+                asyncio.create_task(channel_cache.add_message(
+                    channel_id=str(message.channel.id),
+                    message_id=str(message.id),
+                    author=message.author.display_name,
+                    author_id=str(message.author.id),
+                    content=message.content,
+                    timestamp=message.created_at,
+                    is_thread=is_thread,
+                    parent_channel_id=parent_id
+                ))
+            except Exception as e:
+                logger.error(f"Failed to cache channel message: {e}")
 
         if is_dm or is_mentioned:
             # Typing indicator delayed to mimic natural reading time
@@ -875,6 +910,62 @@ class WhisperBot(commands.Bot):
                     elif hasattr(message.channel, 'name'):
                         channel_name = message.channel.name
 
+                    # --- Phase A5: Channel Context Awareness ---
+                    # Always inject recent channel messages so bot is "present" in the conversation
+                    # Use semantic search when user explicitly asks about channel activity
+                    recent_channel_context = ""
+                    if not is_dm and settings.ENABLE_CHANNEL_CONTEXT:
+                        try:
+                            channel_id = str(message.channel.id)
+                            is_explicit_query = needs_channel_context(user_message)
+                            
+                            if is_explicit_query:
+                                # Explicit query: Use semantic search for better relevance
+                                relevant_msgs = await channel_cache.search_semantic(
+                                    channel_id=channel_id,
+                                    query=user_message,
+                                    limit=10,
+                                    min_similarity=settings.CHANNEL_CONTEXT_MIN_SIMILARITY
+                                )
+                                
+                                if relevant_msgs:
+                                    recent_channel_context = format_channel_context(
+                                        relevant_msgs,
+                                        max_tokens=settings.CHANNEL_CONTEXT_MAX_TOKENS,
+                                        include_similarity=True
+                                    )
+                                    logger.info(f"Semantic search: {len(relevant_msgs)} relevant channel messages")
+                            
+                            # Always inject recent messages (passive awareness)
+                            # If semantic search found results, skip this; otherwise get recent
+                            if not recent_channel_context:
+                                # Get recent messages from cache (passive context - last 10 messages)
+                                recent_msgs = await channel_cache.get_recent(channel_id, limit=10)
+                                if recent_msgs:
+                                    # Use smaller token budget for passive context
+                                    recent_channel_context = format_channel_context(
+                                        recent_msgs,
+                                        max_tokens=300  # Smaller budget for passive context
+                                    )
+                                    logger.debug(f"Passive context: {len(recent_msgs)} recent channel messages")
+                                else:
+                                    # Cold start fallback: Discord API
+                                    api_msgs = await fetch_channel_context(
+                                        channel=message.channel,
+                                        limit=10,
+                                        max_age_minutes=15,  # Shorter window for passive
+                                        exclude_bot=True,
+                                        bot_id=self.user.id if self.user else None
+                                    )
+                                    if api_msgs:
+                                        recent_channel_context = format_channel_context(
+                                            api_msgs,
+                                            max_tokens=300
+                                        )
+                                        logger.debug(f"Cold start: {len(api_msgs)} messages from Discord API")
+                        except Exception as e:
+                            logger.error(f"Failed to inject channel context: {e}")
+
                     context_vars = {
                         "user_name": message.author.display_name,
                         "current_datetime": now.strftime("%A, %B %d, %Y at %H:%M"),
@@ -885,7 +976,8 @@ class WhisperBot(commands.Bot):
                         "guild_id": str(message.guild.id) if message.guild else None,
                         "channel_name": channel_name,
                         "parent_channel_name": parent_channel_name,
-                        "is_thread": is_thread
+                        "is_thread": is_thread,
+                        "recent_channel_context": recent_channel_context  # Phase A5
                     }
                     
                     # Inject file content if present

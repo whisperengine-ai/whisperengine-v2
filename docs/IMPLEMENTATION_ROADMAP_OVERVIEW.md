@@ -99,7 +99,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ⏳ Phase A5: Channel Context Awareness
+- ✅ Phase A5: Channel Context Awareness (semantic search of non-mentioned messages)
 - ⏳ Phase A6: Vision-to-Knowledge Fact Extraction
 - ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
 - ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
@@ -107,7 +107,7 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ⏳ Phase C5: Operational Hardening (Backups & Optimization)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
-**Next focus:** Phase A5 (Channel Context Awareness) - Bot sees non-mentioned channel messages. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md)
+**Next focus:** Phase A6 (Vision-to-Knowledge Fact Extraction) - Extract appearance facts from selfies. See [VISION_FACT_EXTRACTION.md](./roadmaps/VISION_FACT_EXTRACTION.md)
 
 ---
 
@@ -290,34 +290,40 @@ InfluxDB → Grafana Dashboard + Alerts
 
 ### Phase A5: Channel Context Awareness
 **Priority:** Medium | **Time:** 3-4 days | **Complexity:** Low-Medium  
-**Files:** 3-4 | **LOC:** ~400 | **Status:** 📋 Planned
+**Files:** 4 | **LOC:** ~500 | **Status:** ✅ Complete (Nov 26, 2025)
 
-**Problem:** Bot only sees messages directed at it (mentions/DMs), so it can't answer "what did I just say about X?" when users reference recent channel activity.
+**Problem:** Bot only sees messages directed at it (mentions/DMs), so it appears oblivious to the conversation happening around it.
 
-**Solution (Hybrid Approach):**
+**Solution Implemented:**
 
-**Phase 1a: Discord API Pull (Fallback)**
-- Detect when user asks about channel context ("what did I say", "catch me up", etc.)
-- Pull last 20 messages from Discord API on-demand
-- Keyword filtering only
-- Used when Redis cache is empty (cold start)
+**Passive Caching (all non-mentioned messages):**
+- `src_v2/discord/channel_cache.py` - Redis-backed rolling buffer with semantic search
+- Local embeddings via `all-MiniLM-L6-v2` (384-dim, ~5ms, $0 cost)
+- Smart truncation: keeps beginning + end of long messages
+- 30 min TTL, 50 messages per channel max
+- Thread messages stored separately (unique channel IDs)
 
-**Phase 1b: Redis Rolling Buffer with Semantic Search (Primary)**
-- Cache non-mentioned messages in Redis with local embeddings
-- Uses `all-MiniLM-L6-v2` (384-dim, ~5ms, $0 cost)
-- Semantic similarity search via Redis Stack
-- 30 min TTL, 50 messages per channel
+**Always-Inject Context (bot is "present"):**
+- Recent 10 messages always injected for channel/thread conversations
+- Bot naturally aware of conversation flow without explicit queries
+- ~300 tokens passive context budget
+
+**Semantic Search (explicit queries):**
+- Used when user asks "what did I say about X?"
 - Finds "turtles" when asked about "reptiles"
+- Discord API fallback for cold start
 
-**Phase 2: LLM-Requested Context Tool** (optional, later)
-- Expose `get_channel_context` as a tool in Reflective Mode
-- LLM decides when it needs context
+**Future Considerations:**
+- Monitor Redis memory for high-traffic servers
+- May need channel allowlist/blocklist for noisy channels (#memes, #off-topic)
 
 **Implementation:**
 ```
 Non-mentioned message → Local embed (~5ms) → Redis cache (30min TTL)
                                                     ↓
-Bot mentioned + needs_context() → Redis semantic search (15-20ms)
+Bot mentioned → Always inject recent 10 messages (passive awareness)
+                                                    ↓
+              + Explicit query? → Semantic search for relevance
                                                     ↓
                                   If empty → Discord API fallback (50-200ms)
 ```
