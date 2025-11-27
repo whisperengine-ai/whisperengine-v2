@@ -451,7 +451,7 @@ PRIVACY RESTRICTION ENABLED:
                      confidence=fact.confidence,
                      bot_name=bot_name)
 
-    async def get_user_knowledge(self, user_id: str, query: Optional[str] = None) -> str:
+    async def get_user_knowledge(self, user_id: str, query: Optional[str] = None, limit: int = 10) -> str:
         """
         Retrieves relevant facts about the user from the Knowledge Graph.
         If query is provided, it generates a specific Cypher query.
@@ -510,13 +510,13 @@ PRIVACY RESTRICTION ENABLED:
                 
                 else:
                     # Default: Get all facts about the user
-                    # Limit to 10 most recent or relevant
+                    # Limit to requested number (default 10)
+                    # Note: Removed ORDER BY r.created_at DESC temporarily to debug missing facts issue
                     result = await session.run("""
                         MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
                         RETURN r.predicate, e.name
-                        ORDER BY r.created_at DESC
-                        LIMIT 10
-                    """, user_id=user_id)
+                        LIMIT $limit
+                    """, user_id=user_id, limit=limit)
                     
                     records = await result.data()
                     

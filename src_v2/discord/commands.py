@@ -75,15 +75,25 @@ class CharacterCommands(app_commands.Group):
             prefs = relationship.get("preferences", {})
             trust_score = relationship.get("trust_score", 0)
             level_label = relationship.get("level_label", "Stranger")
+            insights = relationship.get("insights", [])
             
             prefs_text = "No specific preferences set."
             if prefs:
                 prefs_text = "\n".join([f"• **{k}**: {v}" for k, v in prefs.items()])
 
+            insights_text = "No specific insights yet."
+            if insights:
+                # Show top 5 insights
+                display_insights = insights[:5]
+                insights_text = "\n".join([f"• {i}" for i in display_insights])
+                if len(insights) > 5:
+                    insights_text += f"\n...and {len(insights) - 5} more."
+
             # Build Response
             embed = discord.Embed(title=f"User Profile: {interaction.user.display_name}", color=0x00ff00)
             embed.add_field(name="🧠 Global Facts (Shared)", value=facts, inline=False)
             embed.add_field(name=f"🤝 Relationship ({character_name})", value=f"Level: {level_label} (Trust: {trust_score})", inline=False)
+            embed.add_field(name="📝 Insights (Character Memory)", value=insights_text, inline=False)
             embed.add_field(name="⚙️ Preferences", value=prefs_text, inline=False)
             
             await interaction.followup.send(embed=embed, ephemeral=True)
