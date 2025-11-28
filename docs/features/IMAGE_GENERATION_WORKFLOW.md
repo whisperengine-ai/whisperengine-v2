@@ -1,7 +1,8 @@
 # Image Generation Workflow - Feature Analysis
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Created:** November 26, 2025  
+**Updated:** November 28, 2025  
 **Status:** ✅ Production (Observing & Iterating)  
 **Feature Flag:** `ENABLE_IMAGE_GENERATION` (default: true)
 
@@ -13,19 +14,22 @@ WhisperEngine's image generation capability (via Flux Pro 1.1) has proven to be 
 
 **Key Finding:** Users treat image generation as **collaborative art direction**, not one-shot requests. Sessions of 15+ iterations over 1.5+ hours are common, with users providing increasingly specific feedback.
 
+**Update (v2.0):** Image intent detection is now handled by the `ComplexityClassifier` LLM instead of keyword matching. See [Intent Detection](#intent-detection-v20) section.
+
 ---
 
 ## Table of Contents
 
 1. [Current Implementation](#current-implementation)
-2. [Production Session Analysis](#production-session-analysis)
-3. [User Behavior Patterns](#user-behavior-patterns)
-4. [Common Refinement Requests](#common-refinement-requests)
-5. [Character Integration](#character-integration)
-6. [Technical Observations](#technical-observations)
-7. [Known Limitations](#known-limitations)
-8. [Recommended Improvements](#recommended-improvements)
-9. [Appendix: Session Transcript Analysis](#appendix-session-transcript-analysis)
+2. [Intent Detection (v2.0)](#intent-detection-v20)
+3. [Production Session Analysis](#production-session-analysis)
+4. [User Behavior Patterns](#user-behavior-patterns)
+5. [Common Refinement Requests](#common-refinement-requests)
+6. [Character Integration](#character-integration)
+7. [Technical Observations](#technical-observations)
+8. [Known Limitations](#known-limitations)
+9. [Recommended Improvements](#recommended-improvements)
+10. [Appendix: Session Transcript Analysis](#appendix-session-transcript-analysis)
 
 ---
 
@@ -34,33 +38,95 @@ WhisperEngine's image generation capability (via Flux Pro 1.1) has proven to be 
 ### Architecture
 
 ```
-User Request → Reflective Mode → generate_image tool → Flux Pro 1.1 API → Discord embed
+User Request → ComplexityClassifier (LLM) → detected_intents["image"] → Complexity promoted to COMPLEX_MID → Reflective Mode → generate_image tool → Flux Pro 1.1 API → Discord embed
 ```
 
 **Key Components:**
+- `src_v2/agents/classifier.py` - Intent detection (voice, image, search)
 - `src_v2/tools/image_tools.py` - `GenerateImageTool` class
-- `src_v2/agents/reflective.py` - Routes to image generation when detected
+- `src_v2/agents/reflective.py` - Routes to image generation tool
+- `src_v2/core/quota.py` - Daily quota per user (`DAILY_IMAGE_QUOTA`)
 - Trust gate: Requires minimum trust level for image generation access
 
 ### Flow
 
 1. User sends image generation request (explicit or implicit)
-2. `ComplexityClassifier` routes to Reflective Mode
-3. `ReflectiveAgent` identifies need for `generate_image` tool
-4. Tool constructs prompt from user request + character context
-5. Flux Pro 1.1 generates image (~10-15s)
-6. Image URL returned and embedded in Discord response
-7. Character provides narrative wrapper around the image
+2. `ComplexityClassifier` detects "image" intent and returns it
+3. `bot.py` promotes complexity to `COMPLEX_MID` if "image" intent detected (ensures Reflective Mode access to tools)
+4. `ReflectiveAgent` identifies need for `generate_image` tool
+5. Tool constructs prompt from user request + character context
+6. Flux Pro 1.1 generates image (~10-15s)
+7. Image URL returned and embedded in Discord response
+8. Character provides narrative wrapper around the image
+9. Daily quota incremented for user
 
 ### Cost Model
 
 | Component | Cost |
 |-----------|------|
+| Complexity classification (router LLM) | ~$0.001 |
 | Reflective Mode (2-3 LLM calls) | ~$0.005 |
 | Flux Pro 1.1 image generation | ~$0.04 |
-| **Total per image** | **~$0.045** |
+| **Total per image** | **~$0.046** |
 
-At 15 images per session: ~$0.68 per extended creative session.
+At 15 images per session: ~$0.69 per extended creative session.
+
+---
+
+## Intent Detection (v2.0)
+
+**Updated:** November 28, 2025
+
+### How It Works
+
+Image generation intent is now detected by the `ComplexityClassifier` LLM, not by keyword matching. This provides semantic understanding of requests.
+
+**Examples that trigger "image" intent:**
+- "Create an image of the universe"
+- "Draw me a picture of a cat"
+- "Show me what you see"
+- "Can you visualize this?"
+- "Make me a portrait"
+- "I want to see what you look like"
+
+The classifier returns structured output:
+```python
+{
+    "complexity": "COMPLEX_MID",  # or higher
+    "intents": ["image"]  # detected intents
+}
+```
+
+### Complexity Promotion
+
+When "image" intent is detected, the `bot.py` automatically promotes the complexity to at least `COMPLEX_MID`. This ensures:
+1. Reflective Mode is activated (even if the request seems "simple")
+2. The `generate_image` tool is available to the agent
+3. The agent can reason about the request before generating
+
+```python
+# In bot.py
+if "image" in detected_intents:
+    if complexity == "SIMPLE":
+        complexity = "COMPLEX_MID"
+        logger.info(f"Promoted complexity to {complexity} for image intent")
+```
+
+### Feature Flag Gating
+
+Intent detection only includes "image" if `ENABLE_IMAGE_GENERATION=true`:
+
+```python
+# In classifier.py (dynamic prompt construction)
+if settings.ENABLE_IMAGE_GENERATION:
+    intent_section += '\n- "image": User asks to generate, create, draw, paint, or visualize an image.'
+```
+
+This keeps the classifier prompt clean when image generation is disabled.
+
+### Daily Quota
+
+Users are limited by `DAILY_IMAGE_QUOTA` (default: 5 per day). The quota is checked before generation and tracked in PostgreSQL.
 
 ---
 

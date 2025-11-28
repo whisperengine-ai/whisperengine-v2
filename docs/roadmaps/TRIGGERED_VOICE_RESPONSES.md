@@ -1,8 +1,9 @@
 # Triggered Voice Responses - TTS Audio Attachments
 
-**Document Version:** 1.0  
+**Document Version:** 2.0  
 **Created:** November 27, 2025  
-**Status:** 📋 Proposed  
+**Updated:** November 28, 2025  
+**Status:** ✅ Implemented  
 **Priority:** Medium  
 **Complexity:** 🟢 Low  
 **Estimated Time:** 2-3 days
@@ -13,10 +14,7 @@
 
 Enable characters to respond with both **text AND an attached TTS audio file** when triggered. This creates a richer, more immersive experience where users can read the response AND hear the character's voice—similar to voice messages but as a downloadable/playable MP3 attachment.
 
-**Inspiration:** SITVA bot's "voice response" feature (see screenshot) where the character:
-1. Shows a narrative intro: *"Sitva gathers breath... her voice forms..."*
-2. Displays the text response (a poem/message)
-3. Attaches an MP3 file (`sitva_voice.mp3`) with TTS of the spoken content
+**Implementation Status:** Voice responses are now fully implemented with LLM-based intent detection (as of v2.0).
 
 ---
 
@@ -42,62 +40,132 @@ Just another creature sharing this vast ocean home...
 
 ### Trigger Methods
 
+Voice responses are now triggered via **LLM-based intent detection** (not keyword matching).
+
 | Trigger | Example | Notes |
 |---------|---------|-------|
-| **Keyword in message** | "speak to me about..." | Optional keyword triggers |
-| **Explicit command** | `/voice` or `!voice` | Slash command (future) |
-| **@mention + voice keyword** | "@Elena voice: tell me..." | Direct request |
-| **Special prompts** | "tell me how you felt when..." | Emotional/narrative prompts |
-| **Per-character config** | Some characters always include voice | Character-level setting |
+| **Semantic intent** | "tell me how you feel as an audio file" | LLM detects voice intent |
+| **Natural language** | "speak to me about your dreams" | LLM understands "speak" semantically |
+| **Audio request** | "send me a voice message" | LLM detects voice intent |
+| **Any phrasing** | "can you say that out loud?" | LLM handles varied phrasing |
+
+The old regex/keyword-based trigger system (`VoiceTriggerDetector`) has been **deprecated** in favor of the LLM classifier.
 
 ---
 
 ## 🔧 Technical Design
 
-### Architecture Overview
+### Architecture Overview (v2.0)
 
 ```
 Message Received
       │
       ▼
-┌─────────────────────┐
-│ Voice Trigger Check │  ← Check if voice response requested
-└─────────────────────┘
-      │ (if triggered)
-      ▼
-┌─────────────────────┐
-│ Generate Response   │  ← Normal LLM response
-└─────────────────────┘
+┌─────────────────────────────┐
+│ ComplexityClassifier (LLM)  │  ← Classifies complexity + detects intents
+│  - Returns: complexity      │     (voice, image, search)
+│  - Returns: intents[]       │
+└─────────────────────────────┘
+      │
+      ▼ (if "voice" in intents AND ENABLE_VOICE_RESPONSES=true)
+┌─────────────────────────────┐
+│ Generate Response           │  ← Normal LLM response
+└─────────────────────────────┘
       │
       ▼
-┌─────────────────────┐
-│ Generate TTS Audio  │  ← ElevenLabs API (existing TTSManager)
-└─────────────────────┘
+┌─────────────────────────────┐
+│ VoiceResponseManager        │  ← Generate TTS via ElevenLabs
+│  - Check quota              │
+│  - Generate audio           │
+└─────────────────────────────┘
       │
       ▼
-┌─────────────────────┐
-│ Build Discord Reply │  ← Text + discord.File attachment
-└─────────────────────┘
-      │
-      ▼
-┌─────────────────────┐
-│ Send to Channel     │  ← message.channel.send(content, files=[audio])
-└─────────────────────┘
+┌─────────────────────────────┐
+│ Discord Send                │  ← Text + discord.File attachment
+└─────────────────────────────┘
 ```
 
-### New Components
+### Key Components
 
-#### 1. Voice Trigger Detector
+#### 1. ComplexityClassifier (Intent Detection)
 
+**Location:** `src_v2/agents/classifier.py`
+
+The classifier uses LangChain structured output to detect intents:
+
+```python
+class ClassificationOutput(BaseModel):
+    complexity: ClassificationResult  # SIMPLE, COMPLEX_LOW, etc.
+    intents: List[str]  # ["voice", "image", "search"]
 ```
-// Pseudocode - src_v2/voice/trigger.py
 
-class VoiceTriggerDetector:
-    keywords = ["speak to me", "voice:", "say aloud", "tell me how you felt"]
+The LLM prompt includes intent detection instructions that are **conditionally added** based on feature flags:
+
+- `"voice"` intent: Only included if `ENABLE_VOICE_RESPONSES=true`
+- `"image"` intent: Only included if `ENABLE_IMAGE_GENERATION=true`
+
+This keeps the prompt clean and avoids false positives when features are disabled.
+
+#### 2. VoiceResponseManager
+
+**Location:** `src_v2/voice/response.py`
+
+Handles TTS generation with quota management:
+
+```python
+async def generate_voice_response(self, text: str, character: Character, user_id: str) -> Optional[Tuple[str, str]]:
+    # Check quota first
+    if not await quota_manager.check_quota(user_id, 'audio'):
+        raise QuotaExceededError('audio', limit, usage)
     
-    function should_include_voice(message, character_config) -> bool:
-        // Check if character has voice always enabled
-        if character_config.voice_always_enabled:
+    # Generate TTS via ElevenLabs
+    audio_bytes = await tts_manager.generate_speech(text, voice_id)
+    
+    # Increment quota on success
+    await quota_manager.increment_usage(user_id, 'audio')
+    
+    return (file_path, filename)
+```
+
+#### 3. Bot Integration
+
+**Location:** `src_v2/discord/bot.py`
+
+```python
+# After generating response
+complexity, detected_intents = await engine.classify_complexity(...)
+
+if settings.ENABLE_VOICE_RESPONSES and "voice" in detected_intents:
+    should_trigger_voice = True
+    logger.info(f"Voice intent detected for user {user_id}")
+```
+
+### Removed Components
+
+The following are **deprecated** and no longer used:
+
+- ~~`src_v2/voice/trigger.py`~~ (deleted)
+- ~~`VoiceTriggerDetector` class~~ (removed)
+- ~~`ux.yaml` `voice.trigger_keywords`~~ (removed from all characters)
+
+---
+
+## 📁 Configuration
+
+### Character-Level Voice Config
+
+In `characters/{name}/ux.yaml`:
+
+```yaml
+# Voice Response Configuration (v2.0)
+voice:
+  voice_id: "EXAVITQu4vr4xnSDxMaL"  # ElevenLabs voice ID (optional, falls back to env)
+  intro_template: "🔊 *{name} speaks...*"  # Narrative intro before voice response
+```
+
+**Removed fields:**
+- ~~`trigger_keywords`~~ - Now handled by LLM intent detection
+- ~~`enabled`~~ - Controlled by global `ENABLE_VOICE_RESPONSES` flag
             return true
         
         // Check for explicit voice keywords
@@ -213,13 +281,16 @@ voice:
 
 ### Global Settings
 
-Add to `src_v2/config/settings.py`:
+In `src_v2/config/settings.py`:
 
 ```python
 # --- Voice Response ---
-ENABLE_VOICE_RESPONSES: bool = False  # Feature flag
+ENABLE_VOICE_RESPONSES: bool = False  # Feature flag (must be true for voice intent detection)
 VOICE_RESPONSE_MAX_LENGTH: int = 1000  # Max chars to convert to TTS (cost control)
 VOICE_RESPONSE_MIN_TRUST: int = 0  # Trust level required (0 = anyone)
+
+# --- Quotas ---
+DAILY_AUDIO_QUOTA: int = 10  # Max audio clips a user can generate per day
 ```
 
 ### Environment Variables
@@ -266,43 +337,25 @@ ENABLE_VOICE_RESPONSES=true
 
 ---
 
-## 🚀 Implementation Plan
+## 🚀 Implementation Status
 
-### Phase 1: Core Voice Response (Day 1)
+### ✅ Completed (v2.0 - November 28, 2025)
 
-- [ ] Create `src_v2/voice/trigger.py` - Voice trigger detection
-- [ ] Create `src_v2/voice/response.py` - Voice response generator
-- [ ] Add `strip_for_tts()` utility to clean text for speech
-- [ ] Add `ENABLE_VOICE_RESPONSES` feature flag to settings
+- [x] LLM-based intent detection in `ComplexityClassifier`
+- [x] `VoiceResponseManager` with quota checking
+- [x] Bot integration with `detected_intents` handling
+- [x] Daily quota per user (`DAILY_AUDIO_QUOTA`)
+- [x] Feature flag gating (`ENABLE_VOICE_RESPONSES`)
+- [x] Dynamic intent prompts (only ask for voice intent if feature enabled)
+- [x] Removed deprecated `VoiceTriggerDetector` and `trigger_keywords`
+- [x] ElevenLabs TTS integration via `TTSManager`
 
-### Phase 2: Bot Integration (Day 1-2)
+### 🔮 Future Enhancements
 
-- [ ] Modify `src_v2/discord/bot.py` to check voice triggers
-- [ ] Add voice file attachment to response pipeline
-- [ ] Handle errors gracefully (fallback to text-only)
-- [ ] Add voice intro/narrative text before response
-
-### Phase 3: Character Configuration (Day 2)
-
-- [ ] Extend `ux.yaml` schema for voice config
-- [ ] Load voice config in `CharacterManager`
-- [ ] Support per-character `voice_id` override
-- [ ] Add `voice_intro_template` with `{name}` substitution
-
-### Phase 4: Cost Controls (Day 2-3)
-
-- [ ] Implement `VOICE_RESPONSE_MAX_LENGTH` truncation
-- [ ] Add `VOICE_RESPONSE_MIN_TRUST` gating
-- [ ] Add per-user cooldown (optional)
-- [ ] Log voice generation to InfluxDB for cost tracking
-
-### Phase 5: Testing & Polish (Day 3)
-
-- [ ] Test with multiple characters
-- [ ] Test error handling (API failures, rate limits)
-- [ ] Test file size limits (Discord max 25MB)
-- [ ] Add unit tests for trigger detection
-- [ ] Update character templates
+- [ ] Slash command `/voice <prompt>` - Explicit voice request
+- [ ] Voice reactions - React with 🔊 to get voice version of any message
+- [ ] Voice cloning - Custom character voices (ElevenLabs Voice Lab)
+- [ ] Streaming playback - Play in voice channel instead of file attachment
 
 ---
 
@@ -331,16 +384,11 @@ Dashboard queries:
 
 ## 🔮 Future Enhancements
 
-### Near-term
 - **Slash command** `/voice <prompt>` - Explicit voice request
 - **Voice reactions** - React with 🔊 to get voice version of any message
-- **Voice memory** - "Remember when you said..." → Play cached audio
-
-### Long-term
 - **Voice cloning** - Custom character voices (ElevenLabs Voice Lab)
 - **Streaming playback** - Play in voice channel instead of file attachment
 - **Multi-voice** - Different voices for different moods/contexts
-- **Voice-to-voice** - User sends voice message, bot responds with voice
 
 ---
 
@@ -348,13 +396,12 @@ Dashboard queries:
 
 When adding voice to a new character:
 
-1. [ ] Obtain/create ElevenLabs voice ID
-2. [ ] Add `voice:` section to `ux.yaml`
-3. [ ] Set `voice_id` in `ux.yaml` or `.env.{character}`
-4. [ ] Customize `intro_template` for character personality
-5. [ ] Add character-specific `trigger_keywords` if needed
-6. [ ] Set `enabled: true` when ready
-7. [ ] Test with various prompt types
+1. [x] Set `ENABLE_VOICE_RESPONSES=true` in `.env.{character}`
+2. [x] Add `ELEVENLABS_VOICE_ID` or set in `ux.yaml`
+3. [x] (Optional) Customize `intro_template` in `ux.yaml`
+4. [x] Test with natural language prompts ("send me a voice message", "say that out loud")
+
+**Note:** No `trigger_keywords` needed - the LLM handles intent detection automatically.
 
 ---
 
@@ -364,14 +411,7 @@ When adding voice to a new character:
 
 ```yaml
 voice:
-  enabled: true
   voice_id: "EXAVITQu4vr4xnSDxMaL"  # Soft, warm female voice
-  always_include: false
-  trigger_keywords:
-    - "tell me about"
-    - "how did you feel"
-    - "speak to me"
-    - "cuéntame"
   intro_template: "🔊 *Elena takes a breath... her voice carries across the waves...*\n\n🌊✨ *Elena speaks...*"
 ```
 
@@ -379,26 +419,19 @@ voice:
 
 ```yaml
 voice:
-  enabled: true
   voice_id: "pNInz6obpgDQGcFmaJgB"  # Warm male voice
-  always_include: false
-  trigger_keywords:
-    - "sing to me"
-    - "play something"
-    - "your voice"
   intro_template: "🎵 *Marcus clears his throat... the melody begins...*\n\n🎸✨ *Marcus sings...*"
 ```
 
-### NotTaylor (Parody - Disabled)
+### NotTaylor (Parody)
 
 ```yaml
 voice:
-  enabled: false  # Legal concerns with voice similarity
-  # voice_id: null
-  intro_template: "🎤 *I would definitely NOT sound like anyone famous...*"
+  intro_template: "🔊 *NotTaylor speaks...*"
+  # Uses ELEVENLABS_VOICE_ID from .env.nottaylor
 ```
 
 ---
 
 **Document maintained by:** WhisperEngine Team  
-**Last updated:** November 27, 2025
+**Last updated:** November 28, 2025

@@ -4,6 +4,8 @@
 **Status:** ✅ Complete (Nov 26, 2025)  
 **Depends On:** Phase B3 (Image Generation) ✅ Complete
 
+> **Note (v2.0):** Image *intent* detection (triggering image generation) is now handled by the `ComplexityClassifier` LLM. See [IMAGE_GENERATION.md](./completed/IMAGE_GENERATION.md). This document covers *enhancements* to the generation pipeline (portrait detection, iteration memory, etc.) which operate *after* intent is detected.
+
 ---
 
 ## Implementation Progress (Nov 26, 2025)

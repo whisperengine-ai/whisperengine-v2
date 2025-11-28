@@ -1,7 +1,7 @@
 # Phase B3: Image Generation (Visual Imagination)
 
 **Priority:** High | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** ✅ Complete
+**Status:** ✅ Complete (v2.0 - Nov 28, 2025)
 
 ## 🎯 Objective
 Give characters the ability to "imagine" and share images based on the conversation context. This adds a visual modality to their expression, allowing them to send "selfies", drawings, or visual representations of their thoughts.
@@ -11,69 +11,76 @@ Characters should not just be text generators. They should have a "mind's eye". 
 
 ## 🛠️ Technical Implementation
 
-### 1. Provider: Flux (via Replicate/Fal.ai/BFL)
-We will use the **Flux.1** model (Schnell or Pro) for high-quality image generation.
-- **Model:** `black-forest-labs/flux-1-schnell` (Fast, good quality) or `flux-1-pro` (Best quality)
-- **Integration:** HTTP API call to provider (Replicate, Fal.ai, or direct BFL API)
+### 1. Provider: Flux (via BFL API)
+We use the **Flux Pro 1.1** model for high-quality image generation.
+- **Model:** `flux-pro-1.1` (Best quality)
+- **Integration:** HTTP API call to BFL (Black Forest Labs)
 
-### 2. New Tool: `generate_image`
-A new tool available to the `AgentEngine` (specifically the Router or Reflective agent).
+### 2. Intent Detection (v2.0)
+Image generation is triggered via **LLM-based intent detection** in the `ComplexityClassifier`:
+
+```python
+# classifier.py returns structured output
+{
+    "complexity": "COMPLEX_MID",
+    "intents": ["image"]  # detected by LLM semantic analysis
+}
+```
+
+This replaces the old approach of relying on the Reflective Agent to detect image requests during tool selection. Now, intent is detected upfront and complexity is promoted to ensure tool access.
+
+**Key Change:** If "image" intent is detected but complexity was classified as "SIMPLE", the bot automatically promotes it to "COMPLEX_MID" to enable Reflective Mode (which has access to the `generate_image` tool).
+
+### 3. Tool: `generate_image`
+A tool available to the `ReflectiveAgent`.
 
 **Tool Definition:**
 ```python
 class GenerateImageTool(BaseTool):
     name = "generate_image"
-    description = "Generates an image based on a prompt. Use this when the user asks to see something, or when you want to show a visual representation of your thoughts. The prompt should be descriptive."
+    description = "Generates an image based on a prompt. Use this when the user asks to see something, or when you want to show a visual representation of your thoughts."
     
     async def _run(self, prompt: str, style: str = "photorealistic"):
         # ... implementation ...
 ```
 
-### 3. Prompt Engineering (The "Mind's Eye")
-The raw prompt from the user ("draw a sheep") is insufficient. We need to inject the character's **visual persona**.
+### 4. Prompt Engineering (The "Mind's Eye")
+The raw prompt from the user ("draw a sheep") is insufficient. We inject the character's **visual persona**.
 
 **Prompt Construction:**
 ```
 {character_visual_description} + {current_scene_context} + {user_prompt} + {style_modifiers}
 ```
 
-*Example:*
-User: "Send me a selfie"
-Constructed Prompt: "A photorealistic selfie of Elena, a 24-year-old woman with silver hair and cybernetic eyes, smiling softly in a dimly lit server room with neon blue accents. High quality, 8k, cinematic lighting."
-
-### 4. Discord Integration
+### 5. Discord Integration
 - The tool returns an image URL.
-- The bot downloads the image (or passes the URL if Discord supports it directly, but downloading + re-uploading is safer for persistence).
-- Sends as an attachment.
+- Images are cached in Redis with user_id as key
+- Bot extracts pending images and attaches them to Discord response
 
-## 📋 Implementation Steps
+## 📋 Implementation (v2.0)
 
-1.  **Settings & Config:**
-    - Add `FLUX_API_KEY` to `.env`
-    - Add `IMAGE_GEN_PROVIDER` (default: `replicate` or `fal`)
-    - Add `IMAGE_GEN_MODEL` (default: `flux-schnell`)
+**Intent Detection Flow:**
+```
+Message → ComplexityClassifier (LLM) → detected_intents["image"] → Promote to COMPLEX_MID → ReflectiveAgent → generate_image tool → Flux API → Discord
+```
 
-2.  **Image Service (`src_v2/image_gen/service.py`):**
-    - `ImageGenerator` class
-    - `generate(prompt: str) -> str` (returns URL)
-    - Error handling & retries
+**Feature Flag Gating:**
+- `ENABLE_IMAGE_GENERATION` (default: true) - controls whether intent detection includes "image"
+- If disabled, the classifier prompt doesn't ask for image intents
 
-3.  **Tool Creation (`src_v2/tools/image_tools.py`):**
-    - `GenerateImageTool`
-    - Integration with `AgentEngine`
-
-4.  **Character Config Update:**
-    - Add `visual_description` field to `character.md` or `character.yaml`.
-    - This is CRITICAL for consistent character appearance.
-
-5.  **Discord Output:**
-    - Handle image URLs in the response handler.
+**Daily Quota:**
+- `DAILY_IMAGE_QUOTA` (default: 5 per user per day)
+- Managed by `src_v2/core/quota.py`
 
 ## 💰 Cost Management
-- Flux generation costs money per image.
-- **Rate Limiting:** Max X images per user per day.
-- **Trust Gating:** Only users with Trust Score > 10 can request images (prevents abuse).
+- Flux generation costs ~$0.04 per image
+- **Daily Quota:** Max images per user per day (`DAILY_IMAGE_QUOTA`)
+- **Trust Gating:** Only users with Trust Score > threshold can request images (`IMAGE_GEN_MIN_TRUST`)
 
-## 📝 Notes
-- "Flux account" likely refers to an API key for a service hosting Flux. We need to confirm which one (Replicate, Fal, etc.).
-- We should support "style" presets (selfie, oil painting, sketch, cyberpunk).
+## 📁 Related Files
+- `src_v2/agents/classifier.py` - Intent detection (v2.0)
+- `src_v2/tools/image_tools.py` - `GenerateImageTool`
+- `src_v2/image_gen/service.py` - Flux API integration
+- `src_v2/core/quota.py` - Daily quota management
+- `src_v2/discord/bot.py` - Intent handling and complexity promotion
+- `docs/features/IMAGE_GENERATION_WORKFLOW.md` - Production learnings

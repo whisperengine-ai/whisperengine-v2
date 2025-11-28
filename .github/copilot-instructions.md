@@ -150,11 +150,21 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### Cognitive Engine
 - `src_v2/agents/engine.py`: `AgentEngine.generate_response()` - main entry for LLM responses
-- `src_v2/agents/classifier.py`: Fast complexity classification (simple/moderate/complex)
+- `src_v2/agents/classifier.py`: Complexity classification + **intent detection** (voice, image, search)
 - `src_v2/agents/reflective.py`: ReAct reasoning loop for complex queries (gated by `ENABLE_REFLECTIVE_MODE`)
 - `src_v2/agents/router.py`: Routes to appropriate tools (memory search, fact lookup, etc.)
 - `src_v2/agents/llm_factory.py`: Multi-model LLM setup (main + reflective + router)
 - `src_v2/agents/composite_tools.py`: Meta-tools that compose multiple tool calls (AnalyzeTopicTool)
+
+### Media Generation (Voice & Image)
+- `src_v2/voice/response.py`: `VoiceResponseManager` for TTS generation (ElevenLabs)
+- `src_v2/voice/tts.py`: `TTSManager` low-level ElevenLabs API wrapper
+- `src_v2/image_gen/service.py`: Image generation via BFL/Replicate/Fal
+- `src_v2/core/quota.py`: `QuotaManager` for daily per-user limits (separate for voice/image)
+
+**Intent Detection (v2.0):** Voice and image intents are detected by the `ComplexityClassifier` LLM, not regex/keywords. The classifier only asks for intents that are enabled:
+- `"voice"` intent: Only if `ENABLE_VOICE_RESPONSES=true`
+- `"image"` intent: Only if `ENABLE_IMAGE_GENERATION=true`
 
 ### Background Workers
 - `src_v2/workers/task_queue.py`: TaskQueue singleton wrapping arq for Redis job queue
@@ -290,6 +300,12 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - `ENABLE_RUNTIME_FACT_EXTRACTION` (default: true): Extract facts to Neo4j ($0.001 per message)
 - `ENABLE_PREFERENCE_EXTRACTION` (default: true): Detect "be concise" style hints
 - `ENABLE_PROACTIVE_MESSAGING` (default: false): Bot initiates contact (requires trust ≥ 20)
+- `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
+- `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
+
+**Quotas**:
+- `DAILY_IMAGE_QUOTA` (default: 5): Max images per user per day
+- `DAILY_AUDIO_QUOTA` (default: 10): Max audio clips per user per day
 
 **Environment loading order**: Env vars → `.env.{DISCORD_BOT_NAME}` → `.env.example` defaults
 
@@ -333,12 +349,16 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 1. **Discord Input**: `on_message()` → Validate → Store to history
 2. **Context Retrieval**: Parallel gather from Qdrant (memories) + Neo4j (facts) + Postgres (trust/prefs)
-3. **Complexity Check**: Fast embeddings-based classifier (60% trivial, bypass LLM)
+3. **Complexity + Intent Classification**: LLM classifier returns complexity level AND detected intents (voice, image, search)
 4. **Response Generation**: 
    - Simple: Direct LLM call with context
-   - Complex (reflective): ReAct loop with tools (search, lookup, etc.)
-5. **Post-Processing**: Extract facts/prefs (background), update trust, store response
-6. **Discord Output**: Send to channel, save to history
+   - Complex (reflective): ReAct loop with tools (search, lookup, image gen, etc.)
+   - If "image" intent detected: Complexity promoted to COMPLEX_MID (ensures tools available)
+5. **Post-Processing**: 
+   - If "voice" intent: Generate TTS audio via ElevenLabs
+   - If "image" in response: Attach generated images
+   - Extract facts/prefs (background), update trust, store response
+6. **Discord Output**: Send to channel with attachments, save to history
 
 ## 📊 Performance Optimization (Solo Dev Edition)
 
@@ -369,12 +389,6 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 ---
 
-**Version**: 2.2 (Nov 28, 2025 - Added API testing endpoints and regression suite)  
-**Python Target**: 3.12+  
-**Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`
-
----
-
-**Version**: 2.2 (Nov 28, 2025 - Added API testing endpoints and regression suite)  
+**Version**: 2.3 (Nov 28, 2025 - LLM-based intent detection for voice/image)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

@@ -156,15 +156,26 @@ self.loop.create_task(self._check_and_summarize(session_id, user_id))
 ### Phase 4: Response Generation (Cognitive Engine)
 **Location**: `src_v2/agents/engine.py:generate_response()`
 
-#### 4.1 Complexity Classification
-**Feature Flag**: `ENABLE_REFLECTIVE_MODE` (default: false)
+#### 4.1 Complexity Classification & Intent Detection
+**Feature Flag**: Always runs (even if `ENABLE_REFLECTIVE_MODE=false`)
+
 ```python
-if settings.ENABLE_REFLECTIVE_MODE:
-    complexity = await classifier.classify(user_message, chat_history)
-    # Returns: "SIMPLE" | "MODERATE" | "COMPLEX"
-    # Model: gpt-4o-mini (fast/cheap)
+complexity, detected_intents = await classifier.classify(user_message, chat_history)
+# Returns: 
+#   complexity: "SIMPLE" | "COMPLEX_LOW" | "COMPLEX_MID" | "COMPLEX_HIGH" | "MANIPULATION"
+#   detected_intents: ["voice", "image", "search"]  # based on enabled features
 ```
-**Cost**: 1 extra LLM call per message (if enabled)
+
+**Intent Detection** (v2.0 - November 2025):
+The classifier uses LangChain structured output to detect intents alongside complexity:
+- `"voice"`: Only detected if `ENABLE_VOICE_RESPONSES=true`
+- `"image"`: Only detected if `ENABLE_IMAGE_GENERATION=true`  
+- `"search"`: Always available
+
+This replaces the old regex-based trigger detection (e.g., `VoiceTriggerDetector`).
+
+**Model**: `gpt-4o-mini` via router mode (fast/cheap)  
+**Cost**: 1 extra LLM call per message
 
 #### 4.2 System Prompt Construction
 **Base Layers**:
@@ -235,7 +246,34 @@ response = await llm.ainvoke(messages)
 ### Phase 5: Response Post-Processing
 **Location**: `src_v2/discord/bot.py:on_message()` (lines 420-550)
 
-#### 5.1 Stats Footer Generation (Optional)
+#### 5.1 Voice Response Generation (Intent-Based)
+**Feature Flag**: `ENABLE_VOICE_RESPONSES`
+```python
+if settings.ENABLE_VOICE_RESPONSES and "voice" in detected_intents:
+    voice_file = await voice_response_manager.generate_voice_response(
+        text=response_text,
+        character=character,
+        user_id=user_id
+    )
+    # Attaches MP3 file to Discord message
+```
+**Process** (`src_v2/voice/response.py`):
+1. Check user quota (`DAILY_AUDIO_QUOTA`)
+2. Generate TTS via ElevenLabs
+3. Attach as Discord file
+
+**Trigger**: LLM intent detection (replaces old regex/keyword matching)
+
+#### 5.2 Image Attachment (Intent-Based)
+**Feature Flag**: `ENABLE_IMAGE_GENERATION`
+```python
+if "image" in detected_intents:
+    # Complexity already promoted to COMPLEX_MID for tool access
+    # Image generated via ReflectiveAgent tools
+response_text, image_files = await extract_pending_images(response_text, user_id)
+```
+
+#### 5.3 Stats Footer Generation (Optional)
 ```python
 if await stats_footer.is_enabled_for_user(user_id, character_name):
     footer_text = await stats_footer.generate_footer(
@@ -245,40 +283,33 @@ if await stats_footer.is_enabled_for_user(user_id, character_name):
 ```
 **Shows**: Relationship level, active goals, memory count, insights, performance
 
-#### 5.2 Message Chunking
+#### 5.4 Message Chunking
 ```python
 message_chunks = self._chunk_message(full_response, max_length=2000)
 # Splits on sentence boundaries if >2000 chars (Discord limit)
 ```
 
-#### 5.3 Send & Save Response
+#### 5.5 Send & Save Response
 ```python
 for chunk in message_chunks:
-    sent_msg = await message.channel.send(chunk)
+    sent_msg = await message.channel.send(chunk, files=files)
 
 await memory_manager.add_message(user_id, character_name, 'ai', response, channel_id, message_id)
 ```
 **Storage**: PostgreSQL + Qdrant (same as user message)
 
-#### 5.4 Goal Analysis (Fire-and-Forget)
+#### 5.6 Goal Analysis (Fire-and-Forget)
 ```python
 interaction_text = f"User: {user_message}\nAI: {response}"
 self.loop.create_task(goal_analyzer.check_goals(user_id, character_name, interaction_text))
 ```
 **Process**: Checks if interaction made progress toward active goal
 
-#### 5.5 Trust Update (Engagement Reward)
+#### 5.7 Trust Update (Engagement Reward)
 ```python
 self.loop.create_task(trust_manager.update_trust(user_id, character_name, +1))
 ```
 **Effect**: Small trust increase for every positive interaction
-
-#### 5.6 Voice Playback (If Connected)
-```python
-if message.guild.voice_client and voice_client.is_connected():
-    await play_text(voice_client, response)
-```
-**TTS**: ElevenLabs API (if configured)
 
 ---
 

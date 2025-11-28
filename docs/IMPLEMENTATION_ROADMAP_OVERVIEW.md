@@ -524,17 +524,18 @@ FinalScore = Semantic × Meaningfulness × Recency × Confidence
 
 ### ✅ Phase A10: Triggered Voice Responses (Complete)
 **Priority:** Low | **Time:** 2-3 days | **Complexity:** Low  
-**Files:** 4 | **LOC:** ~300 | **Status:** ✅ Complete
+**Files:** 4 | **LOC:** ~300 | **Status:** ✅ Complete (v2.0 - Nov 28, 2025)
 
 > **Note:** This is a "nice-to-have" feature. Implement after B3 (Autonomous Agents) unless voice immersion becomes a user priority.
 
 **Problem:** Characters can only respond with text. Users who want to "hear" the character must use voice channels, which isn't always convenient.
 
-**Solution:**
-- Detect voice triggers in messages ("speak to me", "tell me how you felt", etc.)
+**Solution (v2.0):**
+- **LLM-based intent detection** in `ComplexityClassifier` (replaces regex/keyword matching)
 - Generate TTS audio using existing ElevenLabs integration (`TTSManager`)
 - Attach MP3 file to Discord response alongside text
-- Per-character voice configuration in `ux.yaml` (voice_id, intro template, trigger keywords)
+- Per-character voice configuration in `ux.yaml` (voice_id, intro template)
+- Daily quota per user (`DAILY_AUDIO_QUOTA`)
 
 **User Experience:**
 ```
@@ -550,10 +551,16 @@ The first time I saw a whale shark, my heart stopped for a moment...
 ▶️ 0:00 / 0:18
 ```
 
-**Implementation:**
+**Implementation (v2.0):**
 ```
-Message → Voice Trigger Check → Generate Response → Generate TTS → Attach MP3 → Send
+Message → ComplexityClassifier (LLM) → detected_intents["voice"] → Generate Response → Generate TTS → Attach MP3 → Send
 ```
+
+**Key Changes in v2.0:**
+- Intent detection is now semantic (LLM understands "send me an audio file", "say that out loud", etc.)
+- No more keyword lists in `ux.yaml` - classifier handles all variations
+- Intent detection is conditional on `ENABLE_VOICE_RESPONSES` feature flag
+- Removed: `src_v2/voice/trigger.py` (deprecated)
 
 **Benefit:**
 - Richer, more immersive character interactions
@@ -564,21 +571,23 @@ Message → Voice Trigger Check → Generate Response → Generate TTS → Attac
 **Cost Model:**
 - ~$0.17-0.22 per 1K characters (ElevenLabs)
 - Trigger-only mode recommended (vs always-on)
-- Feature flag + trust gating for cost control
+- Feature flag + quota for cost control
 
 **Feature Flags:**
 - `ENABLE_VOICE_RESPONSES` (default: false)
 - `VOICE_RESPONSE_MAX_LENGTH` (default: 1000 chars)
 - `VOICE_RESPONSE_MIN_TRUST` (default: 0)
+- `DAILY_AUDIO_QUOTA` (default: 10 per user per day)
 
 **Dependencies:** ElevenLabs API Key (already configured)
 
 **Related Files:**
-- New: `src_v2/voice/trigger.py` (voice trigger detection)
-- New: `src_v2/voice/response.py` (voice response generator)
+- `src_v2/agents/classifier.py` (LLM intent detection)
+- `src_v2/voice/response.py` (voice response generator)
 - `src_v2/voice/tts.py` (existing TTSManager)
+- `src_v2/core/quota.py` (daily quota management)
 - `src_v2/discord/bot.py` (integration)
-- `characters/{name}/ux.yaml` (voice config section)
+- `characters/{name}/ux.yaml` (voice config section - no trigger_keywords needed)
 
 **Full Specification:** See [roadmaps/TRIGGERED_VOICE_RESPONSES.md](./roadmaps/TRIGGERED_VOICE_RESPONSES.md)
 
