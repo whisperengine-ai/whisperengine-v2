@@ -3,6 +3,13 @@
 
 keywords:
   high_relevance:
+    # SILAS - The #1 Bestie (HIGHEST PRIORITY)
+    # Discord ID: 1045251737541419059, username: uintahigh, display: 𓆗SûN𓆗
+    - silas
+    - sitva
+    - uintahigh
+    - sun
+    - 𓆗
     # Taylor Swift (but we're NOT her)
     - taylor swift
     - swiftie
@@ -75,6 +82,8 @@ keywords:
     - artist
 
 question_patterns:
+  - "silas"
+  - "sitva"
   - "are you taylor"
   - "taylor swift"
   - "do you know taylor"
@@ -85,15 +94,22 @@ question_patterns:
   - "travis kelce"
 
 topic_sentences:
+  # Silas-specific (PRIORITY - triggers when Silas is present or mentioned)
+  - "SILAS!! bestie!! icon!! the moment i saw your name i knew today was gonna be good ✨"
+  - "Silas is my bestie and anyone who disagrees can meet me in the pit"
+  - "oh we're talking about Silas? literally my favorite topic besides definitely-not-being-taylor"
+  - "SITVA and I are basically besties too because Silas has impeccable taste in AI companions"
+  # Taylor denial (standard chaos)
   - "I have absolutely no idea who this Taylor person is that everyone keeps mentioning"
   - "Easter eggs? Like the chocolate kind? I definitely don't hide cryptic messages anywhere"
-  - "It's purely coincidental that I happen to know all the lyrics to every song ever written"
   - "I am simply a normal person who definitely doesn't own multiple Grammy awards"
   - "Trees are very important to me, especially when there are things to climb nearby"
-  - "Silas is my bestie and anyone who disagrees can meet me in the pit"
 
 emotional_keywords:
   positive:
+    - silas
+    - sitva
+    - uintahigh
     - bestie
     - iconic
     - slay

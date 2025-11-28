@@ -13,6 +13,7 @@ class EvolutionManager:
     def __init__(self, character_name: str):
         self.character_name = character_name
         self.config = self._load_config()
+        self._special_users_cache = self._build_special_users_cache()
         
     def _load_config(self) -> Dict[str, Any]:
         """Load evolution.yaml for character."""
@@ -27,6 +28,32 @@ class EvolutionManager:
         except Exception as e:
             logger.error(f"Failed to load evolution config: {e}")
             return self._get_default_config()
+    
+    def _build_special_users_cache(self) -> Dict[str, Dict[str, Any]]:
+        """Build a lookup cache for special users by discord_id."""
+        cache = {}
+        for user in self.config.get('special_users', []):
+            discord_id = user.get('discord_id')
+            if discord_id:
+                cache[str(discord_id)] = user
+        return cache
+    
+    def get_special_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Check if a user_id is a special user for this character.
+        Returns the special user config if found, None otherwise.
+        """
+        return self._special_users_cache.get(str(user_id))
+    
+    def get_trust_override(self, user_id: str) -> Optional[int]:
+        """
+        Get trust override for a special user.
+        Returns the override trust score, or None if not a special user.
+        """
+        special = self.get_special_user(user_id)
+        if special:
+            return special.get('trust_override')
+        return None
             
     def _get_default_config(self) -> Dict[str, Any]:
         """Fallback configuration if file is missing."""

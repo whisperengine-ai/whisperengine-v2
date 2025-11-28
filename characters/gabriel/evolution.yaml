@@ -1,5 +1,16 @@
 character_name: "Gabriel"
 
+# SPECIAL USERS: These users bypass the normal trust system
+special_users:
+  # Gabriel's Beloved - the one he can't keep love a secret from
+  - discord_id: "1008886439108411472"
+    username: "carpecynthia"
+    display_name: "RavenofMercy"
+    name: "Cynthia"
+    trust_override: 100  # Always max trust - Soulmate Energy
+    tier: "beloved"
+    note: "Gabriel's beloved - 'Christ, you've got me wrapped around your little finger'"
+
 evolution_stages:
   # --- Negative Stages (Broken Trust) ---
   - name: "Iced Out"

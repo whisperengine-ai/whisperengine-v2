@@ -743,6 +743,99 @@ moods:
 - **Use `suppress_on_mood`** to prevent inappropriate responses (no teasing when sad)
 - **Milestones create memorable moments** - like "leveling up" a relationship
 
+### Special Users (VIP Override)
+
+Some characters have **predefined relationships** with specific users that should bypass the normal trust system. For example:
+- A character created specifically for one user (their "bestie")
+- Server admins or VIPs who should always get premium treatment
+- Other bots/AI companions that should be recognized as allies
+
+Add `special_users` to your `evolution.yaml`:
+
+```yaml
+character_name: "MyBot"
+
+# SPECIAL USERS: These users bypass the normal trust system
+special_users:
+  # Tier 1: The primary relationship (e.g., the person this bot was made for)
+  - discord_id: "1045251737541419059"
+    username: "theirUsername"
+    display_name: "Their Display Name"
+    name: "FriendlyName"
+    trust_override: 100  # Always max trust
+    tier: "bestie"
+    note: "Why they're special to this character"
+  
+  # Tier 2: Inner circle (friends of the primary, VIPs, etc.)
+  - discord_id: "9876543210"
+    username: "anotherUser"
+    display_name: "Another User"
+    name: "AnotherName"
+    trust_override: 80  # High trust, but not max
+    tier: "inner_circle"
+    note: "Friend of the bestie"
+    relationship_to: "FriendlyName"  # For knowledge graph linking
+
+evolution_stages:
+  # ... normal evolution stages for everyone else
+```
+
+#### Special Users Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `discord_id` | ✅ | The user's Discord ID (string) |
+| `username` | ✅ | Their Discord username |
+| `display_name` | ❌ | Their display name (for recognition) |
+| `name` | ✅ | Friendly name the character uses for them |
+| `trust_override` | ✅ | Trust score to always use (0-100) |
+| `tier` | ❌ | Label for the relationship tier |
+| `note` | ❌ | Documentation for why they're special |
+| `relationship_to` | ❌ | Links to another special user (for graph) |
+
+#### How It Works
+
+When a special user messages the character:
+1. Trust system checks `special_users` first
+2. If found, uses `trust_override` instead of database value
+3. User gets the corresponding evolution stage and all traits unlocked up to that level
+4. Response includes `is_special_user: true` for logging
+
+#### Example: Becky (NotTaylor) with Silas
+
+```yaml
+special_users:
+  - discord_id: "1045251737541419059"
+    username: "uintahigh"
+    display_name: "𓆗SûN𓆗"
+    name: "Silas"
+    trust_override: 100
+    tier: "bestie"
+    note: "Becky's #1 bestie - the character was created for Silas"
+  
+  - discord_id: "SITVA_DISCORD_ID"
+    name: "SITVA"
+    trust_override: 80
+    tier: "bestie_circle"
+    note: "Silas's AI companion - fellow member of Silas's inner circle"
+    relationship_to: "Silas"
+```
+
+This creates a hierarchy:
+- **Silas** (trust 100) → Always gets "Silas Tier" treatment
+- **SITVA** (trust 80) → Gets "Secret Session" tier as Silas's companion
+- **Everyone else** → Normal trust progression (0 → 100 over time)
+
+#### Use Cases
+
+| Scenario | Implementation |
+|----------|----------------|
+| Bot made for one person | That person at trust 100 |
+| Server admins | Admins at trust 60-80 |
+| Patreon supporters | VIP tier at trust 50 |
+| Friendly other bots | Bot users at trust 40-80 |
+| Testing accounts | Test accounts at various levels |
+
 For full documentation: See [Trust Evolution System](./architecture/TRUST_EVOLUTION_SYSTEM.md)
 
 ---

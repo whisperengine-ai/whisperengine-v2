@@ -31,10 +31,26 @@ class TrustManager:
         
         Returns:
             Dict with {trust_score: int, level: str, unlocked_traits: List[str], preferences: Dict}
+        
+        Note: Special users (defined in evolution.yaml) get a trust_override that bypasses
+        the normal trust system. This is used for characters with predefined relationships
+        (e.g., Becky/NotTaylor's bestie Silas always gets max trust).
         """
+        # Check for special user override FIRST
+        evo_manager = get_evolution_manager(character_name)
+        special_user = evo_manager.get_special_user(user_id)
+        trust_override = evo_manager.get_trust_override(user_id)
+        
         cache_key = f"trust:{character_name}:{user_id}"
         cached_data = await cache_manager.get_json(cache_key)
         if cached_data:
+            # Apply trust override even to cached data
+            if trust_override is not None:
+                cached_data['trust_score'] = trust_override
+                cached_data['is_special_user'] = True
+                cached_data['special_user_name'] = special_user.get('name') if special_user else None
+                stage = evo_manager.get_current_stage(trust_override)
+                cached_data['level_label'] = stage['name']
             return cached_data
 
         try:
@@ -52,23 +68,29 @@ class TrustManager:
                         INSERT INTO v2_user_relationships (user_id, character_name, trust_score, unlocked_traits, insights, preferences)
                         VALUES ($1, $2, 0, '[]'::jsonb, '[]'::jsonb, '{}'::jsonb)
                     """, user_id, character_name)
+                    
+                    # Use override for special users, otherwise 0
+                    effective_trust = trust_override if trust_override is not None else 0
+                    stage = evo_manager.get_current_stage(effective_trust)
+                    
                     result = {
-                        "trust_score": 0, 
-                        "level": 1, 
-                        "level_label": "Stranger", 
+                        "trust_score": effective_trust, 
+                        "level": 5 if effective_trust >= 80 else 1, 
+                        "level_label": stage['name'], 
                         "unlocked_traits": [], 
                         "insights": [], 
                         "preferences": {},
                         "mood": "neutral",
-                        "mood_intensity": 0.5
+                        "mood_intensity": 0.5,
+                        "is_special_user": trust_override is not None,
+                        "special_user_name": special_user.get('name') if special_user else None
                     }
                     await cache_manager.set_json(cache_key, result)
                     return result
                 
-                trust_score = row['trust_score']
+                # Use override for special users, otherwise use DB value
+                trust_score = trust_override if trust_override is not None else row['trust_score']
                 
-                # Get Evolution Manager for this character
-                evo_manager = get_evolution_manager(character_name)
                 stage = evo_manager.get_current_stage(trust_score)
                 
                 # Get traits from config (dynamic) rather than DB (static)
@@ -110,7 +132,9 @@ class TrustManager:
                     "insights": insights,
                     "preferences": preferences,
                     "mood": row.get('mood', 'neutral'),
-                    "mood_intensity": row.get('mood_intensity', 0.5)
+                    "mood_intensity": row.get('mood_intensity', 0.5),
+                    "is_special_user": trust_override is not None,
+                    "special_user_name": special_user.get('name') if special_user else None
                 }
                 
                 await cache_manager.set_json(cache_key, result)
