@@ -630,23 +630,23 @@ class WhisperBot(commands.Bot):
                         await message.channel.send("I didn't catch that. Could you say that again?")
                     return
                 
-                    # Check for Forced Reflective Mode via bang command
-                    force_reflective = False
-                    if user_message.startswith("!reflect"):
-                        if settings.ENABLE_REFLECTIVE_MODE:
-                            cleaned_content = user_message.replace("!reflect", "", 1).strip()
-                            
-                            # Edge Case: User typed "!reflect" but no message and no reply
-                            if not cleaned_content and not message.reference:
-                                await message.channel.send("ℹ️ Usage: `!reflect <your question>` or reply to a message with `!reflect`.")
-                                return
-                                
-                            user_message = cleaned_content or user_message
-                            force_reflective = True
-                            logger.info(f"User {user_id} forced Reflective Mode via !reflect")
-                        else:
-                            await message.channel.send("⚠️ Reflective Mode is currently disabled in settings.")
+                # Check for Forced Reflective Mode via bang command
+                force_reflective = False
+                if user_message.startswith("!reflect"):
+                    if settings.ENABLE_REFLECTIVE_MODE:
+                        cleaned_content = user_message.replace("!reflect", "", 1).strip()
+                        
+                        # Edge Case: User typed "!reflect" but no message and no reply
+                        if not cleaned_content and not message.reference:
+                            await message.channel.send("ℹ️ Usage: `!reflect <your question>` or reply to a message with `!reflect`.")
                             return
+                            
+                        user_message = cleaned_content or user_message
+                        force_reflective = True
+                        logger.info(f"User {user_id} forced Reflective Mode via !reflect")
+                    else:
+                        await message.channel.send("⚠️ Reflective Mode is currently disabled in settings.")
+                        return
                 
                 # Early validation: Check message length (Discord limit)
                 if user_message:
