@@ -63,12 +63,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|--------|
 | 1 | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
 | 2 | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
-| 3 | E2 | Character Diary & Reflection | 3-4 days | 📋 Proposed |
-| 4 | E3 | Dream Sequences | 3 days | 📋 Proposed |
+| 3 | E3 | Dream Sequences | 3 days | 📋 Proposed |
 | — | E1 | Conversation Threading | — | ✅ Complete |
+| — | E2 | Character Diary & Reflection | — | ✅ Complete |
 | — | E4 | Relationship Milestones | — | ✅ Complete |
 
-> **Current Focus:** All core phases complete. E1 (Conversation Threading) and E4 (Relationship Milestones) implemented. **Next:** Remaining Phase E items (E2, E3, E5, E6).
+> **Current Focus:** All core phases complete. E1, E2, E4 implemented. **Next:** E3 (Dream Sequences), E5 (Scheduled Reminders), E6 (Character-to-Character).
 
 ---
 
@@ -1173,12 +1173,20 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [CONVERSATION_THREADING.md](./roadmaps/CONVERSATION_THREADING.md)
 
-### 📋 Phase E2: Character Diary & Reflection
-**Priority:** Medium | **Time:** 3-4 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+### ✅ Phase E2: Character Diary & Reflection
+**Priority:** — | **Time:** 3-4 days | **Complexity:** Medium
+**Status:** ✅ Complete (Nov 28, 2025)
 
 **Problem:** Characters feel "frozen" between sessions.
 **Solution:** Nightly worker generates a private diary entry synthesizing the day's interactions.
+
+**Implementation:**
+- `src_v2/memory/diary.py` - `DiaryManager` with LLM-powered diary generation
+- `src_v2/workers/worker.py` - `run_diary_generation` task + nightly cron job
+- `src_v2/agents/engine.py` - `_get_diary_context()` injects latest diary into system prompt
+- `src_v2/memory/manager.py` - `get_summaries_since()` for fetching day's sessions
+- Feature flags: `ENABLE_CHARACTER_DIARY`, `DIARY_MIN_SESSIONS`, `DIARY_GENERATION_HOUR_UTC`
+
 **Spec:** [CHARACTER_DIARY.md](./roadmaps/CHARACTER_DIARY.md)
 
 ### 📋 Phase E3: Dream Sequences

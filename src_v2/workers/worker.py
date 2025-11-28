@@ -10,6 +10,7 @@ Supported tasks:
 - Summarization: Session summary generation (post-session)
 - Reflection: User pattern analysis across sessions
 - Knowledge Extraction: Fact extraction to Neo4j (offloaded from response pipeline)
+- Diary Generation: Nightly character diary entries (Phase E2)
 
 Usage:
     python -m src_v2.workers.worker
@@ -160,6 +161,123 @@ async def run_summarization(
             "success": False,
             "error": str(e),
             "session_id": session_id
+        }
+
+
+async def run_diary_generation(
+    ctx: Dict[str, Any],
+    character_name: str
+) -> Dict[str, Any]:
+    """
+    Generate a daily diary entry for a character (Phase E2).
+    
+    This task synthesizes the day's session summaries into a private diary entry
+    that gives the character a sense of inner life and temporal continuity.
+    
+    Args:
+        ctx: arq context
+        character_name: Bot character name (e.g., "elena")
+        
+    Returns:
+        Dict with success status and diary summary
+    """
+    if not settings.ENABLE_CHARACTER_DIARY:
+        return {"success": False, "reason": "disabled"}
+    
+    logger.info(f"Generating diary entry for {character_name}")
+    
+    try:
+        from src_v2.memory.diary import get_diary_manager
+        from src_v2.memory.manager import MemoryManager
+        from src_v2.core.behavior import load_behavior_profile
+        
+        diary_manager = get_diary_manager(character_name)
+        memory_manager = MemoryManager(bot_name=character_name)
+        
+        # Check if diary already exists for today
+        if await diary_manager.has_diary_for_today():
+            logger.info(f"Diary already exists for {character_name} today, skipping")
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "already_exists",
+                "character_name": character_name
+            }
+        
+        # Get today's summaries
+        summaries = await memory_manager.get_summaries_since(hours=24, limit=30)
+        
+        if len(summaries) < settings.DIARY_MIN_SESSIONS:
+            logger.info(f"Not enough sessions for {character_name} diary (have {len(summaries)}, need {settings.DIARY_MIN_SESSIONS})")
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "insufficient_sessions",
+                "session_count": len(summaries),
+                "character_name": character_name
+            }
+        
+        # Get character context for diary writing
+        # Load from core.yaml (behavior system) - provides purpose, drives, constitution
+        character_context = ""
+        try:
+            character_dir = f"characters/{character_name}"
+            behavior = load_behavior_profile(character_dir)
+            if behavior:
+                character_context = behavior.to_prompt_section()
+        except Exception:
+            pass
+        
+        if not character_context:
+            character_context = f"You are {character_name.title()}."
+        
+        # Extract unique user names from summaries
+        user_names = list(set(
+            s.get("user_id", "someone")[:8] + "..."  # Truncate user IDs for privacy
+            for s in summaries
+        ))
+        
+        # Generate diary entry
+        entry = await diary_manager.generate_diary_entry(
+            summaries=summaries,
+            character_context=character_context,
+            user_names=user_names
+        )
+        
+        if not entry:
+            logger.warning(f"Failed to generate diary entry for {character_name}")
+            return {
+                "success": False,
+                "error": "generation_failed",
+                "character_name": character_name
+            }
+        
+        # Save to Qdrant
+        point_id = await diary_manager.save_diary_entry(entry)
+        
+        if point_id:
+            logger.info(f"Diary entry saved for {character_name}: mood={entry.mood}, themes={entry.themes}")
+            return {
+                "success": True,
+                "character_name": character_name,
+                "mood": entry.mood,
+                "themes": entry.themes,
+                "notable_users": entry.notable_users,
+                "point_id": point_id
+            }
+        else:
+            return {
+                "success": False,
+                "error": "save_failed",
+                "character_name": character_name
+            }
+        
+    except Exception as e:
+        logger.error(f"Diary generation failed for {character_name}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "character_name": character_name
         }
 
 
@@ -531,6 +649,83 @@ async def run_gossip_dispatch(
         }
 
 
+async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Cron job that generates diary entries for all active characters.
+    
+    Runs nightly at the configured hour (default 4 AM UTC).
+    Scans the characters/ directory for available characters and
+    triggers diary generation for each one.
+    """
+    if not settings.ENABLE_CHARACTER_DIARY:
+        logger.info("Character diary feature disabled, skipping nightly generation")
+        return {"success": False, "reason": "disabled"}
+    
+    logger.info("Starting nightly diary generation for all characters")
+    
+    try:
+        from pathlib import Path
+        
+        # Scan characters directory for available characters
+        characters_dir = Path("characters")
+        if not characters_dir.exists():
+            logger.warning("Characters directory not found")
+            return {"success": False, "error": "no_characters_dir"}
+        
+        # Get all character names (subdirectories with character.md)
+        character_names = []
+        for char_dir in characters_dir.iterdir():
+            if char_dir.is_dir() and (char_dir / "character.md").exists():
+                character_names.append(char_dir.name)
+        
+        if not character_names:
+            logger.info("No characters found for diary generation")
+            return {"success": True, "processed": 0}
+        
+        logger.info(f"Found {len(character_names)} characters for diary generation: {character_names}")
+        
+        # Generate diary for each character
+        results = []
+        for char_name in character_names:
+            try:
+                result = await run_diary_generation(ctx, character_name=char_name)
+                results.append({
+                    "character": char_name,
+                    "success": result.get("success", False),
+                    "skipped": result.get("skipped", False),
+                    "reason": result.get("reason")
+                })
+            except Exception as e:
+                logger.error(f"Diary generation failed for {char_name}: {e}")
+                results.append({
+                    "character": char_name,
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        successful = sum(1 for r in results if r.get("success") and not r.get("skipped"))
+        skipped = sum(1 for r in results if r.get("skipped"))
+        failed = sum(1 for r in results if not r.get("success"))
+        
+        logger.info(f"Nightly diary generation complete: {successful} generated, {skipped} skipped, {failed} failed")
+        
+        return {
+            "success": True,
+            "processed": len(character_names),
+            "generated": successful,
+            "skipped": skipped,
+            "failed": failed,
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Nightly diary generation failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 # Worker configuration for arq
 class WorkerSettings:
     """arq worker settings."""
@@ -549,6 +744,18 @@ class WorkerSettings:
         run_relationship_update,
         run_goal_strategist,
         run_gossip_dispatch,
+        run_diary_generation,  # Phase E2: Character Diary
+    ]
+    
+    # Cron jobs (scheduled tasks)
+    cron_jobs = [
+        # Generate diaries for all active characters nightly at 4 AM UTC
+        cron(
+            run_nightly_diary_generation,
+            hour={settings.DIARY_GENERATION_HOUR_UTC},
+            minute={0},
+            run_at_startup=False  # Don't run immediately on worker start
+        ),
     ]
     
     # Startup/shutdown hooks

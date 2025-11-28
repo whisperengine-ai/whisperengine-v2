@@ -647,6 +647,12 @@ class AgentEngine:
                 system_content += goal_context
                 logger.debug(f"Injected goal: {top_goal['slug']}" + (" with strategy" if top_goal.get('current_strategy') else ""))
 
+            # 2.6.5 Inject Diary Context (Phase E2) - Your recent thoughts and feelings
+            if settings.ENABLE_CHARACTER_DIARY:
+                diary_context = await self._get_diary_context(character.name)
+                if diary_context:
+                    system_content += diary_context
+
             # 2.7 Inject Knowledge Graph Context
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
             system_content += knowledge_context
@@ -764,6 +770,33 @@ class AgentEngine:
         except Exception as e:
             logger.error(f"Failed to inject knowledge context: {e}")
         return context
+
+    async def _get_diary_context(self, char_name: str) -> str:
+        """Retrieves the character's most recent diary entry for context.
+        
+        Phase E2: Character Diary & Reflection
+        The diary provides the character with a sense of inner life and 
+        temporal continuity between sessions.
+        
+        Args:
+            char_name: Character name
+            
+        Returns:
+            Formatted diary context string, or empty string if no diary
+        """
+        try:
+            from src_v2.memory.diary import get_diary_manager
+            
+            diary_manager = get_diary_manager(char_name)
+            entry = await diary_manager.get_latest_diary()
+            
+            if entry:
+                return diary_manager.format_diary_context(entry)
+            
+        except Exception as e:
+            logger.debug(f"Failed to get diary context for {char_name}: {e}")
+        
+        return ""
 
     async def _run_reflective_mode(
         self, 

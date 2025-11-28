@@ -166,6 +166,11 @@ class Settings(BaseSettings):
     VOICE_RESPONSE_MAX_LENGTH: int = 1000
     VOICE_RESPONSE_MIN_TRUST: int = 0
 
+    # --- Character Diary (Phase E2) ---
+    ENABLE_CHARACTER_DIARY: bool = True  # Generate nightly diary entries for characters
+    DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
+    DIARY_GENERATION_HOUR_UTC: int = 4  # Hour (UTC) when diary is generated (default: 4 AM)
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

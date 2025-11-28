@@ -560,5 +560,69 @@ class MemoryManager:
             logger.error(f"Failed to search reasoning traces: {e}")
             return []
 
+    async def get_summaries_since(self, hours: int = 24, limit: int = 50, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get all summaries from the last N hours (for diary generation).
+        
+        Unlike search_summaries, this doesn't filter by user - it gets all summaries
+        for this character/bot to synthesize into a daily diary.
+        
+        Args:
+            hours: How many hours back to look (default 24)
+            limit: Maximum number of summaries to return
+            collection_name: Override collection name
+            
+        Returns:
+            List of summary payloads with user_id, content, emotions, topics, etc.
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        collection = collection_name or self.collection_name
+        
+        try:
+            # Calculate threshold timestamp
+            threshold = datetime.datetime.now() - datetime.timedelta(hours=hours)
+            threshold_iso = threshold.isoformat()
+            
+            # Scroll through all summaries (no embedding query, just filter)
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=collection,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="summary"))
+                    ]
+                ),
+                limit=limit * 2,  # Fetch extra for date filtering
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            # Filter by timestamp (Qdrant doesn't support date range in scroll easily)
+            summaries = []
+            for point in results[0]:
+                payload = point.payload
+                if payload:
+                    ts = payload.get("timestamp", "")
+                    if ts >= threshold_iso:
+                        summaries.append({
+                            "user_id": payload.get("user_id"),
+                            "content": payload.get("content", ""),
+                            "emotions": payload.get("emotions", []),
+                            "topics": payload.get("topics", []),
+                            "meaningfulness_score": payload.get("meaningfulness_score", 3),
+                            "timestamp": ts
+                        })
+            
+            # Sort by timestamp descending
+            summaries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            
+            logger.debug(f"Found {len(summaries)} summaries in last {hours} hours")
+            return summaries[:limit]
+            
+        except Exception as e:
+            logger.error(f"Failed to get recent summaries: {e}")
+            return []
+
 # Global instance
 memory_manager = MemoryManager()
