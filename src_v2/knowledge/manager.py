@@ -24,6 +24,8 @@ class KnowledgeManager:
             ("system", """You are an expert Neo4j Cypher developer.
 Your task is to convert a natural language question into a Cypher query to retrieve information about a user OR the AI character.
 
+CRITICAL: You MUST output ONLY a valid Cypher query or RETURN "NO_ANSWER". Never output explanations, conversations, or prose.
+
 SCHEMA:
 - Nodes: 
     - (:User {{id: $user_id}})
@@ -56,8 +58,10 @@ RULES:
 - Do NOT include markdown formatting (```cypher). Just the raw query.
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').
 - For "hobbies" or "interests", ALWAYS check for 'LIKES', 'LOVES', 'ENJOYS'.
-- If the question cannot be answered by the schema (e.g. asking for chat history, weather, time, or general knowledge), return exactly: RETURN "NO_ANSWER"
+- If the question is about general knowledge (songs, movies, history, celebrities, facts about the world), return exactly: RETURN "NO_ANSWER"
+- If the question cannot be answered by the schema (e.g. asking for chat history, weather, time), return exactly: RETURN "NO_ANSWER"
 - Do NOT use UNION queries. Instead, use a single MATCH with OR conditions or multiple patterns separated by commas.
+- NEVER respond with a conversational message. Only output Cypher or RETURN "NO_ANSWER".
 
 {privacy_instructions}
 """),
@@ -206,9 +210,15 @@ PRIVACY RESTRICTION ENABLED:
 
             # Basic validation: Ensure it starts with a valid Cypher keyword
             valid_starts = ["MATCH", "CALL", "RETURN", "WITH", "OPTIONAL MATCH"]
-            if not any(cypher_query.upper().startswith(keyword) for keyword in valid_starts):
-                logger.warning(f"LLM generated invalid Cypher: {cypher_query}")
-                return "Could not generate a valid graph query."
+            cypher_upper = cypher_query.upper()
+            if not any(cypher_upper.startswith(keyword) for keyword in valid_starts):
+                # Detect conversational responses (LLM hallucinating instead of returning Cypher)
+                # These typically contain sentence-ending punctuation or are too long for a query
+                if len(cypher_query) > 200 or any(marker in cypher_query for marker in ['. ', '? ', '! ', 'I understand', 'Would you like']):
+                    logger.debug(f"LLM returned conversational response instead of Cypher (question: {question[:50]}...)")
+                else:
+                    logger.warning(f"LLM generated invalid Cypher: {cypher_query[:200]}")
+                return "No relevant information found in the graph (out of scope)."
 
             logger.info(f"Generated Cypher: {cypher_query}")
 
