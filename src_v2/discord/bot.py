@@ -315,8 +315,12 @@ class WhisperBot(commands.Bot):
             ("read_message_history", "Read Message History"),
             ("embed_links", "Embed Links"),
             ("attach_files", "Attach Files"),
-            ("add_reactions", "Use External Emojis"),
-            ("manage_messages", "Manage Messages (Delete Spam)"),
+            ("add_reactions", "Add Reactions"),
+        ]
+        
+        # Optional permissions (feature-dependent)
+        optional_permissions = [
+            ("manage_messages", "Manage Messages (Spam Deletion)"),
             ("connect", "Connect (Voice)"),
             ("speak", "Speak (Voice)"),
         ]

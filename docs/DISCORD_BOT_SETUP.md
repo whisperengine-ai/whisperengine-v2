@@ -39,23 +39,28 @@ In the Bot section, configure:
 
 WhisperEngine bots require these permissions to function:
 
-### Required Permissions
+### Required Permissions (Core)
 
 | Permission | Purpose |
 |------------|---------|
 | **View Channels** | See channels the bot can interact in |
 | **Send Messages** | Reply to users |
-| **Read Message History** | Context for conversations, lurking detection |
+| **Read Message History** | Context for conversations, fetching replied messages |
 | **Embed Links** | Rich embeds for `/profile`, `/debug`, status displays |
 | **Attach Files** | Send images (if vision/image features enabled) |
-| **Add Reactions** | React to messages |
-| **Manage Messages** | Delete spam messages (if spam detection enabled) |
-| **Connect** | Join voice channels |
-| **Speak** | Text-to-speech in voice channels |
+| **Add Reactions** | React to user messages with emoji |
+
+### Optional Permissions (Feature-Dependent)
+
+| Permission | Purpose | When Needed |
+|------------|---------|-------------|
+| **Manage Messages** | Delete spam messages | If spam detection with `delete` action enabled |
+| **Connect** | Join voice channels | If voice features are used |
+| **Speak** | Text-to-speech in voice channels | If voice features are used |
 
 ### Permission Integer
 
-The combined permission value is: **`3271616`**
+**Recommended (all features):** `3271616`
 
 <details>
 <summary>How this is calculated</summary>
@@ -72,6 +77,23 @@ The combined permission value is: **`3271616`**
 | Connect | 1048576 |
 | Speak | 2097152 |
 | **Total** | **3271616** |
+
+</details>
+
+**Minimal (no voice, no spam deletion):** `117824`
+
+<details>
+<summary>Minimal calculation</summary>
+
+| Permission | Bit Value |
+|------------|-----------|
+| View Channels | 1024 |
+| Send Messages | 2048 |
+| Embed Links | 16384 |
+| Attach Files | 32768 |
+| Read Message History | 65536 |
+| Add Reactions | 64 |
+| **Total** | **117824** |
 
 </details>
 
@@ -188,7 +210,8 @@ See [MULTI_BOT_DEPLOYMENT.md](./MULTI_BOT_DEPLOYMENT.md) for infrastructure setu
 
 | Item | Value |
 |------|-------|
-| Permission Integer | `3271616` |
+| Permission Integer (Full) | `3271616` |
+| Permission Integer (Minimal) | `117824` |
 | Required Scopes | `bot`, `applications.commands` |
 | Required Intents | Presence, Server Members, Message Content |
 | Invite URL Template | `https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=3271616&scope=bot%20applications.commands` |
