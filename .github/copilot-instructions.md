@@ -1,8 +1,31 @@
 # WhisperEngine v2 - AI Agent Development Guide
 
-**Optimized for solo developer with AI-assisted tools** (Nov 25, 2025)
+**Optimized for solo developer with AI-assisted tools** (Nov 28, 2025)
 
 WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture.
+
+## 🤖 Bot Configurations
+
+### Active Bots & Models
+
+| Bot | Port | Status | Main Model | Reflective Model |
+|-----|------|--------|------------|------------------|
+| elena | 8000 | Production | `openai/gpt-4o` | `openai/gpt-4o` |
+| nottaylor | 8008 | Production | `openai/gpt-4o` | `openai/gpt-4o` |
+| dotty | 8002 | Production | `openai/gpt-4o` | `openai/gpt-4o` |
+| aria | 8003 | Test | `google/gemini-2.5-flash` | `anthropic/claude-3.5-sonnet` |
+| dream | 8004 | Test | `deepseek/deepseek-r1` | `google/gemini-2.5-flash` |
+| jake | 8005 | Test | `anthropic/claude-3.5-sonnet` | `meta-llama/llama-3.3-70b-instruct` |
+| marcus | 8007 | Test | `mistralai/mistral-large` | `deepseek/deepseek-r1` |
+| ryan | 8001 | Test | `meta-llama/llama-3.3-70b-instruct` | `mistralai/mistral-large` |
+| sophia | 8006 | Test | `google/gemini-2.5-pro` | `openai/gpt-4o` |
+| aethys | - | Inactive | - | - |
+
+**Router model**: All bots use `openai/gpt-4o-mini` for fast routing decisions.
+
+**Production bots** (nottaylor, dotty, elena): Use stable GPT-4o configuration, do not change models.
+
+**Test bots**: Used for A/B testing different LLM providers via OpenRouter.
 
 ## ⚡ Quick Architecture
 
@@ -271,6 +294,6 @@ python run_v2.py elena    # Start bot (loads .env.elena)
 
 ---
 
-**Version**: 2.0 (Nov 25, 2025 - Solo dev optimized)  
+**Version**: 2.1 (Nov 28, 2025 - Added bot/model configurations)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

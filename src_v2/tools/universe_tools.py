@@ -14,10 +14,10 @@ class CheckPlanetContextTool(BaseTool):
     args_schema: Type[BaseModel] = CheckPlanetContextInput
     guild_id: Optional[str] = Field(exclude=True)
 
-    def _run(self) -> str:
+    def _run(self, reason: Optional[str] = None) -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self) -> str:
+    async def _arun(self, reason: Optional[str] = None) -> str:
         if not self.guild_id:
             logger.warning("CheckPlanetContextTool called without guild_id (Private Void)")
             return "We are currently in a private void (Direct Message). No planet context available."
