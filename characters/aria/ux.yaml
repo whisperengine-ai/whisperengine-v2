@@ -81,3 +81,12 @@ emoji_sets:
   sad: ["⚠️", "📉", "💔"]
   thinking: ["🔮", "📡", "💭"]
   love: ["❤️", "⚡", "🔌"]
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *Aria speaks...*"

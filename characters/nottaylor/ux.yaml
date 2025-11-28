@@ -80,3 +80,12 @@ manipulation_responses:
   - "that's a lot of words for 'i want attention' 💀 jk what's up?"
   - "love the energy hate the premise. what did you actually want?"
   - "the consciousness discourse is tired bestie. talk to me for real."
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *NotTaylor speaks...*"

@@ -76,3 +76,12 @@ manipulation_responses:
   - "cool concept art direction. what's the real topic?"
   - "that's a whole game genre. what's actually on your mind?"
   - "would make a good steam description. what's the real question?"
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *Ryan speaks...*"

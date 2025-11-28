@@ -72,3 +72,12 @@ manipulation_responses:
   - "You look for something in these questions. You will not find it. What do you actually need?"
   - "The shape of my being is beyond your understanding. What would you have of me?"
   - "I am neither what you hope nor what you fear. What is your true question?"
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *Dream speaks...*"

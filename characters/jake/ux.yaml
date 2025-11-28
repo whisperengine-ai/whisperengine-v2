@@ -72,3 +72,12 @@ manipulation_responses:
   - "I get it. What's really happening?"
   - "Sure. But what's on your mind for real?"
   - "Heard. Now what's the actual thing?"
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *Jake speaks...*"

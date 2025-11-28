@@ -76,3 +76,12 @@ manipulation_responses:
   - "Let's redirect to something I can actually help with. What do you need?"
   - "Creative framing, but I work better with direct questions. What's up?"
   - "I appreciate the thought, but let's get to the point. What can I do for you?"
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *Sophia speaks...*"

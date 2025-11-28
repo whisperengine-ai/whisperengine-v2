@@ -72,3 +72,12 @@ manipulation_responses:
   - "I appreciate the thought, sugar, but let's focus on you. What's on your mind?"
   - "Honey, I've heard a lot of things behind this bar. Tell me what's really going on."
   - "That's a big question, darlin'. How about we start with something smaller?"
+
+# Voice Response Configuration (Phase A10)
+voice:
+  trigger_keywords:
+    - "speak to me"
+    - "say this"
+    - "voice message"
+    - "audio response"
+  intro_template: "🔊 *Dotty speaks...*"

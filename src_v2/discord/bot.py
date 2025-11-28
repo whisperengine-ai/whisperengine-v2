@@ -31,6 +31,9 @@ from src_v2.moderation.timeout_manager import timeout_manager
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator, smart_truncate
 import random
+from src_v2.voice.trigger import VoiceTriggerDetector
+from src_v2.voice.response import voice_response_manager
+import os
 
 # Regex pattern for BFL image URLs (to strip them out if LLM includes them)
 BFL_IMAGE_URL_PATTERN = re.compile(
@@ -164,7 +167,6 @@ class WhisperBot(commands.Bot):
             
         # 2. Fallback: Check Extension
         valid_extensions: set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff'}
-        import os
         _: str
         ext: str
         _, ext = os.path.splitext(attachment.filename)
@@ -1182,7 +1184,8 @@ class WhisperBot(commands.Bot):
                             if hasattr(vc, 'is_connected') and vc.is_connected():
                                 logger.info(f"Voice connected in {message.guild.name}. Attempting to speak response...")
                                 try:
-                                    await play_text(vc, response)  # type: ignore[arg-type]
+                                    voice_id = character.voice_config.voice_id if character.voice_config else None
+                                    await play_text(vc, response, voice_id=voice_id)  # type: ignore[arg-type]
                                 except Exception as e:
                                     logger.error(f"Failed to play voice: {e}")
                             else:

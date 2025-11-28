@@ -5,7 +5,7 @@ import asyncio
 from loguru import logger
 from src_v2.voice.service import voice_service
 
-async def play_text(voice_client: discord.VoiceClient, text: str):
+async def play_text(voice_client: discord.VoiceClient, text: str, voice_id: str = None):
     """
     Generates audio for the text and plays it in the voice channel.
     """
@@ -30,7 +30,7 @@ async def play_text(voice_client: discord.VoiceClient, text: str):
         chunk_count = 0
         total_bytes = 0
         
-        async for chunk in voice_service.generate_audio_stream(text):
+        async for chunk in voice_service.generate_audio_stream(text, voice_id=voice_id):
             with open(temp_path, "ab") as f:
                 f.write(chunk)
             has_content = True

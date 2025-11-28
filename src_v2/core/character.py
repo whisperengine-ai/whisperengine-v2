@@ -10,12 +10,20 @@ class ThinkingIndicators(BaseModel):
     reflective_mode: Dict[str, str] = {"icon": "🧠", "text": "Reflective Mode Activated"}
     tool_use: Dict[str, str] = {"icon": "✨", "text": "Using my abilities..."}
 
+class VoiceConfig(BaseModel):
+    """Configuration for voice responses."""
+    voice_id: Optional[str] = None
+    model_id: str = "eleven_monolingual_v1"
+    trigger_keywords: List[str] = ["speak", "say", "voice", "audio"]
+    intro_template: str = "🔊 *{name} speaks...*"
+
 class Character(BaseModel):
     name: str
     system_prompt: str
     visual_description: str = "A generic AI assistant."
     behavior: Optional[BehaviorProfile] = None
     thinking_indicators: Optional[ThinkingIndicators] = None
+    voice_config: Optional[VoiceConfig] = None
     cold_responses: List[str] = ["Noted.", "Okay.", "Got it.", "Sure.", "Alright."]
     error_messages: List[str] = ["I'm having a bit of trouble processing that right now. Please try again later."]
     manipulation_responses: List[str] = ["I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"]
@@ -60,6 +68,7 @@ class CharacterManager:
 
             # Load thinking indicators from ux.yaml
             thinking_indicators = None
+            voice_config = None
             cold_responses = ["Noted.", "Okay.", "Got it.", "Sure.", "Alright."]
             error_messages = ["I'm having a bit of trouble processing that right now. Please try again later."]
             manipulation_responses = ["I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"]
@@ -73,6 +82,8 @@ class CharacterManager:
                         if ux_config:
                             if "thinking_indicators" in ux_config:
                                 thinking_indicators = ThinkingIndicators(**ux_config["thinking_indicators"])
+                            if "voice" in ux_config:
+                                voice_config = VoiceConfig(**ux_config["voice"])
                             if "cold_responses" in ux_config:
                                 cold_responses = ux_config["cold_responses"]
                             if "error_messages" in ux_config:
@@ -106,6 +117,7 @@ class CharacterManager:
                 visual_description=visual_desc,
                 behavior=behavior,
                 thinking_indicators=thinking_indicators,
+                voice_config=voice_config,
                 cold_responses=cold_responses,
                 error_messages=error_messages,
                 manipulation_responses=manipulation_responses,

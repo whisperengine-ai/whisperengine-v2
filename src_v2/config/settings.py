@@ -161,6 +161,11 @@ class Settings(BaseSettings):
     CROSSPOST_WARNING_MESSAGE: str = "⚠️ Please avoid posting the same message in multiple channels. This is considered spam."
     CROSSPOST_ACTION: Literal["warn", "delete"] = "warn"
 
+    # --- Voice Responses (Phase A10) ---
+    ENABLE_VOICE_RESPONSES: bool = False
+    VOICE_RESPONSE_MAX_LENGTH: int = 1000
+    VOICE_RESPONSE_MIN_TRUST: int = 0
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():
