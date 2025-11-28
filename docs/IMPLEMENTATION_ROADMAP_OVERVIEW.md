@@ -2,7 +2,7 @@
 
 **Document Version:** 2.0  
 **Created:** November 24, 2025  
-**Last Updated:** November 27, 2025 (Priority & Dependency Audit)
+**Last Updated:** November 27, 2025 (Phase E Added, Full Status Audit)
 **Status:** Active Planning
 
 ### Status Legend
@@ -61,12 +61,14 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| ~~1~~ | ~~B3.3~~ | ~~Proactive Drives~~ | ~~3-4 days~~ | ✅ Complete |
-| ~~2~~ | ~~B3.4~~ | ~~Universe Agent~~ | ~~4-5 days~~ | ✅ Complete |
-| ~~3~~ | ~~A10~~ | ~~Triggered Voice Responses - TTS audio attachments~~ | ~~2-3 days~~ | ✅ Complete |
-| — | A0 | Embedding Upgrade 768D | 45 min | ⏸️ On Hold |
+| 1 | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
+| 2 | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
+| 3 | E2 | Character Diary & Reflection | 3-4 days | 📋 Proposed |
+| 4 | E3 | Dream Sequences | 3 days | 📋 Proposed |
+| — | E1 | Conversation Threading | — | ✅ Complete |
+| — | E4 | Relationship Milestones | — | ✅ Complete |
 
-> **Current Focus:** Phase B3 (Autonomous Agents) — **✅ ALL PHASES COMPLETE**. Next: Maintenance & Optimization.
+> **Current Focus:** All core phases complete. E1 (Conversation Threading) and E4 (Relationship Milestones) implemented. **Next:** Remaining Phase E items (E2, E3, E5, E6).
 
 ---
 
@@ -107,6 +109,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Image attachment processing (👁️ Vision modality)
 - ✅ Reaction-based feedback (❤️ Emotion modality)
 - ✅ Voice channel connection (👂 Audio modality via ElevenLabs TTS)
+- ✅ Triggered Voice Responses (TTS audio file uploads)
 - ✅ Generative Art (Image Generation via Flux Pro 1.1)
 - ✅ Channel Lurking (Passive Engagement)
 - ✅ User Identification in Group Chats (Display Name Storage)
@@ -119,9 +122,8 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ✅ **Phase B3: Autonomous Agents** - Internal drives, goal strategies, cross-bot awareness → **COMPLETE (All 4 phases)**
-- 📋 Phase A10: Triggered Voice Responses (TTS audio attachments) → **NEXT**
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
+- 📋 Phase E: Character Depth & Engagement (6 items proposed)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
 **DEFERRED/ARCHIVED:**
@@ -130,7 +132,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - 🗄️ Phase B5: Audio Processing (DEFERRED)
 - 🗄️ Phase C3: Video Processing (DEFERRED)
 
-**Status:** Core feature development complete. Phase B3 (Autonomous Agents) in progress.
+**Status:** Core feature development complete. All major phases done. Phase E (Character Depth) proposed.
 
 > **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
 
@@ -585,53 +587,13 @@ Message → Voice Trigger Check → Generate Response → Generate TTS → Attac
 
 Features requiring significant logic changes but manageable scope.
 
-> **Status:** 8 of 10 Phase B items complete. **B3 (Autonomous Agents)** is the primary remaining work.
+> **Status:** All Phase B items complete.
 
 ---
 
-### 🎯 NEXT UP: Phase B3 - Autonomous Agents (Phase 3)
-
-See detailed section below. This is the **recommended next implementation focus**.
-
----
-
-### ✅ Phase B1: Adaptive Max Steps (Complete)
-**Priority:** — | **Time:** 3-5 days | **Complexity:** Medium  
-**Files:** 4 | **LOC:** ~300 | **Status:** ✅ Complete
-
-**Problem:** All queries use fixed 10-step max, wasting tokens on simple queries and constraining complex ones
-
-**Solution:**
-- Enhance `ComplexityClassifier` to return step count heuristics
-- Categorize queries as `COMPLEX_LOW` (5 steps), `COMPLEX_MID` (10 steps), `COMPLEX_HIGH` (15 steps)
-- Pass suggested step count to `ReflectiveAgent`
-- Users can override with `!reflect` command for `COMPLEX_HIGH`
-
-**Implementation:**
-```
-Query → Complexity Classifier (now with step count) → Reflective Agent → Dynamic Max Steps
-```
-
-**Benefit:**
-- 40-50% cost reduction on moderate queries
-- Faster responses for simple queries
-- Better resource allocation
-- User override capability for reflective mode
-
-**Dependencies:** ComplexityClassifier exists, needs enhancement
-
-**Related Files:**
-- `src_v2/intelligence/classifier.py` (ComplexityClassifier)
-- `src_v2/agents/reflective.py` (ReflectiveAgent)
-- `src_v2/agents/engine.py` (AgentEngine)
-
-**Status Note:** Phase 1 (Native Function Calling) and Phase 2.3 (Parallel Execution) complete. Phase 2.2 (Adaptive Steps) complete.
-
----
-
-### Phase B3: Autonomous Agents (Phase 3) ⬅️ **IN PROGRESS**
+### ✅ Phase B3: Autonomous Agents (Complete)
 **Priority:** 🔴 High (Current) | **Time:** 10-14 days | **Complexity:** High
-**Files:** 10+ | **LOC:** ~1000 | **Status:** ⏳ In Progress (Phase 3.1, 3.2 Complete)
+**Files:** 10+ | **LOC:** ~1000 | **Status:** ✅ Complete
 
 **Problem:** Characters are currently reactive or rely on simple timers. They lack internal drives, long-term strategies, and cross-bot awareness.
 
@@ -641,8 +603,8 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 |-------|---------|------------|--------|
 | 3.1 | Goal State & Strategy | Low | ✅ Complete |
 | 3.2 | Memory of Reasoning | Medium | ✅ Complete |
-| 3.3 | Proactive Drives | Medium | 📋 Next |
-| 3.4 | Universe Agent | High | 📋 Planned |
+| 3.3 | Proactive Drives | Medium | ✅ Complete |
+| 3.4 | Universe Agent | High | ✅ Complete |
 
 **Phase 3.1 Completed (Nov 27, 2025):**
 - ✅ Feature flags added to `settings.py`
@@ -689,10 +651,10 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 - ✅ `src_v2/agents/engine.py` (Strategy injection)
 - ✅ `src_v2/memory/traces.py` (Trace retrieval with quality scoring)
 - ✅ `src_v2/agents/reflective.py` (Few-shot trace injection)
-- 📋 `src_v2/evolution/drives.py` (Drive system with decay/recharge)
-- 📋 `src_v2/universe/bus.py` (Event dispatcher via arq)
-- 📋 `src_v2/agents/universe.py` (Privacy-aware coordination)
-- `src_v2/agents/proactive.py` (Trust-gated initiation)
+- ✅ `src_v2/evolution/drives.py` (Drive system with decay/recharge)
+- ✅ `src_v2/universe/bus.py` (Event dispatcher via arq)
+- ✅ `src_v2/universe/privacy.py` (Privacy-aware coordination)
+- ✅ `src_v2/agents/proactive.py` (Trust-gated initiation)
 
 **Full Specification:** See [roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md](./roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md)
 
@@ -1189,4 +1151,73 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 - Database Backups (Postgres, Qdrant, Neo4j)
 - Connection Pooling Optimization
 - Error Handling Standardization
+
+---
+
+## 🔵 Phase E: Character Depth & Engagement (New)
+
+Focus on making characters feel more alive, interconnected, and temporally aware.
+
+### ✅ Phase E1: Conversation Threading
+**Priority:** — | **Time:** 2 days | **Complexity:** Low
+**Status:** ✅ Complete (Nov 28, 2025)
+
+**Problem:** Bot loses context when users reply to older messages using Discord's reply feature.
+**Solution:** Fetch referenced message content and inject into context window.
+
+**Implementation:**
+- `src_v2/discord/bot.py` fetches `message.reference.resolved`
+- Injects reply context as `[Replying to {author}: "{text}"]\n{user_message}`
+- Also processes attachments (images, documents) from referenced messages
+- Handles forwarded messages with `message.snapshots`
+
+**Spec:** [CONVERSATION_THREADING.md](./roadmaps/CONVERSATION_THREADING.md)
+
+### 📋 Phase E2: Character Diary & Reflection
+**Priority:** Medium | **Time:** 3-4 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+
+**Problem:** Characters feel "frozen" between sessions.
+**Solution:** Nightly worker generates a private diary entry synthesizing the day's interactions.
+**Spec:** [CHARACTER_DIARY.md](./roadmaps/CHARACTER_DIARY.md)
+
+### 📋 Phase E3: Dream Sequences
+**Priority:** Medium | **Time:** 3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+
+**Problem:** Reconnecting after a long break feels generic.
+**Solution:** Generate surreal "dreams" based on past memories after >24h inactivity.
+**Spec:** [DREAM_SEQUENCES.md](./roadmaps/DREAM_SEQUENCES.md)
+
+### ✅ Phase E4: Relationship Milestones
+**Priority:** — | **Time:** 1-2 days | **Complexity:** Low
+**Status:** ✅ Complete (Nov 28, 2025)
+
+**Problem:** Trust evolution is silent; users don't know when they've "leveled up".
+**Solution:** Explicitly acknowledge trust threshold crossings (Acquaintance → Friend).
+
+**Implementation:**
+- `src_v2/evolution/manager.py` has `check_milestone(old_trust, new_trust)` method
+- `src_v2/evolution/trust.py` calls `check_milestone()` on every trust update
+- Returns milestone message when threshold is crossed (e.g., trust 25, 40, 60, 80, 95)
+- All 10 characters have `evolution.yaml` with custom milestone messages
+- `last_milestone_date` tracked in `v2_user_relationships` table
+
+**Spec:** [RELATIONSHIP_MILESTONES.md](./roadmaps/RELATIONSHIP_MILESTONES.md)
+
+### 📋 Phase E5: Scheduled Reminders
+**Priority:** Medium | **Time:** 3-4 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+
+**Problem:** Users ask for reminders, but bot cannot deliver them.
+**Solution:** Intent detection + temporal parsing + proactive scheduler delivery.
+**Spec:** [SCHEDULED_REMINDERS.md](./roadmaps/SCHEDULED_REMINDERS.md)
+
+### 📋 Phase E6: Character-to-Character Conversation
+**Priority:** High (Strategic) | **Time:** 1 week | **Complexity:** High
+**Status:** 📋 Proposed
+
+**Problem:** Multiple bots in the same server ignore each other.
+**Solution:** Event-bus driven cross-bot conversation when mentioned together.
+**Spec:** [CHARACTER_TO_CHARACTER.md](./roadmaps/CHARACTER_TO_CHARACTER.md)
 
