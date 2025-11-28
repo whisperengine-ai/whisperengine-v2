@@ -17,6 +17,7 @@ from src_v2.knowledge.documents import document_processor
 from src_v2.knowledge.document_context import DocumentContext
 from src_v2.voice.player import play_text
 from src_v2.core.database import db_manager
+from src_v2.core.quota import QuotaExceededError
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_analyzer
 from src_v2.evolution.trust import trust_manager
@@ -31,7 +32,6 @@ from src_v2.moderation.timeout_manager import timeout_manager
 from influxdb_client.client.write.point import Point
 from src_v2.utils.validation import ValidationError, validator, smart_truncate
 import random
-from src_v2.voice.trigger import VoiceTriggerDetector
 from src_v2.voice.response import voice_response_manager
 import os
 
@@ -585,52 +585,52 @@ class WhisperBot(commands.Bot):
             # Typing indicator delayed to mimic natural reading time
             processing_start = time.time()
             try:
-                    # Get the character
-                    character = character_manager.get_character(self.character_name)
-                    
-                    if not character:
-                        logger.error(f"Character '{self.character_name}' not loaded.")
-                        await message.channel.send("Error: Character not loaded.")
-                        return
+                # Get the character
+                character = character_manager.get_character(self.character_name)
+                
+                if not character:
+                    logger.error(f"Character '{self.character_name}' not loaded.")
+                    await message.channel.send("Error: Character not loaded.")
+                    return
 
-                    # Check manipulation timeout before any processing
-                    if settings.ENABLE_MANIPULATION_TIMEOUTS:
-                        user_id = str(message.author.id)
-                        timeout_status = await timeout_manager.check_user_status(user_id, bot_name=self.character_name)
-                        if timeout_status.is_restricted():
-                            # User is in timeout - return cold response only
-                            if character.cold_responses:
-                                response = random.choice(character.cold_responses)
-                            else:
-                                response = "..."
-                            await message.channel.send(response)
-                            logger.debug(f"User {user_id} in timeout ({timeout_status.format_remaining()} remaining), served cold response")
-                            return
-
-                    # 0. Session Management
+                # Check manipulation timeout before any processing
+                if settings.ENABLE_MANIPULATION_TIMEOUTS:
                     user_id = str(message.author.id)
-                    session_id = await session_manager.get_active_session(user_id, self.character_name)
-                    if not session_id:
-                        session_id = await session_manager.create_session(user_id, self.character_name)
-
-                    # Clean the message (remove mention)
-                    user_message = message.content.replace(f"<@{self.user.id}>", "").strip()
-                    
-                    # Append sticker text if present
-                    if sticker_text:
-                        user_message += sticker_text
-                    
-                    # Early validation: Check if message is empty after cleaning
-                    # Allow empty messages if they have attachments, replies, or forwards
-                    has_forward = hasattr(message, 'snapshots') and message.snapshots
-                    if not user_message and not message.attachments and not message.reference and not has_forward:
-                        # Only send "I didn't catch that" if it's a DM or explicit mention
-                        # If it's just a random empty message in a channel (rare but possible via bots/glitches), ignore it
-                        if is_dm or is_mentioned:
-                            await message.channel.send("I didn't catch that. Could you say that again?")
+                    timeout_status = await timeout_manager.check_user_status(user_id, bot_name=self.character_name)
+                    if timeout_status.is_restricted():
+                        # User is in timeout - return cold response only
+                        if character.cold_responses:
+                            response = random.choice(character.cold_responses)
+                        else:
+                            response = "..."
+                        await message.channel.send(response)
+                        logger.debug(f"User {user_id} in timeout ({timeout_status.format_remaining()} remaining), served cold response")
                         return
-                    
-                    # Check for Forced Reflective Mode
+
+                # 0. Session Management
+                user_id = str(message.author.id)
+                session_id = await session_manager.get_active_session(user_id, self.character_name)
+                if not session_id:
+                    session_id = await session_manager.create_session(user_id, self.character_name)
+
+                # Clean the message (remove mention)
+                user_message = message.content.replace(f"<@{self.user.id}>", "").strip()
+                
+                # Append sticker text if present
+                if sticker_text:
+                    user_message += sticker_text
+                
+                # Early validation: Check if message is empty after cleaning
+                # Allow empty messages if they have attachments, replies, or forwards
+                has_forward = hasattr(message, 'snapshots') and message.snapshots
+                if not user_message and not message.attachments and not message.reference and not has_forward:
+                    # Only send "I didn't catch that" if it's a DM or explicit mention
+                    # If it's just a random empty message in a channel (rare but possible via bots/glitches), ignore it
+                    if is_dm or is_mentioned:
+                        await message.channel.send("I didn't catch that. Could you say that again?")
+                    return
+                
+                    # Check for Forced Reflective Mode via bang command
                     force_reflective = False
                     if user_message.startswith("!reflect"):
                         if settings.ENABLE_REFLECTIVE_MODE:
@@ -641,626 +641,656 @@ class WhisperBot(commands.Bot):
                                 await message.channel.send("ℹ️ Usage: `!reflect <your question>` or reply to a message with `!reflect`.")
                                 return
                                 
-                            user_message = cleaned_content
+                            user_message = cleaned_content or user_message
                             force_reflective = True
-                            logger.info(f"User {user_id} forced Reflective Mode")
+                            logger.info(f"User {user_id} forced Reflective Mode via !reflect")
                         else:
                             await message.channel.send("⚠️ Reflective Mode is currently disabled in settings.")
                             return
+                
+                # Early validation: Check message length (Discord limit)
+                if user_message:
+                    try:
+                        validator.validate_for_discord(user_message)
+                    except ValidationError as e:
+                        await message.channel.send(e.user_message)
+                        return
+
+                # Capture raw message for fact extraction (before context injection)
+                # This prevents the bot from extracting facts from replied-to messages or forwarded content
+                raw_user_message = user_message
+
+                # Initialize attachment containers
+                image_urls: List[str] = []
+                processed_files: List[str] = []
+
+                # Handle Replies (Context Injection)
+                if message.reference:
+                    try:
+                        ref_msg = None
+                        if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
+                            ref_msg = message.reference.resolved
+                        elif message.reference.message_id:
+                            try:
+                                ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                            except:
+                                pass # Message might be deleted or inaccessible
+
+                        if ref_msg:
+                            # 1. Text & Sticker Context
+                            content = ref_msg.content or ""
+                            
+                            # Handle Stickers in reply
+                            if ref_msg.stickers:
+                                sticker_names = [s.name for s in ref_msg.stickers]
+                                content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
+
+                            if content:
+                                ref_text = smart_truncate(content, 500)
+                                    
+                                ref_author = ref_msg.author.display_name
+                                user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
+                                logger.info(f"Injected reply context: {user_message}")
+                            
+                            # 2. Attachments (Images & Documents)
+                            if ref_msg.attachments:
+                                ref_images, ref_texts = await self._process_attachments(
+                                    attachments=ref_msg.attachments,
+                                    channel=message.channel,
+                                    user_id=user_id,
+                                    silent=True,
+                                    trigger_vision=True
+                                )
+                                image_urls.extend(ref_images)
+                                processed_files.extend(ref_texts)
+
+                    except Exception as e:
+                        logger.warning(f"Failed to resolve reply reference: {e}")
+
+                # Handle Forwarded Messages (Context Injection)
+                if hasattr(message, 'snapshots') and message.snapshots:
+                    try:
+                        for snapshot in message.snapshots:
+                            # 1. Text Context
+                            fwd_content = snapshot.content or ""
+                            
+                            # Handle Stickers in forward
+                            if snapshot.stickers:
+                                sticker_names = [s.name for s in snapshot.stickers]
+                                fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
+
+                            if fwd_content:
+                                fwd_text = smart_truncate(fwd_content, 500)
+                                
+                                user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
+                                logger.info(f"Injected forwarded context: {user_message}")
+                            
+                            # 2. Attachments
+                            if snapshot.attachments:
+                                # Note: We enable trigger_vision=True because users often forward images to ask about them
+                                fwd_images, fwd_texts = await self._process_attachments(
+                                    attachments=snapshot.attachments,
+                                    channel=message.channel,
+                                    user_id=user_id,
+                                    silent=True,
+                                    trigger_vision=True
+                                )
+                                image_urls.extend(fwd_images)
+                                processed_files.extend(fwd_texts)
+                    except Exception as e:
+                        logger.warning(f"Failed to process forwarded message: {e}")
+
+                channel_id = str(message.channel.id)
+                
+                # Check for attachments in CURRENT message
+                if message.attachments:
+                    curr_images, curr_texts = await self._process_attachments(
+                        attachments=message.attachments,
+                        channel=message.channel,
+                        user_id=user_id,
+                        silent=False,
+                        trigger_vision=True
+                    )
+                    image_urls.extend(curr_images)
+                    processed_files.extend(curr_texts)
+                
+                # Create document context from processed files
+                doc_context = DocumentContext.from_processed_files(processed_files)
+
+                # Check for Voice Trigger (Phase A10)
+                # Now handled by LLM intent detection, but we initialize it here
+                should_trigger_voice = False
+                detected_intents = []
+                
+                # Validate image URLs early
+                if image_urls:
+                    valid_urls, invalid_urls = validator.validate_image_urls(image_urls)
+                    if invalid_urls:
+                        logger.warning(f"Removed {len(invalid_urls)} invalid image URLs")
+                    image_urls = valid_urls if valid_urls else None
+                
+                # 1. Retrieve Context (RAG & History) BEFORE saving current message
+                # This prevents "Echo Chamber" (finding current msg in vector search)
+                # and "Double Speak" (finding current msg in chat history)
+                
+                # Parallel Context Retrieval
+                async def get_memories():
+                    try:
+                        mems = await memory_manager.search_memories(user_message, user_id)
+                        if mems:
+                            # Format with relative time AND absolute date for clarity
+                            def format_mem(m):
+                                rel = m.get('relative_time', 'unknown time')
+                                ts = m.get('timestamp', '')
+                                date_str = ts.split('T')[0] if ts else 'unknown date'
+                                return f"- {m['content']} ({rel}, {date_str})"
+                            
+                            fmt = "\n".join([format_mem(m) for m in mems])
+                        else:
+                            fmt = "No relevant memories found."
+                        return mems, fmt
+                    except Exception as e:
+                        logger.error(f"Failed to search memories: {e}")
+                        return [], "No relevant memories found."
+
+                async def get_history():
+                    try:
+                        return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id)
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve chat history: {e}")
+                        return []
+
+                async def get_knowledge():
+                    try:
+                        facts = await knowledge_manager.get_user_knowledge(user_id)
+                        # Fallback: If name is not in knowledge graph, use Discord display name
+                        if "name" not in facts.lower():
+                            display_name = message.author.display_name
+                            facts += f"\n- User's Discord Display Name: {display_name}"
+                        return facts
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve knowledge facts: {e}")
+                        return ""
+
+                async def get_summaries():
+                    try:
+                        sums = await memory_manager.search_summaries(user_message, user_id, limit=3)
+                        if sums:
+                            return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']}, {s.get('relative_time', 'unknown time')})" for s in sums])
+                        return ""
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve summaries: {e}")
+                        return ""
+
+                async def get_universe_context():
+                    try:
+                        from src_v2.universe.context_builder import universe_context_builder
+                        guild_id = str(message.guild.id) if message.guild else None
+                        channel_id = str(message.channel.id)
+                        char_name = settings.DISCORD_BOT_NAME
+                        return await universe_context_builder.build_context(user_id, guild_id, channel_id, char_name)
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve universe context: {e}")
+                        return "Location: Unknown"
+
+                async def get_channel_context():
+                    """Fetch recent channel messages for multi-bot awareness."""
+                    if is_dm or not message.guild:
+                        return ""
+                    try:
+                        # Fetch last 10 messages from Discord API (includes bot messages)
+                        recent_msgs = []
+                        async for msg in message.channel.history(limit=10, before=message):
+                            # Skip the current message and empty messages
+                            if msg.id == message.id or not msg.content:
+                                continue
+                            
+                            author_name = msg.author.display_name
+                            is_bot = msg.author.bot
+                            
+                            content = smart_truncate(msg.content, 300)
+                            
+                            # Format: [Author (Bot)]: content or [Author]: content
+                            if is_bot:
+                                recent_msgs.append(f"[{author_name} (Bot)]: {content}")
+                            else:
+                                recent_msgs.append(f"[{author_name}]: {content}")
+                        
+                        if not recent_msgs:
+                            return ""
+                        
+                        # Reverse to chronological order
+                        recent_msgs.reverse()
+                        return "\n".join(recent_msgs)
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch channel context: {e}")
+                        return ""
+
+                # Execute all context retrieval tasks in parallel
+                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, channel_context = await asyncio.gather(
+                    get_memories(),
+                    get_history(),
+                    get_knowledge(),
+                    get_summaries(),
+                    get_universe_context(),
+                    get_channel_context()
+                )
+
+                # 2. Save User Message & Extract Knowledge
+                try:
+                    # Save to memory with full document content for RAG retrieval
+                    memory_content = doc_context.format_for_memory(user_message)
+                    metadata = doc_context.get_memory_metadata()
+
+                    await memory_manager.add_message(
+                        user_id, 
+                        character.name, 
+                        'human', 
+                        memory_content, 
+                        channel_id=channel_id, 
+                        message_id=str(message.id),
+                        user_name=message.author.display_name,
+                        metadata=metadata
+                    )
                     
-                    # Early validation: Check message length (Discord limit)
-                    if user_message:
-                        try:
-                            validator.validate_for_discord(user_message)
-                        except ValidationError as e:
-                            await message.channel.send(e.user_message)
+                    # Log Message Event to InfluxDB
+                    if db_manager.influxdb_write_api:
+                        point = Point("message_event") \
+                            .tag("user_id", user_id) \
+                            .tag("bot_name", self.character_name) \
+                            .tag("channel_type", "dm" if is_dm else "guild") \
+                            .field("length", len(user_message)) \
+                            .time(datetime.utcnow())
+                        db_manager.influxdb_write_api.write(
+                            bucket=settings.INFLUXDB_BUCKET,
+                            org=settings.INFLUXDB_ORG,
+                            record=point
+                        )
+
+                except Exception as e:
+                    logger.error(f"Failed to save user message to memory: {e}")
+
+                # Fire-and-forget knowledge extraction via background worker
+                # (offloaded from response pipeline for lower latency)
+                if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+                    try:
+                        await task_queue.enqueue_knowledge_extraction(
+                            user_id=user_id,
+                            message=raw_user_message,
+                            character_name=self.character_name
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to enqueue knowledge extraction: {e}")
+
+                # Fire-and-forget Preference Extraction
+                if settings.ENABLE_PREFERENCE_EXTRACTION:
+                    async def process_preferences(uid, msg, char_name):
+                        prefs = await preference_extractor.extract_preferences(msg)
+                        if prefs:
+                            logger.info(f"Detected preferences for {uid}: {prefs}")
+                            for key, value in prefs.items():
+                                await trust_manager.update_preference(uid, char_name, key, value)
+                                
+                    self.loop.create_task(process_preferences(user_id, raw_user_message, self.character_name))
+
+                # 2.5 Check for Summarization
+                if session_id:
+                    self.loop.create_task(self._check_and_summarize(session_id, user_id))
+
+                # 3. Generate response
+                # Get user's timezone preference for context-aware datetime
+                user_timezone_str = None
+                try:
+                    relationship = await trust_manager.get_relationship_level(user_id, character.name)
+                    user_timezone_str = relationship.get("preferences", {}).get("timezone")
+                except Exception as e:
+                    logger.debug(f"Could not fetch timezone preference: {e}")
+                
+                # Format datetime with user's timezone if available
+                from datetime import timezone as tz
+                now = datetime.now()
+                datetime_display = now.strftime("%A, %B %d, %Y at %H:%M")
+                
+                if user_timezone_str:
+                    try:
+                        from zoneinfo import ZoneInfo
+                        user_tz = ZoneInfo(user_timezone_str)
+                        user_now = datetime.now(user_tz)
+                        datetime_display = user_now.strftime("%A, %B %d, %Y at %H:%M") + f" ({user_timezone_str})"
+                    except Exception as e:
+                        logger.debug(f"Invalid timezone '{user_timezone_str}': {e}")
+                
+                # Determine channel context
+                channel_name = "DM"
+                parent_channel_name = None
+                is_thread = False
+                
+                if isinstance(message.channel, discord.Thread):
+                    is_thread = True
+                    channel_name = message.channel.name
+                    if message.channel.parent:
+                        parent_channel_name = message.channel.parent.name
+                elif hasattr(message.channel, 'name'):
+                    channel_name = message.channel.name
+
+                context_vars = {
+                    "user_name": message.author.display_name,
+                    "current_datetime": datetime_display,
+                    "universe_context": universe_context,
+                    "recent_memories": formatted_memories,
+                    "knowledge_context": knowledge_facts,
+                    "past_summaries": past_summaries,
+                    "channel_context": channel_context,  # Multi-bot awareness
+                    "guild_id": str(message.guild.id) if message.guild else None,
+                    "channel_name": channel_name,
+                    "parent_channel_name": parent_channel_name,
+                    "is_thread": is_thread,
+                    "has_documents": doc_context.has_documents
+                }
+                
+                # Append document preview to user message for LLM
+                if doc_context.has_documents:
+                    user_message += doc_context.format_for_llm()
+
+                # 3. Complexity Analysis & Intent Detection
+                complexity = False
+                detected_intents = []
+                
+                try:
+                    complexity, detected_intents = await self.agent_engine.classify_complexity(
+                        user_message, 
+                        chat_history, 
+                        user_id=user_id,
+                        character_name=self.character_name
+                    )
+                    
+                    # Check for Voice Intent
+                    if settings.ENABLE_VOICE_RESPONSES and "voice" in detected_intents:
+                        should_trigger_voice = True
+                        logger.info(f"Voice intent detected for user {user_id}")
+
+                    # Check for Image Intent - Upgrade complexity if needed to ensure tools are available
+                    if "image" in detected_intents:
+                        if not complexity or complexity == "COMPLEX_LOW":
+                            complexity = "COMPLEX_MID"
+                            logger.info(f"Upgraded complexity to COMPLEX_MID due to image intent for user {user_id}")
+                        
+                except Exception as e:
+                    logger.error(f"Complexity analysis failed: {e}")
+                    complexity = False
+
+                # Track timing for stats footer
+                start_time = time.time()
+                
+                # Prepare callback for Reflective Mode
+                status_message: Optional[discord.Message] = None
+                status_header: str = "🧠 **Reflective Mode Activated**"
+                status_body: str = ""
+                status_lock = asyncio.Lock()
+                
+                async def reflective_callback(text: str):
+                    nonlocal status_message, status_header, status_body
+                    async with status_lock:
+                        # Check for header update
+                        if text.startswith("HEADER:"):
+                            status_header = text.replace("HEADER:", "").strip()
+                            # If we have a message, update it immediately to reflect header change
+                            if status_message:
+                                full_content = f"{status_header}\n{status_body}"
+                                if len(full_content) > 1900:
+                                    full_content = full_content[:1900] + "\n... (truncated)"
+                                try:
+                                    await status_message.edit(content=full_content)
+                                except Exception as e:
+                                    logger.error(f"Failed to update status header: {e}")
                             return
 
-                    # Capture raw message for fact extraction (before context injection)
-                    # This prevents the bot from extracting facts from replied-to messages or forwarded content
-                    raw_user_message = user_message
-
-                    # Initialize attachment containers
-                    image_urls: List[str] = []
-                    processed_files: List[str] = []
-
-                    # Handle Replies (Context Injection)
-                    if message.reference:
+                        # Clean up text slightly
+                        clean_text = text.strip()
+                        if not clean_text:
+                            return
+                            
+                        # Format: Quote block for thoughts
+                        formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
+                        
+                        status_body += f"\n{formatted_text}"
+                        
+                        # Construct full content
+                        full_content = f"{status_header}\n{status_body}"
+                        
+                        # Truncate if too long for Discord (2000 chars)
+                        if len(full_content) > 1900:
+                            full_content = full_content[:1900] + "\n... (truncated)"
+                        
                         try:
-                            ref_msg = None
-                            if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
-                                ref_msg = message.reference.resolved
-                            elif message.reference.message_id:
-                                try:
-                                    ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                                except:
-                                    pass # Message might be deleted or inaccessible
-
-                            if ref_msg:
-                                # 1. Text & Sticker Context
-                                content = ref_msg.content or ""
-                                
-                                # Handle Stickers in reply
-                                if ref_msg.stickers:
-                                    sticker_names = [s.name for s in ref_msg.stickers]
-                                    content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
-
-                                if content:
-                                    ref_text = smart_truncate(content, 500)
-                                        
-                                    ref_author = ref_msg.author.display_name
-                                    user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
-                                    logger.info(f"Injected reply context: {user_message}")
-                                
-                                # 2. Attachments (Images & Documents)
-                                if ref_msg.attachments:
-                                    ref_images, ref_texts = await self._process_attachments(
-                                        attachments=ref_msg.attachments,
-                                        channel=message.channel,
-                                        user_id=user_id,
-                                        silent=True,
-                                        trigger_vision=True
-                                    )
-                                    image_urls.extend(ref_images)
-                                    processed_files.extend(ref_texts)
-
-                        except Exception as e:
-                            logger.warning(f"Failed to resolve reply reference: {e}")
-
-                    # Handle Forwarded Messages (Context Injection)
-                    if hasattr(message, 'snapshots') and message.snapshots:
-                        try:
-                            for snapshot in message.snapshots:
-                                # 1. Text Context
-                                fwd_content = snapshot.content or ""
-                                
-                                # Handle Stickers in forward
-                                if snapshot.stickers:
-                                    sticker_names = [s.name for s in snapshot.stickers]
-                                    fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
-
-                                if fwd_content:
-                                    fwd_text = smart_truncate(fwd_content, 500)
-                                    
-                                    user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
-                                    logger.info(f"Injected forwarded context: {user_message}")
-                                
-                                # 2. Attachments
-                                if snapshot.attachments:
-                                    # Note: We enable trigger_vision=True because users often forward images to ask about them
-                                    fwd_images, fwd_texts = await self._process_attachments(
-                                        attachments=snapshot.attachments,
-                                        channel=message.channel,
-                                        user_id=user_id,
-                                        silent=True,
-                                        trigger_vision=True
-                                    )
-                                    image_urls.extend(fwd_images)
-                                    processed_files.extend(fwd_texts)
-                        except Exception as e:
-                            logger.warning(f"Failed to process forwarded message: {e}")
-
-                    channel_id = str(message.channel.id)
-                    
-                    # Check for attachments in CURRENT message
-                    if message.attachments:
-                        curr_images, curr_texts = await self._process_attachments(
-                            attachments=message.attachments,
-                            channel=message.channel,
-                            user_id=user_id,
-                            silent=False,
-                            trigger_vision=True
-                        )
-                        image_urls.extend(curr_images)
-                        processed_files.extend(curr_texts)
-                    
-                    # Create document context from processed files
-                    doc_context = DocumentContext.from_processed_files(processed_files)
-
-                    # Check for Voice Trigger (Phase A10)
-                    should_trigger_voice = False
-                    if settings.ENABLE_VOICE_RESPONSES:
-                        should_trigger_voice = VoiceTriggerDetector.should_trigger_voice(user_message, character)
-                        if should_trigger_voice:
-                            logger.info(f"Voice trigger detected for user {user_id}")
-                    
-                    # Validate image URLs early
-                    if image_urls:
-                        valid_urls, invalid_urls = validator.validate_image_urls(image_urls)
-                        if invalid_urls:
-                            logger.warning(f"Removed {len(invalid_urls)} invalid image URLs")
-                        image_urls = valid_urls if valid_urls else None
-                    
-                    # 1. Retrieve Context (RAG & History) BEFORE saving current message
-                    # This prevents "Echo Chamber" (finding current msg in vector search)
-                    # and "Double Speak" (finding current msg in chat history)
-                    
-                    # Parallel Context Retrieval
-                    async def get_memories():
-                        try:
-                            mems = await memory_manager.search_memories(user_message, user_id)
-                            if mems:
-                                # Format with relative time AND absolute date for clarity
-                                def format_mem(m):
-                                    rel = m.get('relative_time', 'unknown time')
-                                    ts = m.get('timestamp', '')
-                                    date_str = ts.split('T')[0] if ts else 'unknown date'
-                                    return f"- {m['content']} ({rel}, {date_str})"
-                                
-                                fmt = "\n".join([format_mem(m) for m in mems])
+                            if status_message:
+                                await status_message.edit(content=full_content)
                             else:
-                                fmt = "No relevant memories found."
-                            return mems, fmt
+                                status_message = await message.channel.send(full_content)
                         except Exception as e:
-                            logger.error(f"Failed to search memories: {e}")
-                            return [], "No relevant memories found."
+                            logger.error(f"Failed to update reflective status: {e}")
 
-                    async def get_history():
-                        try:
-                            return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id)
-                        except Exception as e:
-                            logger.error(f"Failed to retrieve chat history: {e}")
-                            return []
-
-                    async def get_knowledge():
-                        try:
-                            facts = await knowledge_manager.get_user_knowledge(user_id)
-                            # Fallback: If name is not in knowledge graph, use Discord display name
-                            if "name" not in facts.lower():
-                                display_name = message.author.display_name
-                                facts += f"\n- User's Discord Display Name: {display_name}"
-                            return facts
-                        except Exception as e:
-                            logger.error(f"Failed to retrieve knowledge facts: {e}")
-                            return ""
-
-                    async def get_summaries():
-                        try:
-                            sums = await memory_manager.search_summaries(user_message, user_id, limit=3)
-                            if sums:
-                                return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']}, {s.get('relative_time', 'unknown time')})" for s in sums])
-                            return ""
-                        except Exception as e:
-                            logger.error(f"Failed to retrieve summaries: {e}")
-                            return ""
-
-                    async def get_universe_context():
-                        try:
-                            from src_v2.universe.context_builder import universe_context_builder
-                            guild_id = str(message.guild.id) if message.guild else None
-                            channel_id = str(message.channel.id)
-                            char_name = settings.DISCORD_BOT_NAME
-                            return await universe_context_builder.build_context(user_id, guild_id, channel_id, char_name)
-                        except Exception as e:
-                            logger.error(f"Failed to retrieve universe context: {e}")
-                            return "Location: Unknown"
-
-                    async def get_channel_context():
-                        """Fetch recent channel messages for multi-bot awareness."""
-                        if is_dm or not message.guild:
-                            return ""
-                        try:
-                            # Fetch last 10 messages from Discord API (includes bot messages)
-                            recent_msgs = []
-                            async for msg in message.channel.history(limit=10, before=message):
-                                # Skip the current message and empty messages
-                                if msg.id == message.id or not msg.content:
-                                    continue
-                                
-                                author_name = msg.author.display_name
-                                is_bot = msg.author.bot
-                                
-                                content = smart_truncate(msg.content, 300)
-                                
-                                # Format: [Author (Bot)]: content or [Author]: content
-                                if is_bot:
-                                    recent_msgs.append(f"[{author_name} (Bot)]: {content}")
-                                else:
-                                    recent_msgs.append(f"[{author_name}]: {content}")
-                            
-                            if not recent_msgs:
-                                return ""
-                            
-                            # Reverse to chronological order
-                            recent_msgs.reverse()
-                            return "\n".join(recent_msgs)
-                        except Exception as e:
-                            logger.debug(f"Failed to fetch channel context: {e}")
-                            return ""
-
-                    # Execute all context retrieval tasks in parallel
-                    (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, channel_context = await asyncio.gather(
-                        get_memories(),
-                        get_history(),
-                        get_knowledge(),
-                        get_summaries(),
-                        get_universe_context(),
-                        get_channel_context()
+                # Streaming Response Logic
+                full_response_text = ""
+                active_message: Optional[discord.Message] = None
+                last_update_time = 0
+                update_interval = 0.7  # Seconds between edits to avoid rate limits
+                
+                # Start typing indicator only when generation begins
+                # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
+                reading_delay = min(len(user_message) * settings.TYPING_SPEED_CHAR_PER_SEC, settings.TYPING_MAX_DELAY_SECONDS)
+                reading_delay += random.uniform(0, 1.0) # Add jitter
+                
+                elapsed = time.time() - processing_start
+                if elapsed < reading_delay:
+                    await asyncio.sleep(reading_delay - elapsed)
+                    
+                async with message.channel.typing():
+                    async for chunk in self.agent_engine.generate_response_stream(
+                        character=character,
+                        user_message=user_message,
+                        chat_history=chat_history,
+                        context_variables=context_vars,
+                        user_id=user_id,
+                        image_urls=image_urls,
+                        callback=reflective_callback,
+                        force_reflective=force_reflective,
+                        preclassified_complexity=complexity,
+                        preclassified_intents=detected_intents
+                    ):
+                        full_response_text += chunk
+                        
+                        # Rate limit updates
+                        now = time.time()
+                        if now - last_update_time > update_interval:
+                            # Only stream if length is safe and content is non-empty
+                            if len(full_response_text) < 1950 and full_response_text.strip():
+                                try:
+                                    if not active_message:
+                                        active_message = await message.channel.send(full_response_text)
+                                    else:
+                                        await active_message.edit(content=full_response_text)
+                                except Exception as e:
+                                    logger.warning(f"Failed to stream update: {e}")
+                            last_update_time = now
+                
+                response = full_response_text
+                
+                # Guard against empty responses
+                if not response or not response.strip():
+                    logger.warning(f"LLM returned empty response for user {user_id}")
+                    if character.error_messages:
+                        response = random.choice(character.error_messages)
+                    else:
+                        response = "I got a bit distracted there. What were we talking about?"
+                
+                processing_time_ms: float = (time.time() - start_time) * 1000
+                
+                # 3.5 Generate Stats Footer (if enabled for user)
+                from src_v2.utils.stats_footer import stats_footer
+                should_show_footer = await stats_footer.is_enabled_for_user(user_id, self.character_name)
+                footer_text = ""
+                
+                if should_show_footer:
+                    footer_text = await stats_footer.generate_footer(
+                        user_id=user_id,
+                        character_name=self.character_name,
+                        memory_count=len(memories) if memories else 0,
+                        processing_time_ms=processing_time_ms
                     )
+                
+                # 4. Save AI Response
+                try:
+                    # Append footer if enabled
+                    final_text = response
+                    if footer_text:
+                        final_text = f"{response}\n\n{footer_text}"
+                    
+                    # Extract any generated images from the response
+                    cleaned_text, image_files = await extract_pending_images(final_text, user_id)
+                    
+                    # Generate Voice Response if triggered (Phase A10)
+                    voice_file_path = None
+                    if should_trigger_voice:
+                        try:
+                            # Use the clean response text (without footer)
+                            voice_result = await voice_response_manager.generate_voice_response(response, character, user_id)
+                            if voice_result:
+                                voice_file_path, voice_filename = voice_result
+                                voice_file = discord.File(voice_file_path, filename=voice_filename)
+                                image_files.append(voice_file) # Add to files list
+                                
+                                # Add intro text if configured
+                                if character.voice_config and character.voice_config.intro_template:
+                                    intro = character.voice_config.intro_template.format(name=character.name)
+                                    cleaned_text = f"{intro}\n\n{cleaned_text}"
+                        except QuotaExceededError as e:
+                            logger.info(f"Voice quota exceeded for user {user_id}")
+                            cleaned_text += f"\n\n⚠️ **Voice generation failed:** Daily audio quota exceeded ({e.usage}/{e.limit})."
+                        except Exception as e:
+                            logger.error(f"Failed to generate voice response: {e}")
 
-                    # 2. Save User Message & Extract Knowledge
-                    try:
-                        # Save to memory with full document content for RAG retrieval
-                        memory_content = doc_context.format_for_memory(user_message)
-                        metadata = doc_context.get_memory_metadata()
-
+                    # Split response into chunks if it's too long
+                    message_chunks = self._chunk_message(cleaned_text)
+                    
+                    # Handle the first chunk (Edit existing or Send new)
+                    sent_messages = []
+                    
+                    if active_message:
+                        # We already have a streaming message
+                        # Just edit the text (files can't be attached to edited messages in discord.py)
+                        await active_message.edit(content=message_chunks[0])
+                        sent_messages.append(active_message)
+                        
+                        # Send remaining chunks
+                        for chunk in message_chunks[1:]:
+                            sent_msg = await message.channel.send(chunk)
+                            sent_messages.append(sent_msg)
+                        
+                        # Send images as a separate message if present
+                        if image_files:
+                            try:
+                                image_msg = await message.channel.send(files=image_files)
+                                sent_messages.append(image_msg)
+                            except Exception as e:
+                                logger.error(f"Failed to send image message: {e}")
+                    else:
+                        # No streaming happened, send all chunks
+                        # Attach images to the first message only
+                        for i, chunk in enumerate(message_chunks):
+                            if i == 0 and image_files:
+                                try:
+                                    sent_msg = await message.channel.send(content=chunk, files=image_files)
+                                except discord.Forbidden as e:
+                                    logger.error(f"Permission denied when sending images: {e}")
+                                    sent_msg = await message.channel.send(content=chunk)
+                                except Exception as e:
+                                    logger.error(f"Failed to send message with images: {e}")
+                                    sent_msg = await message.channel.send(content=chunk)
+                            else:
+                                sent_msg = await message.channel.send(chunk)
+                            sent_messages.append(sent_msg)
+                    
+                    # Save the full response to memory (not chunked)
+                    # Use the last message ID as the primary reference
+                    if sent_messages:
                         await memory_manager.add_message(
                             user_id, 
                             character.name, 
-                            'human', 
-                            memory_content, 
+                            'ai', 
+                            response, 
                             channel_id=channel_id, 
-                            message_id=str(message.id),
-                            user_name=message.author.display_name,
-                            metadata=metadata
+                            message_id=str(sent_messages[-1].id)
                         )
-                        
-                        # Log Message Event to InfluxDB
-                        if db_manager.influxdb_write_api:
-                            point = Point("message_event") \
-                                .tag("user_id", user_id) \
-                                .tag("bot_name", self.character_name) \
-                                .tag("channel_type", "dm" if is_dm else "guild") \
-                                .field("length", len(user_message)) \
-                                .time(datetime.utcnow())
-                            db_manager.influxdb_write_api.write(
-                                bucket=settings.INFLUXDB_BUCKET,
-                                org=settings.INFLUXDB_ORG,
-                                record=point
-                            )
-
-                    except Exception as e:
-                        logger.error(f"Failed to save user message to memory: {e}")
-
-                    # Fire-and-forget knowledge extraction via background worker
-                    # (offloaded from response pipeline for lower latency)
-                    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+                    
+                    # 4.5 Goal Analysis (Fire-and-forget)
+                    # Analyze the interaction (User Message + AI Response)
+                    interaction_text = f"User: {user_message}\nAI: {response}"
+                    self.loop.create_task(
+                        goal_analyzer.check_goals(user_id, character.name, interaction_text)
+                    )
+                    
+                    # 4.6 Trust Update (Engagement Reward)
+                    # Small trust increase for every positive interaction
+                    async def handle_trust_update():
                         try:
-                            await task_queue.enqueue_knowledge_extraction(
+                            milestone = await trust_manager.update_trust(user_id, character.name, 1)
+                            if milestone:
+                                await message.channel.send(milestone)
+                        except Exception as e:
+                            logger.error(f"Failed to handle trust update: {e}")
+
+                    self.loop.create_task(handle_trust_update())
+                    
+                    # 4.7 Universe Relationship Update (Phase B8)
+                    # Build familiarity between character and user after each conversation
+                    try:
+                        guild_id = str(message.guild.id) if message.guild else None
+                        await task_queue.enqueue_relationship_update(
+                            character_name=self.character_name,
+                            user_id=user_id,
+                            guild_id=guild_id,
+                            interaction_quality=1
+                        )
+                    except Exception as e:
+                        logger.debug(f"Failed to enqueue relationship update: {e}")
+                    
+                    # 4.8 Universe Event Detection (Phase 3.4)
+                    # Detect significant events and publish to the event bus
+                    if settings.ENABLE_UNIVERSE_EVENTS:
+                        try:
+                            from src_v2.universe.detector import event_detector
+                            await event_detector.analyze_and_publish(
                                 user_id=user_id,
-                                message=raw_user_message,
+                                user_message=raw_user_message,
                                 character_name=self.character_name
                             )
                         except Exception as e:
-                            logger.error(f"Failed to enqueue knowledge extraction: {e}")
-
-                    # Fire-and-forget Preference Extraction
-                    if settings.ENABLE_PREFERENCE_EXTRACTION:
-                        async def process_preferences(uid, msg, char_name):
-                            prefs = await preference_extractor.extract_preferences(msg)
-                            if prefs:
-                                logger.info(f"Detected preferences for {uid}: {prefs}")
-                                for key, value in prefs.items():
-                                    await trust_manager.update_preference(uid, char_name, key, value)
-                                    
-                        self.loop.create_task(process_preferences(user_id, raw_user_message, self.character_name))
-
-                    # 2.5 Check for Summarization
-                    if session_id:
-                        self.loop.create_task(self._check_and_summarize(session_id, user_id))
-
-                    # 3. Generate response
-                    # Get user's timezone preference for context-aware datetime
-                    user_timezone_str = None
-                    try:
-                        relationship = await trust_manager.get_relationship_level(user_id, character.name)
-                        user_timezone_str = relationship.get("preferences", {}).get("timezone")
-                    except Exception as e:
-                        logger.debug(f"Could not fetch timezone preference: {e}")
+                            logger.debug(f"Failed to detect universe event: {e}")
                     
-                    # Format datetime with user's timezone if available
-                    from datetime import timezone as tz
-                    now = datetime.now()
-                    datetime_display = now.strftime("%A, %B %d, %Y at %H:%M")
-                    
-                    if user_timezone_str:
-                        try:
-                            from zoneinfo import ZoneInfo
-                            user_tz = ZoneInfo(user_timezone_str)
-                            user_now = datetime.now(user_tz)
-                            datetime_display = user_now.strftime("%A, %B %d, %Y at %H:%M") + f" ({user_timezone_str})"
-                        except Exception as e:
-                            logger.debug(f"Invalid timezone '{user_timezone_str}': {e}")
-                    
-                    # Determine channel context
-                    channel_name = "DM"
-                    parent_channel_name = None
-                    is_thread = False
-                    
-                    if isinstance(message.channel, discord.Thread):
-                        is_thread = True
-                        channel_name = message.channel.name
-                        if message.channel.parent:
-                            parent_channel_name = message.channel.parent.name
-                    elif hasattr(message.channel, 'name'):
-                        channel_name = message.channel.name
-
-                    context_vars = {
-                        "user_name": message.author.display_name,
-                        "current_datetime": datetime_display,
-                        "universe_context": universe_context,
-                        "recent_memories": formatted_memories,
-                        "knowledge_context": knowledge_facts,
-                        "past_summaries": past_summaries,
-                        "channel_context": channel_context,  # Multi-bot awareness
-                        "guild_id": str(message.guild.id) if message.guild else None,
-                        "channel_name": channel_name,
-                        "parent_channel_name": parent_channel_name,
-                        "is_thread": is_thread,
-                        "has_documents": doc_context.has_documents
-                    }
-                    
-                    # Append document preview to user message for LLM
-                    if doc_context.has_documents:
-                        user_message += doc_context.format_for_llm()
-
-                    # Track timing for stats footer
-                    start_time = time.time()
-                    
-                    # Prepare callback for Reflective Mode
-                    status_message: Optional[discord.Message] = None
-                    status_header: str = "🧠 **Reflective Mode Activated**"
-                    status_body: str = ""
-                    status_lock = asyncio.Lock()
-                    
-                    async def reflective_callback(text: str):
-                        nonlocal status_message, status_header, status_body
-                        async with status_lock:
-                            # Check for header update
-                            if text.startswith("HEADER:"):
-                                status_header = text.replace("HEADER:", "").strip()
-                                # If we have a message, update it immediately to reflect header change
-                                if status_message:
-                                    full_content = f"{status_header}\n{status_body}"
-                                    if len(full_content) > 1900:
-                                        full_content = full_content[:1900] + "\n... (truncated)"
-                                    try:
-                                        await status_message.edit(content=full_content)
-                                    except Exception as e:
-                                        logger.error(f"Failed to update status header: {e}")
-                                return
-
-                            # Clean up text slightly
-                            clean_text = text.strip()
-                            if not clean_text:
-                                return
-                                
-                            # Format: Quote block for thoughts
-                            formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
-                            
-                            status_body += f"\n{formatted_text}"
-                            
-                            # Construct full content
-                            full_content = f"{status_header}\n{status_body}"
-                            
-                            # Truncate if too long for Discord (2000 chars)
-                            if len(full_content) > 1900:
-                                full_content = full_content[:1900] + "\n... (truncated)"
-                            
-                            try:
-                                if status_message:
-                                    await status_message.edit(content=full_content)
-                                else:
-                                    status_message = await message.channel.send(full_content)
-                            except Exception as e:
-                                logger.error(f"Failed to update reflective status: {e}")
-
-                    # Streaming Response Logic
-                    full_response_text = ""
-                    active_message: Optional[discord.Message] = None
-                    last_update_time = 0
-                    update_interval = 0.7  # Seconds between edits to avoid rate limits
-                    
-                    # Start typing indicator only when generation begins
-                    # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
-                    reading_delay = min(len(user_message) * settings.TYPING_SPEED_CHAR_PER_SEC, settings.TYPING_MAX_DELAY_SECONDS)
-                    reading_delay += random.uniform(0, 1.0) # Add jitter
-                    
-                    elapsed = time.time() - processing_start
-                    if elapsed < reading_delay:
-                        await asyncio.sleep(reading_delay - elapsed)
-                        
-                    async with message.channel.typing():
-                        async for chunk in self.agent_engine.generate_response_stream(
-                            character=character,
-                            user_message=user_message,
-                            chat_history=chat_history,
-                            context_variables=context_vars,
-                            user_id=user_id,
-                            image_urls=image_urls,
-                            callback=reflective_callback,
-                            force_reflective=force_reflective
-                        ):
-                            full_response_text += chunk
-                            
-                            # Rate limit updates
-                            now = time.time()
-                            if now - last_update_time > update_interval:
-                                # Only stream if length is safe and content is non-empty
-                                if len(full_response_text) < 1950 and full_response_text.strip():
-                                    try:
-                                        if not active_message:
-                                            active_message = await message.channel.send(full_response_text)
-                                        else:
-                                            await active_message.edit(content=full_response_text)
-                                    except Exception as e:
-                                        logger.warning(f"Failed to stream update: {e}")
-                                last_update_time = now
-                    
-                    response = full_response_text
-                    
-                    # Guard against empty responses
-                    if not response or not response.strip():
-                        logger.warning(f"LLM returned empty response for user {user_id}")
-                        if character.error_messages:
-                            response = random.choice(character.error_messages)
-                        else:
-                            response = "I got a bit distracted there. What were we talking about?"
-                    
-                    processing_time_ms: float = (time.time() - start_time) * 1000
-                    
-                    # 3.5 Generate Stats Footer (if enabled for user)
-                    from src_v2.utils.stats_footer import stats_footer
-                    should_show_footer = await stats_footer.is_enabled_for_user(user_id, self.character_name)
-                    footer_text = ""
-                    
-                    if should_show_footer:
-                        footer_text = await stats_footer.generate_footer(
-                            user_id=user_id,
-                            character_name=self.character_name,
-                            memory_count=len(memories) if memories else 0,
-                            processing_time_ms=processing_time_ms
-                        )
-                    
-                    # 4. Save AI Response
-                    try:
-                        # Append footer if enabled
-                        final_text = response
-                        if footer_text:
-                            final_text = f"{response}\n\n{footer_text}"
-                        
-                        # Extract any generated images from the response
-                        cleaned_text, image_files = await extract_pending_images(final_text, user_id)
-                        
-                        # Generate Voice Response if triggered (Phase A10)
-                        voice_file_path = None
-                        if should_trigger_voice:
-                            try:
-                                # Use the clean response text (without footer)
-                                voice_result = await voice_response_manager.generate_voice_response(response, character, user_id)
-                                if voice_result:
-                                    voice_file_path, voice_filename = voice_result
-                                    voice_file = discord.File(voice_file_path, filename=voice_filename)
-                                    image_files.append(voice_file) # Add to files list
-                                    
-                                    # Add intro text if configured
-                                    if character.voice_config and character.voice_config.intro_template:
-                                        intro = character.voice_config.intro_template.format(name=character.name)
-                                        cleaned_text = f"{intro}\n\n{cleaned_text}"
-                            except Exception as e:
-                                logger.error(f"Failed to generate voice response: {e}")
-
-                        # Split response into chunks if it's too long
-                        message_chunks = self._chunk_message(cleaned_text)
-                        
-                        # Handle the first chunk (Edit existing or Send new)
-                        sent_messages = []
-                        
-                        if active_message:
-                            # We already have a streaming message
-                            # Just edit the text (files can't be attached to edited messages in discord.py)
-                            await active_message.edit(content=message_chunks[0])
-                            sent_messages.append(active_message)
-                            
-                            # Send remaining chunks
-                            for chunk in message_chunks[1:]:
-                                sent_msg = await message.channel.send(chunk)
-                                sent_messages.append(sent_msg)
-                            
-                            # Send images as a separate message if present
-                            if image_files:
+                    # 5. Voice Playback (use full response, not chunked)
+                    if message.guild and message.guild.voice_client:
+                        vc = message.guild.voice_client
+                        # Check if voice client is connected
+                        if hasattr(vc, 'is_connected') and vc.is_connected():
+                            # Only speak if the message was sent in the Voice Channel's text chat
+                            # (message.channel.id matches the voice channel ID)
+                            if vc.channel and message.channel.id == vc.channel.id:
+                                logger.info(f"Voice connected in {message.guild.name} and message from VC text chat. Speaking...")
                                 try:
-                                    image_msg = await message.channel.send(files=image_files)
-                                    sent_messages.append(image_msg)
+                                    voice_id = character.voice_config.voice_id if character.voice_config else None
+                                    await play_text(vc, response, voice_id=voice_id)  # type: ignore[arg-type]
                                 except Exception as e:
-                                    logger.error(f"Failed to send image message: {e}")
-                        else:
-                            # No streaming happened, send all chunks
-                            # Attach images to the first message only
-                            for i, chunk in enumerate(message_chunks):
-                                if i == 0 and image_files:
-                                    try:
-                                        sent_msg = await message.channel.send(content=chunk, files=image_files)
-                                    except discord.Forbidden as e:
-                                        logger.error(f"Permission denied when sending images: {e}")
-                                        sent_msg = await message.channel.send(content=chunk)
-                                    except Exception as e:
-                                        logger.error(f"Failed to send message with images: {e}")
-                                        sent_msg = await message.channel.send(content=chunk)
-                                else:
-                                    sent_msg = await message.channel.send(chunk)
-                                sent_messages.append(sent_msg)
-                        
-                        # Save the full response to memory (not chunked)
-                        # Use the last message ID as the primary reference
-                        if sent_messages:
-                            await memory_manager.add_message(
-                                user_id, 
-                                character.name, 
-                                'ai', 
-                                response, 
-                                channel_id=channel_id, 
-                                message_id=str(sent_messages[-1].id)
-                            )
-                        
-                        # 4.5 Goal Analysis (Fire-and-forget)
-                        # Analyze the interaction (User Message + AI Response)
-                        interaction_text = f"User: {user_message}\nAI: {response}"
-                        self.loop.create_task(
-                            goal_analyzer.check_goals(user_id, character.name, interaction_text)
-                        )
-                        
-                        # 4.6 Trust Update (Engagement Reward)
-                        # Small trust increase for every positive interaction
-                        async def handle_trust_update():
-                            try:
-                                milestone = await trust_manager.update_trust(user_id, character.name, 1)
-                                if milestone:
-                                    await message.channel.send(milestone)
-                            except Exception as e:
-                                logger.error(f"Failed to handle trust update: {e}")
-
-                        self.loop.create_task(handle_trust_update())
-                        
-                        # 4.7 Universe Relationship Update (Phase B8)
-                        # Build familiarity between character and user after each conversation
-                        try:
-                            guild_id = str(message.guild.id) if message.guild else None
-                            await task_queue.enqueue_relationship_update(
-                                character_name=self.character_name,
-                                user_id=user_id,
-                                guild_id=guild_id,
-                                interaction_quality=1
-                            )
-                        except Exception as e:
-                            logger.debug(f"Failed to enqueue relationship update: {e}")
-                        
-                        # 4.8 Universe Event Detection (Phase 3.4)
-                        # Detect significant events and publish to the event bus
-                        if settings.ENABLE_UNIVERSE_EVENTS:
-                            try:
-                                from src_v2.universe.detector import event_detector
-                                await event_detector.analyze_and_publish(
-                                    user_id=user_id,
-                                    user_message=raw_user_message,
-                                    character_name=self.character_name
-                                )
-                            except Exception as e:
-                                logger.debug(f"Failed to detect universe event: {e}")
-                        
-                        # 5. Voice Playback (use full response, not chunked)
-                        if message.guild and message.guild.voice_client:
-                            vc = message.guild.voice_client
-                            # Check if voice client is connected
-                            if hasattr(vc, 'is_connected') and vc.is_connected():
-                                # Only speak if the message was sent in the Voice Channel's text chat
-                                # (message.channel.id matches the voice channel ID)
-                                if vc.channel and message.channel.id == vc.channel.id:
-                                    logger.info(f"Voice connected in {message.guild.name} and message from VC text chat. Speaking...")
-                                    try:
-                                        voice_id = character.voice_config.voice_id if character.voice_config else None
-                                        await play_text(vc, response, voice_id=voice_id)  # type: ignore[arg-type]
-                                    except Exception as e:
-                                        logger.error(f"Failed to play voice: {e}")
-                                else:
-                                    logger.debug("Message not from VC text chat. Skipping voice playback.")
+                                    logger.error(f"Failed to play voice: {e}")
                             else:
-                                logger.warning("Voice client exists but is not connected.")
+                                logger.debug("Message not from VC text chat. Skipping voice playback.")
                         else:
-                            logger.debug("No active voice client found for this guild.")
-                            
-                    except Exception as e:
-                        logger.error(f"Failed to send/save AI response: {e}")
+                            logger.warning("Voice client exists but is not connected.")
+                    else:
+                        logger.debug("No active voice client found for this guild.")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to send/save AI response: {e}")
 
             except Exception as e:
                 logger.exception(f"Critical error in on_message: {e}")

@@ -3,6 +3,14 @@ from loguru import logger
 from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.config.settings import settings
 
+class QuotaExceededError(Exception):
+    """Raised when a user exceeds their daily quota."""
+    def __init__(self, quota_type: str, limit: int, usage: int):
+        self.quota_type = quota_type
+        self.limit = limit
+        self.usage = usage
+        super().__init__(f"Daily {quota_type} quota exceeded ({usage}/{limit})")
+
 class QuotaManager:
     @retry_db_operation()
     async def check_quota(self, user_id: str, quota_type: str) -> bool:
@@ -64,5 +72,30 @@ class QuotaManager:
         async with db_manager.postgres_pool.acquire() as conn:
             await conn.execute(query, str(user_id), today, img_inc, audio_inc)
             logger.info(f"Incremented {quota_type} usage for user {user_id}")
+
+    @retry_db_operation()
+    async def get_usage(self, user_id: str, quota_type: str) -> int:
+        """
+        Get current usage count for the given type ('image' or 'audio').
+        Returns 0 if no usage record exists.
+        """
+        if not db_manager.postgres_pool:
+            return 0
+
+        today = date.today()
+        
+        query = """
+            SELECT image_count, audio_count 
+            FROM v2_user_daily_usage 
+            WHERE user_id = $1 AND date = $2
+        """
+        
+        async with db_manager.postgres_pool.acquire() as conn:
+            row = await conn.fetchrow(query, str(user_id), today)
+            
+            if not row:
+                return 0
+            
+            return row['image_count'] if quota_type == 'image' else row['audio_count']
 
 quota_manager = QuotaManager()

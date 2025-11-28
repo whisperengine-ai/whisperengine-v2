@@ -5,7 +5,7 @@ from loguru import logger
 from src_v2.core.character import Character
 from src_v2.voice.tts import tts_manager
 from src_v2.config.settings import settings
-from src_v2.core.quota import quota_manager
+from src_v2.core.quota import quota_manager, QuotaExceededError
 
 class VoiceResponseManager:
     """Orchestrates voice response generation and file handling."""
@@ -14,6 +14,7 @@ class VoiceResponseManager:
         """
         Generates a voice response for the given text and character.
         Returns a tuple of (file_path, filename) or None if generation fails.
+        Raises QuotaExceededError if quota is exceeded.
         """
         if not settings.ENABLE_VOICE_RESPONSES:
             return None
@@ -22,8 +23,10 @@ class VoiceResponseManager:
         if user_id:
             has_quota = await quota_manager.check_quota(user_id, 'audio')
             if not has_quota:
+                usage = await quota_manager.get_usage(user_id, 'audio')
+                limit = settings.DAILY_AUDIO_QUOTA
                 logger.info(f"Voice response blocked for user {user_id}: Daily quota exceeded")
-                return None
+                raise QuotaExceededError('audio', limit, usage)
 
         # Resolve Voice ID
         voice_id = None

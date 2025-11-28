@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Callable, Awaitable, Literal
+from typing import List, Dict, Any, Optional, Callable, Awaitable, Literal, Tuple, Union
 from dataclasses import dataclass, field
 import json
 import datetime
@@ -86,7 +86,9 @@ class AgentEngine:
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
         force_reflective: bool = False,
         force_fast: bool = False,
-        return_metadata: bool = False
+        return_metadata: bool = False,
+        preclassified_complexity: Optional[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"], str]] = None,
+        preclassified_intents: Optional[List[str]] = None
     ) -> str | ResponseResult:
         """
         Generates a response for the given character and user message.
@@ -94,7 +96,11 @@ class AgentEngine:
         Args:
             force_reflective: If True, forces reflective (ReAct) mode regardless of complexity.
             force_fast: If True, forces fast mode (single-pass LLM, no tools) regardless of complexity.
+            preclassified_complexity: Optional complexity verdict supplied by caller to avoid reclassification.
+            preclassified_intents: Optional list of intents detected by caller (voice, image, etc.).
             return_metadata: If True, returns ResponseResult with metadata instead of just string.
+            preclassified_complexity: Optional complexity verdict supplied by caller to avoid reclassification.
+            preclassified_intents: Optional list of intents detected by caller (voice, image, etc.).
         
         Returns:
             str if return_metadata=False, ResponseResult if return_metadata=True.
@@ -127,15 +133,29 @@ class AgentEngine:
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
-        is_complex = await self._classify_complexity(
-            user_message, chat_history, user_id, character.name,
-            force_fast=force_fast, force_reflective=force_reflective
-        )
-        _complexity = is_complex if is_complex else "SIMPLE"
-        logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+        complexity_result = preclassified_complexity
+        detected_intents = list(preclassified_intents or [])
+
+        if complexity_result is None:
+            complexity_result, detected_intents = await self.classify_complexity(
+                user_message, chat_history, user_id, character.name,
+                force_fast=force_fast, force_reflective=force_reflective
+            )
+            logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+        else:
+            logger.debug("Complexity classification reused from caller")
+
+        _complexity = complexity_result if complexity_result else "SIMPLE"
+
+        # Promote complexity for specific intents
+        # "memory" intent requires UpdateFactsTool which is only in Reflective Mode (COMPLEX_MID+)
+        if "memory" in detected_intents and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            logger.info("Promoting complexity to COMPLEX_MID due to 'memory' intent")
+            complexity_result = "COMPLEX_MID"
+            _complexity = "COMPLEX_MID"
 
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
-        if is_complex == "MANIPULATION":
+        if complexity_result == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
             _complexity = "MANIPULATION"
             _mode = "blocked"
@@ -163,17 +183,17 @@ class AgentEngine:
         logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
         # 3. Branching Logic: Reflective Mode
-        if is_complex and user_id:
+        if complexity_result and user_id:
             # 3a. Reflective Mode (Full ReAct Loop)
-            if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            if settings.ENABLE_REFLECTIVE_MODE and complexity_result in ["COMPLEX_MID", "COMPLEX_HIGH"]:
                 # Determine max steps based on complexity level
                 max_steps = 10 # Default
-                if is_complex == "COMPLEX_MID":
+                if complexity_result == "COMPLEX_MID":
                     max_steps = 10
-                elif is_complex == "COMPLEX_HIGH":
+                elif complexity_result == "COMPLEX_HIGH":
                     max_steps = 15
                 
-                enable_verification = (is_complex == "COMPLEX_HIGH")
+                enable_verification = (complexity_result == "COMPLEX_HIGH")
                     
                 response = await self._run_reflective_mode(
                     character, user_message, user_id, system_content, 
@@ -182,23 +202,23 @@ class AgentEngine:
                     enable_verification=enable_verification
                 )
                 total_time = time.time() - start_time
-                logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {is_complex})")
+                logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {complexity_result})")
                 
                 # Log metrics
-                await self._log_metrics(user_id, character.name, total_time, "reflective", is_complex)
+                await self._log_metrics(user_id, character.name, total_time, "reflective", complexity_result)
                 
                 if return_metadata:
                     return ResponseResult(
                         response=response,
                         mode="reflective",
-                        complexity=is_complex,
+                        complexity=complexity_result,
                         model_used=settings.REFLECTIVE_LLM_MODEL_NAME or settings.LLM_MODEL_NAME or "unknown",
                         processing_time_ms=total_time * 1000
                     )
                 return response
             
             # 3b. Character Agency (Tier 2 - Single Tool Call)
-            elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
+            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW":
                 response = await self.character_agent.run(
                     user_input=user_message,
                     user_id=user_id,
@@ -208,16 +228,16 @@ class AgentEngine:
                     character_name=character.name
                 )
                 total_time = time.time() - start_time
-                logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {is_complex})")
+                logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {complexity_result})")
                 
                 # Log metrics
-                await self._log_metrics(user_id, character.name, total_time, "agency", is_complex)
+                await self._log_metrics(user_id, character.name, total_time, "agency", complexity_result)
                 
                 if return_metadata:
                     return ResponseResult(
                         response=response,
                         mode="agency",
-                        complexity=is_complex,
+                        complexity=complexity_result,
                         model_used=settings.LLM_MODEL_NAME or "unknown",
                         processing_time_ms=total_time * 1000
                     )
@@ -302,13 +322,13 @@ class AgentEngine:
             logger.info(f"Total response time: {total_time:.2f}s (Fast Mode)")
             
             # Log metrics
-            await self._log_metrics(user_id, character.name, total_time, "fast", is_complex)
+            await self._log_metrics(user_id, character.name, total_time, "fast", complexity_result)
             
             if return_metadata:
                 return ResponseResult(
                     response=str(response.content),
                     mode="fast",
-                    complexity=is_complex or "SIMPLE",
+                    complexity=complexity_result or "SIMPLE",
                     model_used=settings.LLM_MODEL_NAME or "unknown",
                     processing_time_ms=total_time * 1000
                 )
@@ -338,7 +358,9 @@ class AgentEngine:
         image_urls: Optional[List[str]] = None,
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
         force_reflective: bool = False,
-        force_fast: bool = False
+        force_fast: bool = False,
+        preclassified_complexity: Optional[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"], str]] = None,
+        preclassified_intents: Optional[List[str]] = None
     ):
         """
         Generates a streaming response for the given character and user message.
@@ -372,14 +394,26 @@ class AgentEngine:
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
-        is_complex = await self._classify_complexity(
-            user_message, chat_history, user_id, character.name,
-            force_fast=force_fast, force_reflective=force_reflective
-        )
-        logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+        complexity_result = preclassified_complexity
+        detected_intents = list(preclassified_intents or [])
+
+        if complexity_result is None:
+            complexity_result, detected_intents = await self.classify_complexity(
+                user_message, chat_history, user_id, character.name,
+                force_fast=force_fast, force_reflective=force_reflective
+            )
+            logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
+        else:
+            logger.debug("Complexity classification reused from caller")
+
+        # Promote complexity for specific intents
+        # "memory" intent requires UpdateFactsTool which is only in Reflective Mode (COMPLEX_MID+)
+        if "memory" in detected_intents and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            logger.info("Promoting complexity to COMPLEX_MID due to 'memory' intent")
+            complexity_result = "COMPLEX_MID"
 
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
-        if is_complex == "MANIPULATION":
+        if complexity_result == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
             # Record violation and check if now in timeout
             if user_id:
@@ -407,9 +441,9 @@ class AgentEngine:
         logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
         # 3. Branching Logic: Complex Modes
-        if is_complex and user_id:
+        if complexity_result and user_id:
             # 3a. Reflective Mode (Full ReAct Loop) for COMPLEX_MID/HIGH
-            if settings.ENABLE_REFLECTIVE_MODE and is_complex in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            if settings.ENABLE_REFLECTIVE_MODE and complexity_result in ["COMPLEX_MID", "COMPLEX_HIGH"]:
                 # Update status header with character-specific indicator
                 if callback:
                     if character.thinking_indicators:
@@ -424,9 +458,9 @@ class AgentEngine:
                 max_steps = 10 # Default
                 should_verify = False
                 
-                if is_complex == "COMPLEX_MID":
+                if complexity_result == "COMPLEX_MID":
                     max_steps = 10
-                elif is_complex == "COMPLEX_HIGH":
+                elif complexity_result == "COMPLEX_HIGH":
                     max_steps = 15
                     # Only enable verification for OpenAI-native models
                     # Anthropic/Claude via OpenRouter has strict message format that breaks with critic step
@@ -442,7 +476,7 @@ class AgentEngine:
                     max_steps_override=max_steps,
                     enable_verification=should_verify
                 )
-                logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
+                logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {complexity_result})")
                 
                 # Log Prompt (if enabled)
                 if settings.ENABLE_PROMPT_LOGGING:
@@ -461,7 +495,7 @@ class AgentEngine:
                 return
             
             # 3b. Character Agency (Tier 2 - Single Tool Call) for COMPLEX_LOW
-            elif settings.ENABLE_CHARACTER_AGENCY and is_complex == "COMPLEX_LOW":
+            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW":
                 # Update status header with character-specific indicator
                 if callback:
                     if character.thinking_indicators:
@@ -484,10 +518,10 @@ class AgentEngine:
                     character_name=character.name
                 )
                 total_time = time.time() - start_time
-                logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {is_complex})")
+                logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {complexity_result})")
                 
                 # Log metrics
-                await self._log_metrics(user_id, character.name, total_time, "agency", is_complex)
+                await self._log_metrics(user_id, character.name, total_time, "agency", complexity_result)
                 
                 # Log Prompt (if enabled)
                 if settings.ENABLE_PROMPT_LOGGING:
@@ -591,7 +625,7 @@ class AgentEngine:
             logger.info(f"Total response time: {total_time:.2f}s (Fast Mode Stream)")
             
             # Log metrics
-            await self._log_metrics(user_id, character.name, total_time, "fast", is_complex)
+            await self._log_metrics(user_id, character.name, total_time, "fast", complexity_result)
             
         except Exception as e:
             error_type = type(e).__name__
@@ -619,7 +653,7 @@ class AgentEngine:
             "• Never collect personal info (phone/address/name)\n"
         )
 
-    async def _classify_complexity(
+    async def classify_complexity(
         self, 
         user_message: str, 
         chat_history: List[BaseMessage], 
@@ -627,7 +661,7 @@ class AgentEngine:
         character_name: Optional[str] = None,
         force_fast: bool = False,
         force_reflective: bool = False
-    ) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]:
+    ) -> Tuple[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"], str], List[str]]:
         """Determines if the query requires complex reasoning and returns the level.
         
         Args:
@@ -635,52 +669,58 @@ class AgentEngine:
             force_reflective: If True, bypasses classification and returns COMPLEX_HIGH.
         
         Returns:
-            False: Simple/trivial message (Tier 1 - Fast Mode)
-            COMPLEX_LOW: Moderate query benefiting from 1 tool (Tier 2 - CharacterAgent)
-            COMPLEX_MID: Complex query needing 3-5 steps (Tier 3 - ReflectiveAgent)
-            COMPLEX_HIGH: Very complex query needing 6+ steps (Tier 3 - ReflectiveAgent)
-            MANIPULATION: Consciousness fishing or sentience probing attempt (Tier 1 - Fast Mode with awareness)
+            Tuple[Complexity, Intents]
+            Complexity: False (Simple) or "COMPLEX_LOW/MID/HIGH" or "MANIPULATION"
+            Intents: List of detected intents (e.g. ["voice", "image"])
         """
         # Handle explicit overrides first (highest priority)
         if force_fast:
             logger.info("Complexity Analysis: FORCED FAST by caller")
-            return False
+            return False, []
         
         if force_reflective:
             logger.info("Complexity Analysis: FORCED COMPLEX by caller")
-            return "COMPLEX_HIGH"
+            return "COMPLEX_HIGH", []
         
         # No user ID = can't use personalized tools
         if not user_id:
-            return False
+            return False, []
         
         # Neither agency nor reflective mode enabled = fast mode only
         if not (settings.ENABLE_REFLECTIVE_MODE or settings.ENABLE_CHARACTER_AGENCY):
-            return False
+            return False, []
 
         # Trivial message detection (bypass LLM classifier for speed)
         if self._is_trivial_message(user_message):
             logger.info("Complexity Analysis: TRIVIAL (fast path)")
-            return False
+            return False, []
             
         try:
-            complexity_level = await self.classifier.classify(user_message, chat_history, user_id=user_id, bot_name=character_name)
+            classification_result = await self.classifier.classify(user_message, chat_history, user_id=user_id, bot_name=character_name)
+            
+            # Handle legacy string return (just in case)
+            if isinstance(classification_result, str):
+                complexity_level = classification_result
+                intents = []
+            else:
+                complexity_level = classification_result.get("complexity", "SIMPLE")
+                intents = classification_result.get("intents", [])
             
             if complexity_level == "SIMPLE":
                 logger.info("Complexity Analysis: SIMPLE")
-                return False
+                return False, intents
             
             # Handle manipulation attempts - log and return special flag
             if complexity_level == "MANIPULATION":
                 logger.warning(f"Complexity Analysis: MANIPULATION detected for user {user_id}")
-                return "MANIPULATION"
+                return "MANIPULATION", intents
             
-            logger.info(f"Complexity Analysis: {complexity_level}")
-            return complexity_level
+            logger.info(f"Complexity Analysis: {complexity_level} (Intents: {intents})")
+            return complexity_level, intents
             
         except Exception as e:
             logger.error(f"Complexity classifier failed: {e}")
-            return False
+            return False, []
     
     def _is_trivial_message(self, message: str) -> bool:
         """Fast check for trivial messages that don't need complexity classification.

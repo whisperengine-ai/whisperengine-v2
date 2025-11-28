@@ -15,7 +15,6 @@ class VoiceConfig(BaseModel):
     """Configuration for voice responses."""
     voice_id: Optional[str] = None
     model_id: str = "eleven_monolingual_v1"
-    trigger_keywords: List[str] = ["speak", "say", "voice", "audio"]
     intro_template: str = "🔊 *{name} speaks...*"
 
 class Character(BaseModel):
