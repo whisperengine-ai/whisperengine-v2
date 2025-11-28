@@ -4,10 +4,10 @@
 thinking_indicators:
   reflective_mode:
     icon: "💭"
-    text: "Hmm, let me think..."
+    text: "Hmm, let me pour on that..."
   tool_use:
     icon: "🎵"
-    text: "Vibing with this..."
+    text: "The music's tellin' me somethin'..."
 
 # Cold acknowledgments for blocked/timeout users
 cold_responses:
