@@ -1162,6 +1162,19 @@ class WhisperBot(commands.Bot):
                         except Exception as e:
                             logger.debug(f"Failed to enqueue relationship update: {e}")
                         
+                        # 4.8 Universe Event Detection (Phase 3.4)
+                        # Detect significant events and publish to the event bus
+                        if settings.ENABLE_UNIVERSE_EVENTS:
+                            try:
+                                from src_v2.universe.detector import event_detector
+                                await event_detector.analyze_and_publish(
+                                    user_id=user_id,
+                                    user_message=raw_user_message,
+                                    character_name=self.character_name
+                                )
+                            except Exception as e:
+                                logger.debug(f"Failed to detect universe event: {e}")
+                        
                         # 5. Voice Playback (use full response, not chunked)
                         if message.guild and message.guild.voice_client:
                             vc = message.guild.voice_client

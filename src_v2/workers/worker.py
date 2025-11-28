@@ -448,6 +448,89 @@ async def run_relationship_update(
         }
 
 
+async def run_gossip_dispatch(
+    ctx: Dict[str, Any],
+    event_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Process a gossip event and inject memories into eligible bots (Phase 3.4).
+    
+    Args:
+        ctx: arq context
+        event_data: Serialized UniverseEvent dict
+        
+    Returns:
+        Dict with success status and recipients
+    """
+    if not settings.ENABLE_UNIVERSE_EVENTS:
+        return {"success": False, "reason": "disabled"}
+    
+    try:
+        from src_v2.universe.bus import UniverseEvent, event_bus
+        from src_v2.memory.manager import memory_manager
+        
+        # Deserialize event
+        event = UniverseEvent.from_dict(event_data)
+        
+        logger.info(f"Processing gossip: {event.event_type.value} from {event.source_bot} about user {event.user_id}")
+        
+        # Get eligible recipients
+        recipients = await event_bus.get_eligible_recipients(event)
+        
+        if not recipients:
+            logger.debug(f"No eligible recipients for event from {event.source_bot}")
+            return {
+                "success": True,
+                "recipients": [],
+                "reason": "no_eligible_recipients"
+            }
+        
+        # Inject gossip memory into each recipient
+        injected = []
+        for bot_name in recipients:
+            try:
+                # Format as a natural "I heard" memory
+                gossip_content = (
+                    f"[Gossip from {event.source_bot}] "
+                    f"I heard that {event.summary}"
+                )
+                
+                # Store as a special "gossip" memory type
+                await memory_manager.add_message(
+                    user_id=event.user_id,
+                    character_name=bot_name,
+                    role="system",  # System role for gossip memories
+                    content=gossip_content,
+                    metadata={
+                        "type": "gossip",
+                        "source_bot": event.source_bot,
+                        "event_type": event.event_type.value,
+                        "topic": event.topic,
+                        "propagation_depth": event.propagation_depth + 1
+                    }
+                )
+                
+                injected.append(bot_name)
+                logger.info(f"Injected gossip memory into {bot_name} about user {event.user_id}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to inject gossip into {bot_name}: {e}")
+        
+        return {
+            "success": True,
+            "source_bot": event.source_bot,
+            "recipients": injected,
+            "event_type": event.event_type.value
+        }
+        
+    except Exception as e:
+        logger.error(f"Gossip dispatch failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 # Worker configuration for arq
 class WorkerSettings:
     """arq worker settings."""
@@ -465,6 +548,7 @@ class WorkerSettings:
         run_universe_observation,
         run_relationship_update,
         run_goal_strategist,
+        run_gossip_dispatch,
     ]
     
     # Startup/shutdown hooks

@@ -255,6 +255,32 @@ class TaskQueue:
             extracted_traits=extracted_traits
         )
 
+    async def enqueue_gossip(self, event: Any) -> Optional[str]:
+        """
+        Queue a gossip event for cross-bot sharing (Phase 3.4).
+        
+        Args:
+            event: UniverseEvent instance to process
+            
+        Returns:
+            Job ID if queued, None if queue unavailable
+        """
+        # Import here to avoid circular dependency
+        from src_v2.universe.bus import UniverseEvent
+        
+        if not isinstance(event, UniverseEvent):
+            logger.error(f"Invalid event type: {type(event)}")
+            return None
+        
+        # Use event details for job_id to prevent duplicates
+        job_id = f"gossip_{event.user_id}_{event.source_bot}_{event.event_type.value}"
+        
+        return await self.enqueue(
+            "run_gossip_dispatch",
+            _job_id=job_id,
+            event_data=event.to_dict()
+        )
+
 
 # Global instance
 task_queue = TaskQueue()
