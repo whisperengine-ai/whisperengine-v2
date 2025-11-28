@@ -176,22 +176,78 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### API
 - `src_v2/api/app.py`: FastAPI app with Uvicorn
-- `src_v2/api/routes.py`: `/api/chat` endpoint for testing
+- `src_v2/api/routes.py`: Chat and diagnostic endpoints
+- `src_v2/api/models.py`: Pydantic request/response models
+- `docs/API_REFERENCE.md`: Full API documentation
+
+**API Endpoints** (for automated testing without Discord):
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/chat` | POST | Send message, get response (same as Discord DM) |
+| `/api/diagnostics` | GET | Bot config, DB status, feature flags |
+| `/api/user-state` | POST | Get trust score, memories, knowledge for user |
+| `/api/conversation` | POST | Multi-turn conversation test |
+| `/api/clear-user-data` | POST | Clear user data for test isolation |
+| `/health` | GET | Health check |
 
 ## 🔧 Development Workflows
 
 ### Testing
+
+**Automated API Testing** (no Discord needed):
 ```bash
-# Unit tests (preferred for solo dev)
-pytest tests_v2/test_memory_manager.py -v
+# Run full regression suite across all bots
+python tests_v2/run_regression.py
 
-# Direct validation with real DB
-python tests_v2/test_feature_direct_validation.py
+# Quick smoke test (health + basic chat)
+python tests_v2/run_regression.py --smoke
 
-# HTTP API test
+# Test specific bot
+python tests_v2/run_regression.py --bot elena
+
+# Test specific category
+python tests_v2/run_regression.py --category memory
+
+# Generate HTML report
+python tests_v2/run_regression.py --report
+```
+
+**Test Categories**:
+- `health` - Health endpoint, diagnostics, model verification
+- `chat` - Basic greetings, questions, context injection  
+- `character` - Self-description, personality consistency
+- `memory` - Memory storage and recall
+- `conversation` - Multi-turn conversation coherence
+- `complexity` - Routing (simple→fast, complex→reflective)
+- `comparison` - Same prompt across all models
+- `production` - Stability tests for production bots
+
+**Direct API Testing**:
+```bash
+# Simple chat
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"test","message":"Hello","metadata":{}}'
+  -d '{"user_id":"test","message":"Hello!"}'
+
+# Get diagnostics (model config, DB status)
+curl http://localhost:8000/api/diagnostics
+
+# Multi-turn conversation test
+curl -X POST http://localhost:8000/api/conversation \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"test","messages":["Hi","What is your name?"]}'
+
+# Check user state (trust, memories)
+curl -X POST http://localhost:8000/api/user-state \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"test"}'
+```
+
+**Unit Tests**:
+```bash
+pytest tests_v2/test_memory_manager.py -v
+python tests_v2/test_feature_direct_validation.py
 ```
 
 ### Database Migrations
@@ -207,7 +263,10 @@ source .venv/bin/activate
 ./bot.sh infra up          # Infrastructure only
 python run_v2.py elena    # Start bot (loads .env.elena)
 ./bot.sh logs elena -f    # Stream logs
+./bot.sh restart elena    # Restart a single bot (only takes ONE bot name)
 ```
+
+**Note**: `./bot.sh restart` only accepts a single bot name. To restart multiple bots, run the command multiple times.
 
 ## ⚙️ Settings & Feature Flags
 
@@ -288,12 +347,14 @@ python run_v2.py elena    # Start bot (loads .env.elena)
 ## 📞 Key References
 
 - **Architecture Deep Dives**: `docs/architecture/` (COGNITIVE_ENGINE, DATA_MODELS, MESSAGE_FLOW, etc.)
+- **API Reference**: `docs/API_REFERENCE.md` (all endpoints, request/response formats)
+- **Regression Tests**: `tests_v2/regression/` (automated test suite), `tests_v2/run_regression.py` (master runner)
 - **Roadmap**: `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` (prioritized by complexity for solo dev)
 - **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
 - **Character System**: `docs/architecture/WHISPERENGINE_2_DESIGN.md` (why polyglot, LLM-native design)
 
 ---
 
-**Version**: 2.1 (Nov 28, 2025 - Added bot/model configurations)  
+**Version**: 2.2 (Nov 28, 2025 - Added API testing endpoints and regression suite)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional, Callable, Awaitable, Literal
+from dataclasses import dataclass, field
 import json
 import datetime
 import time
@@ -7,6 +8,16 @@ import random
 import httpx
 from pathlib import Path
 import aiofiles
+
+
+@dataclass
+class ResponseResult:
+    """Result object containing response text and metadata."""
+    response: str
+    mode: str = "fast"  # "fast", "agency", "reflective"
+    complexity: str = "SIMPLE"  # "SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"
+    model_used: str = ""  # The model that generated the response
+    processing_time_ms: float = 0.0
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from loguru import logger
@@ -73,11 +84,25 @@ class AgentEngine:
         user_id: Optional[str] = None,
         image_urls: Optional[List[str]] = None,
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
-        force_reflective: bool = False
-    ) -> str:
+        force_reflective: bool = False,
+        force_fast: bool = False,
+        return_metadata: bool = False
+    ) -> str | ResponseResult:
         """
         Generates a response for the given character and user message.
+        
+        Args:
+            force_reflective: If True, forces reflective (ReAct) mode regardless of complexity.
+            force_fast: If True, forces fast mode (single-pass LLM, no tools) regardless of complexity.
+            return_metadata: If True, returns ResponseResult with metadata instead of just string.
+        
+        Returns:
+            str if return_metadata=False, ResponseResult if return_metadata=True.
         """
+        # Track metadata for response
+        _mode = "fast"
+        _complexity = "SIMPLE"
+        _model_used = settings.LLM_MODEL_NAME or "unknown"
         start_time = time.time()
         chat_history = chat_history or []
         context_variables = context_variables or {}
@@ -102,12 +127,18 @@ class AgentEngine:
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
-        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective, character.name)
+        is_complex = await self._classify_complexity(
+            user_message, chat_history, user_id, character.name,
+            force_fast=force_fast, force_reflective=force_reflective
+        )
+        _complexity = is_complex if is_complex else "SIMPLE"
         logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
 
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
         if is_complex == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
+            _complexity = "MANIPULATION"
+            _mode = "blocked"
             # Record violation and check if now in timeout
             if user_id:
                 timeout_status = await timeout_manager.record_violation(user_id, bot_name=character.name)
@@ -115,14 +146,16 @@ class AgentEngine:
                 # If user just crossed into timeout, use cold response
                 if timeout_status.is_restricted():
                     logger.warning(f"User {user_id} now in timeout (level {timeout_status.escalation_level})")
-                    if character.cold_responses:
-                        return random.choice(character.cold_responses)
-                    return "..."
+                    response_text = random.choice(character.cold_responses) if character.cold_responses else "..."
+                    if return_metadata:
+                        return ResponseResult(response=response_text, mode=_mode, complexity=_complexity, model_used="none")
+                    return response_text
             
             # Still in warning period - use manipulation response
-            if character.manipulation_responses:
-                return random.choice(character.manipulation_responses)
-            return "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+            response_text = random.choice(character.manipulation_responses) if character.manipulation_responses else "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+            if return_metadata:
+                return ResponseResult(response=response_text, mode=_mode, complexity=_complexity, model_used="none")
+            return response_text
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
         context_start = time.time()
@@ -154,6 +187,14 @@ class AgentEngine:
                 # Log metrics
                 await self._log_metrics(user_id, character.name, total_time, "reflective", is_complex)
                 
+                if return_metadata:
+                    return ResponseResult(
+                        response=response,
+                        mode="reflective",
+                        complexity=is_complex,
+                        model_used=settings.REFLECTIVE_LLM_MODEL_NAME or settings.LLM_MODEL_NAME or "unknown",
+                        processing_time_ms=total_time * 1000
+                    )
                 return response
             
             # 3b. Character Agency (Tier 2 - Single Tool Call)
@@ -172,6 +213,14 @@ class AgentEngine:
                 # Log metrics
                 await self._log_metrics(user_id, character.name, total_time, "agency", is_complex)
                 
+                if return_metadata:
+                    return ResponseResult(
+                        response=response,
+                        mode="agency",
+                        complexity=is_complex,
+                        model_used=settings.LLM_MODEL_NAME or "unknown",
+                        processing_time_ms=total_time * 1000
+                    )
                 return response
         
         # 4. Fast Mode (Standard Flow)
@@ -255,6 +304,14 @@ class AgentEngine:
             # Log metrics
             await self._log_metrics(user_id, character.name, total_time, "fast", is_complex)
             
+            if return_metadata:
+                return ResponseResult(
+                    response=str(response.content),
+                    mode="fast",
+                    complexity=is_complex or "SIMPLE",
+                    model_used=settings.LLM_MODEL_NAME or "unknown",
+                    processing_time_ms=total_time * 1000
+                )
             return str(response.content)
             
         except Exception as e:
@@ -280,11 +337,16 @@ class AgentEngine:
         user_id: Optional[str] = None,
         image_urls: Optional[List[str]] = None,
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
-        force_reflective: bool = False
+        force_reflective: bool = False,
+        force_fast: bool = False
     ):
         """
         Generates a streaming response for the given character and user message.
         Yields chunks of text as they are generated.
+        
+        Args:
+            force_reflective: If True, forces reflective (ReAct) mode regardless of complexity.
+            force_fast: If True, forces fast mode (single-pass LLM, no tools) regardless of complexity.
         """
         start_time = time.time()
         chat_history = chat_history or []
@@ -310,7 +372,10 @@ class AgentEngine:
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
-        is_complex = await self._classify_complexity(user_message, chat_history, user_id, force_reflective, character.name)
+        is_complex = await self._classify_complexity(
+            user_message, chat_history, user_id, character.name,
+            force_fast=force_fast, force_reflective=force_reflective
+        )
         logger.debug(f"Complexity classification took {time.time() - classify_start:.2f}s")
 
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
@@ -554,8 +619,20 @@ class AgentEngine:
             "• Never collect personal info (phone/address/name)\n"
         )
 
-    async def _classify_complexity(self, user_message: str, chat_history: List[BaseMessage], user_id: Optional[str], force_reflective: bool, character_name: Optional[str] = None) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]:
+    async def _classify_complexity(
+        self, 
+        user_message: str, 
+        chat_history: List[BaseMessage], 
+        user_id: Optional[str], 
+        character_name: Optional[str] = None,
+        force_fast: bool = False,
+        force_reflective: bool = False
+    ) -> Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]:
         """Determines if the query requires complex reasoning and returns the level.
+        
+        Args:
+            force_fast: If True, bypasses classification and returns False (fast mode).
+            force_reflective: If True, bypasses classification and returns COMPLEX_HIGH.
         
         Returns:
             False: Simple/trivial message (Tier 1 - Fast Mode)
@@ -564,6 +641,15 @@ class AgentEngine:
             COMPLEX_HIGH: Very complex query needing 6+ steps (Tier 3 - ReflectiveAgent)
             MANIPULATION: Consciousness fishing or sentience probing attempt (Tier 1 - Fast Mode with awareness)
         """
+        # Handle explicit overrides first (highest priority)
+        if force_fast:
+            logger.info("Complexity Analysis: FORCED FAST by caller")
+            return False
+        
+        if force_reflective:
+            logger.info("Complexity Analysis: FORCED COMPLEX by caller")
+            return "COMPLEX_HIGH"
+        
         # No user ID = can't use personalized tools
         if not user_id:
             return False
@@ -571,15 +657,11 @@ class AgentEngine:
         # Neither agency nor reflective mode enabled = fast mode only
         if not (settings.ENABLE_REFLECTIVE_MODE or settings.ENABLE_CHARACTER_AGENCY):
             return False
-        
+
         # Trivial message detection (bypass LLM classifier for speed)
         if self._is_trivial_message(user_message):
             logger.info("Complexity Analysis: TRIVIAL (fast path)")
             return False
-            
-        if force_reflective:
-            logger.info("Complexity Analysis: FORCED COMPLEX by user")
-            return "COMPLEX_HIGH"
             
         try:
             complexity_level = await self.classifier.classify(user_message, chat_history, user_id=user_id, bot_name=character_name)

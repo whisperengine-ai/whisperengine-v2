@@ -4,7 +4,7 @@ WhisperEngine Chat API Models
 Pydantic models for API request/response validation.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -25,7 +25,12 @@ class ChatRequest(BaseModel):
     context: Optional[Dict[str, Any]] = Field(
         default=None, 
         description="Additional context variables passed to the character's prompt template.",
-        examples=[{"channel_name": "general", "guild_name": "My Server"}]
+        examples=[{"channel_name": "general", "guild_id": "123456789"}]
+    )
+    force_mode: Optional[str] = Field(
+        default=None,
+        description="Override the auto-detected complexity mode. Options: 'fast' (single-pass LLM, no tools), 'reflective' (full ReAct reasoning). If not set, mode is auto-detected.",
+        examples=["fast", "reflective"]
     )
 
 
@@ -56,6 +61,19 @@ class ChatResponse(BaseModel):
         default=True,
         description="Whether the interaction was stored in memory."
     )
+    # Debug/diagnostic fields
+    mode: Optional[str] = Field(
+        default=None,
+        description="Processing mode used: 'fast', 'agency', 'reflective', or 'blocked'."
+    )
+    complexity: Optional[str] = Field(
+        default=None,
+        description="Complexity classification: 'SIMPLE', 'COMPLEX_LOW', 'COMPLEX_MID', 'COMPLEX_HIGH', or 'MANIPULATION'."
+    )
+    model_used: Optional[str] = Field(
+        default=None,
+        description="The LLM model that generated the response (e.g., 'openai/gpt-4o')."
+    )
 
 
 class HealthResponse(BaseModel):
@@ -70,3 +88,109 @@ class HealthResponse(BaseModel):
         ...,
         description="ISO 8601 timestamp of the health check."
     )
+
+
+# ============================================================================
+# Diagnostic Endpoints (for testing and regression)
+# ============================================================================
+
+class DiagnosticsResponse(BaseModel):
+    """Full system diagnostics for a bot."""
+    
+    bot_name: str = Field(..., description="Character name")
+    llm_models: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Configured LLM models (main, reflective, router)"
+    )
+    database_status: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Connection status for each database"
+    )
+    feature_flags: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Enabled feature flags"
+    )
+    uptime_seconds: float = Field(0.0, description="Seconds since bot started")
+    version: str = Field("unknown", description="Bot version")
+
+
+class UserStateRequest(BaseModel):
+    """Request to get user state for testing."""
+    
+    user_id: str = Field(..., description="User ID to look up")
+
+
+class UserStateResponse(BaseModel):
+    """User state for regression testing."""
+    
+    user_id: str
+    trust_score: int = Field(0, description="Current trust score")
+    trust_level: str = Field("Stranger", description="Trust level label")
+    memory_count: int = Field(0, description="Number of stored memories")
+    recent_memories: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Last 5 memories for verification"
+    )
+    knowledge_facts: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Known facts about this user"
+    )
+
+
+class ConversationRequest(BaseModel):
+    """Multi-turn conversation test request."""
+    
+    user_id: str = Field(..., description="User ID for the conversation")
+    messages: List[str] = Field(
+        ..., 
+        description="List of messages to send in sequence",
+        min_length=1
+    )
+    context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Shared context for all messages"
+    )
+    delay_between_ms: int = Field(
+        default=500,
+        description="Delay between messages in milliseconds"
+    )
+
+
+class ConversationTurn(BaseModel):
+    """A single turn in a conversation."""
+    
+    user_message: str
+    bot_response: str
+    processing_time_ms: float
+    mode: Optional[str] = None
+    complexity: Optional[str] = None
+
+
+class ConversationResponse(BaseModel):
+    """Multi-turn conversation test response."""
+    
+    success: bool
+    user_id: str
+    bot_name: str
+    turns: List[ConversationTurn]
+    total_time_ms: float
+    memory_stored: bool = True
+
+
+class ClearUserDataRequest(BaseModel):
+    """Request to clear user data for test isolation."""
+    
+    user_id: str = Field(..., description="User ID to clear")
+    clear_memories: bool = Field(True, description="Clear vector memories")
+    clear_trust: bool = Field(True, description="Reset trust score")
+    clear_knowledge: bool = Field(False, description="Clear knowledge graph facts")
+
+
+class ClearUserDataResponse(BaseModel):
+    """Response from clearing user data."""
+    
+    success: bool
+    user_id: str
+    memories_cleared: int = 0
+    trust_reset: bool = False
+    knowledge_cleared: int = 0

@@ -8,13 +8,13 @@ Tests each bot's /api/chat endpoint to verify:
 
 Usage:
     # Test all bots
-    pytest tests_v2/test_bot_api_models.py -v
+    pytest tests_v2/characters/test_bot_api_models.py -v
 
     # Test specific bot
-    pytest tests_v2/test_bot_api_models.py -v -k "test_aria"
+    pytest tests_v2/characters/test_bot_api_models.py -v -k "aria"
 
     # Run with output visible
-    pytest tests_v2/test_bot_api_models.py -v -s
+    pytest tests_v2/characters/test_bot_api_models.py -v -s --no-cov
 
 Requirements:
     - Bots must be running (./bot.sh up all)
@@ -142,8 +142,7 @@ class TestBotAPI:
         
         payload = {
             "user_id": f"test_user_{bot.name}",
-            "message": TEST_PROMPTS["simple"],
-            "metadata_level": "standard"
+            "message": TEST_PROMPTS["simple"]
         }
         
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -174,8 +173,7 @@ class TestBotAPI:
         
         payload = {
             "user_id": f"test_character_{bot.name}",
-            "message": TEST_PROMPTS["character"],
-            "metadata_level": "standard"
+            "message": TEST_PROMPTS["character"]
         }
         
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -205,8 +203,7 @@ class TestBotAPI:
         
         payload = {
             "user_id": f"test_reasoning_{bot.name}",
-            "message": TEST_PROMPTS["reasoning"],
-            "metadata_level": "standard"
+            "message": TEST_PROMPTS["reasoning"]
         }
         
         async with httpx.AsyncClient(timeout=120.0) as client:  # Longer timeout for reasoning
@@ -242,8 +239,7 @@ class TestModelComparison:
                 url = f"http://localhost:{bot.port}/api/chat"
                 payload = {
                     "user_id": "comparison_test",
-                    "message": "What's your favorite thing to do?",
-                    "metadata_level": "standard"
+                    "message": "What's your favorite thing to do?"
                 }
                 
                 try:
@@ -302,8 +298,7 @@ class TestProductionBots:
                 for i in range(3):
                     payload = {
                         "user_id": f"stability_test_{bot.name}",
-                        "message": f"Quick test message {i+1}",
-                        "metadata_level": "standard"
+                        "message": f"Quick test message {i+1}"
                     }
                     response = await client.post(url, json=payload)
                     responses.append(response)
@@ -333,8 +328,7 @@ async def quick_test(bot_name: str, message: str = "Hello!"):
     url = f"http://localhost:{bot.port}/api/chat"
     payload = {
         "user_id": "quick_test",
-        "message": message,
-        "metadata_level": "standard"
+        "message": message
     }
     
     async with httpx.AsyncClient(timeout=60.0) as client:

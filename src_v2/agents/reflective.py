@@ -33,10 +33,13 @@ class ReflectiveAgent:
     """
     Executes a ReAct (Reasoning + Acting) loop to handle complex queries.
     Uses native LLM tool calling for reliability.
+    
+    Max steps are dynamically set by the caller based on complexity:
+    - COMPLEX_MID: 10 steps
+    - COMPLEX_HIGH: 15 steps
     """
     def __init__(self):
         self.llm = create_llm(temperature=0.1, mode="reflective")
-        self.max_steps = settings.REFLECTIVE_MAX_STEPS
 
     def _sanitize_history(self, messages: List[BaseMessage]) -> List[BaseMessage]:
         """
@@ -179,8 +182,10 @@ class ReflectiveAgent:
         steps = 0
         tools_used = 0
         
-        # Determine max steps (override > settings)
-        current_max_steps = max_steps_override or self.max_steps
+        # Max steps set by caller based on complexity (required parameter)
+        if not max_steps_override:
+            raise ValueError("max_steps_override is required - set by complexity level in engine.py")
+        current_max_steps = max_steps_override
         
         logger.info(f"Starting Reflective Mode (Native) for user {user_id} (Max Steps: {current_max_steps})")
 

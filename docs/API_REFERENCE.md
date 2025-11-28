@@ -37,16 +37,72 @@ Send a message to the character and receive a response.
 |-------|------|----------|---------|-------------|
 | `user_id` | string | ✅ | - | Unique identifier for the user. Used for memory retrieval and relationship tracking. |
 | `message` | string | ✅ | - | The user's message to the character. |
-| `context` | object | ❌ | `null` | Additional context variables passed to the character's prompt template. |
+| `context` | object | ❌ | `null` | Additional context variables passed to the character's prompt template. See **Context Fields** below. |
+| `force_mode` | string | ❌ | `null` | Override auto-detected complexity mode. See **Mode Override** below. |
 
-**Example Request**:
+##### Mode Override
+
+The `force_mode` field allows you to bypass the automatic complexity classifier:
+
+| Value | Description | Use Case |
+|-------|-------------|----------|
+| `null` (default) | Auto-detect complexity | Normal usage - let the system decide |
+| `"fast"` | Single-pass LLM, no tools | Simple integrations, lower latency, cost savings |
+| `"reflective"` | Full ReAct reasoning loop | Force deep thinking for complex queries |
+
+**Example - Force Fast Mode** (single-pass LLM):
+```json
+{
+  "user_id": "app_user_123",
+  "message": "What's the weather like?",
+  "force_mode": "fast"
+}
+```
+
+This skips complexity classification and tool usage, returning a direct LLM response. Useful for:
+- Applications that don't need memory/knowledge lookups
+- Reducing latency and API costs
+- Simple chatbot integrations
+
+##### Context Fields
+
+The `context` object supports these optional fields to simulate Discord environment:
+
+| Field | Type | Description | Effect on Bot |
+|-------|------|-------------|---------------|
+| `user_name` | string | Display name of the user | Used in system prompt `{user_name}` template |
+| `guild_id` | string | Discord server (guild) ID | Used by universe tools to look up server info |
+| `channel_name` | string | Name of the current channel | Injected as `[CHANNEL CONTEXT]` in prompt |
+| `parent_channel_name` | string | For threads, the parent channel name | Context for thread discussions |
+| `is_thread` | boolean | Whether message is in a thread | Adjusts context building |
+| `current_datetime` | string | ISO timestamp | Overrides auto-generated timestamp |
+
+**For basic testing**, these are all optional - the bot will respond normally without them.
+
+**When context matters**:
+- **Memory is NOT segmented by channel/guild** - a user's memories are shared across all contexts
+- **Channel name** appears in the bot's system prompt so it knows where it is
+- **Guild ID** is used by `CheckPlanetContextTool` for universe lookups (if you have universe configurations)
+
+**Minimal Example** (no context needed):
+```json
+{
+  "user_id": "test_user_123",
+  "message": "Hello, how are you?"
+}
+```
+
+**Full Discord-like Example**:
 ```json
 {
   "user_id": "user_12345",
   "message": "Hey! What's your favorite book?",
   "context": {
+    "user_name": "MarkC",
+    "guild_id": "123456789012345678",
     "channel_name": "general",
-    "guild_name": "My Server"
+    "parent_channel_name": null,
+    "is_thread": false
   }
 }
 ```
@@ -63,6 +119,9 @@ Send a message to the character and receive a response.
 | `bot_name` | string | Name of the character that responded. |
 | `processing_time_ms` | float | Time taken to generate the response in milliseconds. |
 | `memory_stored` | boolean | Whether the interaction was stored in memory. |
+| `mode` | string \| null | Processing mode: `"fast"`, `"agency"`, `"reflective"`, or `"blocked"`. |
+| `complexity` | string \| null | Complexity tier: `"SIMPLE"`, `"COMPLEX_LOW"`, `"COMPLEX_MID"`, `"COMPLEX_HIGH"`, or `"MANIPULATION"`. |
+| `model_used` | string \| null | LLM model that generated the response (e.g., `"openai/gpt-4o"`). |
 
 **Example Response**:
 ```json
@@ -72,9 +131,29 @@ Send a message to the character and receive a response.
   "timestamp": "2025-01-15T14:32:00.123456",
   "bot_name": "elena",
   "processing_time_ms": 1245.67,
-  "memory_stored": true
+  "memory_stored": true,
+  "mode": "fast",
+  "complexity": "SIMPLE",
+  "model_used": "openai/gpt-4o"
 }
 ```
+
+**Mode Values**:
+| Mode | Description |
+|------|-------------|
+| `fast` | Direct LLM call without tool usage (most responses) |
+| `agency` | Single tool call (Tier 2 - memory lookup, etc.) |
+| `reflective` | Full ReAct reasoning loop with multiple tool calls |
+| `blocked` | Manipulation attempt rejected |
+
+**Complexity Values**:
+| Complexity | Triggers |
+|------------|----------|
+| `SIMPLE` | Greetings, casual chat → Fast mode |
+| `COMPLEX_LOW` | Questions needing single lookup → Agency mode |
+| `COMPLEX_MID` | Multi-step reasoning → Reflective mode (10 steps) |
+| `COMPLEX_HIGH` | Complex analysis → Reflective mode (15 steps) |
+| `MANIPULATION` | Jailbreak attempts → Blocked |
 
 #### Error Responses
 
@@ -119,6 +198,178 @@ No parameters required.
 
 ---
 
+## Diagnostic Endpoints
+
+These endpoints are designed for testing, debugging, and regression testing.
+
+### GET `/api/diagnostics`
+
+Get bot configuration, database status, and feature flags.
+
+#### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bot_name` | string | Character name |
+| `llm_models` | object | LLM models configured (main, reflective, router) |
+| `database_status` | object | Connection status for each database |
+| `feature_flags` | object | Enabled feature flags |
+| `uptime_seconds` | float | Seconds since bot started |
+| `version` | string | Bot version |
+
+**Example Response**:
+```json
+{
+  "bot_name": "elena",
+  "llm_models": {
+    "main": "openai/gpt-4o",
+    "reflective": "openai/gpt-4o",
+    "router": "openai/gpt-4o-mini"
+  },
+  "database_status": {
+    "postgres": true,
+    "qdrant": true,
+    "neo4j": true,
+    "redis": true
+  },
+  "feature_flags": {
+    "reflective_mode": false,
+    "fact_extraction": true,
+    "preference_extraction": true,
+    "proactive_messaging": false
+  },
+  "uptime_seconds": 3600.5,
+  "version": "2.0.0"
+}
+```
+
+---
+
+### POST `/api/user-state`
+
+Get user state including trust level, memories, and knowledge facts.
+
+#### Request
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user_id` | string | ✅ | User ID to look up |
+
+#### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_id` | string | User ID |
+| `trust_score` | int | Current trust score |
+| `trust_level` | string | Trust level label (Stranger, Acquaintance, etc.) |
+| `memory_count` | int | Number of stored memories |
+| `recent_memories` | array | Last 5 memories |
+| `knowledge_facts` | array | Known facts about this user |
+
+**Example Response**:
+```json
+{
+  "user_id": "user_12345",
+  "trust_score": 15,
+  "trust_level": "Acquaintance",
+  "memory_count": 5,
+  "recent_memories": [
+    {"content": "User mentioned they like coffee", "score": 0.85}
+  ],
+  "knowledge_facts": [
+    {"fact": "User likes coffee"}
+  ]
+}
+```
+
+---
+
+### POST `/api/conversation`
+
+Run a multi-turn conversation test.
+
+#### Request
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `user_id` | string | ✅ | - | User ID for the conversation |
+| `messages` | array | ✅ | - | List of messages to send in sequence |
+| `context` | object | ❌ | null | Shared context for all messages |
+| `delay_between_ms` | int | ❌ | 500 | Delay between messages in milliseconds |
+
+#### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether all turns succeeded |
+| `user_id` | string | User ID |
+| `bot_name` | string | Character name |
+| `turns` | array | Array of conversation turns |
+| `total_time_ms` | float | Total conversation time |
+
+**Example Response**:
+```json
+{
+  "success": true,
+  "user_id": "test_user",
+  "bot_name": "elena",
+  "turns": [
+    {
+      "user_message": "Hi!",
+      "bot_response": "Hello! How are you?",
+      "processing_time_ms": 1200,
+      "mode": "fast",
+      "complexity": "SIMPLE"
+    },
+    {
+      "user_message": "What's your name?",
+      "bot_response": "I'm Elena! Nice to meet you.",
+      "processing_time_ms": 1100,
+      "mode": "fast",
+      "complexity": "SIMPLE"
+    }
+  ],
+  "total_time_ms": 2800
+}
+```
+
+---
+
+### POST `/api/clear-user-data`
+
+Clear user data for test isolation. Use for test setup/teardown.
+
+#### Request
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `user_id` | string | ✅ | - | User ID to clear |
+| `clear_memories` | boolean | ❌ | true | Clear vector memories |
+| `clear_trust` | boolean | ❌ | true | Reset trust score |
+| `clear_knowledge` | boolean | ❌ | false | Clear knowledge graph facts |
+
+#### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether operation succeeded |
+| `user_id` | string | User ID |
+| `memories_cleared` | int | Number of memories cleared |
+| `trust_reset` | boolean | Whether trust was reset |
+| `knowledge_cleared` | int | Number of knowledge facts cleared |
+
+**Example Response**:
+```json
+{
+  "success": true,
+  "user_id": "test_user",
+  "memories_cleared": 1,
+  "trust_reset": true,
+  "knowledge_cleared": 0
+}
+
+---
+
 ## Usage Examples
 
 ### cURL
@@ -133,6 +384,23 @@ curl -X POST http://localhost:8000/api/chat \
   -d '{
     "user_id": "user_12345",
     "message": "Hello! How are you today?"
+  }'
+
+# Get diagnostics
+curl http://localhost:8000/api/diagnostics
+
+# Get user state
+curl -X POST http://localhost:8000/api/user-state \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user_12345"}'
+
+# Multi-turn conversation test
+curl -X POST http://localhost:8000/api/conversation \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "test_user",
+    "messages": ["Hi!", "What is your name?", "Nice to meet you!"],
+    "delay_between_ms": 500
   }'
 ```
 

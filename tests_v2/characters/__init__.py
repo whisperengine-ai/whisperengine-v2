@@ -1,0 +1,1 @@
+"""Character bot tests package."""
