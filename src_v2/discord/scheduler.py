@@ -10,6 +10,7 @@ from src_v2.core.database import db_manager
 from src_v2.intelligence.activity import activity_modeler
 from src_v2.agents.proactive import proactive_agent
 from src_v2.memory.manager import memory_manager
+from src_v2.memory.session import session_manager
 from src_v2.evolution.drives import drive_manager, Drive
 
 class ProactiveScheduler:
@@ -203,6 +204,9 @@ class ProactiveScheduler:
                     channel_id=str(sent_msg.channel.id),
                     message_id=str(sent_msg.id)
                 )
+                
+                # 6. Update Session Activity (Prevent duplicate triggers)
+                await session_manager.get_active_session(user_id, character_name)
                 
             else:
                 logger.warning(f"Failed to generate opener for {user.name}")

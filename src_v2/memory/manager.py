@@ -481,8 +481,9 @@ class MemoryManager:
                             
                         messages.append(HumanMessage(content=content))
                     elif row['role'] == 'ai':
-                        # Do NOT add timestamp context to AI messages (prevents pattern learning)
-                        messages.append(AIMessage(content=row['content']))
+                        # Add timestamp context to AI messages as well
+                        content = f"[{rel_time}] {row['content']}"
+                        messages.append(AIMessage(content=content))
                         
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")
