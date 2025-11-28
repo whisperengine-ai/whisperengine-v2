@@ -55,13 +55,20 @@ Tool composition allows for more efficient data gathering by creating "Meta-Acti
 
 ## Phase 4: Long-term Learning
 
-### 6. Memory of Reasoning (Reasoning Traces)
-Currently, reasoning steps are discarded. This feature allows the bot to "remember how it solved a problem".
+### 6. Memory of Reasoning (Reasoning Traces) - ✅ Partially Complete
+This feature allows the bot to "remember how it solved a problem".
 
 *   **Why Last?**: We want to save traces *after* the reasoning logic (Native Tools, Parallelism) is stable, so we don't train the model on legacy/inefficient patterns.
 *   **Goal**: Save successful reasoning traces to a persistent store to solve similar future problems faster.
-*   **Status Update**: The "Capture" mechanism was implemented during the logging upgrades. The agent now returns full execution traces, currently saved to JSON logs.
-*   **Implementation**:
-    1.  **Storage**: New PostgreSQL table `v2_reasoning_traces` (JSONB trace + Embedding).
-    2.  **Capture**: Save `scratchpad` after successful `Final Answer`.
-    3.  **Retrieval**: Search past traces before starting the loop and inject as "Few-Shot Examples".
+
+**Status Update (Nov 27, 2025):**
+- ✅ **Storage**: Reasoning traces are stored in Qdrant with `metadata.type = "reasoning_trace"` (not a separate Postgres table).
+- ✅ **Capture**: `InsightAgent` captures and stores traces via background worker.
+- ✅ **Retrieval**: `memory_manager.search_reasoning_traces()` exists and is used by `ComplexityClassifier` for Adaptive Depth optimization.
+- ⏳ **Few-Shot Injection**: Not yet implemented. Traces inform classification but are not injected as examples into `ReflectiveAgent`.
+- ⏳ **Quality Scoring**: Not yet implemented. All traces are treated equally.
+
+**Remaining Work (See AUTONOMOUS_AGENTS_PHASE_3.md Phase 3.2):**
+1. Add quality scoring to traces (efficiency bonus, user feedback integration).
+2. Inject high-quality traces as few-shot examples in `ReflectiveAgent`.
+3. Inject failed traces as negative constraints.

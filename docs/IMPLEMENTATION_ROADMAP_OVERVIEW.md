@@ -1,9 +1,18 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 1.8  
+**Document Version:** 2.0  
 **Created:** November 24, 2025  
-**Last Updated:** November 26, 2025 (Audited)
+**Last Updated:** November 27, 2025 (Priority & Dependency Audit)
 **Status:** Active Planning
+
+### Status Legend
+| Icon | Meaning |
+|------|---------|  
+| ✅ | Complete |
+| 📋 | Proposed / Planned (not started) |
+| ⏸️ | On Hold (blocked or deprioritized) |
+| 🗄️ | Archived / Deferred (not pursuing) |
+| ⏭️ | Skipped (decided not to implement) |
 
 ---
 
@@ -44,20 +53,30 @@ For deep dive: See [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architectur
 
 ## Executive Summary
 
-This document provides a high-level overview of the next **18 implementation items** for WhisperEngine v2, organized by **difficulty and code complexity**. The system is currently feature-complete for core functionality and is ready to scale with advanced capabilities.
+This document tracks all implementation items for WhisperEngine v2, organized by complexity. The system is **production-ready** with core functionality complete.
 
-**Key Consolidation (v1.8):** Added Vision-to-Knowledge Fact Extraction (A6) for extracting user appearance/possession facts from images when user provides explicit context.
+---
+
+### 🎯 What's Next? (Priority Order)
+
+| Priority | Phase | Description | Time | Dependencies |
+|----------|-------|-------------|------|--------------|
+| **1** | **B3** | **Autonomous Agents** - Drives, goals, cross-bot awareness | 10-14 days | A7 ✅, C1 ✅ |
+| 2 | A10 | Triggered Voice Responses - TTS audio attachments | 2-3 days | None |
+| — | A0 | Embedding Upgrade 768D | 45 min | ⏸️ On Hold |
+
+> **Recommendation:** Start with **Phase B3** (Autonomous Agents). All dependencies are met. This is the last major feature before multiverse/federation work.
+
+---
 
 **⚡ Solo Developer Mode (with AI Assistance)**
 
-This roadmap is optimized for a **single developer working with AI-assisted tools** (Copilot, Claude, etc.). Key adjustments:
-- **Parallelization:** Focus on independent work streams (no coordination overhead)
-- **Velocity:** Realistic estimates account for AI-accelerated development (50-70% faster than traditional)
-- **Quality:** AI reduces debugging time but requires careful code review/testing
-- **Strategy:** Prioritize high-impact items first; skip low-impact infrastructure
-- **Risk:** Fewer features in parallel to maintain code quality
+Optimized for a single developer with AI tools (Copilot, Claude). Key principles:
+- **Velocity:** AI-accelerated development (50-70% faster)
+- **Quality:** Careful code review/testing required
+- **Strategy:** High-impact first; skip low-value infrastructure
 
-**Current State (Updated Nov 25, 2025):**
+**Current State (Updated Nov 27, 2025):**
 
 **Core Systems (COMPLETE):**
 - ✅ Core cognitive engine operational
@@ -99,14 +118,16 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- 🗄️ Phase A5: Channel Context Awareness (ARCHIVED - see note below)
-- 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (DEFERRED - low priority)
-- ✅ Phase A7: Character Agency (Tier 2 tool-augmented responses)
-- ✅ Phase A8: Image Generation Enhancements (portrait mode, iteration memory, smart refinement)
+- 📋 **Phase B3: Autonomous Agents** - Internal drives, goal strategies, cross-bot awareness → **NEXT**
 - 📋 Phase A10: Triggered Voice Responses (TTS audio attachments)
-- 🗄️ Phase C3: Video processing (DEFERRED - rare on Discord)
-- ✅ Phase C5: Operational Hardening (Backups & Optimization)
+- ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
 - ⏳ Phase D: User sharding, federation (future multiverse)
+
+**DEFERRED/ARCHIVED:**
+- 🗄️ Phase A5: Channel Context Awareness (ARCHIVED)
+- 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (DEFERRED)
+- 🗄️ Phase B5: Audio Processing (DEFERRED)
+- 🗄️ Phase C3: Video Processing (DEFERRED)
 
 **Status:** Core feature development complete. System is production-ready.
 
@@ -114,12 +135,12 @@ This roadmap is optimized for a **single developer working with AI-assisted tool
 
 ---
 
-## 🔴 Phase A0: Critical Pre-Production (Do First!)
+## 🔴 Phase A0: Critical Pre-Production
 
-Items that MUST be done before any production data exists.
+> **All critical pre-production items have been addressed or deprioritized.**
 
 ### Phase A0: Embedding Dimension Upgrade (384D → 768D)
-**Priority:** 🔴 CRITICAL | **Time:** 45-75 minutes | **Complexity:** Low  
+**Priority:** ⏸️ On Hold | **Time:** 45-75 minutes | **Complexity:** Low  
 **Files:** 4 | **LOC:** ~200 | **Status:** ⏸️ On Hold (Performance Concerns)
 
 **Problem:** Current 384D embeddings (all-MiniLM-L6-v2) have lower semantic resolution and 256 token context limit
@@ -166,8 +187,8 @@ Update Settings → Delete Dev Collections → Restart → Done
 
 Quick wins that deliver immediate value with minimal code changes.
 
-### Phase A1: Hot-Reloading Character Definitions
-**Priority:** Low | **Time:** 1-2 days | **Complexity:** Low  
+### ⏭️ Phase A1: Hot-Reloading Character Definitions (Skipped)
+**Priority:** — | **Time:** 1-2 days | **Complexity:** Low  
 **Files:** 2 | **LOC:** ~150 | **Status:** ⏭️ Skipped (Low Value)
 
 **Problem:** Character definition changes require container restart (~2 minutes downtime)
@@ -198,8 +219,8 @@ File Watcher → Character Manager → Hot Reload Trigger
 
 ---
 
-### Phase A2: Redis Caching Layer
-**Priority:** High | **Time:** 2-3 days | **Complexity:** Low-Medium  
+### ✅ Phase A2: Redis Caching Layer (Complete)
+**Priority:** — | **Time:** 2-3 days | **Complexity:** Low-Medium  
 **Files:** 3 | **LOC:** ~200 | **Status:** ✅ Complete
 
 **Problem:** Repeated lookups hit Postgres/Neo4j unnecessarily (trust scores, facts, user prefs)
@@ -230,8 +251,8 @@ API Request → Redis Cache → Miss? → Database → Redis Update
 
 ---
 
-### Phase A3: Streaming LLM Responses
-**Priority:** High | **Time:** 2-3 days | **Complexity:** Low-Medium  
+### ✅ Phase A3: Streaming LLM Responses (Complete)
+**Priority:** — | **Time:** 2-3 days | **Complexity:** Low-Medium  
 **Files:** 3 | **LOC:** ~250 | **Status:** ✅ Complete
 
 **Problem:** Users wait for full LLM response before seeing anything (~3-8 seconds)
@@ -261,8 +282,8 @@ LLM Stream → Token Buffer → Discord Messages → Edit/Append as Complete
 
 ---
 
-### Phase A4: Grafana Dashboards for Metrics
-**Priority:** Medium | **Time:** 1 day | **Complexity:** Low  
+### ✅ Phase A4: Grafana Dashboards (Complete)
+**Priority:** — | **Time:** 1 day | **Complexity:** Low  
 **Files:** 0 (Config only) | **LOC:** ~50 | **Status:** ✅ Complete
 
 **Problem:** Visibility into system health is poor (no dashboards, only logs)
@@ -290,8 +311,8 @@ InfluxDB → Grafana Dashboard + Alerts
 
 ---
 
-### Phase A5: Channel Context Awareness
-**Priority:** N/A | **Time:** N/A | **Complexity:** N/A  
+### 🗄️ Phase A5: Channel Context Awareness (Archived)
+**Priority:** — | **Time:** N/A | **Complexity:** N/A  
 **Files:** N/A | **LOC:** N/A | **Status:** 🗄️ ARCHIVED
 
 > **ARCHIVED (Nov 26, 2025):** This feature was implemented and then removed. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for the full rationale.
@@ -319,8 +340,8 @@ InfluxDB → Grafana Dashboard + Alerts
 
 ---
 
-### Phase A6: Vision-to-Knowledge Fact Extraction
-**Priority:** Low | **Time:** 2-3 days | **Complexity:** Low-Medium  
+### 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (Deferred)
+**Priority:** — | **Time:** 2-3 days | **Complexity:** Low-Medium  
 **Files:** 3-4 | **LOC:** ~250 | **Status:** 🗄️ DEFERRED
 
 > **DEFERRED (Nov 26, 2025):** Low ROI for complexity. Users rarely need bot to remember appearance from photos - they can just say "I have brown hair" in text. Trigger detection is also unreliable (users say "guess who got a haircut" not "this is me"). If needed later, recommended approach: always run extraction via worker, let LLM decide if content is personal.
@@ -335,8 +356,8 @@ InfluxDB → Grafana Dashboard + Alerts
 
 ---
 
-### Phase A7: Character Agency (Tier 2 Tool-Augmented Responses)
-**Priority:** High | **Time:** 2-3 days | **Complexity:** Low-Medium  
+### ✅ Phase A7: Character Agency (Complete)
+**Priority:** — | **Time:** 2-3 days | **Complexity:** Low-Medium  
 **Files:** 3-4 | **LOC:** ~300 | **Status:** ✅ Complete (Nov 26, 2025)
 
 **Problem:** Characters are currently reactive (context pre-fetched, single LLM call). They can't *decide* to look something up, which limits authenticity and depth.
@@ -389,8 +410,8 @@ User Message
 
 ---
 
-### Phase A8: Image Generation Enhancements
-**Priority:** High | **Time:** 3-4 days | **Complexity:** Low-Medium  
+### ✅ Phase A8: Image Generation Enhancements (Complete)
+**Priority:** — | **Time:** 3-4 days | **Complexity:** Low-Medium  
 **Files:** 5 | **LOC:** ~380 | **Status:** ✅ Complete (Nov 26, 2025)
 
 **Problem:** Production sessions show users iterate 10-15+ times on portraits due to character self-injection, no iteration memory, and unwanted aesthetic associations.
@@ -459,8 +480,8 @@ User Request + Image?
 
 ---
 
-### Phase A9: Advanced Memory Retrieval
-**Priority:** High | **Time:** 2-3 days | **Complexity:** Medium
+### ✅ Phase A9: Advanced Memory Retrieval (Complete)
+**Priority:** — | **Time:** 2-3 days | **Complexity:** Medium
 **Files:** 6 | **LOC:** ~400 | **Status:** ✅ Complete
 
 **Problem:** Memory retrieval is purely semantic across all stores. No emotional priority, recency decay, or cross-store blending.
@@ -498,8 +519,10 @@ FinalScore = Semantic × Meaningfulness × Recency × Confidence
 ---
 
 ### Phase A10: Triggered Voice Responses (TTS Audio Attachments)
-**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Low  
-**Files:** 4 | **LOC:** ~300 | **Status:** 📋 Proposed
+**Priority:** Low | **Time:** 2-3 days | **Complexity:** Low  
+**Files:** 4 | **LOC:** ~300 | **Status:** 📋 Proposed (Last remaining Phase A item)
+
+> **Note:** This is a "nice-to-have" feature. Implement after B3 (Autonomous Agents) unless voice immersion becomes a user priority.
 
 **Problem:** Characters can only respond with text. Users who want to "hear" the character must use voice channels, which isn't always convenient.
 
@@ -561,8 +584,18 @@ Message → Voice Trigger Check → Generate Response → Generate TTS → Attac
 
 Features requiring significant logic changes but manageable scope.
 
-### Phase B1: Adaptive Max Steps (Reflective Mode Phase 2.2)
-**Priority:** High | **Time:** 3-5 days | **Complexity:** Medium  
+> **Status:** 8 of 10 Phase B items complete. **B3 (Autonomous Agents)** is the primary remaining work.
+
+---
+
+### 🎯 NEXT UP: Phase B3 - Autonomous Agents (Phase 3)
+
+See detailed section below. This is the **recommended next implementation focus**.
+
+---
+
+### ✅ Phase B1: Adaptive Max Steps (Complete)
+**Priority:** — | **Time:** 3-5 days | **Complexity:** Medium  
 **Files:** 4 | **LOC:** ~300 | **Status:** ✅ Complete
 
 **Problem:** All queries use fixed 10-step max, wasting tokens on simple queries and constraining complex ones
@@ -595,47 +628,62 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 
 ---
 
-### Phase B3: Autonomous Agents (Phase 3)
-**Priority:** High | **Time:** 5-7 days | **Complexity:** High
-**Files:** 8 | **LOC:** ~600 | **Status:** 📋 Planned
+### Phase B3: Autonomous Agents (Phase 3) ⬅️ **CURRENT FOCUS**
+**Priority:** 🔴 High (Next Implementation) | **Time:** 10-14 days | **Complexity:** High
+**Files:** 10+ | **LOC:** ~1000 | **Status:** 📋 Planned
 
 **Problem:** Characters are currently reactive or rely on simple timers. They lack internal drives, long-term strategies, and cross-bot awareness.
 
-**Solution:**
-1.  **Proactive Drives:** Replace timers with internal state (curiosity, social need) to trigger initiation.
-2.  **Goal Strategy:** Background worker that formulates active strategies for long-term goals.
-3.  **Universe Agent:** Event bus for cross-bot coordination (gossip/context sharing).
-4.  **Memory of Reasoning:** Inject past successful reasoning traces as few-shot examples.
+**Solution (4 Sub-Phases):**
 
-**Implementation:**
-```
-Drive System → Proactive Agent
-Goal Strategist → Context Injection
-Universe Bus → Cross-Bot Memory
-Trace Retrieval → Reflective Agent
-```
+| Phase | Feature | Complexity | Key Innovation |
+|-------|---------|------------|----------------|
+| 3.1 | Goal State & Strategy | Low | Neo4j verification, style-aware injection |
+| 3.2 | Memory of Reasoning | Medium | Trace quality scoring, few-shot injection |
+| 3.3 | Proactive Drives | Medium | Trust-gated initiation, lazy scheduler |
+| 3.4 | Universe Agent | High | Privacy boundaries, propagation limits |
 
-**Benefit:**
-- Characters feel "alive" with their own agenda
-- Long-term engagement through goal pursuit
-- Coherent multi-bot storytelling
-- Self-improving reasoning capabilities
+**Design Principles:**
+- **Trust-Aware:** Proactive initiation respects trust levels (never reach out to Strangers)
+- **Privacy-First:** Cross-bot gossip gated by user preferences and topic sensitivity
+- **Observable:** Each subsystem emits InfluxDB metrics for Grafana
+- **Feature-Flagged:** All capabilities gated for cost control
 
-**Dependencies:** Phase A7 (Character Agency)
+**Implementation Highlights:**
+1. **Goal Strategist:** Queries Neo4j first for verification, falls back to chat logs only if inconclusive
+2. **Strategy Injection:** Framed as "internal desire" (not command) to preserve character voice
+3. **Universe Event Bus:** Uses existing `arq` queue (not raw Pub/Sub), with `propagation_depth` to prevent gossip loops
+4. **Trace Learning:** Quality-scored using InfluxDB reaction data before few-shot injection
+
+**Development Tools:**
+- CLI Force Trigger: `./bot.sh trigger proactive <bot_name> <user_id>`
+
+**Feature Flags:**
+| Flag | Default | Controls |
+|------|---------|----------|
+| `ENABLE_AUTONOMOUS_DRIVES` | false | Drive system and proactive scheduler |
+| `ENABLE_GOAL_STRATEGIST` | false | Nightly goal analysis worker |
+| `ENABLE_UNIVERSE_EVENTS` | false | Cross-bot gossip system |
+| `ENABLE_TRACE_LEARNING` | false | Few-shot injection from past traces |
+
+**Dependencies:** Phase A7 (Character Agency) ✅, Phase C1 (Insight Agent) ✅
 
 **Related Files:**
-- New: `src_v2/evolution/drives.py`
-- New: `src_v2/workers/strategist.py`
-- New: `src_v2/universe/bus.py`
-- `src_v2/agents/proactive.py`
-- `src_v2/agents/reflective.py`
+- New: `src_v2/evolution/drives.py` (Drive system with decay/recharge)
+- New: `src_v2/evolution/goals.py` (Goal state with source/priority)
+- New: `src_v2/workers/strategist.py` (Nightly goal analysis)
+- New: `src_v2/universe/bus.py` (Event dispatcher via arq)
+- New: `src_v2/agents/universe.py` (Privacy-aware coordination)
+- New: `src_v2/memory/traces.py` (Trace retrieval with quality scoring)
+- `src_v2/agents/proactive.py` (Trust-gated initiation)
+- `src_v2/agents/reflective.py` (Few-shot trace injection)
 
 **Full Specification:** See [roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md](./roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md)
 
 ---
 
-### Phase B2: Tool Composition / Hierarchical Reasoning
-**Priority:** High | **Time:** 5-7 days | **Complexity:** Medium  
+### ✅ Phase B2: Tool Composition / Hierarchical Reasoning (Complete)
+**Priority:** — | **Time:** 5-7 days | **Complexity:** Medium  
 **Files:** 5 | **LOC:** ~400 | **Status:** ✅ Complete
 
 **Problem:** Complex queries require multiple sequential tool calls (search memories, lookup facts), creating extra LLM round-trips
@@ -671,8 +719,8 @@ Query → Tool Selection → Composite Tool Execution (parallel) → Observation
 
 ---
 
-### Phase B3: Generative Art (Image Generation)
-**Priority:** Medium | **Time:** 2-3 days | **Complexity:** Medium  
+### ✅ Phase B10: Generative Art / Image Generation (Complete)
+**Priority:** — | **Time:** 2-3 days | **Complexity:** Medium  
 **Files:** 4 | **LOC:** ~350 | **Status:** ✅ Complete
 
 **Problem:** Characters can only react to images, not create them
@@ -704,8 +752,8 @@ LLM Decides → generate_image Tool → Flux Pro 1.1 → Image URL → Discord U
 
 ---
 
-### Phase B4: Self-Correction / Verification (Reflective Mode Phase 2.5)
-**Priority:** Medium | **Time:** 3-5 days | **Complexity:** Medium  
+### ✅ Phase B4: Self-Correction / Verification (Complete)
+**Priority:** — | **Time:** 3-5 days | **Complexity:** Medium  
 **Files:** 3 | **LOC:** ~300 | **Status:** ✅ Complete
 
 **Problem:** Hallucinations or incomplete answers on complex queries reduce trust
@@ -735,8 +783,8 @@ Query → Reasoning Loop → Final Answer → Critic Review → Pass? → Return
 
 ---
 
-### Phase B5: Audio Processing (Voice Messages & Clips)
-**Priority:** Medium | **Time:** 5-7 days | **Complexity:** Medium  
+### 🗄️ Phase B5: Audio Processing (Deferred)
+**Priority:** — | **Time:** 5-7 days | **Complexity:** Medium  
 **Files:** 4 | **LOC:** ~400 | **Status:** 🗄️ DEFERRED
 
 **Problem:** Voice messages and audio files aren't processed; users can only share them as links
@@ -767,8 +815,8 @@ Discord Audio Attachment → Whisper Transcription → Message Handler → Memor
 
 ---
 
-### Phase B6: Response Pattern Learning (RLHF-Style)
-**Priority:** Medium-High | **Time:** 3-5 days | **Complexity:** Medium  
+### ✅ Phase B6: Response Pattern Learning (Consolidated into C1)
+**Priority:** — | **Time:** 3-5 days | **Complexity:** Medium  
 **Files:** 4 | **LOC:** ~400 | **Status:** ✅ Complete (Consolidated into C1)
 
 **Problem:** Bot doesn't learn what response STYLES work for each user (length, tone, structure)
@@ -803,8 +851,8 @@ Future Similar Query → Retrieve High-Score Patterns → Inject as Few-Shot Exa
 
 ---
 
-### Phase B7: Channel Lurking (Passive Engagement)
-**Priority:** Medium-High | **Time:** 5-7 days | **Complexity:** Medium  
+### ✅ Phase B7: Channel Lurking (Complete)
+**Priority:** — | **Time:** 5-7 days | **Complexity:** Medium  
 **Files:** 5 | **LOC:** ~500 | **Status:** ✅ Complete
 
 **Problem:** Bots only respond when explicitly mentioned, creating a passive experience
@@ -855,8 +903,8 @@ Message → Keyword Match? → Embedding Similarity → Context Boost → Score 
 
 ---
 
-### B8: Emergent Universe
-**Priority:** Medium-High | **Time:** 7-10 days | **Complexity:** Medium  
+### ✅ Phase B8: Emergent Universe (Complete)
+**Priority:** — | **Time:** 7-10 days | **Complexity:** Medium  
 **Files:** 8 | **LOC:** ~800 | **Status:** ✅ Complete
 
 **Problem:** Characters exist in isolation - no cross-bot awareness, no shared world knowledge, each bot treats users as strangers to other bots.
@@ -923,8 +971,8 @@ THE WHISPERVERSE
 
 ---
 
-### B9: Emergent Behavior Architecture 🌱
-**Priority:** 🔴 High (Strategic Foundation) | **Time:** 4-5 days | **Complexity:** Low-Medium  
+### ✅ Phase B9: Emergent Behavior Architecture (Complete)
+**Priority:** — | **Time:** 4-5 days | **Complexity:** Low-Medium  
 **Files:** 5 | **LOC:** ~300 | **Status:** ✅ Complete
 
 > *"Plant the seed. Tend the soil. Let it grow."*
@@ -1022,8 +1070,10 @@ constitution:
 
 Major features requiring significant architectural changes or new infrastructure.
 
-### Phase C1: Insight Agent (Background Agentic Processing)
-**Priority:** High | **Time:** 5-7 days | **Complexity:** Medium-High  
+> **Status:** All Phase C items complete or deferred. No active work remaining.
+
+### ✅ Phase C1: Insight Agent (Complete)
+**Priority:** — | **Time:** 5-7 days | **Complexity:** Medium-High  
 **Files:** 8 | **LOC:** ~800 | **Status:** ✅ Complete
 
 **Consolidates:** C1 Reasoning Traces + C2 Epiphanies + B6 Response Pattern Learning
@@ -1047,15 +1097,6 @@ A unified **Insight Agent** that runs periodically in the background using a ReA
 │  Tools: analyze_patterns, detect_themes, generate_epiphany,        │
 │         store_reasoning_trace, learn_response_pattern              │
 │                                  ↓                                  │
-│  Outputs: Stored as vector memories with special types             |
-````
-This is the description of what the code block changes:
-<changeDescription>
-Adding Phase C4: Adaptive Depth Optimization to the roadmap.
-</changeDescription>
-
-This is the code block that represents the suggested code change:
-````markdown
 │  Outputs: Stored as vector memories with special types             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -1082,16 +1123,16 @@ This is the code block that represents the suggested code change:
 
 ---
 
-### Phase C3: Video Processing
-**Priority:** Low | **Time:** 5-7 days | **Complexity:** High  
+### 🗄️ Phase C3: Video Processing (Deferred)
+**Priority:** — | **Time:** 5-7 days | **Complexity:** High  
 **Status:** 🗄️ DEFERRED
 
 **Reason:** Video sharing is rare compared to images/text. High computational cost for low frequency use case.
 
 ---
 
-### Phase C4: Adaptive Depth Optimization (Self-Learning Complexity)
-**Priority:** Medium-High | **Time:** 3-5 days | **Complexity:** High  
+### ✅ Phase C4: Adaptive Depth Optimization (Complete)
+**Priority:** — | **Time:** 3-5 days | **Complexity:** High  
 **Files:** 3 | **LOC:** ~300 | **Status:** ✅ Complete
 
 **Problem:** The `ComplexityClassifier` uses static heuristics (prompt rules) to assign `max_steps` (5/10/15). This is rigid and doesn't learn from actual performance. Some "simple" queries might actually need deep reasoning, and some "complex" ones might be solvable quickly.
@@ -1123,8 +1164,8 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 
 ---
 
-### Phase C5: Operational Hardening (Backups & Optimization)
-**Priority:** Medium | **Time:** 3-5 days | **Complexity:** Medium  
+### ✅ Phase C5: Operational Hardening (Complete)
+**Priority:** — | **Time:** 3-5 days | **Complexity:** Medium  
 **Status:** ✅ Complete
 
 **Goal:** Ensure production reliability.
