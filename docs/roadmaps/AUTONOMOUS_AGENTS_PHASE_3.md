@@ -1,9 +1,9 @@
 # Autonomous Agents Phase 3: Proactive, Goal-Directed, and Learning
 
-**Document Version:** 1.4  
+**Document Version:** 1.5  
 **Created:** November 27, 2025  
 **Updated:** November 27, 2025  
-**Status:** In Progress (Phase 3.1, 3.2 Complete)  
+**Status:** ✅ Complete (All Phases Implemented)  
 **Type:** Roadmap
 
 ---
@@ -19,18 +19,23 @@
 - ✅ `ComplexityClassifier` uses traces for Adaptive Depth
 - ✅ `TrustManager` with 5-level relationship tracking
 - ✅ Background workers via `arq` (insight-worker container)
-- ✅ **NEW:** `GOAL_SOURCE_PRIORITY` hierarchy in `goals.py`
-- ✅ **NEW:** `GoalStrategist` worker in `src_v2/workers/strategist.py`
-- ✅ **NEW:** Strategy injection in `engine.py` (as "internal desire")
-- ✅ **NEW:** Feature flags in `settings.py`
-- ✅ **NEW:** `TraceQualityScorer` and `TraceRetriever` in `src_v2/memory/traces.py`
-- ✅ **NEW:** Few-shot trace injection in `ReflectiveAgent`
+- ✅ `GOAL_SOURCE_PRIORITY` hierarchy in `goals.py`
+- ✅ `GoalStrategist` worker in `src_v2/workers/strategist.py`
+- ✅ Strategy injection in `engine.py` (as "internal desire")
+- ✅ Feature flags in `settings.py` and `.env.example`
+- ✅ `TraceQualityScorer` and `TraceRetriever` in `src_v2/memory/traces.py`
+- ✅ Few-shot trace injection in `ReflectiveAgent`
+- ✅ `DriveManager` with Social Battery, Concern, Curiosity drives in `src_v2/evolution/drives.py`
+- ✅ Drive-based scheduler in `src_v2/discord/scheduler.py`
+- ✅ `UniverseEventBus` with privacy rules in `src_v2/universe/bus.py`
+- ✅ `EventDetector` for pattern-based detection in `src_v2/universe/detector.py`
+- ✅ `run_gossip_dispatch` worker function for cross-bot memory injection
 
 **What Needs to Be Built:**
 - ✅ **Phase 3.1**: Goal `source`/`priority` columns, `GoalStrategist` worker, strategy injection — **COMPLETE**
 - ✅ **Phase 3.2**: Trace quality scoring, few-shot injection in `ReflectiveAgent` — **COMPLETE**
-- 🔨 **Phase 3.3**: `DriveSystem`, `DriveScheduler`, trust-gated initiation
-- 🔨 **Phase 3.4**: Event bus, privacy rules, gossip memory injection
+- ✅ **Phase 3.3**: `DriveManager`, drive-based scheduler, trust-gated initiation — **COMPLETE**
+- ✅ **Phase 3.4**: Event bus, privacy rules, gossip memory injection — **COMPLETE**
 
 ---
 
@@ -99,9 +104,9 @@ This roadmap outlines the transition from **Reactive/Reflective** agents (Tier 1
 - `proactive_initiation_blocked{reason}` — Trust-gated rejections
 
 **Files:**
-- `src_v2/evolution/drives.py` (New: Drive system logic)
-- `src_v2/agents/proactive.py` (Update: Use drives, trust gating)
-- `src_v2/workers/scheduler.py` (Update: Drive evaluation loop)
+- ✅ `src_v2/evolution/drives.py` (New: DriveManager with Social Battery, Concern, Curiosity)
+- ✅ `src_v2/agents/proactive.py` (Update: Accept Drive for prompt coloring)
+- ✅ `src_v2/discord/scheduler.py` (Update: Drive-based evaluation instead of timers)
 
 ---
 
@@ -205,9 +210,11 @@ function can_share_event(event, target_bot):
 - `universe_event_blocked{reason}` — Privacy-gated rejections
 
 **Files:**
-- `src_v2/universe/bus.py` (New: Event dispatcher using arq)
-- `src_v2/agents/universe.py` (New: Coordination logic with privacy rules)
-- `src_v2/memory/manager.py` (Update: Insert "Gossip" memories)
+- ✅ `src_v2/universe/bus.py` (New: UniverseEvent, EventType, event_bus with privacy rules)
+- ✅ `src_v2/universe/detector.py` (New: Pattern-based event detection from messages)
+- ✅ `src_v2/workers/task_queue.py` (Update: enqueue_gossip method)
+- ✅ `src_v2/workers/worker.py` (Update: run_gossip_dispatch function)
+- ✅ `src_v2/discord/bot.py` (Update: Event detection in post-response pipeline)
 
 ---
 
@@ -254,8 +261,8 @@ function score_trace(trace):
 - `trace_reuse_success{bot_name}` — Did reusing a trace lead to faster resolution?
 
 **Files:**
-- `src_v2/memory/traces.py` (New: Trace retrieval with quality scoring)
-- `src_v2/agents/reflective.py` (Update: Inject few-shot examples)
+- ✅ `src_v2/memory/traces.py` (New: TraceQualityScorer, TraceRetriever, ScoredTrace)
+- ✅ `src_v2/agents/reflective.py` (Update: Inject few-shot examples from similar traces)
 
 ---
 

@@ -61,12 +61,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| **1** | **B3.3** | **Proactive Drives** - Trust-gated initiation, lazy scheduler | 3-4 days | 📋 Next |
-| **2** | **B3.4** | **Universe Agent** - Privacy boundaries, cross-bot gossip | 4-5 days | 📋 Planned |
-| 3 | A10 | Triggered Voice Responses - TTS audio attachments | 2-3 days | 📋 Planned |
+| ~~1~~ | ~~B3.3~~ | ~~Proactive Drives~~ | ~~3-4 days~~ | ✅ Complete |
+| ~~2~~ | ~~B3.4~~ | ~~Universe Agent~~ | ~~4-5 days~~ | ✅ Complete |
+| **1** | A10 | Triggered Voice Responses - TTS audio attachments | 2-3 days | 📋 Next |
 | — | A0 | Embedding Upgrade 768D | 45 min | ⏸️ On Hold |
 
-> **Current Focus:** Phase B3 (Autonomous Agents) — **Phases 3.1 & 3.2 Complete**. Continue with Phase 3.3 (Proactive Drives).
+> **Current Focus:** Phase B3 (Autonomous Agents) — **✅ ALL PHASES COMPLETE**. Next: Phase A10 (Triggered Voice Responses).
 
 ---
 
@@ -119,8 +119,8 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- ⏳ **Phase B3: Autonomous Agents** - Internal drives, goal strategies, cross-bot awareness → **IN PROGRESS (3.1, 3.2 Complete)**
-- 📋 Phase A10: Triggered Voice Responses (TTS audio attachments)
+- ✅ **Phase B3: Autonomous Agents** - Internal drives, goal strategies, cross-bot awareness → **COMPLETE (All 4 phases)**
+- 📋 Phase A10: Triggered Voice Responses (TTS audio attachments) → **NEXT**
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
