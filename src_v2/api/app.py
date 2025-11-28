@@ -11,7 +11,35 @@ OpenAPI JSON: http://localhost:{PORT}/openapi.json
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from loguru import logger
 from src_v2.api.routes import router
+from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
+from src_v2.memory.manager import memory_manager
+from src_v2.knowledge.manager import knowledge_manager
+from src_v2.core.character import character_manager
+from src_v2.universe.manager import universe_manager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Initializing API resources (Worker Mode)...")
+    await db_manager.connect_all()
+    await memory_manager.initialize()
+    await knowledge_manager.initialize()
+    await universe_manager.initialize()
+    
+    # Load character if configured
+    if settings.DISCORD_BOT_NAME:
+        logger.info(f"Loading character: {settings.DISCORD_BOT_NAME}...")
+        character_manager.load_character(settings.DISCORD_BOT_NAME)
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down API resources...")
+    await db_manager.disconnect_all()
 
 
 def create_app() -> FastAPI:
@@ -22,6 +50,7 @@ def create_app() -> FastAPI:
         Configured FastAPI application instance.
     """
     app = FastAPI(
+        lifespan=lifespan,
         title="WhisperEngine Chat API",
         version="2.0.0",
         description="""

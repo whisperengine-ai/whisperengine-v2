@@ -460,6 +460,47 @@ services:
       - v2_network
 
   # ========================================
+  # API SERVER (Standalone)
+  # ========================================
+  # Runs the API in a separate container with multiple workers.
+  # Use this in conjunction with bots running in --bot-only mode.
+  #
+  # Usage: 
+  #   docker compose --profile api run -e DISCORD_BOT_NAME=elena -p 8000:8000 api
+  #   OR create a .env.api file and use:
+  #   docker compose --profile api --env-file .env.api up api
+
+  api:
+    profiles: ["api"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whisperengine-v2-api
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    environment:
+      - TZ=America/Los_Angeles
+      - REDIS_URL=redis://redis:6379/0
+    command: uvicorn src_v2.api.app:app --host 0.0.0.0 --port 8000 --workers 4
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    networks:
+      - v2_network
+
+  # ========================================
   # BACKGROUND WORKERS (Shared across all bots)
   # ========================================
   # The worker processes ALL background jobs for ALL bot instances:

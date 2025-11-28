@@ -15,6 +15,9 @@ from src_v2.scripts.migrate import run_migrations
 from src_v2.utils.shutdown import shutdown_handler
 
 async def main():
+    # Check for bot-only mode
+    bot_only = "--bot-only" in sys.argv
+
     # Configure logging
     logger.remove()  # Remove default handler
     logger.add(sys.stderr, level=settings.LOG_LEVEL)
@@ -49,16 +52,22 @@ async def main():
         shutdown_handler.add_cleanup_task(db_manager.disconnect_all)
         
         # Start API Server
-        config = uvicorn.Config(
-            app=api_app, 
-            host=settings.API_HOST, 
-            port=settings.API_PORT, 
-            log_level=settings.LOG_LEVEL.lower()
-        )
-        server = uvicorn.Server(config)
+        api_task = None
+        server = None
         
-        logger.info(f"Starting API Server on {settings.API_HOST}:{settings.API_PORT}...")
-        api_task = asyncio.create_task(server.serve())
+        if not bot_only:
+            config = uvicorn.Config(
+                app=api_app, 
+                host=settings.API_HOST, 
+                port=settings.API_PORT, 
+                log_level=settings.LOG_LEVEL.lower()
+            )
+            server = uvicorn.Server(config)
+            
+            logger.info(f"Starting API Server on {settings.API_HOST}:{settings.API_PORT}...")
+            api_task = asyncio.create_task(server.serve())
+        else:
+            logger.info("Running in BOT-ONLY mode (API disabled).")
         
         # Start Discord Bot
         logger.info("Starting Discord Bot...")
@@ -73,8 +82,9 @@ async def main():
             logger.info("Shutting down services...")
             
             # Stop API
-            server.should_exit = True
-            await api_task
+            if server and api_task:
+                server.should_exit = True
+                await api_task
             
             # Close bot explicitly
             if not bot.is_closed():

@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     ROUTER_LLM_MODEL_NAME: Optional[str] = None
     
     # --- Discord ---
-    DISCORD_TOKEN: SecretStr = Field(validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
+    DISCORD_TOKEN: Optional[SecretStr] = Field(default=None, validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
     STATUS_UPDATE_INTERVAL_SECONDS: int = 300  # 5 minutes
     TYPING_SPEED_CHAR_PER_SEC: float = 0.05  # Seconds per character
     TYPING_MAX_DELAY_SECONDS: float = 4.0  # Maximum typing delay
@@ -96,7 +96,11 @@ class Settings(BaseSettings):
     ENABLE_TRACE_LEARNING: bool = False
 
     # --- Bot Identity ---
-    DISCORD_BOT_NAME: Optional[str] = Field(default=None, description="Name of the bot/character (e.g. elena)")
+    DISCORD_BOT_NAME: Optional[str] = Field(
+        default=None, 
+        description="Name of the bot/character (e.g. elena)",
+        validation_alias=AliasChoices("DISCORD_BOT_NAME", "CHARACTER_NAME")
+    )
 
     # --- Voice (ElevenLabs) ---
     ELEVENLABS_API_KEY: Optional[SecretStr] = None

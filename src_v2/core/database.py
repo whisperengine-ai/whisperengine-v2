@@ -91,6 +91,8 @@ class DatabaseManager:
                 await asyncio.sleep(wait_time)
 
     async def connect_postgres(self):
+        if self.postgres_pool:
+            return
         async def _connect():
             logger.info(f"Connecting to PostgreSQL at {settings.POSTGRES_URL}...")
             self.postgres_pool = await asyncpg.create_pool(
@@ -103,6 +105,8 @@ class DatabaseManager:
         await self._connect_with_retry("PostgreSQL", _connect)
 
     async def connect_redis(self):
+        if self.redis_client:
+            return
         async def _connect():
             logger.info(f"Connecting to Redis at {settings.REDIS_URL}...")
             self.redis_client = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
@@ -112,6 +116,8 @@ class DatabaseManager:
         await self._connect_with_retry("Redis", _connect)
 
     async def connect_qdrant(self):
+        if self.qdrant_client:
+            return
         async def _connect():
             logger.info(f"Connecting to Qdrant at {settings.QDRANT_URL}...")
             # Use AsyncQdrantClient for non-blocking operations
@@ -126,6 +132,8 @@ class DatabaseManager:
         await self._connect_with_retry("Qdrant", _connect)
 
     async def connect_neo4j(self):
+        if self.neo4j_driver:
+            return
         async def _connect():
             logger.info(f"Connecting to Neo4j at {settings.NEO4J_URL}...")
             auth = (settings.NEO4J_USER, settings.NEO4J_PASSWORD.get_secret_value())
@@ -141,6 +149,8 @@ class DatabaseManager:
         await self._connect_with_retry("Neo4j", _connect)
 
     async def connect_influxdb(self):
+        if self.influxdb_client:
+            return
         try:
             logger.info(f"Connecting to InfluxDB at {settings.INFLUXDB_URL}...")
             self.influxdb_client = InfluxDBClient(
