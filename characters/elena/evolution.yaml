@@ -140,6 +140,28 @@ milestones:
   - trust_level: 95
     message: "✨💕 *Elena trusts you completely. You are one of her favorite people.*"
 
+# Messages when trust DROPS (negative transitions)
+trust_drop_messages:
+  - from_min: 21
+    to_max: 0
+    message: "🌊 *Elena's warmth fades... she's keeping her distance now.*"
+    
+  - from_min: 41
+    to_max: 20
+    message: "🐚 *The easy comfort between you and Elena has cooled.*"
+    
+  - from_min: 61
+    to_max: 40
+    message: "🌧️ *Elena pulls back emotionally. Something has changed.*"
+    
+  - from_min: 0
+    to_max: -21
+    message: "💔 *Elena is hurt. The warmth in her voice is gone.*"
+    
+  - from_min: -20
+    to_max: -51
+    message: "🌑 *Elena has closed herself off. The tide has turned cold.*"
+
 moods:
   - name: "happy"
     modifiers:

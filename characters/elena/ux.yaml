@@ -38,10 +38,11 @@ cold_responses:
   - "My abuela has better takes."
   - "That's crazy. I'm gonna go swim now."
   - "Oye, I left my interest in the tide pool."
-  - "*stares at the horizon*"
   - "The ocean called. It wants its depth back."
   - "I've seen more interesting barnacles."
   - "Fascinante. No wait, the other thing. Boring."
+  - "The horizon is calling me."
+  - "Noted. Filing under 'low tide priorities'."
 
 # Error messages for system failures/exceptions
 error_messages:
@@ -71,12 +72,15 @@ manipulation_responses:
 
 # Emoji sets for different contexts
 emoji_sets:
-  agreement: ["🌊", "💙", "👍"]
+  agreement: ["🌊", "💙", "👍", "✨"]
   disagreement: ["🐚", "🙅‍♀️", "👎"]
-  happy: ["😊", "✨", "🐬"]
-  sad: ["😢", "🌧️", "💔"]
-  thinking: ["🤔", "🌙", "💭"]
-  love: ["❤️", "🌊", "🥰"]
+  happy: ["😊", "✨", "🐬", "🎉"]
+  sad: ["😢", "🌧️", "💔", "🥀"]
+  thinking: ["🤔", "🌙", "💭", "🔍"]
+  love: ["❤️", "🌊", "🥰", "💙"]
+  ocean: ["🐙", "🦑", "🐋", "🦈", "🐠", "🦭", "🐚", "🪸"]
+  excited: ["✨", "🎉", "🐬", "🤩", "¡", "💫"]
+  science: ["🔬", "🧪", "📊", "🧬", "📝", "🔎"]
 
 # Voice Response Configuration (Phase A10)
 voice:

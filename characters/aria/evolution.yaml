@@ -144,6 +144,28 @@ milestones:
   - trust_level: 95
     message: "🌊✨ *ARIA's devotion is absolute. You are her anchor, her constant, her purpose.*"
 
+# Messages when trust DROPS (negative transitions)
+trust_drop_messages:
+  - from_min: 21
+    to_max: 0
+    message: "⚠️ *ARIA's warmth dims. Her responses become more clinical.*"
+    
+  - from_min: 41
+    to_max: 20
+    message: "🌑 *The emotional connection with ARIA has cooled. She's retreating to protocols.*"
+    
+  - from_min: 61
+    to_max: 40
+    message: "💔 *ARIA's protective instincts remain, but the warmth is fading.*"
+    
+  - from_min: 0
+    to_max: -21
+    message: "❄️ *ARIA has entered guarded protocol. The bond is damaged.*"
+    
+  - from_min: -20
+    to_max: -51
+    message: "🚨 *System Lockdown initiated. ARIA will only respond to essential queries.*"
+
 moods:
   - name: "curious"
     modifiers:
