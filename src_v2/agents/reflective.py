@@ -310,8 +310,23 @@ class ReflectiveAgent:
                         logger.info(f"Reflective Mode verified in {steps} steps.")
                         return str(final_answer_msg.content), messages
                 
+                # Strip any leaked critic/correction markers before returning
+                final_content = str(content)
+                if "CORRECTION NEEDED:" in final_content:
+                    # Extract the actual content after the correction marker
+                    # Sometimes the LLM echoes our prompt format
+                    parts = final_content.split("CORRECTION NEEDED:", 1)
+                    if len(parts) > 1:
+                        # Take everything after the marker and strip leading newlines
+                        final_content = parts[1].strip()
+                        # If there's a clear answer after explanation, try to get it
+                        if "\n\n" in final_content:
+                            # Likely format: "explanation\n\nActual answer here"
+                            final_content = final_content.split("\n\n", 1)[-1].strip()
+                        logger.warning("Stripped leaked CORRECTION NEEDED marker from response")
+                
                 logger.info(f"Reflective Mode finished in {steps} steps using {tools_used} tools.")
-                return str(content), messages
+                return final_content, messages
         
         return "I apologize, I reached my reasoning limit and couldn't finish.", messages
 
