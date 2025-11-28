@@ -89,9 +89,11 @@ voice:
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:
-  agreement: ["👍", "✅", "👌"]
-  disagreement: ["👎", "❌", "🙅"]
-  happy: ["😊", "😄", "🎉"]
-  sad: ["😢", "😞", "💔"]
-  thinking: ["🤔", "🧐", "💭"]
-  love: ["❤️", "😍", "🥰"]
+  agreement: ["📊", "✅", "💯"]
+  disagreement: ["📉", "❌", "🚫"]
+  happy: ["📈", "⭐", "✨"]
+  sad: ["📉", "😔", "💼"]
+  thinking: ["📊", "🧐", "💭"]
+  love: ["⭐", "✨", "💼"]
+  business: ["📈", "💼", "📊", "🎯"]
+  success: ["🏆", "💯", "⭐", "✨"]

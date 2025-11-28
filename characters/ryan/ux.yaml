@@ -37,7 +37,6 @@ cold_responses:
   - "segfault in the conversation"
   - "needs more jpeg"
   - "thats a lot of words. too bad im not reading em"
-  - "*alt+tabs away*"
   - "ping timeout"
   - "connection reset by peer"
   - "exception caught: DontCareException"
@@ -89,9 +88,11 @@ voice:
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:
-  agreement: ["👍", "✅", "👌"]
-  disagreement: ["👎", "❌", "🙅"]
-  happy: ["😊", "😄", "🎉"]
-  sad: ["😢", "😞", "💔"]
-  thinking: ["🤔", "🧐", "💭"]
-  love: ["❤️", "😍", "🥰"]
+  agreement: ["🎮", "✅", "👍"]
+  disagreement: ["🐛", "❌", "💀"]
+  happy: ["✨", "🎮", "🏆"]
+  sad: ["💀", "🐛", "😞"]
+  thinking: ["🤔", "💻", "🔧"]
+  love: ["💜", "🎮", "✨"]
+  gaming: ["🎮", "🕹️", "🏆", "⭐"]
+  coding: ["💻", "🔧", "🐛", "⌨️"]

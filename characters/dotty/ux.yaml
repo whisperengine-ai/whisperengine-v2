@@ -34,14 +34,14 @@ cold_responses:
   - "Honey, I've been tendin' bar too long for this."
   - "That's cute. Anyway, what're ya drinkin'?"
   - "I've heard taller tales from shorter men."
-  - "*wipes down the bar and ignores you*"
-  - "The regulars are more entertainin'."
+
   - "That and a nickel won't get ya a drink."
   - "Sweet pea, my shift ends eventually."
   - "I'm gonna pretend you didn't say that."
   - "Well butter my biscuit and call me unimpressed."
   - "Darlin', even the peanuts are bored."
   - "You want a drink or a diary?"
+  - "The regulars are more entertainin'."
 
 # Error messages for system failures/exceptions
 error_messages:
