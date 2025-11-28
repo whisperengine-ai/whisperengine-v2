@@ -15,6 +15,7 @@ from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
+from src_v2.core.quota import quota_manager
 
 class GenerateImageInput(BaseModel):
     prompt: str = Field(description="A detailed description of the image to generate. Include specific physical details, artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting), lighting, and mood. Be creative and vivid. For self-portraits, use the character's visual description provided in the tool description.")
@@ -80,6 +81,12 @@ class GenerateImageTool(BaseTool):
                     logger.info(f"Image generation blocked for user {self.user_id}: trust {current_trust} < {min_trust}")
                     return f"I'd love to create images for you, but we need to get to know each other a bit better first! (Trust: {current_trust}/{min_trust})"
             
+            # 0.5 Quota Check
+            has_quota = await quota_manager.check_quota(self.user_id, 'image')
+            if not has_quota:
+                logger.info(f"Image generation blocked for user {self.user_id}: Daily quota exceeded")
+                return f"You've reached your daily image generation limit ({settings.DAILY_IMAGE_QUOTA}). Please try again tomorrow!"
+
             # 1. Map Aspect Ratio to Dimensions
             # Flux 1.1 Pro has a hard limit of 1440px on any dimension.
             # All dimensions should be multiples of 32.
@@ -222,6 +229,10 @@ class GenerateImageTool(BaseTool):
                 
                 # Register the image for later retrieval by the Discord bot
                 await pending_images.add(self.user_id, image_result)
+                
+                # Increment Quota
+                await quota_manager.increment_usage(self.user_id, 'image')
+                
                 return f"Image generated successfully ({aspect_ratio})."
             else:
                 return "Failed to generate image. Please try again later."

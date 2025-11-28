@@ -1127,7 +1127,7 @@ class WhisperBot(commands.Bot):
                         if should_trigger_voice:
                             try:
                                 # Use the clean response text (without footer)
-                                voice_result = await voice_response_manager.generate_voice_response(response, character)
+                                voice_result = await voice_response_manager.generate_voice_response(response, character, user_id)
                                 if voice_result:
                                     voice_file_path, voice_filename = voice_result
                                     voice_file = discord.File(voice_file_path, filename=voice_filename)

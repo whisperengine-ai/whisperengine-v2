@@ -5,11 +5,12 @@ from loguru import logger
 from src_v2.core.character import Character
 from src_v2.voice.tts import tts_manager
 from src_v2.config.settings import settings
+from src_v2.core.quota import quota_manager
 
 class VoiceResponseManager:
     """Orchestrates voice response generation and file handling."""
     
-    async def generate_voice_response(self, text: str, character: Character) -> Optional[Tuple[str, str]]:
+    async def generate_voice_response(self, text: str, character: Character, user_id: Optional[str] = None) -> Optional[Tuple[str, str]]:
         """
         Generates a voice response for the given text and character.
         Returns a tuple of (file_path, filename) or None if generation fails.
@@ -17,6 +18,13 @@ class VoiceResponseManager:
         if not settings.ENABLE_VOICE_RESPONSES:
             return None
             
+        # Check Quota
+        if user_id:
+            has_quota = await quota_manager.check_quota(user_id, 'audio')
+            if not has_quota:
+                logger.info(f"Voice response blocked for user {user_id}: Daily quota exceeded")
+                return None
+
         # Resolve Voice ID
         voice_id = None
         if character.voice_config and character.voice_config.voice_id:
@@ -49,6 +57,11 @@ class VoiceResponseManager:
                 f.write(audio_bytes)
                 
             logger.info(f"Generated voice response file: {file_path}")
+            
+            # Increment Quota
+            if user_id:
+                await quota_manager.increment_usage(user_id, 'audio')
+                
             return file_path, filename
             
         except Exception as e:

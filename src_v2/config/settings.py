@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     ENABLE_UNIVERSE_EVENTS: bool = False
     ENABLE_TRACE_LEARNING: bool = False
 
+    # --- Quotas ---
+    DAILY_IMAGE_QUOTA: int = Field(default=5, description="Max images a user can generate per day")
+    DAILY_AUDIO_QUOTA: int = Field(default=10, description="Max audio clips a user can generate per day")
+
     # --- Bot Identity ---
     DISCORD_BOT_NAME: Optional[str] = Field(
         default=None, 
