@@ -10,7 +10,7 @@ import aiofiles
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from loguru import logger
-from influxdb_client import Point
+from influxdb_client.client.write.point import Point
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -653,6 +653,19 @@ class AgentEngine:
                 if diary_context:
                     system_content += diary_context
 
+            # 2.6.6 Inject Dream Context (Phase E3) - Share dreams after long absence
+            if settings.ENABLE_DREAM_SEQUENCES and user_id:
+                user_name = context_variables.get("user_name", "the user")
+                # Use the already-built system_content as character context
+                dream_context = await self._get_dream_context(
+                    user_id=user_id,
+                    user_name=user_name,
+                    char_name=character.name,
+                    character_context=character.system_prompt[:500] if character.system_prompt else ""
+                )
+                if dream_context:
+                    system_content += dream_context
+
             # 2.7 Inject Knowledge Graph Context
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
             system_content += knowledge_context
@@ -795,6 +808,83 @@ class AgentEngine:
             
         except Exception as e:
             logger.debug(f"Failed to get diary context for {char_name}: {e}")
+        
+        return ""
+
+    async def _get_dream_context(
+        self, 
+        user_id: str, 
+        user_name: str, 
+        char_name: str,
+        character_context: str
+    ) -> str:
+        """Generates and retrieves a dream if user has been away long enough.
+        
+        Phase E3: Dream Sequences
+        When a user returns after a long absence (>24h by default), the character
+        may share a dream that metaphorically relates to their past conversations.
+        
+        Args:
+            user_id: Discord user ID
+            user_name: User's display name
+            char_name: Character name
+            character_context: Character personality context for dream generation
+            
+        Returns:
+            Formatted dream context string, or empty string if no dream
+        """
+        if not settings.ENABLE_DREAM_SEQUENCES:
+            return ""
+        
+        try:
+            from src_v2.memory.dreams import get_dream_manager
+            from src_v2.memory.manager import MemoryManager
+            
+            dream_manager = get_dream_manager(char_name)
+            
+            # Get last interaction timestamp
+            last_interaction = await self.trust_manager.get_last_interaction(user_id, char_name)
+            
+            # Check if we should generate a dream
+            if not await dream_manager.should_generate_dream(user_id, last_interaction):
+                return ""
+            
+            # Calculate days apart for context
+            now = datetime.datetime.now(datetime.timezone.utc)
+            days_apart = 1
+            if last_interaction:
+                days_apart = max(1, (now - last_interaction).days)
+            
+            logger.info(f"Generating dream for user {user_id} (away {days_apart} days)")
+            
+            # Get high-meaningfulness memories for dream material
+            memory_manager = MemoryManager(bot_name=char_name)
+            memories = await memory_manager.search_summaries(
+                query="meaningful emotional conversation",
+                user_id=user_id,
+                limit=5
+            )
+            
+            if not memories:
+                logger.debug(f"No memories found for dream generation with user {user_id}")
+                return ""
+            
+            # Generate the dream
+            dream = await dream_manager.generate_dream(
+                user_id=user_id,
+                user_name=user_name,
+                memories=memories,
+                character_context=character_context,
+                days_apart=days_apart
+            )
+            
+            if dream:
+                # Save dream to prevent repetition
+                await dream_manager.save_dream(user_id, dream)
+                return dream_manager.format_dream_context(dream, days_apart)
+            
+        except Exception as e:
+            logger.debug(f"Failed to get dream context for {char_name}: {e}")
         
         return ""
 

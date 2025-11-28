@@ -63,12 +63,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|--------|
 | 1 | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
 | 2 | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
-| 3 | E3 | Dream Sequences | 3 days | 📋 Proposed |
 | — | E1 | Conversation Threading | — | ✅ Complete |
 | — | E2 | Character Diary & Reflection | — | ✅ Complete |
+| — | E3 | Dream Sequences | — | ✅ Complete |
 | — | E4 | Relationship Milestones | — | ✅ Complete |
 
-> **Current Focus:** All core phases complete. E1, E2, E4 implemented. **Next:** E3 (Dream Sequences), E5 (Scheduled Reminders), E6 (Character-to-Character).
+> **Current Focus:** All core phases complete. E1-E4 implemented. **Next:** E5 (Scheduled Reminders), E6 (Character-to-Character).
 
 ---
 
@@ -1189,12 +1189,22 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [CHARACTER_DIARY.md](./roadmaps/CHARACTER_DIARY.md)
 
-### 📋 Phase E3: Dream Sequences
-**Priority:** Medium | **Time:** 3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+### ✅ Phase E3: Dream Sequences
+**Priority:** — | **Time:** 3 days | **Complexity:** Medium
+**Status:** ✅ Complete (Nov 28, 2025)
 
 **Problem:** Reconnecting after a long break feels generic.
 **Solution:** Generate surreal "dreams" based on past memories after >24h inactivity.
+
+**Implementation:**
+- `src_v2/memory/dreams.py` contains `DreamManager` with structured `DreamContent` output
+- Dreams generated on-demand (lazy) when user returns after inactivity threshold
+- Uses high-meaningfulness memories as dream material (metaphorical transformation)
+- Stored in Qdrant with `type='dream'` to track cooldown per user
+- `src_v2/evolution/trust.py` has `get_last_interaction()` for inactivity detection
+- `src_v2/agents/engine.py` injects dream context via `_get_dream_context()`
+- Settings: `ENABLE_DREAM_SEQUENCES`, `DREAM_INACTIVITY_HOURS` (24), `DREAM_COOLDOWN_DAYS` (7)
+
 **Spec:** [DREAM_SEQUENCES.md](./roadmaps/DREAM_SEQUENCES.md)
 
 ### ✅ Phase E4: Relationship Milestones

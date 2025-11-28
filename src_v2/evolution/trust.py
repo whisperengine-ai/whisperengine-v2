@@ -5,10 +5,10 @@ Tracks the evolving relationship between user and character, including
 trust scores, relationship levels, and unlocked personality traits.
 """
 
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any
 from loguru import logger
 from influxdb_client import Point
-from datetime import datetime
+from datetime import datetime, timezone
 from src_v2.core.database import db_manager, require_db
 from src_v2.config.settings import settings
 from src_v2.evolution.manager import get_evolution_manager
@@ -294,6 +294,42 @@ class TrustManager:
                 await cache_manager.delete(f"trust:{character_name}:{user_id}")
         except Exception as e:
             logger.error(f"Failed to unlock trait: {e}")
+
+    @require_db("postgres", default_return=None)
+    async def get_last_interaction(self, user_id: str, character_name: str) -> Optional[datetime]:
+        """
+        Gets the timestamp of the last interaction between user and character.
+        
+        This is used by the Dream Sequences feature (Phase E3) to determine
+        if the user has been away long enough to trigger a dream.
+        
+        Args:
+            user_id: Discord user ID
+            character_name: Character/bot name
+            
+        Returns:
+            datetime of last interaction, or None if no relationship exists
+        """
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT updated_at
+                    FROM v2_user_relationships
+                    WHERE user_id = $1 AND character_name = $2
+                """, user_id, character_name)
+                
+                if row and row['updated_at']:
+                    # Ensure timezone-aware
+                    updated_at = row['updated_at']
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=timezone.utc)
+                    return updated_at
+                
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to get last interaction: {e}")
+            return None
 
 
 # Global singleton

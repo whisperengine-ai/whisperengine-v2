@@ -171,6 +171,11 @@ class Settings(BaseSettings):
     DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
     DIARY_GENERATION_HOUR_UTC: int = 4  # Hour (UTC) when diary is generated (default: 4 AM)
 
+    # --- Dream Sequences (Phase E3) ---
+    ENABLE_DREAM_SEQUENCES: bool = True  # Generate dreams when user returns after long absence
+    DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
+    DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():
