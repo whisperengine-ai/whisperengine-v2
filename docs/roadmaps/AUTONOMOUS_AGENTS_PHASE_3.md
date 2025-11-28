@@ -1,9 +1,9 @@
 # Autonomous Agents Phase 3: Proactive, Goal-Directed, and Learning
 
-**Document Version:** 1.3  
+**Document Version:** 1.4  
 **Created:** November 27, 2025  
 **Updated:** November 27, 2025  
-**Status:** In Progress (Phase 3.1 Complete)  
+**Status:** In Progress (Phase 3.1, 3.2 Complete)  
 **Type:** Roadmap
 
 ---
@@ -23,10 +23,12 @@
 - ✅ **NEW:** `GoalStrategist` worker in `src_v2/workers/strategist.py`
 - ✅ **NEW:** Strategy injection in `engine.py` (as "internal desire")
 - ✅ **NEW:** Feature flags in `settings.py`
+- ✅ **NEW:** `TraceQualityScorer` and `TraceRetriever` in `src_v2/memory/traces.py`
+- ✅ **NEW:** Few-shot trace injection in `ReflectiveAgent`
 
 **What Needs to Be Built:**
 - ✅ **Phase 3.1**: Goal `source`/`priority` columns, `GoalStrategist` worker, strategy injection — **COMPLETE**
-- 🔨 **Phase 3.2**: Trace quality scoring, few-shot injection in `ReflectiveAgent`
+- ✅ **Phase 3.2**: Trace quality scoring, few-shot injection in `ReflectiveAgent` — **COMPLETE**
 - 🔨 **Phase 3.3**: `DriveSystem`, `DriveScheduler`, trust-gated initiation
 - 🔨 **Phase 3.4**: Event bus, privacy rules, gossip memory injection
 

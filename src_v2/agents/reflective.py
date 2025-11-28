@@ -27,6 +27,7 @@ from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.knowledge.document_context import has_document_context
+from src_v2.memory.traces import trace_retriever
 
 class ReflectiveAgent:
     """
@@ -85,8 +86,25 @@ class ReflectiveAgent:
         # 1. Initialize Tools
         tools = self._get_tools(user_id, guild_id)
         
-        # 2. Construct System Prompt
+        # 2. Construct System Prompt with Few-Shot Traces (Phase 3.2)
         full_prompt = self._construct_prompt(system_prompt)
+        
+        # Inject few-shot examples from similar successful traces
+        if settings.ENABLE_TRACE_LEARNING:
+            try:
+                collection_name = f"whisperengine_memory_{settings.DISCORD_BOT_NAME or 'default'}"
+                traces = await trace_retriever.get_relevant_traces(
+                    query=user_input,
+                    user_id=user_id,
+                    collection_name=collection_name
+                )
+                if traces:
+                    few_shot_section = trace_retriever.format_few_shot_section(traces)
+                    full_prompt = f"{full_prompt}\n\n{few_shot_section}"
+                    if callback:
+                        await callback(f"📚 Found {len(traces)} similar solved problems")
+            except Exception as e:
+                logger.warning(f"Failed to inject few-shot traces: {e}")
 
         # 3. Prepare User Message (Text or Multimodal)
         user_message_content: Any = user_input

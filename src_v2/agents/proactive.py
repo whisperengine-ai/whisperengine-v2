@@ -11,7 +11,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
-from src_v2.universe.manager import universe_manager
+from src_v2.evolution.drives import Drive
 
 class ProactiveAgent:
     """
@@ -20,7 +20,15 @@ class ProactiveAgent:
     def __init__(self) -> None:
         self.llm: BaseChatModel = create_llm(temperature=0.8) # Higher temp for creativity
 
-    async def generate_opener(self, user_id: str, user_name: str, character_name: str, is_public: bool = False, channel_id: Optional[str] = None) -> Optional[str]:
+    async def generate_opener(
+        self, 
+        user_id: str, 
+        user_name: str, 
+        character_name: str, 
+        is_public: bool = False, 
+        channel_id: Optional[str] = None,
+        drive: Optional[Drive] = None
+    ) -> Optional[str]:
         """
         Generates a proactive opening message based on recent memories and knowledge.
         
@@ -30,6 +38,7 @@ class ProactiveAgent:
             character_name: Bot character name
             is_public: If True, generates a privacy-safe message for public channels
             channel_id: If provided, retrieves channel-specific conversation history
+            drive: The internal drive motivating this initiation (Phase 3.3)
         """
         try:
             # 1. Load Character
@@ -114,6 +123,15 @@ Look for unfinished discussions or topics the user didn't respond to - this is y
             universe_context += f"Inhabitants: {universe_overview.get('total_inhabitants', 0)}\n"
             universe_context += f"Top Topics: {', '.join(universe_overview.get('top_universal_topics', []))}"
 
+            # Drive Context (Phase 3.3)
+            drive_context = ""
+            if drive:
+                drive_context = f"""
+[INTERNAL DRIVE]
+You are reaching out because you feel: {drive.name.upper()} ({drive.description})
+This feeling is motivating you to connect. Let this feeling color your message tone.
+"""
+
             system_prompt = f"""You are {character.name}.
 {character.system_prompt}
 
@@ -133,6 +151,7 @@ Look for:
 
 {privacy_instruction}
 {channel_context}
+{drive_context}
 
 [RELATIONSHIP STATUS]
 Level: {relationship.get('level', 'Stranger')}

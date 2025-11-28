@@ -10,6 +10,7 @@ from src_v2.core.database import db_manager
 from src_v2.intelligence.activity import activity_modeler
 from src_v2.agents.proactive import proactive_agent
 from src_v2.memory.manager import memory_manager
+from src_v2.evolution.drives import drive_manager, Drive
 
 class ProactiveScheduler:
     """Manages proactive engagement scheduling for the bot."""
@@ -75,46 +76,53 @@ class ProactiveScheduler:
             await self.check_user(user_id, trust_score, last_interaction)
 
     async def check_user(self, user_id: str, trust_score: int, last_interaction: Optional[datetime]) -> None:
-        """Checks if a specific user should receive a proactive message.
+        """Checks if we should message a specific user based on drives and activity patterns."""
         
-        Args:
-            user_id: Discord user ID
-            trust_score: User's trust score with the bot
-            last_interaction: Timestamp of last interaction (can be None)
-        """
-        # 1. Check Trust
-        if trust_score < self.min_trust_score:
+        # 1. Check Feature Flag
+        if not settings.ENABLE_PROACTIVE_MESSAGING:
             return
 
-        # 2. Check Silence Duration
-        if last_interaction:
-            # Ensure UTC
-            if last_interaction.tzinfo is None:
-                last_interaction = last_interaction.replace(tzinfo=timezone.utc)
-            
-            now = datetime.now(timezone.utc)
-            if (now - last_interaction) < timedelta(hours=self.silence_threshold_hours):
-                return # Too soon
-        else:
-            # Never interacted? Or no session found.
-            # If trust score > 0 but no session, maybe old data.
-            # Let's skip to be safe.
+        # Check for Autonomous Drives flag
+        if not settings.ENABLE_AUTONOMOUS_DRIVES:
+            # Fallback or disable if drives are not enabled
             return
 
-        # 3. Check Activity Model (Is it a good time?)
+        # 2. Evaluate Drives (Internal Motivation)
+        # This replaces the simple "time since last message" check
+        character_name = settings.DISCORD_BOT_NAME or "default"
+        active_drives = await drive_manager.evaluate_drives(user_id, character_name, trust_score, last_interaction)
+        
+        # Filter for drives strong enough to act on
+        actionable_drives = []
+        for drive in active_drives:
+            if await drive_manager.should_initiate(user_id, character_name, drive):
+                actionable_drives.append(drive)
+        
+        if not actionable_drives:
+            # No internal motivation to talk
+            return
+
+        # Pick the strongest drive
+        primary_drive = max(actionable_drives, key=lambda d: d.value)
+        logger.info(f"User {user_id}: Strongest drive is {primary_drive.name} ({primary_drive.value:.2f})")
+
+        # 3. Check Activity Model (Is it a good time for the USER?)
+        # We still respect the user's schedule even if we want to talk
         is_good_time, confidence = await activity_modeler.is_good_time_to_message(user_id)
         if not is_good_time:
+            logger.debug(f"User {user_id}: High drive but bad time (confidence {confidence:.2f})")
             return
 
         # 4. Trigger Engagement
-        logger.info(f"Triggering proactive message for User {user_id} (Confidence: {confidence:.2f})")
-        await self.trigger_proactive_message(user_id)
+        logger.info(f"Triggering proactive message for User {user_id} driven by {primary_drive.name}")
+        await self.trigger_proactive_message(user_id, drive=primary_drive)
 
-    async def trigger_proactive_message(self, user_id: str) -> None:
+    async def trigger_proactive_message(self, user_id: str, drive: Optional[Drive] = None) -> None:
         """Generates and sends a proactive message to a user.
         
         Args:
             user_id: Discord user ID to message
+            drive: The internal drive motivating this message
         """
         try:
             user: discord.User = await self.bot.fetch_user(int(user_id))
@@ -152,8 +160,8 @@ class ProactiveScheduler:
                 is_dm = True
             else:
                 # Check if the found channel is actually a DM channel
-                # Use hasattr to check for guild attribute instead of isinstance
-                is_dm = not hasattr(target_channel, 'guild') or target_channel.guild is None
+                # Use getattr to safely check for guild attribute
+                is_dm = getattr(target_channel, 'guild', None) is None
 
             # 2. Check Privacy if DM
             if is_dm and settings.ENABLE_DM_BLOCK:
@@ -167,7 +175,8 @@ class ProactiveScheduler:
                 user.name,
                 character_name, 
                 is_public=not is_dm,
-                channel_id=str(target_channel.id) if target_channel and hasattr(target_channel, 'id') else None
+                channel_id=str(target_channel.id) if target_channel and hasattr(target_channel, 'id') else None,
+                drive=drive
             )
             
             if opener:
