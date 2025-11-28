@@ -186,11 +186,8 @@ class AgentEngine:
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
             system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
-
-        # Inject channel context for multi-bot awareness (recent channel messages including other bots)
-        if context_variables.get("channel_context"):
-            system_content += f"\n\n[RECENT CHANNEL ACTIVITY]\n{context_variables['channel_context']}\n"
-            system_content += "(This is the recent conversation in this channel. You can see what other users and bots have said.)\n"
+        # NOTE: Channel context is already injected by _build_system_context() 
+        # Do NOT add it here again to avoid duplicate context
 
         # 5. Create Prompt Template
         # We manually replace variables in system_content to avoid LangChain templating issues
@@ -426,10 +423,8 @@ class AgentEngine:
             system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{context_variables['memory_context']}\n"
             system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
 
-        # Inject channel context for multi-bot awareness (recent channel messages including other bots)
-        if context_variables.get("channel_context"):
-            system_content += f"\n\n[RECENT CHANNEL ACTIVITY]\n{context_variables['channel_context']}\n"
-            system_content += "(This is the recent conversation in this channel. You can see what other users and bots have said.)\n"
+        # NOTE: Channel context is already injected by _build_system_context() 
+        # Do NOT add it here again to avoid duplicate context
 
         # 5. Create Prompt Template
         # We manually replace variables in system_content to avoid LangChain templating issues

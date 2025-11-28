@@ -112,8 +112,12 @@ class WhisperBot(commands.Bot):
             max_length: Maximum length per chunk (Discord limit is 2000)
             
         Returns:
-            List of text chunks
+            List of text chunks (never empty - returns placeholder if input is empty)
         """
+        # Guard against empty text to prevent Discord API errors
+        if not text or not text.strip():
+            return ["..."]
+        
         if len(text) <= max_length:
             return [text]
         
@@ -1048,8 +1052,8 @@ class WhisperBot(commands.Bot):
                             # Rate limit updates
                             now = time.time()
                             if now - last_update_time > update_interval:
-                                # Only stream if length is safe
-                                if len(full_response_text) < 1950:
+                                # Only stream if length is safe and content is non-empty
+                                if len(full_response_text) < 1950 and full_response_text.strip():
                                     try:
                                         if not active_message:
                                             active_message = await message.channel.send(full_response_text)
@@ -1060,6 +1064,14 @@ class WhisperBot(commands.Bot):
                                 last_update_time = now
                     
                     response = full_response_text
+                    
+                    # Guard against empty responses
+                    if not response or not response.strip():
+                        logger.warning(f"LLM returned empty response for user {user_id}")
+                        if character.error_messages:
+                            response = random.choice(character.error_messages)
+                        else:
+                            response = "I got a bit distracted there. What were we talking about?"
                     
                     processing_time_ms: float = (time.time() - start_time) * 1000
                     
@@ -1498,7 +1510,7 @@ class WhisperBot(commands.Bot):
                 
                 async def handle_reaction_trust():
                     try:
-                        milestone = await trust_manager.update_trust(user_id, character.name, trust_delta)
+                        milestone = await trust_manager.update_trust(user_id, self.character_name, trust_delta)
                         if milestone:
                             await reaction.message.channel.send(milestone)
                     except Exception as e:
