@@ -5,6 +5,7 @@ from loguru import logger
 from typing import cast, Optional
 from src_v2.memory.manager import memory_manager
 from src_v2.core.character import character_manager
+from src_v2.core.database import db_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
@@ -109,21 +110,54 @@ class CharacterCommands(app_commands.Group):
             character_name = settings.DISCORD_BOT_NAME or "default"
             char = character_manager.get_character(character_name)
             
-            info = f"**Bot Identity:** {character_name}\n"
+            # Version
+            try:
+                with open("VERSION", "r") as f:
+                    version = f.read().strip()
+            except Exception:
+                version = "unknown"
+            
+            info = f"**Bot:** {character_name} (v{version})\n"
             if char:
-                info += f"**Loaded Character:** {char.name}\n"
+                info += f"**Character:** {char.name}\n"
             else:
-                info += "**Loaded Character:** None (Error)\n"
-                
-            info += f"**Vision Enabled:** {settings.LLM_SUPPORTS_VISION}\n"
-            # Check if voice is configured
+                info += "**Character:** ⚠️ Not loaded\n"
+            
+            # LLM Models
+            info += f"\n**LLM Models:**\n"
+            info += f"  Main: `{settings.LLM_MODEL_NAME}` (temp: {settings.LLM_TEMPERATURE})\n"
+            info += f"  Reflective: `{settings.REFLECTIVE_LLM_MODEL_NAME}`\n"
+            router_model = settings.ROUTER_LLM_MODEL_NAME or "openai/gpt-4o-mini"
+            info += f"  Router: `{router_model}`\n"
+            
+            # Feature Flags
+            info += f"\n**Features:**\n"
+            info += f"  Reflective Mode: {'✅' if settings.ENABLE_REFLECTIVE_MODE else '❌'}\n"
+            info += f"  Fact Extraction: {'✅' if settings.ENABLE_RUNTIME_FACT_EXTRACTION else '❌'}\n"
+            info += f"  Proactive Messaging: {'✅' if settings.ENABLE_PROACTIVE_MESSAGING else '❌'}\n"
+            
+            # Capabilities
+            info += f"\n**Capabilities:**\n"
+            info += f"  Vision: {'✅' if settings.LLM_SUPPORTS_VISION else '❌'}\n"
             voice_enabled = bool(settings.ELEVENLABS_API_KEY)
-            info += f"**Voice Enabled:** {voice_enabled}\n"
+            info += f"  Voice: {'✅' if voice_enabled else '❌'}\n"
+            
+            # Database Status
+            info += f"\n**Databases:**\n"
+            info += f"  Postgres: {'✅' if db_manager.postgres_pool else '❌'}\n"
+            info += f"  Qdrant: {'✅' if db_manager.qdrant_client else '❌'}\n"
+            info += f"  Neo4j: {'✅' if db_manager.neo4j_driver else '❌'}\n"
+            info += f"  Redis: {'✅' if db_manager.redis_client else '❌'}\n"
             
             await interaction.followup.send(info, ephemeral=True)
         except Exception as e:
             logger.error(f"Error getting debug info: {e}")
             await interaction.followup.send("Failed to get debug info.", ephemeral=True)
+
+    @app_commands.command(name="ping", description="Check bot latency")
+    async def ping(self, interaction: discord.Interaction):
+        latency_ms = round(interaction.client.latency * 1000)
+        await interaction.response.send_message(f"🏓 Pong! Latency: **{latency_ms}ms**", ephemeral=True)
 
     @app_commands.command(name="join", description="Join your voice channel")
     async def join(self, interaction: discord.Interaction):
@@ -337,11 +371,19 @@ class CharacterCommands(app_commands.Group):
         """
         View lurking statistics for this server.
         Shows global stats and any channel-specific overrides.
+        
+        Requires Manage Channels permission.
         """
         await interaction.response.defer(ephemeral=True)
         
         if not interaction.guild:
             await interaction.followup.send("This command can only be used in a server.", ephemeral=True)
+            return
+        
+        # Check permissions
+        member = cast(discord.Member, interaction.user)
+        if not member.guild_permissions.manage_channels:
+            await interaction.followup.send("You need **Manage Channels** permission to view lurking stats.", ephemeral=True)
             return
             
         if not settings.ENABLE_CHANNEL_LURKING:
@@ -402,16 +444,19 @@ class CharacterCommands(app_commands.Group):
             logger.error(f"Failed to get lurk stats: {e}")
             await interaction.followup.send("Failed to get lurking statistics.", ephemeral=True)
 
-    @app_commands.command(name="test_proactive", description="Force trigger a proactive message (Admin only)")
+    @app_commands.command(name="test_proactive", description="Force trigger a proactive message (Bot Owner only)")
     @app_commands.describe(user="The user to message (defaults to you)")
     async def test_proactive(self, interaction: discord.Interaction, user: Optional[discord.User] = None):
-        # Check if user is admin/owner (simple check for now, or rely on DM_ALLOWED_USER_IDS if needed)
-        # For now, let's just allow it.
+        await interaction.response.defer(ephemeral=True)
+        
+        # Bot owner check
+        app_info = await interaction.client.application_info()
+        if interaction.user.id != app_info.owner.id:
+            await interaction.followup.send("❌ This command is restricted to the bot owner.", ephemeral=True)
+            return
         
         target_user = user or interaction.user
         user_id = str(target_user.id)
-        
-        await interaction.response.defer(ephemeral=True)
         
         try:
             # Access the scheduler from the bot instance
