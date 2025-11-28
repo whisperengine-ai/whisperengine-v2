@@ -18,7 +18,7 @@ from src_v2.tools.memory_tools import (
     DiscoverCommonGroundTool,
     CharacterEvolutionTool
 )
-from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
+from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool, GetRecentActivityTool
 from src_v2.tools.insight_tools import (
     AnalyzePatternsTool,
     DetectThemesTool
