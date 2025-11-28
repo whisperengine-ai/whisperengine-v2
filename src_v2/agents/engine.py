@@ -378,6 +378,20 @@ class AgentEngine:
                     enable_verification=should_verify
                 )
                 logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {is_complex})")
+                
+                # Log Prompt (if enabled)
+                if settings.ENABLE_PROMPT_LOGGING:
+                    await self._log_prompt(
+                        character_name=character.name,
+                        user_id=user_id or "unknown",
+                        system_prompt=system_content,
+                        chat_history=chat_history,
+                        user_input=user_message,
+                        context_variables=context_variables,
+                        response=response,
+                        image_urls=image_urls
+                    )
+
                 yield response
                 return
             
@@ -394,12 +408,14 @@ class AgentEngine:
                     await callback(f"HEADER:{icon} **{text}**")
 
                 # CharacterAgent doesn't support streaming yet, yield full response
+                guild_id = context_variables.get("guild_id") if context_variables else None
                 response = await self.character_agent.run(
                     user_input=user_message,
                     user_id=user_id,
                     system_prompt=system_content,
                     chat_history=chat_history,
                     callback=callback,
+                    guild_id=guild_id,
                     character_name=character.name
                 )
                 total_time = time.time() - start_time
@@ -408,6 +424,19 @@ class AgentEngine:
                 # Log metrics
                 await self._log_metrics(user_id, character.name, total_time, "agency", is_complex)
                 
+                # Log Prompt (if enabled)
+                if settings.ENABLE_PROMPT_LOGGING:
+                    await self._log_prompt(
+                        character_name=character.name,
+                        user_id=user_id or "unknown",
+                        system_prompt=system_content,
+                        chat_history=chat_history,
+                        user_input=user_message,
+                        context_variables=context_variables,
+                        response=response,
+                        image_urls=image_urls
+                    )
+
                 yield response
                 return
         

@@ -6,7 +6,7 @@ from loguru import logger
 from src_v2.universe.manager import universe_manager
 
 class CheckPlanetContextInput(BaseModel):
-    pass # No input needed, it uses the current guild_id from context
+    reason: Optional[str] = Field(default=None, description="Optional reason for checking context")
 
 class CheckPlanetContextTool(BaseTool):
     name: str = "check_planet_context"

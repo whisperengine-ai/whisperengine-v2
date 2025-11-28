@@ -108,6 +108,9 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             response = await llm_with_tools.ainvoke(messages)
             messages.append(response)
             
+            # Debug logging
+            logger.debug(f"CharacterAgent LLM Response: content='{response.content}' tool_calls={response.tool_calls}")
+            
             # 4. Handle Tool Calls (if any)
             # Check if response has tool_calls attribute (AIMessage)
             if isinstance(response, AIMessage) and response.tool_calls:
@@ -126,6 +129,8 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                         
                         # Create coroutine for tool execution
                         tool_tasks.append(self._execute_tool(selected_tool, tool_call, messages))
+                    else:
+                        logger.warning(f"CharacterAgent: Tool {tool_name} not found in available tools.")
                 
                 # Wait for all tools
                 if tool_tasks:
@@ -133,10 +138,18 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 
                 # 5. Final Response after tool outputs
                 final_response = await self.llm.ainvoke(messages)
-                return str(final_response.content)
+                
+                # Handle case where model tries to chain tools (returns another tool call instead of text)
+                if isinstance(final_response, AIMessage) and final_response.tool_calls and not final_response.content:
+                    logger.warning("CharacterAgent: Model attempted to chain tools (not supported). Forcing text response.")
+                    # We can't execute more tools. Just ask for a response.
+                    messages.append(SystemMessage(content="You have used your allowed tool. Please provide a response to the user now based on the information you have."))
+                    final_response = await self.llm.ainvoke(messages)
+
+                return str(final_response.content) or "I'm having a bit of trouble processing that. Could you say it again?"
             
             # No tool used, return direct response
-            return str(response.content)
+            return str(response.content) or "I'm having a bit of trouble thinking clearly right now. Can you say that again?"
             
         except Exception as e:
             logger.error(f"CharacterAgent failed: {e}")
