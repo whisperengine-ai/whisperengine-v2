@@ -69,6 +69,7 @@ Classify the complexity into one of these categories:
 2. COMPLEX_LOW: Needs 1-2 simple lookups. Examples:
    - "Where did you grow up?" (memory lookup)
    - "What is my name?" (fact lookup)
+   - "What channels can you see?" (planet context lookup)
 3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, moderate reasoning, OR image generation.
    - "Create an image of..." (image generation tool)
    - "Show me what you see" (image generation tool)

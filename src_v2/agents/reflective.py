@@ -78,13 +78,14 @@ class ReflectiveAgent:
         image_urls: Optional[List[str]] = None,
         max_steps_override: Optional[int] = None,
         guild_id: Optional[str] = None,
-        enable_verification: bool = False
+        enable_verification: bool = False,
+        channel_context: str = ""
     ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
         """
         # 1. Initialize Tools
-        tools = self._get_tools(user_id, guild_id)
+        tools = self._get_tools(user_id, guild_id, channel_context)
         
         # 2. Construct System Prompt with Few-Shot Traces (Phase 3.2)
         full_prompt = self._construct_prompt(system_prompt)
@@ -349,7 +350,7 @@ class ReflectiveAgent:
             name=tool_name
         )
 
-    def _get_tools(self, user_id: str, guild_id: Optional[str] = None) -> List[BaseTool]:
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, channel_context: str = "") -> List[BaseTool]:
         character_name = settings.DISCORD_BOT_NAME or "default"
         tools = [
             # Memory & Knowledge Tools
@@ -372,6 +373,7 @@ class ReflectiveAgent:
             # Context Tools
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
+            GetRecentActivityTool(channel_context=channel_context),
         ]
         
         # Conditionally add image generation tool
@@ -404,7 +406,7 @@ AVAILABLE TOOL CATEGORIES:
 1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic
 2. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
 3. Introspection: analyze_conversation_patterns, detect_recurring_themes
-4. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
+4. Context: check_planet_context (current server), get_universe_overview (all planets/channels), get_recent_activity (channel history)
 {creative_category}
 TOOL USAGE RULES:
 {image_rules}- explore_knowledge_graph: Use when asked about connections, relationships, network, or graph exploration.
@@ -412,6 +414,7 @@ TOOL USAGE RULES:
 - get_character_evolution: Use when asked about your relationship, trust level, or closeness.
 - analyze_conversation_patterns / detect_recurring_themes: Use for patterns, themes, or frequent topics.
 - get_universe_overview: Use for questions about 'all planets', 'everywhere', or 'the universe'.
+- get_recent_activity: Use when asked about recent messages, what someone said, or to catch up on the channel.
 
 DOCUMENT HANDLING:
 - If the user shares a document, you'll see a PREVIEW in their message.

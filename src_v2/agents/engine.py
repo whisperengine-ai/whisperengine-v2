@@ -666,16 +666,21 @@ class AgentEngine:
             is_thread = context_variables.get("is_thread", False)
             
             if channel_name == "DM":
-                channel_context = "\n\n[CHANNEL CONTEXT]\nYou are in a PRIVATE DIRECT MESSAGE with the user."
+                channel_context_str = "\n\n[CHANNEL CONTEXT]\nYou are in a PRIVATE DIRECT MESSAGE with the user."
             elif is_thread:
-                channel_context = f"\n\n[CHANNEL CONTEXT]\nYou are in a THREAD named: '{channel_name}'"
+                channel_context_str = f"\n\n[CHANNEL CONTEXT]\nYou are in a THREAD named: '{channel_name}'"
                 if parent_channel_name:
-                    channel_context += f"\nParent Channel: #{parent_channel_name}"
-                channel_context += "\n(This is a focused sub-conversation. Stay on topic.)"
+                    channel_context_str += f"\nParent Channel: #{parent_channel_name}"
+                channel_context_str += "\n(This is a focused sub-conversation. Stay on topic.)"
             else:
-                channel_context = f"\n\n[CHANNEL CONTEXT]\nYou are in the MAIN CHANNEL: #{channel_name}"
+                channel_context_str = f"\n\n[CHANNEL CONTEXT]\nYou are in the MAIN CHANNEL: #{channel_name}"
             
-            system_content += channel_context
+            # Append the actual recent messages if available
+            recent_activity = context_variables.get("channel_context", "")
+            if recent_activity:
+                 channel_context_str += f"\n\n[RECENT CHANNEL ACTIVITY]\n{recent_activity}\n(This is what just happened in the channel. You can reference it.)"
+
+            system_content += channel_context_str
 
             # 2.9 Meta-Instructions (Anti-AI-Break)
             system_content += self._get_meta_instructions()
@@ -800,6 +805,7 @@ class AgentEngine:
         trace: List[BaseMessage]
         
         guild_id = context_variables.get("guild_id")
+        channel_context = context_variables.get("channel_context", "")
         response_text, trace = await self.reflective_agent.run(
             user_message, 
             user_id, 
@@ -809,6 +815,7 @@ class AgentEngine:
             image_urls=image_urls,
             max_steps_override=max_steps_override,
             guild_id=guild_id,
+            channel_context=channel_context,
             enable_verification=enable_verification
         )
         

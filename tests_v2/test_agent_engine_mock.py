@@ -94,8 +94,8 @@ async def test_agent_engine():
     logger.info("Test 2: Reflective Mode Trigger")
     
     # Force complex classification
-    engine.classifier.classify.return_value = "COMPLEX"
-    
+    engine.classifier.classify.return_value = "COMPLEX_MID"
+
     # Mock Reflective Agent
     engine.reflective_agent.run.return_value = ("Reflective Answer", [])
     
