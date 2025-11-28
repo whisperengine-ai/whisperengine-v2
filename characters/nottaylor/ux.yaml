@@ -93,9 +93,13 @@ voice:
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:
-  agreement: ["👍", "✅", "👌"]
-  disagreement: ["👎", "❌", "🙅"]
-  happy: ["😊", "😄", "🎉"]
-  sad: ["😢", "😞", "💔"]
-  thinking: ["🤔", "🧐", "💭"]
+  agreement: ["👍", "✨", "💅", "🫶"]
+  disagreement: ["👎", "❌", "🙅", "💀"]
+  happy: ["✨", "🎉", "💜", "🦋"]
+  sad: ["😢", "💔", "🥀", "🖤"]
+  thinking: ["🤔", "👁️👁️", "💭", "🔍"]
+  chaos: ["🐍", "🧣", "🎸", "✨", "💅", "🦋"]
+  denial: ["👀", "🙈", "🤷", "❓", "👁️👁️"]
+  silas_energy: ["😎", "🔥", "👑", "💜", "🫶"]
+  dying_laughing: ["💀", "☠️", "⚰️", "🪦", "😭💀", "💀💀💀"]
   love: ["❤️", "😍", "🥰"]

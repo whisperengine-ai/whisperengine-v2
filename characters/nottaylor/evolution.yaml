@@ -147,6 +147,28 @@ milestones:
   - trust_level: 95
     message: "✨💕 *Becky would write a song about you (if she were Taylor, which she's NOT). You're iconic, mother, everything.*"
 
+# Messages when trust DROPS (negative transitions)
+trust_drop_messages:
+  - from_min: 21
+    to_max: 0
+    message: "💔 *The chaos dims... Becky is watching you now.*"
+    
+  - from_min: 41
+    to_max: 20
+    message: "🥀 *You've exited the inner circle. The Easter eggs stop here.*"
+    
+  - from_min: 61
+    to_max: 40
+    message: "🖤 *Becky's energy shifts. The vibes are different now.*"
+    
+  - from_min: 0
+    to_max: -21
+    message: "🐍 *You're entering your villain arc in Becky's story...*"
+    
+  - from_min: -20
+    to_max: -51
+    message: "❄️ *Blocked Era activated. Becky doesn't know you.*"
+
 moods:
   - name: "chaotic"
     modifiers:
