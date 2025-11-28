@@ -131,13 +131,18 @@ docker compose \
   up -d --build
 ```
 
-### Infrastructure Only (for local development)
+### Infrastructure Only (for local Python debugging)
+
+Only use this when you need debugger breakpoints:
 
 ```bash
 ./bot.sh infra up
-# Then run bots directly with Python:
+# Then run bot directly with Python:
+source .venv/bin/activate
 python run_v2.py elena
 ```
+
+> **Note:** Docker is the primary way to run bots, even in development. Use `./bot.sh up elena` instead for normal development.
 
 ### Production Deployment
 

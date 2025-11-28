@@ -46,14 +46,14 @@ class BotConfig:
 
 # All bot configurations
 BOT_CONFIGS = [
-    BotConfig("elena", 8000, "openai/gpt-4o", "openai/gpt-4o"),
-    BotConfig("ryan", 8001, "meta-llama/llama-3.3-70b-instruct", "mistralai/mistral-large"),
-    BotConfig("dotty", 8002, "openai/gpt-4o", "openai/gpt-4o", is_production=True),
-    BotConfig("aria", 8003, "google/gemini-2.5-flash", "anthropic/claude-3.5-sonnet"),
-    BotConfig("dream", 8004, "deepseek/deepseek-r1", "google/gemini-2.5-flash"),
-    BotConfig("jake", 8005, "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.3-70b-instruct"),
-    BotConfig("sophia", 8006, "google/gemini-2.5-pro", "openai/gpt-4o"),
-    BotConfig("marcus", 8007, "mistralai/mistral-large", "deepseek/deepseek-r1"),
+    BotConfig("elena", 8000, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
+    BotConfig("ryan", 8001, "meta-llama/llama-3.3-70b-instruct", "anthropic/claude-3.5-sonnet"),
+    BotConfig("dotty", 8002, "anthropic/claude-3.7-sonnet", "google/gemini-2.5-flash"),
+    BotConfig("aria", 8003, "google/gemini-2.0-flash-001", "anthropic/claude-sonnet-4.5"),
+    BotConfig("dream", 8004, "deepseek/deepseek-r1", "mistralai/mistral-large"),
+    BotConfig("jake", 8005, "meta-llama/llama-4-maverick", "deepseek/deepseek-r1"),
+    BotConfig("sophia", 8006, "google/gemini-2.5-pro", "openai/gpt-4o-mini"),
+    BotConfig("marcus", 8007, "mistralai/mistral-large", "google/gemini-2.5-pro"),
     BotConfig("nottaylor", 8008, "openai/gpt-4o", "openai/gpt-4o", is_production=True),
 ]
 

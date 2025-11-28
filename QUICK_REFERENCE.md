@@ -27,19 +27,27 @@ DISCORD_BOT_NAME=elena python scripts/ingest_character_facts.py
 
 ## 🚀 Deployment Patterns
 
-### Pattern 1: Development (Infrastructure Only)
+### Pattern 1: Development (Primary - Docker)
 ```bash
-./bot.sh infra
-python run_v2.py elena  # Run locally
+./bot.sh up elena       # Start bot in Docker
+./bot.sh logs elena -f  # Monitor logs
+./bot.sh restart elena  # After code changes
 ```
 
-### Pattern 2: Production (All Bots)
+### Pattern 2: Development (Local Python - Debugging Only)
+```bash
+./bot.sh infra up           # Infrastructure only
+source .venv/bin/activate
+python run_v2.py elena      # For debugger breakpoints
+```
+
+### Pattern 3: Production (All Bots)
 ```bash
 ./bot.sh up all
 ./bot.sh logs all  # Monitor
 ```
 
-### Pattern 3: Selective Deployment
+### Pattern 4: Selective Deployment
 ```bash
 ./bot.sh up elena
 ./bot.sh up dream

@@ -27,6 +27,7 @@ docs/
 ├── CREATING_NEW_CHARACTERS.md         # Character creation guide
 ├── MULTI_BOT_DEPLOYMENT.md            # Running multiple bots
 ├── PRIVACY_AND_DATA_SEGMENTATION.md   # Privacy model
+├── API_REFERENCE.md                   # REST API documentation
 │
 ├── architecture/                      # How the system works
 │   ├── WHISPERENGINE_2_DESIGN.md      # Core design philosophy
@@ -47,6 +48,10 @@ docs/
 │   ├── USER_PREFERENCES.md            # Learning user preferences
 │   ├── COMMON_GROUND.md               # Shared interest detection
 │   └── ...
+│
+├── testing/                           # Test suite documentation
+│   ├── REGRESSION_TESTING.md          # Automated API test suite
+│   └── CHARACTERS.md                  # Character system & testing
 │
 ├── roadmaps/                          # Future features & specs
 │   ├── EMERGENT_UNIVERSE.md           # 🌌 Universe modality
@@ -137,6 +142,34 @@ Historical roadmaps in [`roadmaps/completed/`](./roadmaps/completed/) document w
 | [PRIVACY_AND_DATA_SEGMENTATION.md](./PRIVACY_AND_DATA_SEGMENTATION.md) | How user data is isolated |
 | [MULTI_BOT_DEPLOYMENT.md](./MULTI_BOT_DEPLOYMENT.md) | Running multiple characters |
 | [INFRASTRUCTURE_DEPLOYMENT.md](./architecture/INFRASTRUCTURE_DEPLOYMENT.md) | Docker, databases, scaling |
+
+---
+
+## 🧪 Testing
+
+| Document | Description |
+|----------|-------------|
+| [REGRESSION_TESTING.md](./testing/REGRESSION_TESTING.md) | Automated API test suite, all options |
+| [CHARACTERS.md](./testing/CHARACTERS.md) | Character system overview & testing |
+
+### Quick Test Commands
+
+```bash
+# Smoke test (fastest - health + greeting)
+python tests_v2/run_regression.py --smoke
+
+# Test specific bot
+python tests_v2/run_regression.py --bot elena
+
+# Test specific category
+python tests_v2/run_regression.py --category memory
+
+# Full regression suite
+python tests_v2/run_regression.py
+
+# Generate HTML report
+python tests_v2/run_regression.py --report
+```
 
 ---
 

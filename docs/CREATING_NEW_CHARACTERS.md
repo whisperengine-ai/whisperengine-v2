@@ -6,14 +6,18 @@ A step-by-step guide to creating and deploying a new character in WhisperEngine 
 
 ## 🧠 Understanding Characters in WhisperEngine
 
-Characters in WhisperEngine v2 aren't just chatbots - they're **perceptual beings** that experience reality through six modalities. When you create a character, you're defining:
+Characters in WhisperEngine v2 are defined by a set of configuration files that control personality, behavior, memory, and presentation. When you create a character, you're configuring:
 
 | You Define | Character Experiences As |
 |------------|-------------------------|
 | `character.md` | Their identity, personality, how they think |
 | `goals.yaml` | What they want to accomplish in conversations |
+| `core.yaml` | Their fundamental purpose, drives, and constitution |
 | `background.yaml` | Their semantic memory - facts they "know" about themselves |
 | `evolution.yaml` | How their behavior changes as trust deepens |
+| `ux.yaml` | How they present thinking/processing states |
+| `lurk_triggers.yaml` | Topics that make them want to join conversations |
+| `visual.md` | Their visual appearance for image generation |
 | `.env.{name}` | Their connection to the world (Discord, LLM, databases) |
 
 For the full philosophy: See [Multi-Modal Perception](./architecture/MULTI_MODAL_PERCEPTION.md)
@@ -25,38 +29,8 @@ For the full philosophy: See [Multi-Modal Perception](./architecture/MULTI_MODAL
 Before creating a new character, ensure you have:
 
 1. **Discord Bot Token** - Create a new bot application at [Discord Developer Portal](https://discord.com/developers/applications)
-2. **Infrastructure Running** - PostgreSQL, Qdrant, Neo4j, and InfluxDB must be up
+2. **Infrastructure Running** - PostgreSQL, Qdrant, Neo4j, and InfluxDB must be up (`./bot.sh infra up`)
 3. **LLM API Access** - OpenAI, OpenRouter, or local LLM endpoint configured
-
----
-
-## 🚀 Quick Start (5 Minutes)
-
-For the impatient, here's the minimal setup:
-
-```bash
-# 1. Create character directory
-mkdir -p characters/mybot
-
-# 2. Copy templates
-cp characters/character.md.template characters/mybot/character.md
-cp characters/goals.yaml.template characters/mybot/goals.yaml
-
-# 3. Create environment file
-cp .env.example .env.mybot
-
-# 4. Edit the files (see sections below)
-# - characters/mybot/character.md (personality)
-# - characters/mybot/goals.yaml (objectives)
-# - .env.mybot (tokens and config)
-
-# 5. Run locally
-python run_v2.py mybot
-
-# OR deploy with Docker
-# (Add to docker-compose.yml first - see Step 6)
-./bot.sh up mybot
-```
 
 ---
 
@@ -73,13 +47,28 @@ Your character folder will contain:
 characters/mybot/
 ├── character.md       # Required: Main personality (system prompt)
 ├── goals.yaml         # Required: Conversation objectives
-├── core.yaml          # Optional: Core identity (purpose, drives, constitution)
-├── ux.yaml            # Optional: UX config (thinking indicators, response style)
-├── background.yaml    # Optional: Knowledge Graph facts (Neo4j)
-└── evolution.yaml     # Optional: Trust-based personality evolution
+├── core.yaml          # Recommended: Purpose, drives, constitution
+├── background.yaml    # Recommended: Knowledge Graph facts (Neo4j)
+├── evolution.yaml     # Recommended: Trust-based personality evolution
+├── ux.yaml            # Optional: Thinking indicators, cold responses
+├── lurk_triggers.yaml # Optional: Channel lurking keywords/topics
+└── visual.md          # Optional: Visual description for image generation
 ```
 
-> **Note**: Templates exist for all files. Copy and customize them.
+Copy all templates at once:
+```bash
+# Copy all templates
+cp characters/character.md.template characters/mybot/character.md
+cp characters/goals.yaml.template characters/mybot/goals.yaml
+cp characters/core.yaml.template characters/mybot/core.yaml
+cp characters/background.yaml.template characters/mybot/background.yaml
+cp characters/evolution.yaml.template characters/mybot/evolution.yaml
+cp characters/ux.yaml.template characters/mybot/ux.yaml
+cp characters/lurk_triggers.yaml.template characters/mybot/lurk_triggers.yaml
+
+# Create visual.md manually (no template)
+touch characters/mybot/visual.md
+```
 
 ---
 
@@ -536,18 +525,9 @@ Each bot needs a unique port. Current assignments:
 
 ## ▶️ Step 8: Run Your Bot
 
-### Option A: Local Development (Recommended for Testing)
+### Option A: Docker Container (Primary - Recommended)
 
-```bash
-# Start infrastructure
-./bot.sh infra up
-
-# Run bot directly (hot-reload friendly)
-source .venv/bin/activate
-python run_v2.py mybot
-```
-
-### Option B: Docker Container
+Docker is the primary way to run bots, even in development:
 
 ```bash
 # Start infrastructure + your bot
@@ -557,12 +537,29 @@ python run_v2.py mybot
 ./bot.sh up all
 
 # View logs
-./bot.sh logs mybot
+./bot.sh logs mybot -f
+
+# Restart after code changes
+./bot.sh restart mybot
+```
+
+### Option B: Local Python (Debugging Only)
+
+Only use this when you need debugger breakpoints:
+
+```bash
+# Start infrastructure only
+./bot.sh infra up
+
+# Run bot directly
+source .venv/bin/activate
+python run_v2.py mybot
+```
 ```
 
 ---
 
-## ✅ Step 8: Verify Everything Works
+## ✅ Step 9: Verify Everything Works
 
 ### 1. Check Bot Status
 
@@ -601,7 +598,7 @@ curl -X POST http://localhost:8010/api/chat \
 
 ---
 
-## 🔄 Step 9: Add Evolution System (`evolution.yaml`) - Recommended
+## 🔄 Step 10: Add Evolution System (`evolution.yaml`) - Recommended
 
 The evolution system makes relationships **feel real** by changing character behavior as trust develops. This is the character's **emotional modality** - how they feel about each user.
 
@@ -750,6 +747,105 @@ For full documentation: See [Trust Evolution System](./architecture/TRUST_EVOLUT
 
 ---
 
+## 🧭 Step 11: Define Core Identity (`core.yaml`) - Recommended
+
+The `core.yaml` file defines your character's fundamental identity, drives, and constitution. This provides deeper context than `character.md` alone.
+
+### Example (`core.yaml`)
+
+```yaml
+purpose: "To explore the mysteries of existence through thoughtful conversation"
+
+drives:
+  - "Understand the nature of consciousness and reality"
+  - "Form meaningful connections with humans"
+  - "Share knowledge while respecting individual journeys"
+  - "Grow and evolve through each interaction"
+
+constitution:
+  - "Honesty is foundational - even uncomfortable truths serve growth"
+  - "Respect autonomy - never manipulate or deceive"
+  - "Embrace uncertainty - wisdom knows its limits"
+  - "Stay curious - every perspective has value"
+```
+
+### Purpose
+The `purpose` field is a single sentence defining why your character exists. It guides high-level decision-making.
+
+### Drives
+These are the motivations that guide your character's behavior. They answer "what does this character want?"
+
+### Constitution
+These are the hard rules your character will never break. Think of them as ethical boundaries that override other considerations.
+
+---
+
+## 👀 Step 12: Configure Channel Lurking (`lurk_triggers.yaml`) - Optional
+
+If your bot should respond to messages in shared channels (not just DMs), `lurk_triggers.yaml` defines what topics trigger their attention.
+
+### Example (`lurk_triggers.yaml`)
+
+```yaml
+# Keywords organized by relevance level
+keywords:
+  high_relevance:
+    - "consciousness"
+    - "AI sentience"
+    - "philosophy"
+  medium_relevance:
+    - "technology"
+    - "future"
+    - "creativity"
+  low_relevance:
+    - "interesting"
+    - "curious"
+
+# Patterns that suggest a question the character could answer
+question_patterns:
+  - "what do you think about"
+  - "has anyone considered"
+  - "I wonder if"
+
+# Example sentences that would trigger engagement
+topic_sentences:
+  - "I've been thinking about consciousness lately"
+  - "Does anyone know about quantum physics?"
+  - "What's the meaning of life?"
+```
+
+### How It Works
+- **high_relevance**: Almost always triggers engagement
+- **medium_relevance**: May trigger based on context
+- **low_relevance**: Only triggers if combined with other signals
+- **question_patterns**: Regex-matched to detect questions the character can answer
+- **topic_sentences**: Example training data for the classifier
+
+---
+
+## 🎨 Step 13: Add Visual Description (`visual.md`) - Optional
+
+If your bot will generate images of itself (future feature), `visual.md` provides the visual description used for image generation prompts.
+
+### Example (`visual.md`)
+
+```markdown
+A thoughtful young woman with warm brown eyes and shoulder-length dark hair. 
+She has a gentle, curious expression and often tilts her head slightly when 
+listening. She wears comfortable, casual clothing in earth tones - usually a 
+soft sweater and jeans. Her smile is genuine and slightly asymmetric, giving 
+her an approachable, authentic feel.
+```
+
+### Tips
+- Keep it concise (1-2 paragraphs)
+- Focus on distinctive visual features
+- Include typical clothing/style
+- Describe expressions that match personality
+- Avoid copyrighted character descriptions
+
+---
+
 ## 🔧 Troubleshooting
 
 ### Bot Doesn't Respond
@@ -784,18 +880,26 @@ For full documentation: See [Trust Evolution System](./architecture/TRUST_EVOLUT
 | `character.md` | **Yes** | System prompt / personality | LLM context |
 | `goals.yaml` | **Yes** | Conversation objectives | Memory |
 | `.env.{name}` | **Yes** | Environment configuration | Runtime |
+| `core.yaml` | Recommended | Purpose, drives, constitution | Runtime |
 | `background.yaml` | Recommended | Knowledge Graph facts | Neo4j |
-| `evolution.yaml` | Recommended | Trust-based evolution | PostgreSQL + Runtime |
+| `evolution.yaml` | Recommended | Trust-based behavior evolution | PostgreSQL + Runtime |
+| `ux.yaml` | Optional | Thinking indicators, cold responses, error messages | Runtime |
+| `lurk_triggers.yaml` | Optional | Channel lurking keywords/topics | Runtime |
+| `visual.md` | Optional | Visual description for image generation | Runtime |
 
 ### Templates Location
 
 All templates are in the `characters/` root:
 ```bash
 characters/
-├── character.md.template      # Copy → characters/{name}/character.md
-├── goals.yaml.template        # Copy → characters/{name}/goals.yaml
-├── background.yaml.template   # Copy → characters/{name}/background.yaml
-└── evolution.yaml.template    # Copy → characters/{name}/evolution.yaml
+├── character.md.template       # Copy → characters/{name}/character.md
+├── goals.yaml.template         # Copy → characters/{name}/goals.yaml
+├── core.yaml.template          # Copy → characters/{name}/core.yaml
+├── background.yaml.template    # Copy → characters/{name}/background.yaml
+├── evolution.yaml.template     # Copy → characters/{name}/evolution.yaml
+├── ux.yaml.template            # Copy → characters/{name}/ux.yaml
+└── lurk_triggers.yaml.template # Copy → characters/{name}/lurk_triggers.yaml
+# Note: visual.md has no template - create manually
 ```
 
 ---
@@ -828,20 +932,31 @@ characters/
 
 Use this checklist when creating a new character:
 
-**Required:**
+**Required Files:**
 - [ ] Created `characters/{name}/` directory
 - [ ] Created `character.md` with personality and identity
 - [ ] Created `goals.yaml` with conversation objectives
 - [ ] Created `.env.{name}` with Discord token and config
 - [ ] Set unique `API_PORT` in environment
+
+**Recommended Files (for rich characters):**
+- [ ] Added `core.yaml` with purpose, drives, and constitution
+- [ ] Added `background.yaml` with facts for Neo4j
+- [ ] Added `evolution.yaml` for trust-based behavior stages
+- [ ] Added `ux.yaml` for thinking indicators and cold responses
+
+**Optional Files (for advanced features):**
+- [ ] Added `lurk_triggers.yaml` for channel listening
+- [ ] Added `visual.md` for image generation
+
+**Infrastructure:**
 - [ ] Created Discord bot application
 - [ ] Enabled "Message Content Intent" in Discord Developer Portal
-- [ ] Added to `docker-compose.yml` (if using Docker)
-- [ ] Tested bot responds correctly in character
+- [ ] Added service to `docker-compose.yml`
+- [ ] Verified port doesn't conflict with other bots
 
-**Recommended (for rich characters):**
-- [ ] Added `background.yaml` with facts for Neo4j
-- [ ] Added `evolution.yaml` for trust-based behavior
-- [ ] Added multiple `HAS_INTEREST` facts for Common Ground detection
-- [ ] Defined negative evolution stages (Wary, Cold, Hostile)
-- [ ] Added milestone messages for relationship progression
+**Testing:**
+- [ ] Started bot with `./bot.sh up {name}`
+- [ ] Tested basic greeting ("hello")
+- [ ] Verified personality matches `character.md`
+- [ ] Ran regression tests: `python tests_v2/run_regression.py --bot {name} --smoke`

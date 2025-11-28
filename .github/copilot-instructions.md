@@ -1,6 +1,6 @@
 # WhisperEngine v2 - AI Agent Development Guide
 
-**Optimized for solo developer with AI-assisted tools** (Nov 28, 2025)
+**Optimized for solo developer with AI-assisted tools** (Dec 2024)
 
 WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture.
 
@@ -8,24 +8,29 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 
 ### Active Bots & Models
 
-| Bot | Port | Status | Main Model | Reflective Model |
-|-----|------|--------|------------|------------------|
-| elena | 8000 | Production | `openai/gpt-4o` | `openai/gpt-4o` |
-| nottaylor | 8008 | Production | `openai/gpt-4o` | `openai/gpt-4o` |
-| dotty | 8002 | Production | `openai/gpt-4o` | `openai/gpt-4o` |
-| aria | 8003 | Test | `google/gemini-2.5-flash` | `anthropic/claude-3.5-sonnet` |
-| dream | 8004 | Test | `deepseek/deepseek-r1` | `google/gemini-2.5-flash` |
-| jake | 8005 | Test | `anthropic/claude-3.5-sonnet` | `meta-llama/llama-3.3-70b-instruct` |
-| marcus | 8007 | Test | `mistralai/mistral-large` | `deepseek/deepseek-r1` |
-| ryan | 8001 | Test | `meta-llama/llama-3.3-70b-instruct` | `mistralai/mistral-large` |
-| sophia | 8006 | Test | `google/gemini-2.5-pro` | `openai/gpt-4o` |
-| aethys | - | Inactive | - | - |
+| Bot | Port | Status | Main Model | Temp | Reflective Model |
+|-----|------|--------|------------|------|------------------|
+| elena | 8000 | **Dev Primary** | `anthropic/claude-sonnet-4.5` | 0.75 | `openai/gpt-4o` |
+| nottaylor | 8008 | Production | `openai/gpt-4o` | 0.85 | `openai/gpt-4o` |
+| dotty | 8002 | Personal | `anthropic/claude-3.7-sonnet` | 0.8 | `google/gemini-2.5-flash` |
+| aria | 8003 | Test | `google/gemini-2.0-flash-001` | 0.5 | `anthropic/claude-sonnet-4.5` |
+| dream | 8004 | Test | `deepseek/deepseek-r1` | 0.9 | `mistralai/mistral-large` |
+| jake | 8005 | Test | `meta-llama/llama-4-maverick` | 0.5 | `deepseek/deepseek-r1` |
+| marcus | 8007 | Test | `mistralai/mistral-large` | 0.5 | `google/gemini-2.5-pro` |
+| ryan | 8001 | Test | `meta-llama/llama-3.3-70b-instruct` | 0.6 | `anthropic/claude-3.5-sonnet` |
+| sophia | 8006 | Test | `google/gemini-2.5-pro` | 0.4 | `openai/gpt-4o-mini` |
+| aethys | - | Inactive | - | - | - |
 
 **Router model**: All bots use `openai/gpt-4o-mini` for fast routing decisions.
 
-**Production bots** (nottaylor, dotty, elena): Use stable GPT-4o configuration, do not change models.
+### Bot Roles
 
-**Test bots**: Used for A/B testing different LLM providers via OpenRouter.
+- **elena** (Dev Primary): Test all code changes HERE FIRST. Claude-based, production-quality. After validating on elena, changes can roll out to other bots.
+- **nottaylor** (Production): Real users depend on this bot. DO NOT experiment here. Stable GPT-4o config.
+- **dotty** (Personal): Production-quality Claude bot for personal use. Can experiment carefully.
+- **Test bots** (aria, dream, jake, marcus, ryan, sophia): A/B testing different LLM providers via OpenRouter. Safe to experiment.
+
+**Model coverage**: OpenAI, Anthropic, Google, Meta, Mistral, DeepSeek.
 
 ## ⚡ Quick Architecture
 
@@ -195,22 +200,28 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### Testing
 
-**Automated API Testing** (no Discord needed):
-```bash
-# Run full regression suite across all bots
-python tests_v2/run_regression.py
+**Development workflow**: Always test changes on elena first, then run regression tests.
 
-# Quick smoke test (health + basic chat)
+**Regression Test Suite** (API-based, no Discord needed):
+```bash
+# Quick smoke test (~1-2 min) - health + basic greeting for all bots
 python tests_v2/run_regression.py --smoke
 
-# Test specific bot
+# Test elena only (~2-3 min) - ALWAYS run after code changes
 python tests_v2/run_regression.py --bot elena
 
-# Test specific category
+# Full regression suite (~10-15 min) - before releases
+python tests_v2/run_regression.py
+
+# Specific test category
 python tests_v2/run_regression.py --category memory
+python tests_v2/run_regression.py --category character
 
 # Generate HTML report
 python tests_v2/run_regression.py --report
+
+# Combine options
+python tests_v2/run_regression.py --bot elena --category chat --report
 ```
 
 **Test Categories**:
@@ -258,12 +269,14 @@ source .venv/bin/activate
 # Rollback: alembic downgrade -1
 ```
 
-### Running Locally
+### Running Bots (Docker is Primary)
 ```bash
-./bot.sh infra up          # Infrastructure only
-python run_v2.py elena    # Start bot (loads .env.elena)
+./bot.sh up elena         # Start bot in Docker (recommended, even for dev)
+./bot.sh up all           # Start all bots
 ./bot.sh logs elena -f    # Stream logs
 ./bot.sh restart elena    # Restart a single bot (only takes ONE bot name)
+./bot.sh infra up         # Infrastructure only (for local Python debugging)
+python run_v2.py elena    # Local Python run (only for debugging, requires infra up)
 ```
 
 **Note**: `./bot.sh restart` only accepts a single bot name. To restart multiple bots, run the command multiple times.
@@ -349,9 +362,16 @@ python run_v2.py elena    # Start bot (loads .env.elena)
 - **Architecture Deep Dives**: `docs/architecture/` (COGNITIVE_ENGINE, DATA_MODELS, MESSAGE_FLOW, etc.)
 - **API Reference**: `docs/API_REFERENCE.md` (all endpoints, request/response formats)
 - **Regression Tests**: `tests_v2/regression/` (automated test suite), `tests_v2/run_regression.py` (master runner)
+- **Testing Guide**: `docs/testing/REGRESSION_TESTING.md` (all test options, categories, expected times)
+- **Character System**: `docs/testing/CHARACTERS.md` (folder structure, evolution, testing)
 - **Roadmap**: `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` (prioritized by complexity for solo dev)
 - **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
-- **Character System**: `docs/architecture/WHISPERENGINE_2_DESIGN.md` (why polyglot, LLM-native design)
+
+---
+
+**Version**: 2.2 (Nov 28, 2025 - Added API testing endpoints and regression suite)  
+**Python Target**: 3.12+  
+**Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`
 
 ---
 

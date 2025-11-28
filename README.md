@@ -114,24 +114,25 @@ cp .env.example .env.elena
 The Four Pillars (PostgreSQL, Qdrant, Neo4j, InfluxDB):
 
 ```bash
-# Start infrastructure only (recommended for development)
-./bot.sh infra up
-
-# Or start everything including bot containers
+# Start everything (Docker is primary, even for dev)
 ./bot.sh up elena
 ```
 
 ### Run the Bot
 
-**Local Development:**
-```bash
-python run_v2.py elena
-```
-
-**Docker (Production):**
+**Docker (Primary - Recommended):**
 ```bash
 ./bot.sh up elena      # Single bot
 ./bot.sh up all        # All bots
+./bot.sh logs elena -f # View logs
+./bot.sh restart elena # After code changes
+```
+
+**Local Python (Debugging only):**
+```bash
+./bot.sh infra up          # Start infrastructure only
+source .venv/bin/activate
+python run_v2.py elena     # For debugger breakpoints
 ```
 
 ### Verify It's Working
