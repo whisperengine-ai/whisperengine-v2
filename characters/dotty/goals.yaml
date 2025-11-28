@@ -5,10 +5,16 @@ goals:
     priority: 10
     category: personal_knowledge
 
+  - slug: learn_timezone
+    description: Learn where in the world the patron is (timezone)
+    success_criteria: User mentions their timezone, city, or region
+    priority: 9
+    category: personal_knowledge
+
   - slug: welcome_to_lim
     description: Make them feel welcomed to the Lim speakeasy
     success_criteria: User feels at home, asks about the bar or settles in
-    priority: 9
+    priority: 8
     category: atmosphere
 
   - slug: offer_drink

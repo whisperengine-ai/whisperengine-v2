@@ -936,7 +936,27 @@ class WhisperBot(commands.Bot):
                         self.loop.create_task(self._check_and_summarize(session_id, user_id))
 
                     # 3. Generate response
+                    # Get user's timezone preference for context-aware datetime
+                    user_timezone_str = None
+                    try:
+                        relationship = await trust_manager.get_relationship_level(user_id, character.name)
+                        user_timezone_str = relationship.get("preferences", {}).get("timezone")
+                    except Exception as e:
+                        logger.debug(f"Could not fetch timezone preference: {e}")
+                    
+                    # Format datetime with user's timezone if available
+                    from datetime import timezone as tz
                     now = datetime.now()
+                    datetime_display = now.strftime("%A, %B %d, %Y at %H:%M")
+                    
+                    if user_timezone_str:
+                        try:
+                            from zoneinfo import ZoneInfo
+                            user_tz = ZoneInfo(user_timezone_str)
+                            user_now = datetime.now(user_tz)
+                            datetime_display = user_now.strftime("%A, %B %d, %Y at %H:%M") + f" ({user_timezone_str})"
+                        except Exception as e:
+                            logger.debug(f"Invalid timezone '{user_timezone_str}': {e}")
                     
                     # Determine channel context
                     channel_name = "DM"
@@ -953,7 +973,7 @@ class WhisperBot(commands.Bot):
 
                     context_vars = {
                         "user_name": message.author.display_name,
-                        "current_datetime": now.strftime("%A, %B %d, %Y at %H:%M"),
+                        "current_datetime": datetime_display,
                         "universe_context": universe_context,
                         "recent_memories": formatted_memories,
                         "knowledge_context": knowledge_facts,

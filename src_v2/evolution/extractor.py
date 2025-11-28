@@ -27,7 +27,8 @@ TARGET PREFERENCES:
 3. **nickname**: string (e.g., "call me Dave")
 4. **topics_to_avoid**: string (e.g., "don't talk about politics")
 5. **use_emojis**: boolean (e.g., "stop using emojis", "I love emojis")
-6. **Any other explicit instruction** about how the bot should behave.
+6. **timezone**: string (IANA format preferred, e.g., "America/New_York", "UTC", "PST", "EST")
+7. **Any other explicit instruction** about how the bot should behave.
 
 RULES:
 - Only extract preferences if the user EXPLICITLY requests a change in behavior.
