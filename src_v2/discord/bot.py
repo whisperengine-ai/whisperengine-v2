@@ -581,6 +581,29 @@ class WhisperBot(commands.Bot):
                 await message.channel.send(embed=embed)
                 return
 
+        # --- Phase A5: Channel Context Awareness ---
+        # Cache ALL channel messages for context awareness (passive, fire-and-forget)
+        # This includes messages that mention the bot, so it knows what was said
+        if not is_dm and settings.ENABLE_CHANNEL_CONTEXT:
+            try:
+                is_thread = isinstance(message.channel, discord.Thread)
+                parent_id = None
+                if is_thread and message.channel.parent:
+                    parent_id = str(message.channel.parent.id)
+                
+                # Fire-and-forget: cache message asynchronously
+                asyncio.create_task(channel_cache.add_message(
+                    channel_id=str(message.channel.id),
+                    message_id=str(message.id),
+                    author=message.author.display_name,
+                    author_id=str(message.author.id),
+                    content=message.content,
+                    timestamp=message.created_at,
+                    is_thread=is_thread,
+                    parent_channel_id=parent_id
+                ))
+            except Exception as e:
+                logger.error(f"Failed to cache channel message: {e}")
         if is_dm or is_mentioned:
             # Typing indicator delayed to mimic natural reading time
             processing_start = time.time()
@@ -1192,6 +1215,29 @@ class WhisperBot(commands.Bot):
                                 channel_id=channel_id, 
                                 message_id=str(sent_messages[-1].id)
                             )
+                            
+                            # Phase A5: Cache bot's own response for channel context
+                            # This allows the bot to know what it said when asked
+                            if not is_dm and settings.ENABLE_CHANNEL_CONTEXT:
+                                try:
+                                    is_thread = isinstance(message.channel, discord.Thread)
+                                    parent_id = None
+                                    if is_thread and message.channel.parent:
+                                        parent_id = str(message.channel.parent.id)
+                                    
+                                    # Cache the bot's response (use truncated version for long responses)
+                                    asyncio.create_task(channel_cache.add_message(
+                                        channel_id=str(message.channel.id),
+                                        message_id=str(sent_messages[-1].id),
+                                        author=self.user.display_name if self.user else character.name,
+                                        author_id=str(self.user.id) if self.user else "bot",
+                                        content=response,
+                                        timestamp=sent_messages[-1].created_at,
+                                        is_thread=is_thread,
+                                        parent_channel_id=parent_id
+                                    ))
+                                except Exception as e:
+                                    logger.error(f"Failed to cache bot response: {e}")
                         
                         # 4.5 Goal Analysis (Fire-and-forget)
                         # Analyze the interaction (User Message + AI Response)
