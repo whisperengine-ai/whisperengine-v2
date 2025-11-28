@@ -10,6 +10,8 @@ The diary entry is:
 - Injected into character context to inform their mood and perspective
 """
 from typing import List, Dict, Any, Optional
+
+__all__ = ["DiaryEntry", "DiaryManager", "get_diary_manager"]
 from datetime import datetime, timezone, timedelta
 import uuid
 from loguru import logger

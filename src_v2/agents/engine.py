@@ -679,7 +679,7 @@ class AgentEngine:
             # Append the actual recent messages if available
             recent_activity = context_variables.get("channel_context", "")
             if recent_activity:
-                 channel_context_str += f"\n\n[RECENT CHANNEL ACTIVITY]\n{recent_activity}\n(This is what just happened in the channel. You can reference it.)"
+                channel_context_str += f"\n\n[RECENT CHANNEL ACTIVITY]\n{recent_activity}\n(This is what just happened in the channel. You can reference it.)"
 
             system_content += channel_context_str
 

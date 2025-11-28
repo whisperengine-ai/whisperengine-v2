@@ -231,11 +231,11 @@ async def run_diary_generation(
         if not character_context:
             character_context = f"You are {character_name.title()}."
         
-        # Extract unique user names from summaries
-        user_names = list(set(
-            s.get("user_id", "someone")[:8] + "..."  # Truncate user IDs for privacy
-            for s in summaries
-        ))
+        # Count unique users from summaries (we don't have display names here)
+        unique_user_ids = set(s.get("user_id", "unknown") for s in summaries)
+        user_count = len(unique_user_ids)
+        # Use descriptive text instead of IDs (which are just numbers)
+        user_names = [f"{user_count} different {'people' if user_count > 1 else 'person'}"]
         
         # Generate diary entry
         entry = await diary_manager.generate_diary_entry(
