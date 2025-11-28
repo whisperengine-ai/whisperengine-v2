@@ -19,9 +19,11 @@ class VoiceResponseManager:
             
         # Resolve Voice ID
         voice_id = None
-        if character.voice_config:
+        if character.voice_config and character.voice_config.voice_id:
             voice_id = character.voice_config.voice_id
-        elif settings.ELEVENLABS_VOICE_ID:
+        
+        # Fallback to global setting if not set in character config
+        if not voice_id and settings.ELEVENLABS_VOICE_ID:
             voice_id = settings.ELEVENLABS_VOICE_ID
             
         if not voice_id:

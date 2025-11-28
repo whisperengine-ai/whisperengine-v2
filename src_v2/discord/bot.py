@@ -748,6 +748,13 @@ class WhisperBot(commands.Bot):
                     
                     # Create document context from processed files
                     doc_context = DocumentContext.from_processed_files(processed_files)
+
+                    # Check for Voice Trigger (Phase A10)
+                    should_trigger_voice = False
+                    if settings.ENABLE_VOICE_RESPONSES:
+                        should_trigger_voice = VoiceTriggerDetector.should_trigger_voice(user_message, character)
+                        if should_trigger_voice:
+                            logger.info(f"Voice trigger detected for user {user_id}")
                     
                     # Validate image URLs early
                     if image_urls:
@@ -1079,6 +1086,24 @@ class WhisperBot(commands.Bot):
                         # Extract any generated images from the response
                         cleaned_text, image_files = await extract_pending_images(final_text, user_id)
                         
+                        # Generate Voice Response if triggered (Phase A10)
+                        voice_file_path = None
+                        if should_trigger_voice:
+                            try:
+                                # Use the clean response text (without footer)
+                                voice_result = await voice_response_manager.generate_voice_response(response, character)
+                                if voice_result:
+                                    voice_file_path, voice_filename = voice_result
+                                    voice_file = discord.File(voice_file_path, filename=voice_filename)
+                                    image_files.append(voice_file) # Add to files list
+                                    
+                                    # Add intro text if configured
+                                    if character.voice_config and character.voice_config.intro_template:
+                                        intro = character.voice_config.intro_template.format(name=character.name)
+                                        cleaned_text = f"{intro}\n\n{cleaned_text}"
+                            except Exception as e:
+                                logger.error(f"Failed to generate voice response: {e}")
+
                         # Split response into chunks if it's too long
                         message_chunks = self._chunk_message(cleaned_text)
                         
@@ -1182,12 +1207,17 @@ class WhisperBot(commands.Bot):
                             vc = message.guild.voice_client
                             # Check if voice client is connected
                             if hasattr(vc, 'is_connected') and vc.is_connected():
-                                logger.info(f"Voice connected in {message.guild.name}. Attempting to speak response...")
-                                try:
-                                    voice_id = character.voice_config.voice_id if character.voice_config else None
-                                    await play_text(vc, response, voice_id=voice_id)  # type: ignore[arg-type]
-                                except Exception as e:
-                                    logger.error(f"Failed to play voice: {e}")
+                                # Only speak if the message was sent in the Voice Channel's text chat
+                                # (message.channel.id matches the voice channel ID)
+                                if vc.channel and message.channel.id == vc.channel.id:
+                                    logger.info(f"Voice connected in {message.guild.name} and message from VC text chat. Speaking...")
+                                    try:
+                                        voice_id = character.voice_config.voice_id if character.voice_config else None
+                                        await play_text(vc, response, voice_id=voice_id)  # type: ignore[arg-type]
+                                    except Exception as e:
+                                        logger.error(f"Failed to play voice: {e}")
+                                else:
+                                    logger.debug("Message not from VC text chat. Skipping voice playback.")
                             else:
                                 logger.warning("Voice client exists but is not connected.")
                         else:
@@ -1468,7 +1498,7 @@ class WhisperBot(commands.Bot):
                 
                 async def handle_reaction_trust():
                     try:
-                        milestone = await trust_manager.update_trust(user_id, self.character_name, trust_delta)
+                        milestone = await trust_manager.update_trust(user_id, character.name, trust_delta)
                         if milestone:
                             await reaction.message.channel.send(milestone)
                     except Exception as e:

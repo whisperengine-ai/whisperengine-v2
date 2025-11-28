@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from loguru import logger
 from src_v2.core.database import db_manager
 from src_v2.core.behavior import BehaviorProfile, load_behavior_profile
+from src_v2.config.settings import settings
 
 class ThinkingIndicators(BaseModel):
     """Character-specific thinking status indicators."""
@@ -108,6 +109,10 @@ class CharacterManager:
                 for category, emojis in emoji_sets.items():
                     emoji_section += f"- **{category.title()}**: {' '.join(emojis)}\n"
                 content += emoji_section
+
+            # Inject voice capability instruction if enabled
+            if settings.ENABLE_VOICE_RESPONSES:
+                content += "\n\n## Voice Capabilities\nYou have the ability to send voice messages. If a user asks for a voice response, audio message, or for you to speak, simply write the text you want to say. The system will automatically convert your response to audio and attach it. Do NOT say you cannot do this."
 
             # Simple parsing: The whole file is the system prompt for now.
             # In the future, we can parse frontmatter (YAML) for metadata.
