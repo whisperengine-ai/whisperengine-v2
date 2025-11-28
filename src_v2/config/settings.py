@@ -86,8 +86,8 @@ class Settings(BaseSettings):
     REFLECTIVE_LLM_MODEL_NAME: str = "anthropic/claude-3.5-sonnet"
     REFLECTIVE_LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
     REFLECTIVE_LLM_API_KEY: Optional[SecretStr] = None
-    REFLECTIVE_MAX_STEPS: int = 10
     REFLECTIVE_MEMORY_RESULT_LIMIT: int = 3  # Max results returned per memory search
+    # Note: Max steps are now dynamically set by complexity level (10 for MID, 15 for HIGH)
 
     # --- Autonomous Agents (Phase 3) ---
     ENABLE_AUTONOMOUS_DRIVES: bool = False
