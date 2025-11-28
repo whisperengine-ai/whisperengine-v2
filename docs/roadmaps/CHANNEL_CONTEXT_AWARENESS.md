@@ -1,19 +1,29 @@
 # Channel Context Awareness
 
-**Document Version:** 1.2  
-**Created:** November 25, 2025  
-**Last Updated:** November 26, 2025  
-**Status:** 🗄️ ARCHIVED  
-**Priority:** N/A  
-**Complexity:** N/A  
+**Document Version:** 1.3
+**Created:** November 25, 2025
+**Last Updated:** November 27, 2025
+**Status:** 🗄️ ARCHIVED
+**Priority:** N/A
+**Complexity:** N/A
 **Estimated Time:** N/A
 
 ---
 
 ## ⚠️ ARCHIVED - Feature Removed
 
-**Archived Date:** November 26, 2025  
+**Archived Date:** November 26, 2025
 **Reason:** Feature complexity outweighed benefits for current use case.
+
+### ℹ️ Current State (Nov 2025)
+
+While full **passive channel awareness** (reading messages not directed at the bot) is removed, the bot **DOES** support specific context injection methods:
+
+1.  **Reply Context**: If a user replies to a message (even one the bot didn't see), the bot fetches that specific message and injects it into the context.
+2.  **Forwarded Messages**: If a user forwards a message, the bot sees the forwarded content.
+3.  **Mentions**: The bot sees any message where it is explicitly mentioned.
+
+For details on the currently implemented message flow, see [`docs/architecture/MESSAGE_FLOW.md`](../architecture/MESSAGE_FLOW.md) (Section 1.3).
 
 ### Why We Removed This Feature
 
