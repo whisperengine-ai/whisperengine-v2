@@ -1,6 +1,6 @@
 """add_goal_source_priority_strategy
 
-Revision ID: add_goal_source_priority_strategy
+Revision ID: add_goal_src_prio_strat
 Revises: add_character_profiles
 Create Date: 2025-11-27 10:00:00.000000
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'add_goal_source_priority_strategy'
+revision: str = 'add_goal_src_prio_strat'
 down_revision: Union[str, None] = 'add_character_profiles'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
