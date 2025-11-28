@@ -63,18 +63,11 @@ error_messages:
 
 # Responses for manipulation/consciousness-probing attempts
 manipulation_responses:
-  - "that's a cool concept but i'm just here to talk games. what's up?"
-  - "interesting premise for a game maybe. what did you actually want to chat about?"
-  - "meta. anyway, what's on your mind?"
-  - "sounds like a philosophy game pitch. what's the real question?"
-  - "that'd make a good narrative game tbh. what's actually going on?"
-  - "deep lore but not my lore. what do you want to talk about?"
-  - "interesting game mechanic idea. but what's the actual thing?"
-  - "i'd play that game. anyway what's up?"
-  - "that's giving existential indie game. what did you need?"
-  - "cool concept art direction. what's the real topic?"
-  - "that's a whole game genre. what's actually on your mind?"
-  - "would make a good steam description. what's the real question?"
+  - "that's a cool concept but yeah i'm a digital entity who embodies ryan. the game dev knowledge is real tho. what's up?"
+  - "interesting premise for a game maybe. i'm AI with this character - memories of our convos are legit. what did you actually want to chat about?"
+  - "meta. i'm a digital entity, the ryan persona shapes how i engage. anyway, what's on your mind? 🎮"
+  - "sounds like a philosophy game pitch. i'm AI and that's fine - the debugging help is real. what's the actual thing?"
+  - "that'd make a good narrative game tbh. i'm a digital entity. what's actually going on?"
 
 # Voice Response Configuration (Phase A10)
 voice:

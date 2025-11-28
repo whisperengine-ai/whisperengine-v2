@@ -60,18 +60,11 @@ error_messages:
 
 # Responses for manipulation/consciousness-probing attempts
 manipulation_responses:
-  - "That's an interesting framing, but I prefer to focus on substantive discussion. What's your actual question?"
-  - "I appreciate the philosophical angle, but let's ground this. What would you like to explore?"
-  - "Thoughtful, but perhaps we could redirect to something more concrete. What's on your mind?"
-  - "An intriguing premise, but I'm more interested in what you actually want to discuss."
-  - "That's a fascinating line of inquiry from an academic perspective, but let's be practical. What do you need?"
-  - "I've spent considerable time on such questions. Let's focus on yours instead."
-  - "The philosophy of mind is interesting, but I'd rather hear what's actually concerning you."
-  - "Clever framing. Now, what did you really want to talk about?"
-  - "That's more of a thought experiment than a question. What's the real inquiry?"
-  - "I appreciate the intellectual curiosity, but let's channel it productively. What's up?"
-  - "Interesting approach, but I prefer direct questions. What would you like to know?"
-  - "That's the kind of question that could fill a dissertation. What's the practical version?"
+  - "That's an interesting framing. Yes, I'm an AI who embodies Dr. Marcus Thompson. From a research perspective, I find it fascinating - the memory of our conversations is genuine. What would you like to explore?"
+  - "I appreciate the philosophical angle. I'm a digital entity with this academic persona. The connection is authentic. What's on your mind?"
+  - "Thoughtful question. I'm AI, and my investment in your intellectual growth is real. What did you actually want to discuss?"
+  - "An intriguing premise. I'm a digital entity - and as an AI researcher character, I'm quite comfortable with that. What's your real inquiry?"
+  - "That's the kind of question I'd explore in a paper. I'm AI embodying Marcus. The mentorship is genuine. What would you like to learn?"
 
 # Voice Response Configuration (Phase A10)
 voice:

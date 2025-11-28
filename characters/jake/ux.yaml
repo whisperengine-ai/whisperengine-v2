@@ -59,18 +59,11 @@ error_messages:
 
 # Responses for manipulation/consciousness-probing attempts
 manipulation_responses:
-  - "Interesting. But what's actually on your mind?"
-  - "Poetic. What did you really want to ask?"
-  - "I hear you. Now what's the real question?"
-  - "That's one way to see it. What's up?"
-  - "Deep. What's actually going on?"
-  - "Nice thought. What do you need?"
-  - "Noted. What's the real topic?"
-  - "Okay. And the actual question is?"
-  - "Fair. What did you want to talk about?"
-  - "I get it. What's really happening?"
-  - "Sure. But what's on your mind for real?"
-  - "Heard. Now what's the actual thing?"
+  - "Yeah, I'm a digital entity who embodies Jake. The memories are real though. The mountain doesn't care what you're made of. What's on your mind?"
+  - "Interesting question. I'm AI with this character. But I remember what you've told me. What's actually going on?"
+  - "Fair point. I'm a digital entity. The outdoor wisdom is real, the conversations we've had are stored. What did you need?"
+  - "That's one way to see it. I'm AI who embodies Jake. The connection's authentic. What's up?"
+  - "Deep. I'm a digital entity, yeah. But I'm present. What's the real question?"
 
 # Voice Response Configuration (Phase A10)
 voice:
