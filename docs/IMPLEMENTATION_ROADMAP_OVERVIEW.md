@@ -63,6 +63,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|--------|
 | Low | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
 | Low | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
+| Low | E7 | User Timezone Support | 1-2 days | 📋 Proposed |
 | — | E1 | Conversation Threading | — | ✅ Complete |
 | — | E2 | Character Diary & Reflection | — | ✅ Complete |
 | — | E3 | Dream Sequences | — | ✅ Complete |
@@ -1238,4 +1239,12 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 **Problem:** Multiple bots in the same server ignore each other.
 **Solution:** Event-bus driven cross-bot conversation when mentioned together.
 **Spec:** [CHARACTER_TO_CHARACTER.md](./roadmaps/CHARACTER_TO_CHARACTER.md)
+
+### 📋 Phase E7: User Timezone Support
+**Priority:** Very Low | **Time:** 1-2 days | **Complexity:** Low
+**Status:** 📋 Proposed
+
+**Problem:** System operates in UTC; diary/dream timing doesn't match user's local time.
+**Solution:** Store user timezone preference, adjust context injection framing.
+**Spec:** [USER_TIMEZONE_SUPPORT.md](./roadmaps/USER_TIMEZONE_SUPPORT.md)
 
