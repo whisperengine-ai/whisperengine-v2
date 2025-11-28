@@ -59,13 +59,15 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 ### 🎯 What's Next? (Priority Order)
 
-| Priority | Phase | Description | Time | Dependencies |
-|----------|-------|-------------|------|--------------|
-| **1** | **B3** | **Autonomous Agents** - Drives, goals, cross-bot awareness | 10-14 days | A7 ✅, C1 ✅ |
-| 2 | A10 | Triggered Voice Responses - TTS audio attachments | 2-3 days | None |
+| Priority | Phase | Description | Time | Status |
+|----------|-------|-------------|------|--------|
+| **1** | **B3.2** | **Trace Quality Scoring** - Few-shot injection in ReflectiveAgent | 2-3 days | 📋 Next |
+| **2** | **B3.3** | **Proactive Drives** - Trust-gated initiation, lazy scheduler | 3-4 days | 📋 Planned |
+| **3** | **B3.4** | **Universe Agent** - Privacy boundaries, cross-bot gossip | 4-5 days | 📋 Planned |
+| 4 | A10 | Triggered Voice Responses - TTS audio attachments | 2-3 days | 📋 Planned |
 | — | A0 | Embedding Upgrade 768D | 45 min | ⏸️ On Hold |
 
-> **Recommendation:** Start with **Phase B3** (Autonomous Agents). All dependencies are met. This is the last major feature before multiverse/federation work.
+> **Current Focus:** Phase B3 (Autonomous Agents) — **Phase 3.1 Complete**. Continue with Phase 3.2 (Trace Quality Scoring).
 
 ---
 
@@ -118,7 +120,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Summarization + Reflection offloaded to worker
 
 **NOT YET IMPLEMENTED:**
-- 📋 **Phase B3: Autonomous Agents** - Internal drives, goal strategies, cross-bot awareness → **NEXT**
+- ⏳ **Phase B3: Autonomous Agents** - Internal drives, goal strategies, cross-bot awareness → **IN PROGRESS (3.1 Complete)**
 - 📋 Phase A10: Triggered Voice Responses (TTS audio attachments)
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
 - ⏳ Phase D: User sharding, federation (future multiverse)
@@ -129,7 +131,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - 🗄️ Phase B5: Audio Processing (DEFERRED)
 - 🗄️ Phase C3: Video Processing (DEFERRED)
 
-**Status:** Core feature development complete. System is production-ready.
+**Status:** Core feature development complete. Phase B3 (Autonomous Agents) in progress.
 
 > **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
 
@@ -628,20 +630,27 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 
 ---
 
-### Phase B3: Autonomous Agents (Phase 3) ⬅️ **CURRENT FOCUS**
-**Priority:** 🔴 High (Next Implementation) | **Time:** 10-14 days | **Complexity:** High
-**Files:** 10+ | **LOC:** ~1000 | **Status:** 📋 Planned
+### Phase B3: Autonomous Agents (Phase 3) ⬅️ **IN PROGRESS**
+**Priority:** 🔴 High (Current) | **Time:** 10-14 days | **Complexity:** High
+**Files:** 10+ | **LOC:** ~1000 | **Status:** ⏳ In Progress (Phase 3.1 Complete)
 
 **Problem:** Characters are currently reactive or rely on simple timers. They lack internal drives, long-term strategies, and cross-bot awareness.
 
 **Solution (4 Sub-Phases):**
 
-| Phase | Feature | Complexity | Key Innovation |
-|-------|---------|------------|----------------|
-| 3.1 | Goal State & Strategy | Low | Neo4j verification, style-aware injection |
-| 3.2 | Memory of Reasoning | Medium | Trace quality scoring, few-shot injection |
-| 3.3 | Proactive Drives | Medium | Trust-gated initiation, lazy scheduler |
-| 3.4 | Universe Agent | High | Privacy boundaries, propagation limits |
+| Phase | Feature | Complexity | Status |
+|-------|---------|------------|--------|
+| 3.1 | Goal State & Strategy | Low | ✅ Complete |
+| 3.2 | Memory of Reasoning | Medium | 📋 Next |
+| 3.3 | Proactive Drives | Medium | 📋 Planned |
+| 3.4 | Universe Agent | High | 📋 Planned |
+
+**Phase 3.1 Completed (Nov 27, 2025):**
+- ✅ Feature flags added to `settings.py`
+- ✅ Migration for `source`, `current_strategy`, `category` columns
+- ✅ `GOAL_SOURCE_PRIORITY` hierarchy: Core (100) > User (80) > Inferred (60) > Strategic (40)
+- ✅ `GoalStrategist` worker with Neo4j-first verification
+- ✅ Strategy injection in `engine.py` (framed as "internal desire")
 
 **Design Principles:**
 - **Trust-Aware:** Proactive initiation respects trust levels (never reach out to Strangers)
@@ -669,12 +678,14 @@ Query → Complexity Classifier (now with step count) → Reflective Agent → D
 **Dependencies:** Phase A7 (Character Agency) ✅, Phase C1 (Insight Agent) ✅
 
 **Related Files:**
-- New: `src_v2/evolution/drives.py` (Drive system with decay/recharge)
-- New: `src_v2/evolution/goals.py` (Goal state with source/priority)
-- New: `src_v2/workers/strategist.py` (Nightly goal analysis)
-- New: `src_v2/universe/bus.py` (Event dispatcher via arq)
-- New: `src_v2/agents/universe.py` (Privacy-aware coordination)
-- New: `src_v2/memory/traces.py` (Trace retrieval with quality scoring)
+- ✅ `src_v2/config/settings.py` (Feature flags added)
+- ✅ `src_v2/evolution/goals.py` (Goal state with source/priority)
+- ✅ `src_v2/workers/strategist.py` (Nightly goal analysis)
+- ✅ `src_v2/agents/engine.py` (Strategy injection)
+- 📋 `src_v2/evolution/drives.py` (Drive system with decay/recharge)
+- 📋 `src_v2/universe/bus.py` (Event dispatcher via arq)
+- 📋 `src_v2/agents/universe.py` (Privacy-aware coordination)
+- 📋 `src_v2/memory/traces.py` (Trace retrieval with quality scoring)
 - `src_v2/agents/proactive.py` (Trust-gated initiation)
 - `src_v2/agents/reflective.py` (Few-shot trace injection)
 

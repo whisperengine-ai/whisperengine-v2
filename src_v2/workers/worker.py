@@ -27,6 +27,7 @@ from src_v2.workers.task_queue import TaskQueue
 from src_v2.agents.insight_agent import insight_agent
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
+from src_v2.workers.strategist import run_goal_strategist
 
 
 async def startup(ctx: Dict[str, Any]) -> None:
@@ -463,6 +464,7 @@ class WorkerSettings:
         run_store_observation,
         run_universe_observation,
         run_relationship_update,
+        run_goal_strategist,
     ]
     
     # Startup/shutdown hooks

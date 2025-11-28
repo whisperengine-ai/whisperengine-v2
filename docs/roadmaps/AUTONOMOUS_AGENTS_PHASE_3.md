@@ -1,9 +1,9 @@
 # Autonomous Agents Phase 3: Proactive, Goal-Directed, and Learning
 
-**Document Version:** 1.2  
+**Document Version:** 1.3  
 **Created:** November 27, 2025  
 **Updated:** November 27, 2025  
-**Status:** Planning  
+**Status:** In Progress (Phase 3.1 Complete)  
 **Type:** Roadmap
 
 ---
@@ -11,7 +11,7 @@
 ## Prerequisites & Current State
 
 **What Already Exists (can be leveraged):**
-- ✅ `GoalManager` with basic goal tracking (`v2_goals`, `v2_user_goal_progress` tables)
+- ✅ `GoalManager` with goal tracking (`v2_goals`, `v2_user_goal_progress` tables)
 - ✅ `GoalAnalyzer` for LLM-based goal progress detection
 - ✅ `ProactiveAgent` with basic opener generation
 - ✅ `UniverseManager` for planet/channel tracking in Neo4j
@@ -19,9 +19,13 @@
 - ✅ `ComplexityClassifier` uses traces for Adaptive Depth
 - ✅ `TrustManager` with 5-level relationship tracking
 - ✅ Background workers via `arq` (insight-worker container)
+- ✅ **NEW:** `GOAL_SOURCE_PRIORITY` hierarchy in `goals.py`
+- ✅ **NEW:** `GoalStrategist` worker in `src_v2/workers/strategist.py`
+- ✅ **NEW:** Strategy injection in `engine.py` (as "internal desire")
+- ✅ **NEW:** Feature flags in `settings.py`
 
 **What Needs to Be Built:**
-- 🔨 **Phase 3.1**: Goal `source`/`priority` columns, `GoalStrategist` worker, strategy injection
+- ✅ **Phase 3.1**: Goal `source`/`priority` columns, `GoalStrategist` worker, strategy injection — **COMPLETE**
 - 🔨 **Phase 3.2**: Trace quality scoring, few-shot injection in `ReflectiveAgent`
 - 🔨 **Phase 3.3**: `DriveSystem`, `DriveScheduler`, trust-gated initiation
 - 🔨 **Phase 3.4**: Event bus, privacy rules, gossip memory injection

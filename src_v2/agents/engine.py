@@ -634,16 +634,23 @@ class AgentEngine:
                 system_content += feedback_context
                 logger.debug(f"Injected feedback insights: {feedback_insights['recommendations']}")
             
-            # 2.6 Inject Active Goals
+            # 2.6 Inject Active Goals (with strategy if available)
             active_goals = await self.goal_manager.get_active_goals(user_id, character.name)
             if active_goals:
                 top_goal = active_goals[0]
                 goal_context = f"\n\n[CURRENT GOAL: {top_goal['slug']}]\n"
                 goal_context += f"Objective: {top_goal['description']}\n"
                 goal_context += f"Success Criteria: {top_goal['success_criteria']}\n"
-                goal_context += "(Try to naturally steer the conversation towards this goal without being pushy.)\n"
+                
+                # Phase 3.1: Inject strategy as internal desire (not command)
+                if top_goal.get('current_strategy') and settings.ENABLE_GOAL_STRATEGIST:
+                    goal_context += f"\n[INTERNAL DESIRE]\n{top_goal['current_strategy']}\n"
+                    goal_context += "(This is a soft suggestion based on your understanding of this user. Don't force it.)\n"
+                else:
+                    goal_context += "(Try to naturally steer the conversation towards this goal without being pushy.)\n"
+                    
                 system_content += goal_context
-                logger.debug(f"Injected goal: {top_goal['slug']}")
+                logger.debug(f"Injected goal: {top_goal['slug']}" + (" with strategy" if top_goal.get('current_strategy') else ""))
 
             # 2.7 Inject Knowledge Graph Context
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)

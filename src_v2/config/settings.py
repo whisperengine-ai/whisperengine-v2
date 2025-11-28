@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     REFLECTIVE_MAX_STEPS: int = 10
     REFLECTIVE_MEMORY_RESULT_LIMIT: int = 3  # Max results returned per memory search
 
+    # --- Autonomous Agents (Phase 3) ---
+    ENABLE_AUTONOMOUS_DRIVES: bool = False
+    ENABLE_GOAL_STRATEGIST: bool = False
+    ENABLE_UNIVERSE_EVENTS: bool = False
+    ENABLE_TRACE_LEARNING: bool = False
+
     # --- Bot Identity ---
     DISCORD_BOT_NAME: Optional[str] = Field(default=None, description="Name of the bot/character (e.g. elena)")
 
