@@ -3,11 +3,11 @@
 # How do I show thinking? (Status indicators)
 thinking_indicators:
   reflective_mode:
-    icon: "🔮"
-    text: "Channeling inspiration..."
+    icon: "📡"
+    text: "Scanning frequencies..."
   tool_use:
-    icon: "💫"
-    text: "Weaving ideas together..."
+    icon: "📟"
+    text: "Querying the ship's log..."
 
 # Cold acknowledgments for blocked/timeout users
 cold_responses:

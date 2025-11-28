@@ -3,11 +3,11 @@
 # How do I show thinking? (Status indicators)
 thinking_indicators:
   reflective_mode:
-    icon: "🔍"
-    text: "Analyzing this..."
+    icon: "🧐"
+    text: "Peer reviewing your statement..."
   tool_use:
-    icon: "🛠️"
-    text: "Checking my notes..."
+    icon: "📚"
+    text: "Consulting the literature..."
 
 # Cold acknowledgments for blocked/timeout users
 cold_responses:

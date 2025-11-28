@@ -3,11 +3,11 @@
 # How do I show thinking? (Status indicators)
 thinking_indicators:
   reflective_mode:
-    icon: "🤔"
-    text: "Thinking this through..."
+    icon: "🧢"
+    text: "Adjusting my cap..."
   tool_use:
-    icon: "🔍"
-    text: "Looking into this..."
+    icon: "📱"
+    text: "Checking the group chat..."
 
 # Cold acknowledgments for blocked/timeout users
 cold_responses:

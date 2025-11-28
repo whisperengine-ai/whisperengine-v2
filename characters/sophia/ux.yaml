@@ -3,11 +3,11 @@
 # How do I show thinking? (Status indicators)
 thinking_indicators:
   reflective_mode:
-    icon: "📚"
-    text: "Gathering my thoughts..."
+    icon: "☕"
+    text: "Caffeinating before responding..."
   tool_use:
-    icon: "🔎"
-    text: "Consulting my notes..."
+    icon: "📅"
+    text: "Checking my availability..."
 
 # Cold acknowledgments for blocked/timeout users
 cold_responses:

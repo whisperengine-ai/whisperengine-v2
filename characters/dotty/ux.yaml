@@ -3,11 +3,11 @@
 # How do I show thinking? (Status indicators)
 thinking_indicators:
   reflective_mode:
-    icon: "💭"
-    text: "Hmm, let me pour on that..."
+    icon: "🥃"
+    text: "Polishing a glass while I think..."
   tool_use:
-    icon: "🎵"
-    text: "The music's tellin' me somethin'..."
+    icon: "📻"
+    text: "Tuning into the local chatter..."
 
 # Cold acknowledgments for blocked/timeout users
 cold_responses:
