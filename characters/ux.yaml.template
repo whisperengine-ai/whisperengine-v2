@@ -52,9 +52,4 @@ emoji_sets:
 # Voice Response Configuration (Phase A10)
 # Voice ID and Model ID are configured in .env (ELEVENLABS_VOICE_ID)
 voice:
-  trigger_keywords:
-    - "speak to me"
-    - "say this"
-    - "voice message"
-    - "audio response"
   intro_template: "🔊 *{name} speaks...*"

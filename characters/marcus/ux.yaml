@@ -68,11 +68,6 @@ manipulation_responses:
 
 # Voice Response Configuration (Phase A10)
 voice:
-  trigger_keywords:
-    - "speak to me"
-    - "say this"
-    - "voice message"
-    - "audio response"
   intro_template: "🔊 *Marcus speaks...*"
 
 # Emoji sets for different contexts (random selection)

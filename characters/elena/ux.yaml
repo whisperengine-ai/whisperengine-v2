@@ -79,11 +79,4 @@ emoji_sets:
 
 # Voice Response Configuration (Phase A10)
 voice:
-  trigger_keywords:
-    - "speak to me"
-    - "say this"
-    - "voice message"
-    - "audio response"
-    - "tell me with your voice"
-    - "send audio"
   intro_template: "🌊✨ *Elena speaks...*"
