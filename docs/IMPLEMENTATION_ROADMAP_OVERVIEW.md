@@ -2,7 +2,7 @@
 
 **Document Version:** 2.0  
 **Created:** November 24, 2025  
-**Last Updated:** November 27, 2025 (Phase E Added, Full Status Audit)
+**Last Updated:** November 28, 2025 (Phase E3 & E4 Complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -61,8 +61,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| 1 | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
-| 2 | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
+| Low | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
+| Low | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
 | — | E1 | Conversation Threading | — | ✅ Complete |
 | — | E2 | Character Diary & Reflection | — | ✅ Complete |
 | — | E3 | Dream Sequences | — | ✅ Complete |
@@ -79,7 +79,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - **Quality:** Careful code review/testing required
 - **Strategy:** High-impact first; skip low-value infrastructure
 
-**Current State (Updated Nov 27, 2025):**
+**Current State (Updated Nov 28, 2025):**
 
 **Core Systems (COMPLETE):**
 - ✅ Core cognitive engine operational
@@ -1224,7 +1224,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 **Spec:** [RELATIONSHIP_MILESTONES.md](./roadmaps/RELATIONSHIP_MILESTONES.md)
 
 ### 📋 Phase E5: Scheduled Reminders
-**Priority:** Medium | **Time:** 3-4 days | **Complexity:** Medium
+**Priority:** Very Low | **Time:** 3-4 days | **Complexity:** Medium
 **Status:** 📋 Proposed
 
 **Problem:** Users ask for reminders, but bot cannot deliver them.
@@ -1232,7 +1232,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 **Spec:** [SCHEDULED_REMINDERS.md](./roadmaps/SCHEDULED_REMINDERS.md)
 
 ### 📋 Phase E6: Character-to-Character Conversation
-**Priority:** High (Strategic) | **Time:** 1 week | **Complexity:** High
+**Priority:** Very Low | **Time:** 1 week | **Complexity:** High
 **Status:** 📋 Proposed
 
 **Problem:** Multiple bots in the same server ignore each other.
