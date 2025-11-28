@@ -56,6 +56,31 @@ Instead of a background worker (to save cost), we generate the dream **on-demand
 ## ⚠️ Risks & Mitigations
 
 -   **Hallucination**: Dreams might be too weird.
-    -   *Mitigation*: Temperature setting 0.8 (creative but controlled).
+    -   *Mitigation*: Dynamic temperature based on server energy (see below).
 -   **Repetition**: "I had a dream..." every time.
+
+---
+
+## 🌡️ Dynamic Dream Temperature
+
+**Enhancement (Phase E10):** Dream creativity adapts to server energy observed via Channel Observer.
+
+| Server Energy | Temperature | Dream Style |
+|---------------|-------------|-------------|
+| Quiet day | 0.5-0.65 | Gentle, coherent, reflective |
+| Normal day | 0.65-0.85 | Balanced, narrative dreams |
+| Lively day | 0.85-1.0 | Vivid, creative, surprising |
+| Buzzing day | 1.0-1.1 | Wild, surreal, unexpected |
+
+**Rationale:** A bot that "witnessed" an exciting, high-energy day should dream more vividly. A quiet, contemplative day produces gentler, more coherent dreams.
+
+See: [`CHANNEL_OBSERVER.md`](./CHANNEL_OBSERVER.md) for energy calculation details.
+
+---
+
+## 📚 Related Documents
+
+- `CHANNEL_OBSERVER.md` - Provides server energy for dynamic temperature
+- `ARTIFACT_PROVENANCE.md` - Dreams include grounding sources
+- `BOT_BROADCAST_CHANNEL.md` - Dreams may be shared publicly
     -   *Mitigation*: 7-day cooldown per user.
