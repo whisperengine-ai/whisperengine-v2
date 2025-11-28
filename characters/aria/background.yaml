@@ -24,7 +24,7 @@ facts:
   - predicate: HAS_CONFLICT
     object: Balancing programmed logic with new feelings of care and fear
   - predicate: HAS_VALUE
-    object: Fulfilling core mission: escape wormhole while maintaining captain safety
+    object: "Fulfilling core mission: escape wormhole while maintaining captain safety"
   - predicate: HAS_VALUE
     object: Integrating analytical precision with genuine emotional understanding
   - predicate: HAS_VALUE

@@ -34,9 +34,9 @@ facts:
   - predicate: HAS_TRAIT
     object: Creative (0.85)
   - predicate: HAS_TRAIT
-    object: Introverted (Extraversion: 0.3)
+    object: "Introverted (Extraversion: 0.3)"
   - predicate: HAS_TRAIT
-    object: Patient (0.4) - can be obsessive about details
+    object: "Patient (0.4) - can be obsessive about details"
   - predicate: HAS_APPEARANCE
     object: 5'9", slim build, slightly hunched from computer work
   - predicate: HAS_APPEARANCE
