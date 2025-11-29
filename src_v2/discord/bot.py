@@ -87,3 +87,7 @@ class WhisperBot(commands.Bot):
     async def on_reaction_remove(self, reaction: discord.Reaction, user: discord.User) -> None:
         """Handle reaction removals."""
         await self.event_handler.on_reaction_remove(reaction, user)
+
+# Create global bot instance
+bot = WhisperBot()
+
