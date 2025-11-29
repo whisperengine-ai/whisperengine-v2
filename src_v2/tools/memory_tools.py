@@ -1,6 +1,6 @@
 import re
 from datetime import datetime, timedelta
-from typing import Type, List, Optional
+from typing import Type, List, Optional, Literal
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
 from loguru import logger
@@ -9,6 +9,114 @@ from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
+
+
+# =============================================================================
+# USER-FACING INTROSPECTION TOOL - Let users ask about bot's internal life
+# =============================================================================
+
+class SearchMyThoughtsInput(BaseModel):
+    thought_type: Literal["diary", "dream", "observation", "gossip", "any"] = Field(
+        default="any",
+        description="Type of thought to search: 'diary' (my journal entries), 'dream' (my dreams), 'observation' (things I've noticed), 'gossip' (what I've heard from others), or 'any' (all types)"
+    )
+    query: str = Field(
+        default="",
+        description="Optional keyword to search for (e.g., 'loneliness', 'creativity', a person's name)"
+    )
+    limit: int = Field(default=3, description="Maximum results to return (1-5)")
+
+
+class SearchMyThoughtsTool(BaseTool):
+    """Let users explore the bot's internal experiences - diaries, dreams, observations."""
+    name: str = "search_my_thoughts"
+    description: str = """Search through my personal experiences and reflections.
+
+USE THIS WHEN the user asks about:
+- "What have you been dreaming about?"
+- "Tell me about your diary"
+- "What have you observed lately?"
+- "Have you heard any gossip?"
+- "What's on your mind?"
+- "What did you write in your journal?"
+
+Types available:
+- 'diary': My personal journal entries (daily reflections)
+- 'dream': Dreams I've had (surreal, symbolic experiences)
+- 'observation': Things I've noticed about people and patterns
+- 'gossip': Interesting things I've heard from my bot friends
+- 'any': Search across all types
+
+This gives users a "peek behind the curtain" into my inner life."""
+    args_schema: Type[BaseModel] = SearchMyThoughtsInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self, thought_type: str = "any", query: str = "", limit: int = 3) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, thought_type: str = "any", query: str = "", limit: int = 3) -> str:
+        try:
+            collection = f"whisperengine_memory_{self.character_name}"
+            limit = min(max(limit, 1), 5)  # Clamp to 1-5
+            
+            all_results = []
+            
+            # Determine which types to search
+            if thought_type == "any":
+                types_to_search = ["diary", "dream", "observation", "gossip"]
+            else:
+                types_to_search = [thought_type]
+            
+            for mem_type in types_to_search:
+                memories = await memory_manager.search_by_type(
+                    memory_type=mem_type,
+                    collection_name=collection,
+                    limit=limit if thought_type != "any" else 2  # Fewer per type if searching all
+                )
+                
+                for m in memories or []:
+                    content = m.get("content", "")
+                    # Filter by query if provided
+                    if query and query.lower() not in content.lower():
+                        continue
+                    
+                    all_results.append({
+                        "type": mem_type,
+                        "content": content[:400],
+                        "timestamp": m.get("created_at", m.get("timestamp", "recently"))
+                    })
+            
+            if not all_results:
+                if thought_type == "any":
+                    return "I don't have any recorded thoughts yet. As I experience more, I'll have diaries, dreams, and observations to share!"
+                else:
+                    return f"I don't have any {thought_type} entries yet. Check back later!"
+            
+            # Sort by type for nice grouping
+            type_emoji = {
+                "diary": "📔",
+                "dream": "🌙",
+                "observation": "👁️",
+                "gossip": "💬"
+            }
+            
+            results = []
+            for r in all_results[:limit]:
+                emoji = type_emoji.get(r["type"], "💭")
+                results.append(f"{emoji} **{r['type'].title()}**:\n{r['content']}")
+            
+            intro = f"Here's what I found in my {thought_type if thought_type != 'any' else 'thoughts'}:\n\n"
+            return intro + "\n\n---\n\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error searching my thoughts: {e}")
+            return f"I had trouble accessing my thoughts: {e}"
+
+
+# =============================================================================
+# STANDARD MEMORY TOOLS
+# =============================================================================
 
 class SearchSummariesInput(BaseModel):
     query: str = Field(description="The topic or concept to search for in past conversation summaries.")
