@@ -1,9 +1,9 @@
 # Discord Search Tools
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Created:** November 28, 2025  
-**Last Updated:** November 28, 2025  
-**Status:** 📋 Proposed  
+**Last Updated:** November 29, 2025  
+**Status:** 🚧 In Progress (Phase 2 complete)  
 **Priority:** Medium  
 **Complexity:** Low-Medium  
 **Estimated Time:** 2-3 days
@@ -391,10 +391,11 @@ Update router prompt to include:
 - [x] Update agent prompts to mention new tools
 
 ### Phase 2: Enhanced Tools (Day 2-3)
-- [ ] Implement `GetMessageContextTool`
-- [ ] Implement `SearchThreadMessagesTool`
-- [ ] Implement `GetChannelSummaryTool` (with LLM call)
-- [ ] Add feature flag: `ENABLE_DISCORD_SEARCH_TOOLS`
+- [x] Implement `GetMessageContextTool`
+- [x] Implement `GetRecentMessagesTool` (simpler alternative to summary - no LLM call)
+- [ ] Implement `SearchThreadMessagesTool` (deferred - needs thread detection logic)
+- [ ] Implement `GetChannelSummaryTool` (deferred - expensive LLM call per use)
+- [ ] Add feature flag: `ENABLE_DISCORD_SEARCH_TOOLS` (deferred - tools are low-cost)
 
 ### Phase 3: Testing & Polish (Day 3)
 - [ ] Add regression tests for Discord tools

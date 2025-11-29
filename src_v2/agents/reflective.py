@@ -19,7 +19,7 @@ from src_v2.tools.memory_tools import (
     CharacterEvolutionTool
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
-from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool
+from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
 from src_v2.tools.insight_tools import (
     AnalyzePatternsTool,
     DetectThemesTool
@@ -441,6 +441,8 @@ class ReflectiveAgent:
             tools.extend([
                 SearchChannelMessagesTool(channel=channel),
                 SearchUserMessagesTool(channel=channel),
+                GetMessageContextTool(channel=channel),
+                GetRecentMessagesTool(channel=channel),
             ])
         
         # Conditionally add image generation tool
@@ -474,11 +476,13 @@ AVAILABLE TOOL CATEGORIES:
 2. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
 3. Introspection: analyze_conversation_patterns, detect_recurring_themes
 4. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
-5. Discord Search: search_channel_messages (recent channel activity), search_user_messages (what a specific person said)
+5. Discord Search: search_channel_messages (keyword search), search_user_messages (specific person), get_message_context (context around a message), get_recent_messages (latest messages)
 {creative_category}
 TOOL USAGE RULES:
 {image_rules}- search_channel_messages: Use when asked "what did I just say?", "what happened earlier?", or to find recent messages by keyword.
 - search_user_messages: Use when asked "what did [name] say?" or to find messages from a specific person.
+- get_message_context: Use when a reply references an older message and you need surrounding context.
+- get_recent_messages: Use for "catch me up", "what's happening?", or general channel awareness.
 - explore_knowledge_graph: Use when asked about connections, relationships, network, or graph exploration.
 - discover_common_ground: Use when asked about shared interests or common ground.
 - get_character_evolution: Use when asked about your relationship, trust level, or closeness.

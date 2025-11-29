@@ -1244,13 +1244,22 @@ class AgentEngine:
                     })
 
             # Construct log data
+            # Filter out non-serializable objects from context_variables
+            safe_context = {}
+            for k, v in context_variables.items():
+                try:
+                    json.dumps(v)  # Test if serializable
+                    safe_context[k] = v
+                except (TypeError, ValueError):
+                    safe_context[k] = f"<{type(v).__name__}>"  # Replace with type name
+            
             log_data = {
                 "timestamp": datetime.datetime.now().isoformat(),
                 "character": character_name,
                 "user_id": user_id,
                 "inputs": {
                     "system_prompt": system_prompt,
-                    "context_variables": context_variables,
+                    "context_variables": safe_context,
                     "chat_history": history_serialized,
                     "user_input": user_input,
                     "image_urls": image_urls
