@@ -32,9 +32,8 @@ def test_tool_loading():
         "search_meaningful_memories",
         "search_session_summaries",
         "search_all_user_facts",
-        "search_by_memory_type",
+        "search_by_memory_type",  # Also handles cross-bot via gossip type
         "get_active_goals",
-        "search_broadcast_channel",  # NEW: Cross-bot broadcast channel search
         "find_interesting_questions",
         "find_common_themes",
         "prepare_deep_answer",
@@ -115,27 +114,28 @@ def test_deep_answer_tools():
     print("✅ Deep answer tools have proper schemas (including community source support)")
 
 
-def test_broadcast_channel_tool():
-    """Test the broadcast channel tool for cross-bot insights."""
+def test_search_by_type_for_cross_bot():
+    """Test that search_by_memory_type handles cross-bot content via gossip."""
     tools = get_dreamweaver_tools("elena")
     tool_map = {t.name: t for t in tools}
     
-    # SearchBroadcastChannelTool should exist
-    assert "search_broadcast_channel" in tool_map, "Missing search_broadcast_channel tool"
+    # SearchByTypeTool should exist and mention cross-bot/gossip
+    assert "search_by_memory_type" in tool_map, "Missing search_by_memory_type tool"
     
-    broadcast_tool = tool_map["search_broadcast_channel"]
-    schema = broadcast_tool.args_schema.model_json_schema() if broadcast_tool.args_schema else {}
+    type_tool = tool_map["search_by_memory_type"]
+    schema = type_tool.args_schema.model_json_schema() if type_tool.args_schema else {}
     
-    # Should have query, limit, and bot_name_filter params
+    # Should have memory_type and limit params
     props = schema.get("properties", {})
-    assert "query" in props, "Missing query param"
+    assert "memory_type" in props, "Missing memory_type param"
     assert "limit" in props, "Missing limit param"
-    assert "bot_name_filter" in props, "Missing bot_name_filter for filtering by bot"
     
-    # Description should mention cross-bot
-    assert "cross-bot" in broadcast_tool.description.lower() or "other bots" in broadcast_tool.description.lower()
+    # Description should mention cross-bot/gossip
+    desc_lower = type_tool.description.lower()
+    assert "gossip" in desc_lower, "Description should mention gossip type"
+    assert "cross-bot" in desc_lower or "other bots" in desc_lower, "Description should mention cross-bot content"
     
-    print("✅ Broadcast channel tool configured for cross-bot insights")
+    print("✅ search_by_memory_type handles cross-bot content via gossip type")
 
 
 def test_dreamweaver_agent():
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     test_tool_schemas()
     test_tool_with_existing()
     test_deep_answer_tools()
-    test_broadcast_channel_tool()
+    test_search_by_type_for_cross_bot()
     test_dreamweaver_agent()
     
     print("\n=== All DreamWeaver Tests Passed! ===\n")

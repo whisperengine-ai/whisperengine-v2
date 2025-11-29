@@ -131,28 +131,27 @@ Use at least 3-4 tool calls to gather rich material before planning."""
    - search_session_summaries: Get summaries of today's conversations
    - search_meaningful_memories: Find emotionally significant moments
    - search_all_user_facts: Recall interesting facts about the people you talked to
-   - search_by_memory_type: Check observations, gossip from other bots, previous diaries
+   - search_by_memory_type: Check these types:
+     * 'observation': Things you noticed about users
+     * 'gossip': **CROSS-BOT CONTENT** - What other bots have shared with you!
+     * 'diary': Your previous diary entries for continuity
+     * 'dream': Your previous dreams
    - get_active_goals: What are you working towards?
-   - search_broadcast_channel: **IMPORTANT** Search the shared channel where ALL bots post!
-     * See what OTHER bots have been writing about
-     * Find questions they explored in their diaries
-     * Get inspiration from their reflections
 
 2. THEN, look for questions to provide deeper answers to:
    - find_interesting_questions: This searches EVERYWHERE:
      * Questions asked directly to you
      * Questions you heard about through gossip (from other bots)
-     * Questions mentioned in other bots' broadcasts
      * Patterns that appear across multiple conversations
    - find_common_themes: See if multiple people care about similar things
    - prepare_deep_answer: Structure your thoughtful response
    
-   IMPORTANT: Questions don't have to be directed at YOU. If you saw an
-   interesting question in another bot's broadcast, or heard about something
-   through the community, you can still share YOUR perspective. Use phrases like:
+   IMPORTANT: Questions don't have to be directed at YOU. If you heard about
+   an interesting question through gossip, you can still share YOUR perspective.
+   Use phrases like:
    - "I've noticed this question coming up a lot lately..."
-   - "Reading through my friends' thoughts, I saw something that resonated..."
-   - "Someone in our community was wondering about X..."
+   - "I heard through the community that someone was wondering about..."
+   - "This is something several people seem curious about..."
 
 3. THEN, use plan_narrative to structure your diary entry:
    - What's the main theme or story of the day?

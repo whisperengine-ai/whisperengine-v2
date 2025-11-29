@@ -178,10 +178,13 @@ class SearchByTypeTool(BaseTool):
     name: str = "search_by_memory_type"
     description: str = """Search for specific types of memories:
 - 'observation': Your observations about users and patterns
-- 'gossip': Information shared by other bots
-- 'diary': Previous diary entries for continuity
-- 'dream': Previous dreams for symbolism continuity
-- 'epiphany': Realizations you've had about users"""
+- 'gossip': Information shared by OTHER BOTS (cross-bot insights!)
+- 'diary': Previous diary entries (yours and from gossip)
+- 'dream': Previous dreams (yours and from gossip)
+- 'epiphany': Realizations you've had about users
+
+CROSS-BOT CONTENT: Use type='gossip' to see what other bots have shared.
+This includes their observations, diary summaries, and notable conversations."""
     args_schema: Type[BaseModel] = SearchByTypeInput
     
     character_name: str = Field(exclude=True)
@@ -268,225 +271,6 @@ creative aspirations, or things you want to explore."""
         except Exception as e:
             logger.error(f"Error getting goals: {e}")
             return f"Error: {e}"
-
-
-# =============================================================================
-# BROADCAST CHANNEL TOOL - Search the shared diary/dream broadcast channel
-# =============================================================================
-
-class SearchBroadcastChannelInput(BaseModel):
-    query: str = Field(default="", description="Optional keyword to filter messages (empty = all recent)")
-    limit: int = Field(default=20, description="Maximum messages to return")
-    bot_name_filter: Optional[str] = Field(default=None, description="Filter to a specific bot's posts (e.g., 'elena', 'aria')")
-
-
-class SearchBroadcastChannelTool(BaseTool):
-    """Search the broadcast channel where bots post diaries and dreams."""
-    name: str = "search_broadcast_channel"
-    description: str = """Search for cross-bot content: diaries, dreams, and shared observations.
-
-WHERE THE DATA COMES FROM:
-- In real-time (bot running): Searches the actual Discord broadcast channel
-- In batch mode (worker): Searches memory for gossip and saved broadcasts
-
-CROSS-BOT CONTENT (via gossip system):
-Other bots share interesting observations with you through the gossip system.
-This includes summaries of their diaries, dreams, and notable conversations.
-
-Use cases:
-- "What has Aria been thinking about lately?" → bot_name_filter="aria"
-- "Have any bots written about loneliness?" → query="loneliness"  
-- "Find questions mentioned in recent broadcasts" → query="question"
-
-The gossip system ensures you have access to cross-bot insights even when
-running in batch mode without direct Discord access.
-"""
-    args_schema: Type[BaseModel] = SearchBroadcastChannelInput
-    
-    character_name: str = Field(exclude=True)
-    discord_bot: Optional[Any] = Field(default=None, exclude=True)  # Injected at runtime
-
-    def _run(self, query: str = "", limit: int = 20, bot_name_filter: Optional[str] = None) -> str:
-        raise NotImplementedError("Use _arun instead")
-
-    async def _arun(self, query: str = "", limit: int = 20, bot_name_filter: Optional[str] = None) -> str:
-        try:
-            # Check if we have a broadcast channel configured
-            if not settings.BOT_BROADCAST_CHANNEL_ID:
-                return "No broadcast channel configured. Cannot search cross-bot content."
-            
-            # Try to get the Discord bot instance
-            if not self.discord_bot:
-                # Try to import from the global bot instance
-                try:
-                    from src_v2.discord.bot import bot
-                    if bot:
-                        self.discord_bot = bot
-                except Exception:
-                    pass
-            
-            if not self.discord_bot:
-                # Fallback: search memory for broadcast-type content instead
-                return await self._fallback_memory_search(query, limit, bot_name_filter)
-            
-            # Get the broadcast channel
-            try:
-                channel = self.discord_bot.get_channel(int(settings.BOT_BROADCAST_CHANNEL_ID))
-                if not channel:
-                    channel = await self.discord_bot.fetch_channel(int(settings.BOT_BROADCAST_CHANNEL_ID))
-            except Exception as e:
-                logger.warning(f"Could not access broadcast channel: {e}")
-                return await self._fallback_memory_search(query, limit, bot_name_filter)
-            
-            # Search the channel
-            messages = []
-            scan_limit = 100  # Scan last 100 messages
-            
-            async for msg in channel.history(limit=scan_limit):
-                if not msg.content:
-                    continue
-                
-                # Filter by bot name if specified
-                if bot_name_filter:
-                    author_name = msg.author.display_name.lower()
-                    if bot_name_filter.lower() not in author_name:
-                        continue
-                
-                # Filter by query if specified
-                if query and query.lower() not in msg.content.lower():
-                    continue
-                
-                # Format the message
-                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
-                author = msg.author.display_name
-                content = msg.content[:500]  # Truncate long posts
-                
-                # Try to identify the type (diary, dream, etc.)
-                post_type = "post"
-                if "📔" in msg.content or "diary" in msg.content.lower()[:50]:
-                    post_type = "diary"
-                elif "🌙" in msg.content or "dream" in msg.content.lower()[:50]:
-                    post_type = "dream"
-                elif "💡" in msg.content:
-                    post_type = "epiphany"
-                
-                messages.append({
-                    "author": author,
-                    "type": post_type,
-                    "timestamp": timestamp,
-                    "content": content
-                })
-                
-                if len(messages) >= limit:
-                    break
-            
-            if not messages:
-                filter_desc = f" from {bot_name_filter}" if bot_name_filter else ""
-                query_desc = f" matching '{query}'" if query else ""
-                return f"No broadcast messages found{filter_desc}{query_desc}."
-            
-            # Format results
-            results = []
-            for m in messages:
-                results.append(f"## [{m['type'].upper()}] {m['author']} ({m['timestamp']})\n{m['content']}\n")
-            
-            return f"Found {len(messages)} broadcasts:\n\n" + "\n---\n".join(results)
-            
-        except Exception as e:
-            logger.error(f"Error searching broadcast channel: {e}")
-            return f"Error: {e}"
-    
-    async def _fallback_memory_search(self, query: str, limit: int, bot_name_filter: Optional[str]) -> str:
-        """Fallback to memory search if Discord bot is not available.
-        
-        In batch/worker mode, we don't have a Discord bot connection.
-        We search local memory which includes:
-        - Our own saved diaries and dreams
-        - Gossip shared from other bots
-        - Observations and summaries
-        
-        Note: Direct Discord API access is not used in worker mode because
-        each bot has its own token with different server access.
-        """
-        try:
-            collection = f"whisperengine_memory_{self.character_name}"
-            
-            # Search for diary/dream type content (our own)
-            memories = await memory_manager.search_by_type(
-                memory_type="diary",
-                collection_name=collection,
-                limit=limit
-            )
-            
-            dream_memories = await memory_manager.search_by_type(
-                memory_type="dream", 
-                collection_name=collection,
-                limit=limit
-            )
-            
-            # Gossip is KEY - this is how we get cross-bot content!
-            # Other bots share their observations with us via the gossip system
-            gossip_memories = await memory_manager.search_by_type(
-                memory_type="gossip",
-                collection_name=collection,
-                limit=limit
-            )
-            
-            # Also check observations (things we noticed)
-            observation_memories = await memory_manager.search_by_type(
-                memory_type="observation",
-                collection_name=collection,
-                limit=limit
-            )
-            
-            all_memories = (memories or []) + (dream_memories or []) + (gossip_memories or []) + (observation_memories or [])
-            
-            # Helper to get source_bot from memory (could be in metadata or top-level)
-            def get_source_bot(m: Dict[str, Any]) -> str:
-                # Check metadata first
-                metadata = m.get("metadata", {})
-                if isinstance(metadata, dict):
-                    source = metadata.get("source_bot", "")
-                    if source:
-                        return source
-                # Check top-level
-                return m.get("source_bot", "")
-            
-            # Filter by query if provided
-            if query:
-                all_memories = [m for m in all_memories if query.lower() in m.get("content", "").lower()]
-            
-            # Filter by bot name if specified (check source_bot in gossip)
-            if bot_name_filter:
-                filtered = []
-                for m in all_memories:
-                    source = get_source_bot(m).lower()
-                    content = m.get("content", "").lower()
-                    # Match if source_bot matches OR the bot name appears in content
-                    if bot_name_filter.lower() in source or bot_name_filter.lower() in content:
-                        filtered.append(m)
-                all_memories = filtered
-            
-            if not all_memories:
-                hint = "(Tip: Cross-bot content comes from gossip - make sure bots are sharing!)"
-                return f"No broadcast content found in memory. {hint}"
-            
-            results = []
-            for m in all_memories[:limit]:
-                content = m.get("content", "")[:400]
-                mem_type = m.get("type", m.get("memory_type", "post"))
-                source = get_source_bot(m)
-                if not source or source == self.character_name:
-                    source = "self"
-                results.append(f"- [{mem_type}] (from {source}) {content}")
-            
-            cross_bot_count = sum(1 for m in all_memories[:limit] 
-                                  if get_source_bot(m) and get_source_bot(m) != self.character_name)
-            
-            return f"Found {len(results)} memories ({cross_bot_count} from other bots):\n\n" + "\n\n".join(results)
-            
-        except Exception as e:
-            return f"Memory search failed: {e}"
 
 
 # =============================================================================
@@ -985,11 +769,8 @@ def get_dreamweaver_tools(character_name: str) -> List[BaseTool]:
         SearchMeaningfulMemoriesTool(character_name=character_name),
         SearchSessionSummariesTool(character_name=character_name),
         SearchAllUserFactsTool(character_name=character_name),
-        SearchByTypeTool(character_name=character_name),
+        SearchByTypeTool(character_name=character_name),  # Also handles cross-bot via gossip type
         GetActiveGoalsTool(character_name=character_name),
-        
-        # Broadcast channel tool (cross-bot insights)
-        SearchBroadcastChannelTool(character_name=character_name),
         
         # Question reflection tools (for deep answers)
         FindInterestingQuestionsTool(character_name=character_name),
