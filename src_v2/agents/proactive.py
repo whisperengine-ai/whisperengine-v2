@@ -49,24 +49,35 @@ class ProactiveAgent:
                 return None
 
             # 2. Gather Context
-            # We want recent memories to know what we last talked about
-            # If channel_id provided, get channel-specific history (more relevant for public channels)
-            recent_history: List[BaseMessage]
+            # Always get user-specific history (DM context), not channel-shared history
+            # This ensures each user gets personalized context even if they share a public channel
+            recent_history: List[BaseMessage] = await memory_manager.get_recent_history(
+                user_id, character_name, limit=10
+            )
+            
+            # Also get channel-specific context if available (for public channel awareness)
+            channel_history: List[BaseMessage] = []
             if channel_id:
-                recent_history = await memory_manager.get_recent_history(
+                channel_history = await memory_manager.get_recent_history(
                     user_id, character_name, channel_id=channel_id, limit=5
                 )
-            else:
-                recent_history = await memory_manager.get_recent_history(user_id, character_name, limit=5)
             
             # Format recent memories for the prompt
             recent_memories_str = ""
             if recent_history:
+                recent_memories_str = f"=== {user_name}'s conversation history with you ===\n"
                 for msg in recent_history:
-                    role = "User" if isinstance(msg, HumanMessage) else character.name
+                    role = user_name if isinstance(msg, HumanMessage) else character.name
                     recent_memories_str += f"{role}: {msg.content}\n"
             else:
-                recent_memories_str = "(No recent history available)"
+                recent_memories_str = "(No conversation history with this user)"
+            
+            # Add channel context if available and different from user history
+            if channel_history and channel_id:
+                recent_memories_str += "\n=== Recent activity in the shared channel ===\n"
+                for msg in channel_history[-3:]:  # Just last 3 from channel
+                    role = "Someone" if isinstance(msg, HumanMessage) else character.name
+                    recent_memories_str += f"{role}: {msg.content}\n"
 
             # We want knowledge facts to ask about specific things (e.g., "How is your cat?")
             knowledge_facts: str = await knowledge_manager.get_user_knowledge(user_id)
@@ -169,6 +180,13 @@ Output the message now:""")
 
             # 4. Generate
             chain = prompt | self.llm
+            
+            # Debug log the context for each user
+            logger.debug(f"Proactive context for user {user_id} ({user_name}):")
+            logger.debug(f"  Recent history length: {len(recent_history) if recent_history else 0}")
+            logger.debug(f"  Recent memories: {recent_memories_str[:200]}..." if len(recent_memories_str) > 200 else f"  Recent memories: {recent_memories_str}")
+            logger.debug(f"  Knowledge facts: {knowledge_facts[:200]}..." if knowledge_facts and len(knowledge_facts) > 200 else f"  Knowledge facts: {knowledge_facts}")
+            
             response = await chain.ainvoke({
                 "user_name": user_name,
                 "current_datetime": current_datetime,

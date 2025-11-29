@@ -38,6 +38,11 @@ class ProactiveScheduler:
     async def _loop(self) -> None:
         """Main scheduler loop that runs periodically."""
         await self.bot.wait_until_ready()
+        
+        # Wait for the interval BEFORE the first check to prevent immediate triggers on restart
+        logger.info(f"ProactiveScheduler waiting {self.check_interval_minutes} minutes before first check...")
+        await asyncio.sleep(self.check_interval_minutes * 60)
+        
         while self.is_running:
             try:
                 await self.check_all_users()
