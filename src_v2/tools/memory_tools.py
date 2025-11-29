@@ -87,17 +87,24 @@ This gives users a "peek behind the curtain" into my inner life."""
             else:
                 # Fall back to type-based search
                 for mem_type in types_to_search:
-                    memories = await memory_manager.search_by_type(
-                        memory_type=mem_type,
-                        collection_name=collection,
-                        limit=limit if thought_type != "any" else 2  # Fewer per type if searching all
-                    )
+                    if query:
+                        # Use semantic search if query provided
+                        memories = await memory_manager.search_by_type_semantic(
+                            memory_type=mem_type,
+                            query=query,
+                            collection_name=collection,
+                            limit=limit if thought_type != "any" else 2
+                        )
+                    else:
+                        # Use scroll if no query (get most recent)
+                        memories = await memory_manager.search_by_type(
+                            memory_type=mem_type,
+                            collection_name=collection,
+                            limit=limit if thought_type != "any" else 2
+                        )
                     
                     for m in memories or []:
                         content = m.get("content", "")
-                        # Filter by query if provided
-                        if query and query.lower() not in content.lower():
-                            continue
                         
                         all_results.append({
                             "type": mem_type,

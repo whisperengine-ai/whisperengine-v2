@@ -507,14 +507,17 @@ CHARACTER CONTEXT:
 
 AVAILABLE TOOL CATEGORIES:
 1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic
-2. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
-3. Introspection: analyze_conversation_patterns, detect_recurring_themes
-4. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
-5. Discord Search: search_channel_messages (keyword search), search_user_messages (specific person), get_message_context (context around a message), get_recent_messages (latest messages)
-6. Utility: set_reminder (schedule a reminder for the user)
+2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)
+3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
+4. Introspection: analyze_conversation_patterns, detect_recurring_themes
+5. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
+6. Discord Search: search_channel_messages (keyword search), search_user_messages (specific person), get_message_context (context around a message), get_recent_messages (latest messages)
+7. Utility: set_reminder (schedule a reminder for the user)
 {creative_category}
 TOOL USAGE RULES:
 {image_rules}- set_reminder: Use when the user asks to be reminded of something at a specific time. Call set_reminder with the content and time_string.
+- search_my_thoughts: Use when asked about MY dreams, MY diary, MY journal, MY observations, or what I've been thinking about. This searches MY internal experiences, not the user's memories.
+- search_specific_memories: Use for the USER's past conversations, quotes, or details they mentioned. NOT for my internal experiences.
 - search_channel_messages: Use when asked "what did I just say?", "what happened earlier?", or to find recent messages by keyword.
 - search_user_messages: Use when asked "what did [name] say?" or to find messages from a specific person.
 - get_message_context: Use when a reply references an older message and you need surrounding context.

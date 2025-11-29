@@ -833,7 +833,75 @@ class MemoryManager:
             return memories
             
         except Exception as e:
-            logger.error(f"Failed to search by type '{memory_type}': {e}")
+            logger.error(f"Failed to search memories by type: {e}")
+            return []
+
+    async def search_by_type_semantic(
+        self,
+        memory_type: str,
+        query: str,
+        collection_name: Optional[str] = None,
+        limit: int = 5,
+        user_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for memories by type using semantic search.
+        
+        Args:
+            memory_type: The type of memory to search for
+            query: The semantic query string
+            collection_name: Override collection name
+            limit: Maximum number of results
+            user_id: Optional user ID to filter by
+            
+        Returns:
+            List of memory payloads matching the type and query
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        collection = collection_name or self.collection_name
+        
+        try:
+            embedding = await self.embedding_service.embed_query_async(query)
+            
+            must_conditions = [
+                FieldCondition(key="type", match=MatchValue(value=memory_type))
+            ]
+            
+            if user_id:
+                must_conditions.append(
+                    FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                )
+            
+            results = await db_manager.qdrant_client.query_points(
+                collection_name=collection,
+                query=embedding,
+                query_filter=Filter(must=must_conditions),
+                limit=limit,
+                with_payload=True
+            )
+            
+            memories = []
+            for hit in results.points:
+                payload = hit.payload
+                if not payload:
+                    continue
+                    
+                memories.append({
+                    "content": payload.get("content", ""),
+                    "metadata": payload,
+                    "user_id": payload.get("user_id"),
+                    "created_at": payload.get("timestamp", payload.get("created_at", "")),
+                    "type": memory_type,
+                    "score": hit.score
+                })
+                
+            logger.debug(f"Found {len(memories)} semantic matches for type '{memory_type}' query '{query}'")
+            return memories
+            
+        except Exception as e:
+            logger.error(f"Failed to search memories by type semantic: {e}")
             return []
 
     async def search_all_summaries(
