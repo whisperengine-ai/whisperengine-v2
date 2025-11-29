@@ -1132,6 +1132,48 @@ class AgentEngine:
             detected_intents=detected_intents
         )
         
+        # Voice Synthesis: Use Main LLM to rewrite the response
+        # This ensures character consistency even when using a different reasoning model
+        # We skip this if the response indicates failure or if it's very short
+        if response_text and len(response_text) > 10 and not response_text.startswith("I'm not sure"):
+            try:
+                if callback:
+                    await callback("🎙️ Synthesizing final response...")
+                
+                logger.info("Synthesizing reflective response with Main LLM for character voice")
+                
+                synthesis_messages = [
+                    SystemMessage(content=system_content),
+                ]
+                
+                # Add limited chat history for context style
+                if chat_history:
+                    synthesis_messages.extend(chat_history[-4:])
+                
+                # Add the user message
+                synthesis_messages.append(HumanMessage(content=user_message))
+                
+                # Add the reasoning context as a system instruction
+                synthesis_messages.append(SystemMessage(content=f"""[INTERNAL REASONING RESULTS]
+I have processed this request and gathered the following information:
+{response_text}
+
+INSTRUCTIONS:
+Using the information above, formulate a final response to the user in my authentic voice and style.
+- Incorporate the facts naturally
+- Maintain my personality and quirks
+- Do not mention "internal reasoning" or that this information was provided
+- If the reasoning output is already a good response, just polish it"""))
+
+                # Use the Main LLM (self.llm) which holds the character persona
+                synthesis_response = await self.llm.ainvoke(synthesis_messages)
+                
+                if synthesis_response.content:
+                    response_text = str(synthesis_response.content)
+            
+            except Exception as e:
+                logger.error(f"Voice synthesis failed, using raw reflective response: {e}")
+        
         if settings.ENABLE_PROMPT_LOGGING:
             await self._log_prompt(
                 character_name=character.name,
