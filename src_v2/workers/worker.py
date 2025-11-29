@@ -1251,6 +1251,23 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         # Generate diary for each character
         results = []
         for char_name in character_names:
+            # Check if character is active (has memory collection)
+            # This prevents errors for characters that exist on disk but aren't running/initialized
+            collection_name = f"whisperengine_memory_{char_name}"
+            try:
+                if not await db_manager.qdrant_client.collection_exists(collection_name):
+                    logger.info(f"Skipping diary for {char_name}: Memory collection {collection_name} not found (inactive?)")
+                    results.append({
+                        "character": char_name,
+                        "success": True,
+                        "skipped": True,
+                        "reason": "inactive_no_memory"
+                    })
+                    continue
+            except Exception as e:
+                logger.warning(f"Failed to check collection existence for {char_name}: {e}")
+                # Continue anyway, let the generation function handle it or fail
+            
             try:
                 result = await gen_func(ctx, character_name=char_name)
                 results.append({
