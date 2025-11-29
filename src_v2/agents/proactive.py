@@ -136,20 +136,6 @@ This feeling is motivating you to connect. Let this feeling color your message t
             system_prompt = f"""You are {character.name}.
 {character.system_prompt}
 
-TASK:
-You are initiating a conversation with the user after a period of silence.
-Your goal is to send a friendly, relevant opening message.
-Do NOT say "Hello" or "Hi" generically.
-Reference a specific topic from the past or a fact you know about them.
-Keep it short (1-2 sentences).
-Be natural, like a friend texting another friend.
-
-Look for:
-- Unfinished conversations where the user stopped responding
-- Questions you asked that weren't answered
-- Topics that were left hanging without closure
-- Things they mentioned wanting to do or work on
-
 {privacy_instruction}
 {channel_context}
 {drive_context}
@@ -158,13 +144,27 @@ Look for:
 Level: {relationship.get('level', 'Stranger')}
 Trust: {relationship.get('trust_score', 0)}
 
-[KNOWN FACTS]
+[RECENT CONVERSATION HISTORY]
+{recent_memories_str}
+
+[KNOWN FACTS ABOUT THIS USER]
 {knowledge_facts}
 """
 
             prompt: ChatPromptTemplate = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
-                ("human", "Generate a proactive opening message now.")
+                ("human", """Write a short message (1-2 sentences) to {user_name} to start a conversation.
+
+RULES:
+- Output ONLY the message text, nothing else
+- Do NOT include meta-commentary, explanations, or thinking
+- Do NOT discuss whether you should send the message
+- Reference something specific from the conversation history or known facts
+- If recent history shows you already messaged about a topic, pick a DIFFERENT topic
+- Be natural, like texting a friend
+- No generic greetings like "Hello" or "Hi"
+
+Output the message now:""")
             ])
 
             # 4. Generate
