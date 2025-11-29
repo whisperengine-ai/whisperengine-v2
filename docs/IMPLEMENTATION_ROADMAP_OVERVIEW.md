@@ -63,6 +63,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|------|--------|
 | 🔴 High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
 | 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
+| 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
@@ -72,6 +73,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
 | Low | E6 | Character-to-Character | 1 week | E8 | ✅ Complete |
+| Low | E12 | Agentic Dreams (DreamWeaver) | 3-5 days | Insight Agent | 📋 Proposed |
 | — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
 
 **Dependency Chain:**
@@ -85,9 +87,12 @@ E10 (Channel Observer) ──► E9 (Provenance) ─┘
                       └──► Dynamic Diary Tone (built-in)
 
 S4 (Timezone) ──► E7 (User Timezone)
+
+Insight Agent ──┬──► E12 (Agentic Dreams)
+               └──► E13 (Stigmergic Shared Artifacts)
 ```
 
-> **Current Focus:** E5 (Scheduled Reminders) is the last remaining Phase E item.
+> **Current Focus:** E13 (Stigmergic Shared Artifacts) enables cross-bot intelligence sharing.
 
 ---
 

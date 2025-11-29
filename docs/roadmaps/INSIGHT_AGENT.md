@@ -449,28 +449,32 @@ function schedule_insight_analysis(user_id, character_name):
 ## Implementation Phases
 
 ### Phase 1: Core Agent (3-4 days)
-- [ ] Create `InsightAgent` class with ReAct loop
-- [ ] Implement data gathering tools (analyze patterns, detect themes, etc.)
-- [ ] Basic scheduling via `asyncio.create_task`
-- [ ] Unit tests for agent logic
+- [x] Create `InsightAgent` class with ReAct loop
+- [x] Implement data gathering tools (analyze patterns, detect themes, etc.)
+- [x] Basic scheduling via `asyncio.create_task`
+- [x] Unit tests for agent logic
 
 ### Phase 2: Action Tools (2-3 days)
-- [ ] Create database migrations for new tables
-- [ ] Implement `generate_epiphany` tool
-- [ ] Implement `store_reasoning_trace` tool
-- [ ] Implement `learn_response_pattern` tool
-- [ ] Integration tests
+- [x] Create database migrations for new tables
+- [x] Implement `generate_epiphany` tool
+- [x] Implement `store_reasoning_trace` tool
+- [x] Implement `learn_response_pattern` tool
+- [x] Integration tests
 
 ### Phase 3: Integration (1-2 days)
-- [ ] Wire into `AgentEngine` for trace/pattern injection
-- [ ] Wire into character prompts for epiphany references
-- [ ] Add trigger logic in `bot.py`
-- [ ] End-to-end testing
+- [x] Wire into `AgentEngine` for trace/pattern injection
+- [x] Wire into character prompts for epiphany references
+- [x] Add trigger logic in `bot.py`
+- [x] End-to-end testing
 
 ### Phase 4: Worker Queue (After C3)
-- [ ] Migrate to arq/Redis scheduling
-- [ ] Add monitoring/alerting
-- [ ] Add admin API endpoints
+- [x] Migrate to arq/Redis scheduling
+- [x] Add monitoring/alerting
+
+### Phase 5: Refinement (Post-Launch)
+- [x] Explicitly expose `epiphany` type in `SearchMyThoughtsTool` (allow bot to reflect on realizations)
+- [x] Add `search_diaries` semantic search method to `DiaryManager`
+- [x] Include epiphanies in diary generation material
 
 ---
 

@@ -10,6 +10,7 @@ from src_v2.core.character import character_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
+from src_v2.universe.manager import universe_manager
 from src_v2.config.settings import settings
 from src_v2.evolution.drives import Drive
 

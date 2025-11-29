@@ -44,6 +44,7 @@ class DiaryMaterial(BaseModel):
     observations: List[Dict[str, Any]] = Field(default_factory=list)
     gossip: List[Dict[str, Any]] = Field(default_factory=list)
     new_facts: List[str] = Field(default_factory=list)
+    epiphanies: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
     def is_sufficient(self) -> bool:
@@ -81,6 +82,11 @@ class DiaryMaterial(BaseModel):
             sections.append("\n## Things I Learned")
             for fact in self.new_facts[:5]:
                 sections.append(f"- {fact}")
+
+        if self.epiphanies:
+            sections.append("\n## Realizations & Epiphanies")
+            for epiphany in self.epiphanies[:3]:
+                sections.append(f"- {epiphany}")
         
         if self.goals:
             sections.append("\n## My Goals (for reflection)")
@@ -174,6 +180,7 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
                 self._get_observations(),
                 self._get_gossip(hours),
                 self._get_new_facts(hours),
+                self._get_epiphanies(hours),
                 self._get_goals(),
                 return_exceptions=True
             )
@@ -188,12 +195,15 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
             if not isinstance(results[3], Exception):
                 material.new_facts = results[3]
             if not isinstance(results[4], Exception):
-                material.goals = results[4]
+                material.epiphanies = results[4]
+            if not isinstance(results[5], Exception):
+                material.goals = results[5]
             
             logger.info(
                 f"Gathered diary material for {self.bot_name}: "
                 f"{len(material.summaries)} summaries, {len(material.observations)} observations, "
-                f"{len(material.gossip)} gossip, {len(material.new_facts)} facts"
+                f"{len(material.gossip)} gossip, {len(material.new_facts)} facts, "
+                f"{len(material.epiphanies)} epiphanies"
             )
             
         except Exception as e:
@@ -282,6 +292,43 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
                 
         except Exception as e:
             logger.debug(f"Failed to get new facts for diary: {e}")
+            return []
+
+    async def _get_epiphanies(self, hours: int) -> List[str]:
+        """Get recent epiphanies/realizations from Qdrant."""
+        try:
+            if not db_manager.qdrant_client:
+                return []
+            
+            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
+            
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="epiphany"))
+                    ]
+                ),
+                limit=5,
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            epiphanies = []
+            for point in results[0]:
+                if point.payload:
+                    ts = point.payload.get("timestamp", "")
+                    if ts >= threshold.isoformat():
+                        content = point.payload.get("content", "")
+                        # Clean up the content if it has the [EPIPHANY] prefix
+                        if "[EPIPHANY]" in content:
+                            content = content.replace("[EPIPHANY]", "").strip()
+                        epiphanies.append(content)
+            
+            return epiphanies
+            
+        except Exception as e:
+            logger.debug(f"Failed to get epiphanies for diary: {e}")
             return []
     
     async def _get_goals(self) -> List[str]:
@@ -518,6 +565,59 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
         """
         entries = await self.get_recent_diary(days=1)
         return entries[0] if entries else None
+
+    async def search_diaries(
+        self,
+        query: str,
+        limit: int = 3
+    ) -> List[Dict[str, Any]]:
+        """
+        Semantic search across past diary entries.
+        
+        Allows the character to recall past days' narratives, moods, and themes
+        based on what the user is currently asking about.
+        
+        Args:
+            query: Search query (e.g., "that day I felt anxious about...")
+            limit: Maximum number of diary entries to return
+            
+        Returns:
+            List of diary entry payloads with relevance scores
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        try:
+            # Generate embedding for the query
+            embedding = await self.embedding_service.embed_query_async(query)
+            
+            # Search for diary entries with similarity
+            search_result = await db_manager.qdrant_client.query_points(
+                collection_name=self.collection_name,
+                query=embedding,
+                query_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="diary")),
+                        FieldCondition(key="bot_name", match=MatchValue(value=self.bot_name))
+                    ]
+                ),
+                limit=limit,
+                with_payload=True
+            )
+            
+            results = []
+            for hit in search_result.points:
+                if hit.payload:
+                    entry = dict(hit.payload)
+                    entry["relevance_score"] = hit.score
+                    results.append(entry)
+            
+            logger.debug(f"Found {len(results)} diary entries matching query: {query[:50]}...")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to search diaries: {e}")
+            return []
 
     async def has_diary_for_today(self) -> bool:
         """

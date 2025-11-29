@@ -16,9 +16,9 @@ from src_v2.config.settings import settings
 # =============================================================================
 
 class SearchMyThoughtsInput(BaseModel):
-    thought_type: Literal["diary", "dream", "observation", "gossip", "any"] = Field(
+    thought_type: Literal["diary", "dream", "observation", "gossip", "epiphany", "any"] = Field(
         default="any",
-        description="Type of thought to search: 'diary' (my journal entries), 'dream' (my dreams), 'observation' (things I've noticed), 'gossip' (what I've heard from others), or 'any' (all types)"
+        description="Type of thought to search: 'diary' (my journal entries), 'dream' (my dreams), 'observation' (things I've noticed), 'gossip' (what I've heard from others), 'epiphany' (my realizations about people), or 'any' (all types)"
     )
     query: str = Field(
         default="",
@@ -39,12 +39,14 @@ USE THIS WHEN the user asks about:
 - "Have you heard any gossip?"
 - "What's on your mind?"
 - "What did you write in your journal?"
+- "What have you realized about me?"
 
 Types available:
 - 'diary': My personal journal entries (daily reflections)
 - 'dream': Dreams I've had (surreal, symbolic experiences)
 - 'observation': Things I've noticed about people and patterns
 - 'gossip': Interesting things I've heard from my bot friends
+- 'epiphany': Realizations and insights I've had about people
 - 'any': Search across all types
 
 This gives users a "peek behind the curtain" into my inner life."""
@@ -64,28 +66,44 @@ This gives users a "peek behind the curtain" into my inner life."""
             
             # Determine which types to search
             if thought_type == "any":
-                types_to_search = ["diary", "dream", "observation", "gossip"]
+                types_to_search = ["diary", "dream", "observation", "gossip", "epiphany"]
             else:
                 types_to_search = [thought_type]
             
-            for mem_type in types_to_search:
-                memories = await memory_manager.search_by_type(
-                    memory_type=mem_type,
-                    collection_name=collection,
-                    limit=limit if thought_type != "any" else 2  # Fewer per type if searching all
-                )
+            # Use semantic search for diary if query provided
+            if thought_type == "diary" and query:
+                from src_v2.memory.diary import get_diary_manager
+                diary_manager = get_diary_manager(self.character_name)
+                diary_entries = await diary_manager.search_diaries(query, limit=limit)
                 
-                for m in memories or []:
-                    content = m.get("content", "")
-                    # Filter by query if provided
-                    if query and query.lower() not in content.lower():
-                        continue
-                    
+                for entry in diary_entries:
                     all_results.append({
-                        "type": mem_type,
-                        "content": content[:400],
-                        "timestamp": m.get("created_at", m.get("timestamp", "recently"))
+                        "type": "diary",
+                        "content": entry.get("content", "")[:400],
+                        "timestamp": entry.get("date", entry.get("timestamp", "recently")),
+                        "mood": entry.get("mood", ""),
+                        "themes": entry.get("themes", [])
                     })
+            else:
+                # Fall back to type-based search
+                for mem_type in types_to_search:
+                    memories = await memory_manager.search_by_type(
+                        memory_type=mem_type,
+                        collection_name=collection,
+                        limit=limit if thought_type != "any" else 2  # Fewer per type if searching all
+                    )
+                    
+                    for m in memories or []:
+                        content = m.get("content", "")
+                        # Filter by query if provided
+                        if query and query.lower() not in content.lower():
+                            continue
+                        
+                        all_results.append({
+                            "type": mem_type,
+                            "content": content[:400],
+                            "timestamp": m.get("created_at", m.get("timestamp", "recently"))
+                        })
             
             if not all_results:
                 if thought_type == "any":
@@ -98,13 +116,20 @@ This gives users a "peek behind the curtain" into my inner life."""
                 "diary": "📔",
                 "dream": "🌙",
                 "observation": "👁️",
-                "gossip": "💬"
+                "gossip": "💬",
+                "epiphany": "💡"
             }
             
             results = []
             for r in all_results[:limit]:
                 emoji = type_emoji.get(r["type"], "💭")
-                results.append(f"{emoji} **{r['type'].title()}**:\n{r['content']}")
+                # Add mood/themes for diary entries if available
+                extra = ""
+                if r.get("mood"):
+                    extra = f" (mood: {r['mood']})"
+                if r.get("themes"):
+                    extra += f" themes: {', '.join(r['themes'][:3])}"
+                results.append(f"{emoji} **{r['type'].title()}**{extra}:\n{r['content']}")
             
             intro = f"Here's what I found in my {thought_type if thought_type != 'any' else 'thoughts'}:\n\n"
             return intro + "\n\n---\n\n".join(results)
