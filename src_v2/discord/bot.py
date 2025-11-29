@@ -1242,6 +1242,9 @@ Recent channel context:
                 last_update_time = 0
                 update_interval = 0.7  # Seconds between edits to avoid rate limits
                 
+                # Use reply for guild channels (not DMs) to maintain conversation threading
+                use_reply = not is_dm
+                
                 # Start typing indicator only when generation begins
                 # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
                 reading_delay = min(len(user_message) * settings.TYPING_SPEED_CHAR_PER_SEC, settings.TYPING_MAX_DELAY_SECONDS)
@@ -1273,7 +1276,11 @@ Recent channel context:
                             if len(full_response_text) < 1950 and full_response_text.strip():
                                 try:
                                     if not active_message:
-                                        active_message = await message.channel.send(full_response_text)
+                                        # First message: use reply in guild channels
+                                        if use_reply:
+                                            active_message = await message.reply(full_response_text, mention_author=False)
+                                        else:
+                                            active_message = await message.channel.send(full_response_text)
                                     else:
                                         await active_message.edit(content=full_response_text)
                                 except Exception as e:
@@ -1342,6 +1349,8 @@ Recent channel context:
                     # Handle the first chunk (Edit existing or Send new)
                     sent_messages = []
                     
+                    # use_reply is already defined before streaming
+                    
                     if active_message:
                         # We already have a streaming message
                         # Just edit the text (files can't be attached to edited messages in discord.py)
@@ -1364,16 +1373,33 @@ Recent channel context:
                         # No streaming happened, send all chunks
                         # Attach images to the first message only
                         for i, chunk in enumerate(message_chunks):
-                            if i == 0 and image_files:
-                                try:
-                                    sent_msg = await message.channel.send(content=chunk, files=image_files)
-                                except discord.Forbidden as e:
-                                    logger.error(f"Permission denied when sending images: {e}")
-                                    sent_msg = await message.channel.send(content=chunk)
-                                except Exception as e:
-                                    logger.error(f"Failed to send message with images: {e}")
-                                    sent_msg = await message.channel.send(content=chunk)
+                            if i == 0:
+                                # First chunk: reply in guild, send in DM
+                                if image_files:
+                                    try:
+                                        if use_reply:
+                                            sent_msg = await message.reply(content=chunk, files=image_files, mention_author=False)
+                                        else:
+                                            sent_msg = await message.channel.send(content=chunk, files=image_files)
+                                    except discord.Forbidden as e:
+                                        logger.error(f"Permission denied when sending images: {e}")
+                                        if use_reply:
+                                            sent_msg = await message.reply(content=chunk, mention_author=False)
+                                        else:
+                                            sent_msg = await message.channel.send(content=chunk)
+                                    except Exception as e:
+                                        logger.error(f"Failed to send message with images: {e}")
+                                        if use_reply:
+                                            sent_msg = await message.reply(content=chunk, mention_author=False)
+                                        else:
+                                            sent_msg = await message.channel.send(content=chunk)
+                                else:
+                                    if use_reply:
+                                        sent_msg = await message.reply(content=chunk, mention_author=False)
+                                    else:
+                                        sent_msg = await message.channel.send(chunk)
                             else:
+                                # Subsequent chunks: always use channel.send
                                 sent_msg = await message.channel.send(chunk)
                             sent_messages.append(sent_msg)
                     
