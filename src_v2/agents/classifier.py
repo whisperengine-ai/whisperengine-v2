@@ -1,12 +1,15 @@
 from typing import Literal, List, Optional, Dict, Any
+import time
 from loguru import logger
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from pydantic import BaseModel, Field
+from influxdb_client.client.write.point import Point
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.document_context import history_has_document_context
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
 
 # Classification result type including manipulation detection
 ClassificationResult = Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]
@@ -14,6 +17,58 @@ ClassificationResult = Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_
 class ClassificationOutput(BaseModel):
     complexity: ClassificationResult = Field(description="The complexity level of the user request")
     intents: List[str] = Field(default_factory=list, description="List of detected intents (e.g., 'voice', 'image_self', 'search')")
+
+
+def _record_classification_metric(
+    bot_name: str,
+    predicted: str,
+    intents: List[str],
+    message_length: int,
+    history_length: int,
+    classification_time_ms: float,
+    used_trace: bool = False,
+    trace_similarity: float = 0.0,
+    has_documents: bool = False,
+    has_images: bool = False
+) -> None:
+    """
+    Records a classification decision to InfluxDB for observability.
+    
+    This enables tracking of:
+    - Classification distribution (how often each complexity level is used)
+    - Intent detection patterns
+    - Adaptive Depth effectiveness (trace reuse rate)
+    - Latency tracking
+    """
+    if not db_manager.influxdb_write_api:
+        return
+    
+    try:
+        point = Point("complexity_classification") \
+            .tag("bot_name", bot_name or "unknown") \
+            .tag("predicted", predicted) \
+            .tag("has_history", str(history_length > 0).lower()) \
+            .tag("has_documents", str(has_documents).lower()) \
+            .tag("has_images", str(has_images).lower()) \
+            .tag("used_trace", str(used_trace).lower()) \
+            .field("message_length", message_length) \
+            .field("history_length", history_length) \
+            .field("classification_time_ms", classification_time_ms) \
+            .field("trace_similarity", trace_similarity) \
+            .field("intent_count", len(intents))
+        
+        # Add each intent as a separate field for filtering
+        for intent in intents:
+            point = point.field(f"intent_{intent}", 1)
+        
+        db_manager.influxdb_write_api.write(
+            bucket=settings.INFLUXDB_BUCKET,
+            org=settings.INFLUXDB_ORG,
+            record=point
+        )
+    except Exception as e:
+        logger.debug(f"Failed to record classification metric: {e}")
+
 
 class ComplexityClassifier:
     """
@@ -31,6 +86,11 @@ class ComplexityClassifier:
         
         Returns a dictionary with 'complexity' and 'intents'.
         """
+        start_time = time.time()
+        chat_history = chat_history or []
+        history_length = len(chat_history)
+        message_length = len(text)
+        
         # 0. Check for historical reasoning traces (Adaptive Depth)
         if user_id and bot_name:
             try:
@@ -42,11 +102,22 @@ class ComplexityClassifier:
                     
                     if historical_complexity in ["COMPLEX_HIGH", "COMPLEX_MID", "COMPLEX_LOW", "SIMPLE"]:
                         logger.info(f"Adaptive Depth: Found similar trace ({traces[0]['score']:.2f}) with complexity {historical_complexity}. Overriding.")
+                        
+                        # Record metric for trace-based classification
+                        _record_classification_metric(
+                            bot_name=bot_name,
+                            predicted=historical_complexity,
+                            intents=[],
+                            message_length=message_length,
+                            history_length=history_length,
+                            classification_time_ms=(time.time() - start_time) * 1000,
+                            used_trace=True,
+                            trace_similarity=traces[0]['score']
+                        )
+                        
                         return {"complexity": historical_complexity, "intents": []}
             except Exception as e:
                 logger.warning(f"Failed to check reasoning traces: {e}")
-
-        chat_history = chat_history or []
         
         # Limit history to last 4 messages (approx 2 turns) to keep context reasonable and fast
         recent_history = chat_history[-4:] if chat_history else []
@@ -140,6 +211,18 @@ Return a JSON object with "complexity" and "intents" (list of strings)."""
                 HumanMessage(content=f"{context_str}\nUser Input: {text}")
             ])
             
+            # Record metric for LLM classification
+            _record_classification_metric(
+                bot_name=bot_name,
+                predicted=result.complexity,
+                intents=result.intents,
+                message_length=message_length,
+                history_length=history_length,
+                classification_time_ms=(time.time() - start_time) * 1000,
+                used_trace=False,
+                has_documents=history_has_documents
+            )
+            
             return {
                 "complexity": result.complexity,
                 "intents": result.intents
@@ -147,5 +230,18 @@ Return a JSON object with "complexity" and "intents" (list of strings)."""
             
         except Exception as e:
             logger.error(f"Classification failed: {e}")
+            
+            # Record metric for fallback classification
+            _record_classification_metric(
+                bot_name=bot_name,
+                predicted="SIMPLE",
+                intents=[],
+                message_length=message_length,
+                history_length=history_length,
+                classification_time_ms=(time.time() - start_time) * 1000,
+                used_trace=False,
+                has_documents=history_has_documents
+            )
+            
             # Fallback to simple classification if structured output fails
             return {"complexity": "SIMPLE", "intents": []}

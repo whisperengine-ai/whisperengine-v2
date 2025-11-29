@@ -1,8 +1,9 @@
 # Complexity Classifier Observability
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Created:** November 28, 2025
-**Status:** 📋 Proposed
+**Completed:** November 28, 2025
+**Status:** ✅ Complete
 **Priority:** 🔴 High
 **Complexity:** 🟢 Low
 **Estimated Time:** 1 day
@@ -12,12 +13,18 @@
 
 ## Executive Summary
 
-The `ComplexityClassifier` routes messages to Fast Mode (SIMPLE) or Reflective Mode (COMPLEX). This routing decision has major impact on response quality, latency, and cost. **Currently, we don't track classifier accuracy.**
+The `ComplexityClassifier` routes messages to Fast Mode (SIMPLE) or Reflective Mode (COMPLEX). This routing decision has major impact on response quality, latency, and cost.
 
-**The Problem:**
-- No metrics on classification decisions
-- Can't measure false positive rate (SIMPLE→COMPLEX = slow)
-- Can't measure false negative rate (COMPLEX→SIMPLE = shallow)
+**Implementation:** Added InfluxDB metrics to `src_v2/agents/classifier.py` that record every classification decision with:
+- `bot_name`, `predicted` complexity, `intents`
+- `message_length`, `history_length`, `classification_time_ms`
+- `used_trace` (Adaptive Depth), `trace_similarity`
+- `has_documents`, `has_history`
+
+**The Problem (Solved):**
+- ~~No metrics on classification decisions~~
+- ~~Can't measure false positive rate (SIMPLE→COMPLEX = slow)~~
+- ~~Can't measure false negative rate (COMPLEX→SIMPLE = shallow)~~
 - No way to correlate classification with user satisfaction
 - No data to improve classifier prompts
 
