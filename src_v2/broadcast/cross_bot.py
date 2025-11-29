@@ -100,17 +100,30 @@ class CrossBotManager:
             
             # Load all known bots by scanning for keys
             # Pattern: crossbot:bot:*
-            cursor = b'0'
-            while cursor:
+            cursor = 0  # redis-py with decode_responses=True uses int cursor, not bytes
+            while True:
                 cursor, keys = await db_manager.redis_client.scan(cursor, match="crossbot:bot:*", count=100)
                 for key in keys:
                     try:
-                        bot_name = key.decode().split(":")[-1]
+                        # key is already str because decode_responses=True
+                        if isinstance(key, bytes):
+                            key_str = key.decode()
+                        else:
+                            key_str = key
+                            
+                        bot_name = key_str.split(":")[-1]
                         discord_id = await db_manager.redis_client.get(key)
+                        
                         if discord_id:
-                            self._known_bots[bot_name] = int(discord_id.decode())
+                            # discord_id is also str
+                            if isinstance(discord_id, bytes):
+                                discord_id = discord_id.decode()
+                            self._known_bots[bot_name] = int(discord_id)
                     except Exception as e:
                         logger.warning(f"Failed to parse bot key {key}: {e}")
+                
+                if cursor == 0:
+                    break
             
             logger.info(f"Loaded {len(self._known_bots)} known bots for cross-bot detection")
         except Exception as e:
@@ -200,8 +213,16 @@ class CrossBotManager:
         # Must mention us
         if self._bot.user not in message.mentions:
             # Also check for name mentions in content
+            # Use regex to ensure word boundaries to avoid partial matches (e.g. "dreaming" matching "dream")
+            import re
             our_name = self._bot_name.lower() if self._bot_name else ""
-            if our_name and our_name not in message.content.lower():
+            if not our_name:
+                return None
+                
+            # Escape name for regex safety
+            escaped_name = re.escape(our_name)
+            # Look for whole word match, case insensitive
+            if not re.search(rf"\b{escaped_name}\b", message.content.lower()):
                 return None
         
         # Check channel cooldown

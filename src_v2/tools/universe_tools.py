@@ -19,7 +19,8 @@ class CheckPlanetContextTool(BaseTool):
 
     async def _arun(self, reason: Optional[str] = None) -> str:
         if not self.guild_id:
-            logger.warning("CheckPlanetContextTool called without guild_id (Private Void)")
+            # This is expected for DMs or when guild_id wasn't passed
+            # logger.warning("CheckPlanetContextTool called without guild_id (Private Void)")
             return "We are currently in a private void (Direct Message). No planet context available."
         
         try:

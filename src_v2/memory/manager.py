@@ -80,6 +80,7 @@ class MemoryManager:
                 await conn.execute("""
                     INSERT INTO v2_chat_history (user_id, character_name, role, content, user_name, channel_id, message_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (message_id) DO NOTHING
                 """, str(user_id), character_name, role, content, user_name or "User", str(channel_id) if channel_id else None, str(message_id) if message_id else None)
             
             # Also save to vector memory
