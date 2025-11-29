@@ -1086,6 +1086,66 @@ constitution:
 
 ---
 
+### ✅ Phase B3: Autonomous Goal Setting (Complete)
+**Priority:** — | **Time:** 3-4 days | **Complexity:** Medium  
+**Files:** 6 | **LOC:** ~600 | **Status:** ✅ Complete
+
+**Problem:** Bots are reactive. They wait for user input and have no internal "desires" or long-term objectives.
+
+**Solution:**
+- **Goal Hierarchy:** Core (static) > User (requested) > Inferred (psychological) > Strategic (community)
+- **Ambition Engine:** Nightly worker (`GoalStrategist`) analyzes community trends to set strategic goals
+- **Reflection Engine:** Post-session analysis infers user-specific goals ("Provide emotional support")
+- **User Requests:** `CreateUserGoalTool` allows users to set goals ("Help me practice Spanish")
+- **TTL System:** Goals expire automatically (7-30 days) to prevent bloat
+
+**Architecture:**
+- `v2_goals` table with `source`, `priority`, `expires_at`
+- `GoalStrategist` worker runs nightly
+- `ReflectionEngine` runs post-session
+- `CreateUserGoalTool` available to Reflective Agent
+
+**Dependencies:** B1 (Memory), Reflection Engine
+
+**Related Files:**
+- `src_v2/evolution/goals.py`
+- `src_v2/workers/strategist.py`
+- `src_v2/intelligence/reflection.py`
+- `src_v2/tools/memory_tools.py`
+- `migrations_v2/versions/20251129_0200_add_goal_ttl_and_user_goals.py`
+
+---
+
+### 📋 Phase B5: Trace Learning (Memory of Reasoning)
+**Priority:** 🔴 High | **Time:** 3-4 days | **Complexity:** High  
+**Files:** 4 | **LOC:** ~400 | **Status:** 📋 Planned
+
+**Problem:** The bot solves complex problems (e.g., multi-step research) but forgets *how* it solved them. It has to re-derive the strategy every time.
+
+**Solution:**
+- **Trace Ingestion:** `AgentEngine` sends successful reasoning traces to background worker
+- **Trace Learner:** `InsightWorker` analyzes traces to extract reusable patterns
+- **Vector Storage:** Store patterns in Qdrant (`reasoning_trace` payload)
+- **Few-Shot Injection:** `ReflectiveAgent` retrieves similar past solutions and injects them into system prompt
+
+**Architecture:**
+- `AgentEngine` -> `TaskQueue` -> `InsightWorker`
+- `StoreReasoningTraceTool` saves to Qdrant
+- `TraceRetriever` fetches relevant traces
+- `ReflectiveAgent` injects few-shot examples
+
+**Dependencies:** Reflective Agent, Qdrant
+
+**Related Files:**
+- `src_v2/agents/engine.py` (Ingestion)
+- `src_v2/agents/insight_agent.py` (Analysis)
+- `src_v2/tools/insight_tools.py` (Storage)
+- `src_v2/memory/traces.py` (Retrieval)
+
+**Full Specification:** See [roadmaps/TRACE_LEARNING.md](./roadmaps/TRACE_LEARNING.md)
+
+---
+
 ## 🟠 Phase C: High Complexity (1-2 weeks each)
 
 Major features requiring significant architectural changes or new infrastructure.
