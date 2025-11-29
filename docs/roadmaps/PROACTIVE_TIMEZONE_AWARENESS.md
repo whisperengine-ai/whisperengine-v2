@@ -1,8 +1,9 @@
 # Proactive Messaging: Timezone Awareness
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Created:** November 28, 2025
-**Status:** 📋 Proposed
+**Completed:** November 28, 2025
+**Status:** ✅ Complete
 **Priority:** 🟡 Medium
 **Complexity:** 🟢 Low
 **Estimated Time:** 1-2 days
@@ -12,13 +13,18 @@
 
 ## Executive Summary
 
-The proactive messaging system can reach out to users based on drives (concern, curiosity, connection). **It has no awareness of the user's local time.**
+The proactive messaging system can reach out to users based on drives (concern, curiosity, connection). Now respects user's local time.
 
-**The Problem:**
-- User in Tokyo, bot server in UTC
-- Bot's "concern" drive triggers at 4 AM UTC
-- User gets pinged at 1 PM Tokyo time ✓ (lucky)
-- OR: User gets pinged at 4 AM Tokyo time ✗ (creepy/annoying)
+**Implementation:**
+1. **Migration:** Added `timezone`, `timezone_confidence`, `quiet_hours_start`, `quiet_hours_end` columns to `v2_user_relationships`
+2. **Inference:** `src_v2/intelligence/timezone.py` - Analyzes message timestamps to infer user timezone
+3. **Enforcement:** `src_v2/discord/scheduler.py` - Checks quiet hours before proactive messages
+4. **Background:** Timezone inference runs during `run_relationship_update` worker task
+
+**The Problem (Solved):**
+- ~~User in Tokyo, bot server in UTC~~
+- ~~Bot's "concern" drive triggers at 4 AM UTC~~
+- ~~User gets pinged at 4 AM Tokyo time ✗ (creepy/annoying)~~
 
 **The Solution:**
 Store user timezone (inferred or explicit) and respect quiet hours before proactive outreach.

@@ -2,7 +2,7 @@
 
 **Document Version:** 2.0  
 **Created:** November 24, 2025  
-**Last Updated:** November 28, 2025 (Phase S3: LLM Sensitivity Detection complete)
+**Last Updated:** November 28, 2025 (Phase S4: Proactive Timezone Awareness complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -66,9 +66,9 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
-| 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | 📋 Proposed |
-| 🟡 Medium | E9 | Artifact Provenance | 1-2 days | E10 | 📋 Proposed |
-| Low | E8 | Bot Broadcast Channel | 2-3 days | S1, E9 | 📋 Proposed |
+| 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
+| 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | 📋 Proposed |
+| Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | 📋 Proposed |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | 📋 Proposed |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
 | Low | E6 | Character-to-Character | 1 week | E8 | 📋 Proposed |

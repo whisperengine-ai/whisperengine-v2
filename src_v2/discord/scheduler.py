@@ -8,6 +8,7 @@ from discord import abc
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.intelligence.activity import activity_modeler
+from src_v2.intelligence.timezone import timezone_manager
 from src_v2.agents.proactive import proactive_agent
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
@@ -91,6 +92,14 @@ class ProactiveScheduler:
         # 2. Evaluate Drives (Internal Motivation)
         # This replaces the simple "time since last message" check
         character_name = settings.DISCORD_BOT_NAME or "default"
+        
+        # 2.5 Check Quiet Hours (S4: Timezone Awareness)
+        # Don't message users during their local night time
+        user_time_settings = await timezone_manager.get_user_time_settings(user_id, character_name)
+        if timezone_manager.is_quiet_hours(user_time_settings):
+            logger.debug(f"User {user_id}: Skipping proactive message - quiet hours ({user_time_settings.timezone})")
+            return
+        
         active_drives = await drive_manager.evaluate_drives(user_id, character_name, trust_score, last_interaction)
         
         # Filter for drives strong enough to act on

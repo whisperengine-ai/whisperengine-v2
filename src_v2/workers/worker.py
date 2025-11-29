@@ -547,6 +547,17 @@ async def run_relationship_update(
                 )
                 traits_added += 1
         
+        # 3. Infer timezone from activity patterns (S4: Proactive Timezone Awareness)
+        # Only run inference occasionally (when we don't have high confidence)
+        from src_v2.intelligence.timezone import timezone_manager
+        current_settings = await timezone_manager.get_user_time_settings(user_id, character_name)
+        
+        if current_settings.timezone_confidence < 0.7:
+            inferred_tz, confidence = await timezone_manager.infer_timezone_from_activity(user_id, character_name)
+            if inferred_tz and confidence > current_settings.timezone_confidence:
+                await timezone_manager.save_inferred_timezone(user_id, character_name, inferred_tz, confidence)
+                logger.debug(f"Inferred timezone {inferred_tz} for user {user_id} (confidence: {confidence:.2f})")
+        
         logger.debug(f"Updated relationship: {character_name} -> user {user_id} (traits: {traits_added})")
         
         return {
