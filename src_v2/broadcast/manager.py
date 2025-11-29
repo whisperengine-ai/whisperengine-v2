@@ -25,6 +25,71 @@ def _redis_key(key: str) -> str:
     return f"{prefix}{key}"
 
 
+async def _try_http_callback(
+    content: str,
+    post_type: str,
+    character_name: str,
+    provenance: Optional[List[Dict[str, Any]]] = None
+) -> bool:
+    """
+    Try to post directly via HTTP callback to bot's internal API.
+    
+    This is faster than queuing because it doesn't wait for the bot's
+    poll loop. Falls back to queue if HTTP fails.
+    
+    Returns:
+        True if HTTP callback succeeded, False otherwise
+    """
+    try:
+        import httpx
+        
+        # Build the bot's internal API URL
+        # When running in Docker, bots are accessible via their service name
+        bot_service = character_name.lower()
+        bot_port = settings.API_PORT or 8000
+        
+        # Try localhost first (for same-container calls), then Docker service name
+        urls_to_try = [
+            f"http://localhost:{bot_port}/api/internal/callback/broadcast",
+            f"http://{bot_service}:{bot_port}/api/internal/callback/broadcast",
+        ]
+        
+        payload = {
+            "content": content,
+            "post_type": post_type,
+            "character_name": character_name,
+            "provenance": provenance or []
+        }
+        
+        headers = {}
+        if settings.INTERNAL_API_KEY:
+            headers["X-Internal-Key"] = settings.INTERNAL_API_KEY.get_secret_value()
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            for url in urls_to_try:
+                try:
+                    response = await client.post(url, json=payload, headers=headers)
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success"):
+                            logger.debug(f"HTTP callback succeeded for {post_type}")
+                            return True
+                except httpx.ConnectError:
+                    continue  # Try next URL
+                except Exception as e:
+                    logger.debug(f"HTTP callback to {url} failed: {e}")
+                    continue
+        
+        return False
+        
+    except ImportError:
+        logger.debug("httpx not available for HTTP callback")
+        return False
+    except Exception as e:
+        logger.debug(f"HTTP callback failed: {e}")
+        return False
+
+
 class PostType(str, Enum):
     DIARY = "diary"
     DREAM = "dream"
@@ -323,21 +388,40 @@ class BroadcastManager:
         content: str,
         post_type: PostType,
         character_name: str,
-        provenance: Optional[List[Dict[str, Any]]] = None
+        provenance: Optional[List[Dict[str, Any]]] = None,
+        try_http_first: bool = True
     ) -> bool:
         """
-        Queue a broadcast for later posting by the bot.
+        Queue a broadcast for posting by the bot.
         Used by workers that don't have Discord access.
+        
+        This method first tries an HTTP callback for faster delivery,
+        then falls back to Redis queue if HTTP fails.
         
         Args:
             content: The text content to post
             post_type: Type of post (diary, dream, etc.)
             character_name: Name of the character posting
             provenance: Optional source data
+            try_http_first: If True, attempt HTTP callback before queuing
             
         Returns:
-            True if queued successfully
+            True if posted/queued successfully
         """
+        # Try HTTP callback first for faster delivery
+        if try_http_first:
+            http_success = await _try_http_callback(
+                content=content,
+                post_type=post_type.value,
+                character_name=character_name,
+                provenance=provenance
+            )
+            if http_success:
+                logger.info(f"Posted {post_type.value} via HTTP callback for {character_name}")
+                return True
+            logger.debug(f"HTTP callback failed, falling back to queue for {character_name}")
+        
+        # Fall back to Redis queue
         if not db_manager.redis_client:
             logger.warning("Redis not available for broadcast queue")
             return False
@@ -355,9 +439,9 @@ class BroadcastManager:
                 "queued_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Push to queue (list)
+            # Push to queue (list) - use prefixed key
             await db_manager.redis_client.rpush(
-                "broadcast:queue",
+                _redis_key("broadcast:queue"),
                 json.dumps(queue_item)
             )
             
@@ -388,6 +472,10 @@ class BroadcastManager:
         """
         Process all queued broadcasts (called by bot with Discord access).
         
+        This is a FALLBACK mechanism. Workers should prefer calling HTTP
+        callbacks directly. This method catches any items that failed HTTP
+        delivery or were queued when the bot was down.
+        
         Returns:
             Number of broadcasts posted
         """
@@ -401,13 +489,14 @@ class BroadcastManager:
         posted = 0
         requeue_items = []  # Items for other bots
         my_bot_name = settings.DISCORD_BOT_NAME.lower() if settings.DISCORD_BOT_NAME else ""
+        queue_key = _redis_key("broadcast:queue")
         
         try:
             import json
             
             # Process up to 10 items per call to avoid blocking
             for _ in range(10):
-                item_json = await db_manager.redis_client.lpop("broadcast:queue")
+                item_json = await db_manager.redis_client.lpop(queue_key)
                 if not item_json:
                     break
                 
@@ -437,7 +526,7 @@ class BroadcastManager:
             
             # Requeue items for other bots
             for item_json in requeue_items:
-                await db_manager.redis_client.rpush("broadcast:queue", item_json)
+                await db_manager.redis_client.rpush(queue_key, item_json)
             
         except Exception as e:
             logger.error(f"Error processing broadcast queue: {e}")

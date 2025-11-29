@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from loguru import logger
 from src_v2.api.routes import router
+from src_v2.api.internal_routes import router as internal_router
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.memory.manager import memory_manager
@@ -95,6 +96,7 @@ See [API Documentation](/docs/API_REFERENCE.md) for full details.
 
     # Include routes
     app.include_router(router)
+    app.include_router(internal_router)
 
     return app
 

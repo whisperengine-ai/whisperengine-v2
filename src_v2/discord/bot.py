@@ -280,7 +280,13 @@ Recent channel context:
             logger.error(f"Failed to handle cross-bot message: {e}")
 
     async def process_broadcast_queue_loop(self) -> None:
-        """Background task to process queued broadcasts from workers (Phase E8)."""
+        """
+        Background task to process queued broadcasts from workers (Phase E8).
+        
+        This is a FALLBACK mechanism. Workers should prefer calling the HTTP
+        callback endpoints directly for faster delivery. This loop catches any
+        queued items that failed HTTP delivery or were queued when the bot was down.
+        """
         await self.wait_until_ready()
         
         # Give things time to initialize
@@ -292,13 +298,13 @@ Recent channel context:
                 
                 posted = await broadcast_manager.process_queued_broadcasts()
                 if posted > 0:
-                    logger.info(f"Processed {posted} queued broadcasts")
+                    logger.info(f"Processed {posted} queued broadcasts (fallback)")
                     
             except Exception as e:
                 logger.debug(f"Broadcast queue check failed: {e}")
             
-            # Check every 30 seconds
-            await asyncio.sleep(30)
+            # Check every 60 seconds (reduced frequency since HTTP callbacks are primary)
+            await asyncio.sleep(60)
 
     async def update_status_loop(self) -> None:
         """Background task to periodically update bot status with statistics."""
@@ -413,6 +419,14 @@ Recent channel context:
             logger.error(f"Could not load character '{self.character_name}'!")
 
         logger.info("WhisperEngine is ready and listening.")
+
+        # Register with internal API for worker callbacks
+        try:
+            from src_v2.api.internal_routes import set_discord_bot
+            set_discord_bot(self)
+            logger.info("Registered with internal API for worker callbacks")
+        except Exception as e:
+            logger.warning(f"Failed to register with internal API: {e}")
 
         # Initialize broadcast manager with bot instance (Phase E8)
         if settings.ENABLE_BOT_BROADCAST:
