@@ -235,24 +235,46 @@ class CrossBotManager:
             if not re.search(rf"\b{escaped_name}\b", message.content.lower()):
                 return None
         
-        # Check channel cooldown
         channel_id = str(message.channel.id)
-        if self.is_on_cooldown(channel_id):
-            logger.debug(f"Cross-bot cooldown active for channel {channel_id}")
-            return None
+        chain = self._get_or_create_chain(channel_id)
+        mentioning_bot = self.get_bot_name(message.author.id)
+        
+        # Check if this is a direct reply to one of our messages
+        is_direct_reply = False
+        if message.reference and message.reference.message_id:
+            try:
+                # Check if the referenced message is from us
+                ref_msg = message.reference.resolved
+                if ref_msg and ref_msg.author.id == self._bot.user.id:
+                    is_direct_reply = True
+                    logger.debug(f"Message is a direct reply to our message")
+            except Exception:
+                pass
+        
+        # Check if we're in an active chain and it's our turn
+        in_active_chain = (
+            not chain.is_expired() and 
+            chain.message_count > 0 and 
+            chain.last_bot != self._bot_name  # Other bot just spoke
+        )
+        
+        # Skip cooldown check if:
+        # 1. We're in an active chain and it's our turn, OR
+        # 2. This is a direct reply to our message
+        if not is_direct_reply and not in_active_chain:
+            if self.is_on_cooldown(channel_id):
+                logger.debug(f"Cross-bot cooldown active for channel {channel_id}")
+                return None
         
         # Check chain limit
-        chain = self._get_or_create_chain(channel_id)
         if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
-            logger.debug(f"Cross-bot chain limit reached in channel {channel_id}")
+            logger.debug(f"Cross-bot chain limit reached in channel {channel_id} (count: {chain.message_count})")
             return None
         
         # Don't respond if we were the last bot in the chain
         if chain.last_bot == self._bot_name:
             logger.debug("We were the last bot to speak, skipping")
             return None
-        
-        mentioning_bot = self.get_bot_name(message.author.id)
         
         return CrossBotMention(
             channel_id=channel_id,
@@ -283,9 +305,14 @@ class CrossBotManager:
         """Record that we responded in a cross-bot conversation."""
         chain = self._get_or_create_chain(channel_id)
         chain.add_message(self._bot_name or "unknown", message_id)
-        self._set_cooldown(channel_id)
         
-        logger.info(f"Recorded cross-bot response in chain (count: {chain.message_count})")
+        # Only set cooldown when chain reaches its limit
+        # This allows back-and-forth within a chain, but prevents new chains from starting too soon
+        if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
+            self._set_cooldown(channel_id)
+            logger.info(f"Cross-bot chain completed (count: {chain.message_count}), cooldown set")
+        else:
+            logger.info(f"Recorded cross-bot response in chain (count: {chain.message_count}/{settings.CROSS_BOT_MAX_CHAIN})")
     
     async def queue_cross_bot_mention(self, mention: CrossBotMention) -> bool:
         """

@@ -69,8 +69,9 @@ async def _try_http_callback(
         }
         
         headers = {}
-        if settings.INTERNAL_API_KEY:
-            headers["X-Internal-Key"] = settings.INTERNAL_API_KEY.get_secret_value()
+        internal_api_key = getattr(settings, 'INTERNAL_API_KEY', None)
+        if internal_api_key:
+            headers["X-Internal-Key"] = internal_api_key.get_secret_value()
         
         async with httpx.AsyncClient(timeout=5.0) as client:
             for url in urls_to_try:
@@ -531,9 +532,12 @@ class BroadcastManager:
                     item = json.loads(item_json)
                     item_bot_name = item.get("character_name", "").lower()
                     
+                    logger.debug(f"Processing queue item: bot={item_bot_name}, my_bot={my_bot_name}, type={item.get('post_type')}")
+                    
                     # Only process broadcasts for THIS bot
                     if item_bot_name != my_bot_name:
                         # Not for us - requeue it
+                        logger.debug(f"Requeuing item for {item_bot_name} (I am {my_bot_name})")
                         requeue_items.append(item_json)
                         continue
                     
@@ -547,6 +551,8 @@ class BroadcastManager:
                     if result:
                         posted += 1
                         logger.info(f"Posted queued {item['post_type']} from {item['character_name']}")
+                    else:
+                        logger.warning(f"post_to_channel returned None/empty for {item['post_type']} from {item['character_name']}")
                     
                 except Exception as e:
                     logger.warning(f"Failed to process queued broadcast: {e}")

@@ -46,14 +46,17 @@ async def run_diary_generation(
         summaries = await memory_manager.get_summaries_since(hours=24, limit=30)
         
         if len(summaries) < settings.DIARY_MIN_SESSIONS:
-            logger.info(f"Not enough sessions for {character_name} diary (have {len(summaries)}, need {settings.DIARY_MIN_SESSIONS})")
-            return {
-                "success": True,
-                "skipped": True,
-                "reason": "insufficient_sessions",
-                "session_count": len(summaries),
-                "character_name": character_name
-            }
+            if not settings.DIARY_ALWAYS_GENERATE:
+                logger.info(f"Not enough sessions for {character_name} diary (have {len(summaries)}, need {settings.DIARY_MIN_SESSIONS})")
+                return {
+                    "success": True,
+                    "skipped": True,
+                    "reason": "insufficient_sessions",
+                    "session_count": len(summaries),
+                    "character_name": character_name
+                }
+            else:
+                logger.info(f"Generating diary for {character_name} despite low sessions ({len(summaries)}) - DIARY_ALWAYS_GENERATE is enabled")
         
         # Get character context for diary writing
         # Load from core.yaml (behavior system) - provides purpose, drives, constitution

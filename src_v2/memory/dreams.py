@@ -70,7 +70,14 @@ class DreamMaterial(BaseModel):
     goals: List[str] = Field(default_factory=list)
     
     def is_sufficient(self) -> bool:
-        """Check if we have enough material to generate a dream."""
+        """Check if we have enough material to generate a dream.
+        
+        If DREAM_ALWAYS_GENERATE is enabled, always returns True to allow
+        reflective/contemplative dreams even without user interactions.
+        """
+        from src_v2.config.settings import settings
+        if getattr(settings, 'DREAM_ALWAYS_GENERATE', False):
+            return True
         total_items = (
             len(self.memories) + 
             len(self.facts) + 

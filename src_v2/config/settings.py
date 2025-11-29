@@ -178,6 +178,7 @@ class Settings(BaseSettings):
     # --- Character Diary (Phase E2) ---
     ENABLE_CHARACTER_DIARY: bool = True  # Generate nightly diary entries for characters
     DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
+    DIARY_ALWAYS_GENERATE: bool = True  # Generate diary even without user interactions (reflective entries)
     DIARY_GENERATION_HOUR_UTC: int = 4  # Hour (UTC) when diary is generated (default: 4 AM)
     
     # --- Session Summarization ---
@@ -187,6 +188,7 @@ class Settings(BaseSettings):
     ENABLE_DREAM_SEQUENCES: bool = True  # Generate dreams when user returns after long absence
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
     DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
+    DREAM_ALWAYS_GENERATE: bool = True  # Generate nightly dream even without user interactions
     DREAM_GENERATION_HOUR_UTC: int = 5  # Hour (UTC) when nightly dreams are generated (default: 5 AM)
     
     # --- Agentic Narrative Generation (Phase E10) ---
