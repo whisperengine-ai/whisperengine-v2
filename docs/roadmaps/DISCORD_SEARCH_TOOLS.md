@@ -382,13 +382,13 @@ Update router prompt to include:
 - [x] Remove `channel_context` parameter threading (no longer needed for tool)
 - [x] Remove `get_channel_context()` pre-fetch from `bot.py` (wasteful - fetches 10 messages on every request)
 - [x] Remove `[RECENT CHANNEL ACTIVITY]` injection from `engine.py` system prompt
-- [ ] Create `src_v2/tools/discord_tools.py`
-- [ ] Implement `SearchChannelMessagesTool`
-- [ ] Implement `SearchUserMessagesTool`
-- [ ] Add channel parameter threading to `AgentEngine`
-- [ ] Register tools in `CharacterAgent._get_tools()`
-- [ ] Register tools in `ReflectiveAgent._get_tools()`
-- [ ] Update router system prompt
+- [x] Create `src_v2/tools/discord_tools.py`
+- [x] Implement `SearchChannelMessagesTool`
+- [x] Implement `SearchUserMessagesTool`
+- [x] Add channel parameter threading to `AgentEngine`
+- [x] Register tools in `CharacterAgent._get_tools()`
+- [x] Register tools in `ReflectiveAgent._get_tools()`
+- [x] Update agent prompts to mention new tools
 
 ### Phase 2: Enhanced Tools (Day 2-3)
 - [ ] Implement `GetMessageContextTool`

@@ -19,6 +19,7 @@ from src_v2.tools.memory_tools import (
     CharacterEvolutionTool
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
+from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool
 from src_v2.tools.insight_tools import (
     AnalyzePatternsTool,
     DetectThemesTool
@@ -81,13 +82,14 @@ class ReflectiveAgent:
         image_urls: Optional[List[str]] = None,
         max_steps_override: Optional[int] = None,
         guild_id: Optional[str] = None,
-        enable_verification: bool = False
+        enable_verification: bool = False,
+        channel: Optional[Any] = None
     ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
         """
         # 1. Initialize Tools
-        tools = self._get_tools(user_id, guild_id)
+        tools = self._get_tools(user_id, guild_id, channel)
         
         # 2. Construct System Prompt with Few-Shot Traces (Phase 3.2)
         full_prompt = self._construct_prompt(system_prompt)
@@ -409,7 +411,7 @@ class ReflectiveAgent:
             name=tool_name
         )
 
-    def _get_tools(self, user_id: str, guild_id: Optional[str] = None) -> List[BaseTool]:
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:
         character_name = settings.DISCORD_BOT_NAME or "default"
         tools = [
             # Memory & Knowledge Tools
@@ -434,6 +436,13 @@ class ReflectiveAgent:
             GetUniverseOverviewTool(),
         ]
         
+        # Add Discord search tools if channel is available
+        if channel:
+            tools.extend([
+                SearchChannelMessagesTool(channel=channel),
+                SearchUserMessagesTool(channel=channel),
+            ])
+        
         # Conditionally add image generation tool
         if settings.ENABLE_IMAGE_GENERATION:
             tools.append(GenerateImageTool(character_name=character_name, user_id=user_id))
@@ -446,14 +455,14 @@ class ReflectiveAgent:
         image_rules = ""
         
         if settings.ENABLE_IMAGE_GENERATION:
-            creative_category = "5. Creative: generate_image\n"
+            creative_category = "6. Creative: generate_image\n"
             image_rules = """- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
 - Gathering information is NOT the same as generating an image.
 - After gathering context, if the task requires an image, call generate_image with a detailed prompt.
 """
 
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
-You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, and generate images.
+You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, search recent channel messages, and generate images.
 
 CRITICAL: When asked to search, explore, analyze, or look up information, you MUST call the appropriate tool IMMEDIATELY in your response. Do not describe what you will do - just do it by including the tool call.
 
@@ -465,9 +474,12 @@ AVAILABLE TOOL CATEGORIES:
 2. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
 3. Introspection: analyze_conversation_patterns, detect_recurring_themes
 4. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
+5. Discord Search: search_channel_messages (recent channel activity), search_user_messages (what a specific person said)
 {creative_category}
 TOOL USAGE RULES:
-{image_rules}- explore_knowledge_graph: Use when asked about connections, relationships, network, or graph exploration.
+{image_rules}- search_channel_messages: Use when asked "what did I just say?", "what happened earlier?", or to find recent messages by keyword.
+- search_user_messages: Use when asked "what did [name] say?" or to find messages from a specific person.
+- explore_knowledge_graph: Use when asked about connections, relationships, network, or graph exploration.
 - discover_common_ground: Use when asked about shared interests or common ground.
 - get_character_evolution: Use when asked about your relationship, trust level, or closeness.
 - analyze_conversation_patterns / detect_recurring_themes: Use for patterns, themes, or frequent topics.

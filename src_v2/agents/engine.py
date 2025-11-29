@@ -219,13 +219,15 @@ class AgentEngine:
             
             # 3b. Character Agency (Tier 2 - Single Tool Call)
             elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW":
+                channel = context_variables.get("channel") if context_variables else None
                 response = await self.character_agent.run(
                     user_input=user_message,
                     user_id=user_id,
                     system_prompt=system_content,
                     chat_history=chat_history,
                     callback=callback,
-                    character_name=character.name
+                    character_name=character.name,
+                    channel=channel
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {complexity_result})")
@@ -508,6 +510,7 @@ class AgentEngine:
 
                 # CharacterAgent doesn't support streaming yet, yield full response
                 guild_id = context_variables.get("guild_id") if context_variables else None
+                channel = context_variables.get("channel") if context_variables else None
                 response = await self.character_agent.run(
                     user_input=user_message,
                     user_id=user_id,
@@ -515,7 +518,8 @@ class AgentEngine:
                     chat_history=chat_history,
                     callback=callback,
                     guild_id=guild_id,
-                    character_name=character.name
+                    character_name=character.name,
+                    channel=channel
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {complexity_result})")
@@ -1069,6 +1073,7 @@ class AgentEngine:
         trace: List[BaseMessage]
         
         guild_id = context_variables.get("guild_id")
+        channel = context_variables.get("channel")
         response_text, trace = await self.reflective_agent.run(
             user_message, 
             user_id, 
@@ -1078,7 +1083,8 @@ class AgentEngine:
             image_urls=image_urls,
             max_steps_override=max_steps_override,
             guild_id=guild_id,
-            enable_verification=enable_verification
+            enable_verification=enable_verification,
+            channel=channel
         )
         
         if settings.ENABLE_PROMPT_LOGGING:

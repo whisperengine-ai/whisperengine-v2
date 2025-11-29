@@ -950,7 +950,8 @@ class WhisperBot(commands.Bot):
                     "channel_name": channel_name,
                     "parent_channel_name": parent_channel_name,
                     "is_thread": is_thread,
-                    "has_documents": doc_context.has_documents
+                    "has_documents": doc_context.has_documents,
+                    "channel": message.channel  # For Discord search tools
                 }
                 
                 # Append document preview to user message for LLM

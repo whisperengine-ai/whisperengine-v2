@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Optional, Callable, Awaitable
+from typing import List, Optional, Callable, Awaitable, Any
 from loguru import logger
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from langchain_core.tools import BaseTool
@@ -16,6 +16,7 @@ from src_v2.tools.memory_tools import (
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.image_tools import GenerateImageTool
+from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool
 
 class CharacterAgent:
     """
@@ -40,16 +41,19 @@ You have access to tools that let you look things up. Use them when:
 - You genuinely need information to give a good response
 - The user asks about your relationship or how close you are
 - You want to find common ground or shared interests
+- The user asks what they or someone else just said in the channel
 
 Available tools:
-- search_archived_summaries: Past conversations and topics
-- search_specific_memories: Specific details and quotes
+- search_archived_summaries: Past conversations and topics (days/weeks ago)
+- search_specific_memories: Specific details and quotes from memory
 - lookup_user_facts: Facts about the user from the knowledge graph
 - explore_knowledge_graph: Explore connections and relationships
 - discover_common_ground: Find what you have in common
 - get_character_evolution: Check your relationship level and trust
 - check_planet_context: See the current server/planet context
 - get_universe_overview: View all planets and channels across the universe
+- search_channel_messages: Find recent messages in the channel by keyword
+- search_user_messages: Find what a specific person said recently
 """
 
     AGENCY_PROMPT_IMAGE = """- generate_image: Create images for the user
@@ -84,13 +88,14 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         chat_history: Optional[List[BaseMessage]] = None,
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
         guild_id: Optional[str] = None,
-        character_name: Optional[str] = None
+        character_name: Optional[str] = None,
+        channel: Optional[Any] = None
     ) -> str:
         """
         Executes a single-step tool lookup if needed, then generates response.
         """
         # 1. Initialize Tools (Subset of full tools)
-        tools = self._get_tools(user_id, guild_id, character_name)
+        tools = self._get_tools(user_id, guild_id, character_name, channel)
         llm_with_tools = self.llm.bind_tools(tools)
         
         # 2. Construct Messages with agency guidance (dynamically built based on feature flags)
@@ -172,13 +177,14 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 content=f"Error: {str(e)}"
             ))
 
-    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None) -> List[BaseTool]:
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:
         """Returns the subset of tools available to CharacterAgent.
         
         Tier 2 tools are a curated subset focused on:
         - Memory retrieval (summaries, episodes, facts)
         - Graph exploration (relationships, common ground)
         - Universe context (planet/channel awareness)
+        - Discord search (channel messages, user messages)
         - Image generation (if enabled)
         - Relationship awareness
         
@@ -205,6 +211,13 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
         ]
+        
+        # Add Discord search tools if channel is available (not in DM API context)
+        if channel:
+            tools.extend([
+                SearchChannelMessagesTool(channel=channel),
+                SearchUserMessagesTool(channel=channel),
+            ])
         
         # Conditionally add image generation tool (respects feature flag)
         if settings.ENABLE_IMAGE_GENERATION:
