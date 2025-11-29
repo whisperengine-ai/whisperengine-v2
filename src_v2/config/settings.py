@@ -199,10 +199,15 @@ class Settings(BaseSettings):
 
     # --- Bot Broadcast Channel (Phase E8) ---
     ENABLE_BOT_BROADCAST: bool = False  # Post thoughts/dreams to a public channel
-    BOT_BROADCAST_CHANNEL_ID: str = ""  # Discord channel ID for broadcasts
+    BOT_BROADCAST_CHANNEL_ID: str = ""  # Discord channel ID for broadcasts (comma-separated for multiple)
     BOT_BROADCAST_MIN_INTERVAL_MINUTES: int = 60  # Minimum time between posts
     BOT_BROADCAST_DREAMS: bool = True  # Share dreams to broadcast channel
     BOT_BROADCAST_DIARIES: bool = True  # Share diary summaries to broadcast channel
+
+    @property
+    def bot_broadcast_channel_ids_list(self) -> list[str]:
+        """Parse broadcast channel IDs from comma-separated string."""
+        return self._parse_list_string(self.BOT_BROADCAST_CHANNEL_ID)
 
     # --- Cross-Bot Chat (Phase E6) ---
     ENABLE_CROSS_BOT_CHAT: bool = False  # Allow bots to respond to each other

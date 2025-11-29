@@ -151,19 +151,21 @@ async def broadcast_callback(
         from src_v2.broadcast.manager import broadcast_manager, PostType
         
         # Post directly using the manager (which has the bot reference)
-        result = await broadcast_manager.post_to_channel(
+        results = await broadcast_manager.post_to_channel(
             content=request.content,
             post_type=PostType(request.post_type),
             character_name=request.character_name,
             provenance=request.provenance
         )
         
-        if result:
-            logger.info(f"Broadcast callback: posted {request.post_type} for {request.character_name}")
+        if results:
+            logger.info(f"Broadcast callback: posted {request.post_type} for {request.character_name} to {len(results)} channels")
+            # Return all message IDs as comma-separated string
+            all_message_ids = ",".join(str(m.id) for m in results)
             return CallbackResponse(
                 success=True,
-                message=f"Posted {request.post_type}",
-                message_id=str(result.id) if result else None
+                message=f"Posted {request.post_type} to {len(results)} channels",
+                message_id=all_message_ids
             )
         else:
             return CallbackResponse(success=False, message="Failed to post")

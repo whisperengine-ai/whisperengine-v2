@@ -147,80 +147,100 @@ class BroadcastManager:
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None,
         reply_to: Optional[discord.Message] = None
-    ) -> Optional[discord.Message]:
+    ) -> List[discord.Message]:
         """
-        Posts content to the bot broadcast channel.
+        Posts content to the bot broadcast channel(s).
         
         Args:
             content: The text content to post
             post_type: Type of post (diary, dream, observation, etc.)
             character_name: Name of the character posting
             provenance: Optional list of source data for grounding
-            reply_to: Optional message to reply to
+            reply_to: Optional message to reply to (only works if in same channel)
             
         Returns:
-            The sent message, or None if posting failed/blocked
+            List of sent messages
         """
         if not settings.ENABLE_BOT_BROADCAST:
             logger.debug("Bot broadcast is disabled")
-            return None
+            return []
         
-        if not settings.BOT_BROADCAST_CHANNEL_ID:
-            logger.debug("No broadcast channel ID configured")
-            return None
+        channel_ids = settings.bot_broadcast_channel_ids_list
+        if not channel_ids:
+            logger.debug("No broadcast channel IDs configured")
+            return []
         
         if not self._bot:
             logger.warning("Bot instance not set for broadcast manager")
-            return None
+            return []
         
         # Check rate limit
         if not await self._can_post(character_name):
             logger.debug(f"Rate limit active for {character_name}")
-            return None
+            return []
         
         # Content safety check
         try:
             review = await content_safety_checker.review_content(content, post_type.value)
             if not review.safe:
                 logger.warning(f"Broadcast blocked by safety review: {review.concerns}")
-                return None
+                return []
         except Exception as e:
             logger.warning(f"Safety review failed, blocking broadcast: {e}")
-            return None
+            return []
         
         # Format message
         formatted = self._format_broadcast(content, post_type, character_name)
         
-        try:
-            channel = self._bot.get_channel(int(settings.BOT_BROADCAST_CHANNEL_ID))
-            if not channel:
-                channel = await self._bot.fetch_channel(int(settings.BOT_BROADCAST_CHANNEL_ID))
-            
-            if not channel or not isinstance(channel, discord.TextChannel):
-                logger.error(f"Broadcast channel not found or not a text channel: {settings.BOT_BROADCAST_CHANNEL_ID}")
-                return None
-            
-            # Send message
-            if reply_to:
-                message = await reply_to.reply(formatted)
-            else:
-                message = await channel.send(formatted)
-            
+        sent_messages = []
+        
+        for channel_id_str in channel_ids:
+            try:
+                channel_id = int(channel_id_str)
+                channel = self._bot.get_channel(channel_id)
+                if not channel:
+                    try:
+                        channel = await self._bot.fetch_channel(channel_id)
+                    except discord.NotFound:
+                        logger.error(f"Broadcast channel not found: {channel_id}")
+                        continue
+                    except discord.Forbidden:
+                        logger.error(f"No permission to fetch broadcast channel {channel_id}")
+                        continue
+                
+                if not channel or not isinstance(channel, discord.TextChannel):
+                    logger.error(f"Broadcast channel not found or not a text channel: {channel_id}")
+                    continue
+                
+                # Send message
+                message = None
+                if reply_to and reply_to.channel.id == channel_id:
+                    message = await reply_to.reply(formatted)
+                else:
+                    message = await channel.send(formatted)
+                
+                if message:
+                    sent_messages.append(message)
+                    # Store broadcast record
+                    await self._store_broadcast(message, post_type, character_name, content, provenance)
+                
+            except discord.Forbidden:
+                logger.error(f"No permission to post in broadcast channel {channel_id_str}")
+            except discord.HTTPException as e:
+                logger.error(f"Failed to post broadcast to {channel_id_str}: {e}")
+            except ValueError:
+                logger.error(f"Invalid channel ID: {channel_id_str}")
+        
+        if sent_messages:
             # Update rate limit tracker
             self._last_post_times[character_name] = datetime.now(timezone.utc)
             
-            # Store broadcast record
-            await self._store_broadcast(message, post_type, character_name, content, provenance)
+            if len(sent_messages) < len(channel_ids):
+                logger.warning(f"Broadcast partially failed for {character_name}: posted to {len(sent_messages)}/{len(channel_ids)} channels")
+            else:
+                logger.info(f"Broadcast posted by {character_name}: {post_type.value} to {len(sent_messages)} channels")
             
-            logger.info(f"Broadcast posted by {character_name}: {post_type.value}")
-            return message
-            
-        except discord.Forbidden:
-            logger.error(f"No permission to post in broadcast channel {settings.BOT_BROADCAST_CHANNEL_ID}")
-            return None
-        except discord.HTTPException as e:
-            logger.error(f"Failed to post broadcast: {e}")
-            return None
+        return sent_messages
     
     async def _can_post(self, character_name: str) -> bool:
         """Check if character can post (respects rate limit)."""
@@ -349,10 +369,10 @@ class BroadcastManager:
         dream_content: str,
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None
-    ) -> Optional[discord.Message]:
+    ) -> List[discord.Message]:
         """Convenience method to post a dream."""
         if not settings.BOT_BROADCAST_DREAMS:
-            return None
+            return []
         return await self.post_to_channel(
             dream_content,
             PostType.DREAM,
@@ -365,10 +385,10 @@ class BroadcastManager:
         diary_content: str,
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None
-    ) -> Optional[discord.Message]:
+    ) -> List[discord.Message]:
         """Convenience method to post a diary summary."""
         if not settings.BOT_BROADCAST_DIARIES:
-            return None
+            return []
         return await self.post_to_channel(
             diary_content,
             PostType.DIARY,
@@ -380,7 +400,7 @@ class BroadcastManager:
         self,
         observation: str,
         character_name: str
-    ) -> Optional[discord.Message]:
+    ) -> List[discord.Message]:
         """Convenience method to post an observation."""
         return await self.post_to_channel(
             observation,
