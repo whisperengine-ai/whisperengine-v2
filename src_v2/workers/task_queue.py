@@ -132,7 +132,8 @@ class TaskQueue:
         user_id: str,
         character_name: str,
         trigger: str = "volume",
-        priority: int = 5
+        priority: int = 5,
+        recent_context: Optional[str] = None
     ) -> Optional[str]:
         """
         Convenience method to enqueue an insight analysis task.
@@ -142,6 +143,7 @@ class TaskQueue:
             character_name: Bot character name
             trigger: What triggered this analysis (time, volume, session_end, feedback)
             priority: 1-10, lower = higher priority
+            recent_context: Optional recent conversation text
         """
         job_id = f"insight_{user_id}_{character_name}"
         
@@ -151,7 +153,8 @@ class TaskQueue:
             user_id=user_id,
             character_name=character_name,
             trigger=trigger,
-            priority=priority
+            priority=priority,
+            recent_context=recent_context
         )
     
     async def enqueue_goal_analysis(
