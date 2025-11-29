@@ -23,6 +23,7 @@ from src_v2.core.database import db_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
+from src_v2.safety.content_review import content_safety_checker
 
 
 class DiaryEntry(BaseModel):
@@ -127,6 +128,12 @@ Write your diary entry for today.""")
             
             # Cast to DiaryEntry (LLM returns structured output)
             if isinstance(result, DiaryEntry):
+                # Safety Review (Phase S1)
+                review = await content_safety_checker.review_content(result.entry, "diary entry")
+                if not review.safe:
+                    logger.warning(f"Diary entry flagged for safety concerns: {review.concerns}. Skipping.")
+                    return None
+
                 logger.info(f"Generated diary entry for {self.bot_name}: mood={result.mood}, themes={result.themes}")
                 return result
             else:

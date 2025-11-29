@@ -26,6 +26,7 @@ from src_v2.core.database import db_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
+from src_v2.safety.content_review import content_safety_checker
 
 
 class DreamContent(BaseModel):
@@ -199,6 +200,12 @@ Create a surreal dream that echoes these shared experiences.""")
             })
             
             if isinstance(result, DreamContent):
+                # Safety Review (Phase S1)
+                review = await content_safety_checker.review_content(result.dream, "dream")
+                if not review.safe:
+                    logger.warning(f"Dream flagged for safety concerns: {review.concerns}. Skipping.")
+                    return None
+                
                 logger.info(f"Generated dream for user {user_id}: mood={result.mood}, symbols={result.symbols}")
                 return result
             else:

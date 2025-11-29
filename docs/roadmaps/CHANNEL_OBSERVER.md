@@ -3,6 +3,8 @@
 **Phase**: E10 (Evolution)  
 **Priority**: 🟡 Medium  
 **Effort**: 2-3 days  
+**Status**: ⏭️ Skipped (Will Not Implement)  
+**Reason**: Superseded by Discord Search Tools (E11). On-demand message access via `search_channel_messages`, `get_recent_messages` provides equivalent functionality without privacy concerns of passive buffering.  
 **Dependencies**: Dreams (E3), Diaries (E4), Artifact Provenance (E9)
 
 ---

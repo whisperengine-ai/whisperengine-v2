@@ -1,8 +1,9 @@
 # Content Safety Review System
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Created:** November 28, 2025
-**Status:** 📋 Proposed
+**Completed:** November 28, 2025
+**Status:** ✅ Complete
 **Priority:** 🔴 High
 **Complexity:** 🟡 Medium
 **Estimated Time:** 2-3 days
@@ -12,12 +13,17 @@
 
 ## Executive Summary
 
-Dreams and diary entries are generated from user memories—often the most emotionally meaningful (and therefore sensitive) content. Currently, these features rely solely on prompt instructions to prevent privacy leaks. This is insufficient.
+Dreams and diary entries are generated from user memories—often the most emotionally meaningful (and therefore sensitive) content.
 
-**The Problem:**
-- Dreams reference "high-meaningfulness memories" (exactly what's sensitive)
-- Diaries list `notable_users` by name and reference emotional moments
-- No post-generation content review before output
+**Implementation:** Added `src_v2/safety/content_review.py` with a hybrid safety checker:
+1. **Fast Path:** Checks for sensitive keywords (health, financial, trauma).
+2. **Slow Path:** If keywords found, uses a router LLM to verify if the context is actually unsafe (vs metaphorical).
+3. **Integration:** Applied to `DreamManager` and `DiaryManager` to block unsafe content before storage.
+
+**The Problem (Solved):**
+- ~~Dreams reference "high-meaningfulness memories" (exactly what's sensitive)~~
+- ~~Diaries list `notable_users` by name and reference emotional moments~~
+- ~~No post-generation content review before output~~
 - LLMs can ignore prompt instructions unpredictably
 
 **The Solution:**
