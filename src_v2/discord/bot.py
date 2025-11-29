@@ -280,6 +280,10 @@ Recent channel context:
                 # AgentEngine is already imported globally
                 engine = AgentEngine()
                 
+                # Use bot's Discord ID as the "user_id" for memory storage
+                # Treat other bots the same as regular users - just use their numeric ID
+                cross_bot_user_id = str(message.author.id)
+                
                 response = await engine.generate_response(
                     character=character,
                     user_message=f"[{other_bot_name.title()} said:] {message.content}",
@@ -289,7 +293,7 @@ Recent channel context:
                         "is_cross_bot": True,
                         "cross_bot_context": cross_bot_context
                     },
-                    user_id=f"bot_{mention.mentioning_bot or 'unknown'}",
+                    user_id=cross_bot_user_id,
                     force_fast=True  # Use fast mode for cross-bot banter
                 )
                 
@@ -301,6 +305,32 @@ Recent channel context:
                     channel_id=str(message.channel.id),
                     message_id=str(sent_message.id)
                 )
+                
+                # Store cross-bot conversation to memory for continuity
+                # This allows bots to remember their conversations with each other
+                try:
+                    # Save the other bot's message (as "human" role from our perspective)
+                    await memory_manager.add_message(
+                        user_id=cross_bot_user_id,
+                        character_name=self.character_name,
+                        role="human",
+                        content=message.content,
+                        channel_id=str(message.channel.id),
+                        message_id=str(message.id)
+                    )
+                    
+                    # Save our response
+                    await memory_manager.add_message(
+                        user_id=cross_bot_user_id,
+                        character_name=self.character_name,
+                        role="ai",
+                        content=response,
+                        channel_id=str(message.channel.id),
+                        message_id=str(sent_message.id)
+                    )
+                    logger.debug(f"Saved cross-bot conversation with {other_bot_name} to memory")
+                except Exception as mem_err:
+                    logger.warning(f"Failed to save cross-bot conversation to memory: {mem_err}")
                 
                 logger.info(f"Sent cross-bot response to {other_bot_name}")
                 
