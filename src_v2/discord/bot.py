@@ -833,47 +833,13 @@ class WhisperBot(commands.Bot):
                         logger.error(f"Failed to retrieve universe context: {e}")
                         return "Location: Unknown"
 
-                async def get_channel_context():
-                    """Fetch recent channel messages for multi-bot awareness."""
-                    if is_dm or not message.guild:
-                        return ""
-                    try:
-                        # Fetch last 10 messages from Discord API (includes bot messages)
-                        recent_msgs = []
-                        async for msg in message.channel.history(limit=10, before=message):
-                            # Skip the current message and empty messages
-                            if msg.id == message.id or not msg.content:
-                                continue
-                            
-                            author_name = msg.author.display_name
-                            is_bot = msg.author.bot
-                            
-                            content = smart_truncate(msg.content, 300)
-                            
-                            # Format: [Author (Bot)]: content or [Author]: content
-                            if is_bot:
-                                recent_msgs.append(f"[{author_name} (Bot)]: {content}")
-                            else:
-                                recent_msgs.append(f"[{author_name}]: {content}")
-                        
-                        if not recent_msgs:
-                            return ""
-                        
-                        # Reverse to chronological order
-                        recent_msgs.reverse()
-                        return "\n".join(recent_msgs)
-                    except Exception as e:
-                        logger.debug(f"Failed to fetch channel context: {e}")
-                        return ""
-
                 # Execute all context retrieval tasks in parallel
-                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, channel_context = await asyncio.gather(
+                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context = await asyncio.gather(
                     get_memories(),
                     get_history(),
                     get_knowledge(),
                     get_summaries(),
-                    get_universe_context(),
-                    get_channel_context()
+                    get_universe_context()
                 )
 
                 # 2. Save User Message & Extract Knowledge
@@ -980,7 +946,6 @@ class WhisperBot(commands.Bot):
                     "recent_memories": formatted_memories,
                     "knowledge_context": knowledge_facts,
                     "past_summaries": past_summaries,
-                    "channel_context": channel_context,  # Multi-bot awareness
                     "guild_id": str(message.guild.id) if message.guild else None,
                     "channel_name": channel_name,
                     "parent_channel_name": parent_channel_name,

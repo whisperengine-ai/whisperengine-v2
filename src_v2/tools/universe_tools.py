@@ -82,19 +82,3 @@ class GetUniverseOverviewTool(BaseTool):
         except Exception as e:
             logger.error(f"get_universe_overview tool failed: {e}")
             return f"Error retrieving universe overview: {str(e)}"
-
-class GetRecentActivityInput(BaseModel):
-    pass
-
-class GetRecentActivityTool(BaseTool):
-    name: str = "get_recent_activity"
-    description: str = "Gets the recent messages and activity in the current channel. Use this when asked 'what happened recently?', 'what did X say?', or 'catch me up'."
-    args_schema: Type[BaseModel] = GetRecentActivityInput
-    channel_context: str = Field(default="", exclude=True)
-
-    def _run(self) -> str:
-        return self.channel_context or "No recent activity found in context."
-
-    async def _arun(self) -> str:
-        return self._run()
-

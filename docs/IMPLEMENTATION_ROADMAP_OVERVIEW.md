@@ -64,6 +64,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🔴 High | S1 | Content Safety Review | 2-3 days | — | 📋 Proposed |
 | 🔴 High | S2 | Classifier Observability | 1 day | — | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | 📋 Proposed |
+| 🟡 Medium | E11 | Discord Search Tools | 2-3 days | — | 📋 Proposed |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | 📋 Proposed |
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | 📋 Proposed |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | E10 | 📋 Proposed |
@@ -1422,3 +1423,33 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - Bots have "peripheral vision" of the community
 
 **Spec:** [CHANNEL_OBSERVER.md](./roadmaps/CHANNEL_OBSERVER.md)
+
+### 📋 Phase E11: Discord Search Tools (On-Demand Channel Search)
+**Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Low-Medium
+**Status:** 📋 Proposed
+**Dependencies:** None
+
+**Problem:** The LLM has no way to actively search Discord for context. When users ask "What did I say about turtles earlier?" or "What has Sarah been talking about?", the bot fails because it relies on pre-fetched context or vector memory (which may not have recent messages).
+
+**Solution:** Add Discord Search Tools that allow the LLM to query Discord directly via the Discord API on-demand.
+
+**Tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `search_channel_messages` | Search recent channel messages by keyword/topic |
+| `search_user_messages` | Find messages from a specific user |
+| `get_message_context` | Get messages around a specific message ID |
+| `search_thread_messages` | Search within a thread |
+| `get_channel_summary` | LLM-generated summary of recent activity |
+
+**Key Insight:** The previous `GetRecentActivityTool` was a no-op (returned pre-fetched context already in the system prompt). These new tools give the LLM *agency* to search Discord when it decides to, not just when we pre-fetch.
+
+**Benefits:**
+- LLM can search for specific topics on-demand
+- Better answers to "what did I just say about X?"
+- Filter by user: "what has Mark been saying?"
+- Works for recent channel context that isn't in vector memory yet
+
+**Spec:** [DISCORD_SEARCH_TOOLS.md](./roadmaps/DISCORD_SEARCH_TOOLS.md)
+
