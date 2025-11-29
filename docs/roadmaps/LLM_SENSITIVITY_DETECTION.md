@@ -1,8 +1,9 @@
 # LLM-Based Sensitivity Detection
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Created:** November 28, 2025
-**Status:** 📋 Proposed
+**Completed:** November 28, 2025
+**Status:** ✅ Complete
 **Priority:** 🟡 Medium
 **Complexity:** 🟡 Medium
 **Estimated Time:** 2-3 days
@@ -14,9 +15,15 @@
 
 Cross-bot knowledge sharing (stigmergy) uses keyword-based filtering for sensitive topics. Keywords miss context-dependent sensitivity.
 
-**The Problem:**
+**Implementation:** Added `src_v2/safety/sensitivity.py` with LLM-based context checker:
+- Uses router model (fast/cheap) for classification
+- Integrated into `EventDetector.analyze_and_publish()` before `event_bus.publish()`
+- Blocks events where LLM detects personal/sensitive context that keywords missed
+- Fails closed (private) if check fails
+
+**The Problem (Solved):**
 ```python
-// Current: Keyword-based
+// Before: Keyword-based only
 SENSITIVE_TOPICS = ["health", "relationship", "finance", ...]
 
 // Example that slips through:

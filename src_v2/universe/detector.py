@@ -17,6 +17,7 @@ import re
 
 from src_v2.config.settings import settings
 from src_v2.universe.bus import UniverseEvent, EventType, event_bus
+from src_v2.safety.sensitivity import sensitivity_checker
 
 
 # Patterns for detecting emotional spikes
@@ -98,6 +99,18 @@ class EventDetector:
             event = self._detect_life_update(user_id, user_message, character_name)
         
         if event:
+            # S3: LLM-based sensitivity check before publishing
+            # This catches context-dependent sensitivity that keywords miss
+            is_sensitive, reason = await sensitivity_checker.is_sensitive(
+                content=user_message,
+                topic=event.topic,
+                event_summary=event.summary
+            )
+            
+            if is_sensitive:
+                logger.info(f"Event blocked by sensitivity check: {reason}")
+                return None
+            
             await event_bus.publish(event)
             return event
         
