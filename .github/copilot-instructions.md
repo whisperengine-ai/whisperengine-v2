@@ -14,8 +14,8 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 | nottaylor | 8008 | Production | `openai/gpt-4o` | 0.85 | `openai/gpt-4o` |
 | dotty | 8002 | Personal | `anthropic/claude-3.7-sonnet` | 0.8 | `google/gemini-2.5-flash` |
 | aria | 8003 | Test | `google/gemini-2.0-flash-001` | 0.5 | `anthropic/claude-sonnet-4.5` |
-| dream | 8004 | Test | `deepseek/deepseek-r1` | 0.9 | `mistralai/mistral-large` |
-| jake | 8005 | Test | `meta-llama/llama-4-maverick` | 0.5 | `deepseek/deepseek-r1` |
+| dream | 8004 | Test | `deepseek/deepseek-chat` | 0.9 | `mistralai/mistral-large` |
+| jake | 8005 | Test | `openai/gpt-4o-mini` | 0.5 | `deepseek/deepseek-r1` |
 | marcus | 8007 | Test | `mistralai/mistral-large` | 0.5 | `google/gemini-2.5-pro` |
 | ryan | 8001 | Test | `meta-llama/llama-3.3-70b-instruct` | 0.6 | `anthropic/claude-3.5-sonnet` |
 | sophia | 8006 | Test | `google/gemini-2.5-pro` | 0.4 | `openai/gpt-4o-mini` |
