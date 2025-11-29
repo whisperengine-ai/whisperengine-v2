@@ -13,7 +13,7 @@ ClassificationResult = Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_
 
 class ClassificationOutput(BaseModel):
     complexity: ClassificationResult = Field(description="The complexity level of the user request")
-    intents: List[str] = Field(default_factory=list, description="List of detected intents (e.g., 'voice', 'image', 'search')")
+    intents: List[str] = Field(default_factory=list, description="List of detected intents (e.g., 'voice', 'image_self', 'search')")
 
 class ComplexityClassifier:
     """
@@ -73,13 +73,18 @@ class ComplexityClassifier:
             intent_section += '\n- "voice": User explicitly asks for a voice response, audio message, to "speak", "say this", or "send audio".'
             
         if settings.ENABLE_IMAGE_GENERATION:
-            intent_section += '\n- "image": User asks to generate, create, draw, paint, or visualize an image.'
+            intent_section += '''\n- "image_self": User wants an image OF the AI character itself (self-portrait, selfie, "show me what you look like", "draw yourself", "your face", "picture of you"). The subject is the AI.
+- "image_other": User wants an image of something else - the user themselves, scenery, objects, other people, or abstract concepts. NOT a self-portrait of the AI.
+- "image_refine": User is modifying/tweaking a PREVIOUS image ("same but darker", "try again", "keep the hair but change X", "make it more Y", "tweak", "adjust the last one"). Implies continuing from prior generation.
+NOTE: These are mutually exclusive. Choose the most specific one. "image_refine" takes priority if refining.'''
 
         # Build dynamic complexity section for image gen
         image_gen_example = ""
         if settings.ENABLE_IMAGE_GENERATION:
             image_gen_example = """   - "Create an image of..." (image generation tool)
-   - "Show me what you see" (image generation tool)"""
+   - "Show me what you see" (image generation tool)
+   - "Draw yourself" (image_self intent)
+   - "Make it darker" after an image was generated (image_refine intent)"""
 
         system_prompt = f"""Analyze the user input given the recent conversation context. 
 Classify the complexity and detect specific intents.

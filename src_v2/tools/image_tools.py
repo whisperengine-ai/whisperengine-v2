@@ -7,7 +7,6 @@ from loguru import logger
 from src_v2.image_gen.service import image_service, pending_images
 from src_v2.image_gen.session import (
     image_session, 
-    is_refinement_request, 
     parse_refinement_instructions,
     apply_refinement_to_prompt
 )
@@ -19,14 +18,15 @@ from src_v2.core.quota import quota_manager
 
 class GenerateImageInput(BaseModel):
     prompt: str = Field(description="A detailed description of the image to generate. Include specific physical details, artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting), lighting, and mood. Be creative and vivid. For self-portraits, use the character's visual description provided in the tool description.")
+    image_type: str = Field(
+        description="The type of image being generated. 'self' = self-portrait of the AI character, 'other' = image of user/scenery/objects/other people, 'refine' = tweaking a previous image.",
+        default="other",
+        enum=["self", "other", "refine"]
+    )
     aspect_ratio: str = Field(
         description="The aspect ratio of the image. Choose based on the subject matter.", 
         default="portrait",
         enum=["portrait", "landscape", "square", "widescreen"]
-    )
-    refine: bool = Field(
-        description="Set to true if the user is refining/tweaking a previous image. This reuses the previous seed for consistency.",
-        default=False
     )
 
 class GenerateImageTool(BaseTool):
@@ -67,10 +67,10 @@ class GenerateImageTool(BaseTool):
                 f"form (humanoid, digital, ethereal, etc.), coloring, distinguishing features, clothing/style, "
                 f"and any characteristic visual elements. Be detailed and consistent with your established identity."
             )
-    def _run(self, prompt: str, aspect_ratio: str = "portrait", refine: bool = False) -> str:
+    def _run(self, prompt: str, image_type: str = "other", aspect_ratio: str = "portrait") -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, prompt: str, aspect_ratio: str = "portrait", refine: bool = False) -> str:
+    async def _arun(self, prompt: str, image_type: str = "other", aspect_ratio: str = "portrait") -> str:
         try:
             # 0. Trust Gate - Check if user has sufficient trust level
             min_trust = settings.IMAGE_GEN_MIN_TRUST
@@ -131,59 +131,18 @@ class GenerateImageTool(BaseTool):
                 except Exception as e:
                     logger.error(f"Self-Discovery failed: {e}. Using default.")
             
-            # 3. Determine if this is a self-portrait or user/other subject
-            # Check if the prompt is about the character itself
-            char_name_lower = self.character_name.lower()
-            prompt_lower = prompt.lower()
-            
-            # Keywords that suggest the image is OF the character (self-portrait)
-            # Priority 1: Explicit character name mention (strongest signal)
-            has_char_name = char_name_lower in prompt_lower
-            
-            # Priority 2: First-person self-references
-            self_keywords = [
-                "me", "myself", "my face", "my appearance", "what i look like",
-                "selfie", "self-portrait", "self portrait",
-                "my form", "my visual", "my figure", "my silhouette",
-                "your face", "your appearance", "your form"
-            ]
-            
-            # Keywords that suggest the image is FOR/ABOUT the user (human) or another subject
-            # NOTE: "her/she/him/he" are NOT included - they're ambiguous and often refer to the character
-            user_keywords = [
-                "you", "your", "yourself", "user", "portrait of you",
-                "what you look like", "for you", "of you",
-                "person", "man", "woman", "guy", "girl", "captain",
-                "human", "crew", "people"
-            ]
-            
-            is_self_image = has_char_name or any(kw in prompt_lower for kw in self_keywords)
-            is_user_image = any(kw in prompt_lower for kw in user_keywords)
-            
-            # Character name mention is a STRONG signal - override user_keywords if present
-            # e.g., "ARIA's form" should be self-portrait even if prompt mentions "captain"
-            if has_char_name:
-                is_user_image = False
-                logger.debug(f"Character name '{char_name_lower}' found in prompt - forcing self-portrait mode")
-            
-            # Only include character visual description for self-portraits
-            # NOT when creating images for/of the user or other subjects
-            # Phase A8: Enhanced Portrait Mode Detection
-            # We inject the character description if it's clearly about the character (is_self_image)
-            # AND it's not explicitly about the user or someone else (is_user_image).
-            if is_self_image and not is_user_image:
-                enhanced_prompt = f"{visual_desc}. {prompt}"
-                logger.info(f"Self-portrait mode: Including character visual description (char_name={has_char_name})")
-            else:
-                enhanced_prompt = prompt
-                logger.info("User/Other subject mode: Using prompt as-is (no character injection)")
-            
-            # 4. Handle Refinement Mode
-            # Check for explicit refine flag OR detect refinement patterns in prompt
+            # 3. Determine image type from LLM-provided parameter
+            # The classifier detects intent (image_self, image_other, image_refine) and the 
+            # reflective agent sets image_type accordingly. No more keyword detection needed.
+            enhanced_prompt = prompt
             seed_to_use = None
-            is_refining = refine or is_refinement_request(prompt)
             
-            if is_refining:
+            if image_type == "self":
+                # Self-portrait: Prepend character visual description
+                enhanced_prompt = f"{visual_desc}. {prompt}"
+                logger.info("Self-portrait mode: Including character visual description")
+            elif image_type == "refine":
+                # Refinement: Reuse seed from previous generation and merge prompts
                 previous = await image_session.get_session(self.user_id)
                 if previous:
                     seed_to_use = previous.get("seed")
@@ -212,10 +171,13 @@ class GenerateImageTool(BaseTool):
                     logger.info(f"Refine mode: Reusing seed {seed_to_use} from previous generation")
                 else:
                     logger.info("Refine mode requested but no previous session found. Using new seed.")
+            else:
+                # image_type == "other": Use prompt as-is for user/scenery/objects
+                logger.info("Other subject mode: Using prompt as-is (no character injection)")
             
             logger.info(f"Generating image with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
             
-            # 5. Call Service
+            # 4. Call Service
             image_result = await image_service.generate_image(enhanced_prompt, width=width, height=height, seed=seed_to_use)
             
             if image_result:

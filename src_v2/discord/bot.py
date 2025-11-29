@@ -975,8 +975,10 @@ class WhisperBot(commands.Bot):
                         should_trigger_voice = True
                         logger.info(f"Voice intent detected for user {user_id}")
 
-                    # Check for Image Intent - Upgrade complexity if needed to ensure tools are available
-                    if "image" in detected_intents:
+                    # Check for Image Intents - Upgrade complexity if needed to ensure tools are available
+                    # Now using granular intents: image_self, image_other, image_refine
+                    image_intents = {"image_self", "image_other", "image_refine"}
+                    if image_intents.intersection(set(detected_intents)):
                         if not complexity or complexity == "COMPLEX_LOW":
                             complexity = "COMPLEX_MID"
                             logger.info(f"Upgraded complexity to COMPLEX_MID due to image intent for user {user_id}")

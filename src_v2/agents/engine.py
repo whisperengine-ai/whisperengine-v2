@@ -194,6 +194,11 @@ class AgentEngine:
                     max_steps = 15
                 
                 enable_verification = (complexity_result == "COMPLEX_HIGH")
+                
+                # Pass detected intents to reflective mode for tool guidance
+                if context_variables is None:
+                    context_variables = {}
+                context_variables["detected_intents"] = detected_intents
                     
                 response = await self._run_reflective_mode(
                     character, user_message, user_id, system_content, 
@@ -675,7 +680,7 @@ class AgentEngine:
         Returns:
             Tuple[Complexity, Intents]
             Complexity: False (Simple) or "COMPLEX_LOW/MID/HIGH" or "MANIPULATION"
-            Intents: List of detected intents (e.g. ["voice", "image"])
+            Intents: List of detected intents (e.g. ["voice", "image_self", "search"])
         """
         # Handle explicit overrides first (highest priority)
         if force_fast:
@@ -1074,6 +1079,7 @@ class AgentEngine:
         
         guild_id = context_variables.get("guild_id")
         channel = context_variables.get("channel")
+        detected_intents = context_variables.get("detected_intents", [])
         response_text, trace = await self.reflective_agent.run(
             user_message, 
             user_id, 
@@ -1084,7 +1090,8 @@ class AgentEngine:
             max_steps_override=max_steps_override,
             guild_id=guild_id,
             enable_verification=enable_verification,
-            channel=channel
+            channel=channel,
+            detected_intents=detected_intents
         )
         
         if settings.ENABLE_PROMPT_LOGGING:

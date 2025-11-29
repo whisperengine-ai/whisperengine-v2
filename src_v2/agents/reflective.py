@@ -83,7 +83,8 @@ class ReflectiveAgent:
         max_steps_override: Optional[int] = None,
         guild_id: Optional[str] = None,
         enable_verification: bool = False,
-        channel: Optional[Any] = None
+        channel: Optional[Any] = None,
+        detected_intents: Optional[List[str]] = None
     ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop and returns the final response and the full execution trace.
@@ -92,7 +93,7 @@ class ReflectiveAgent:
         tools = self._get_tools(user_id, guild_id, channel)
         
         # 2. Construct System Prompt with Few-Shot Traces (Phase 3.2)
-        full_prompt = self._construct_prompt(system_prompt)
+        full_prompt = self._construct_prompt(system_prompt, detected_intents or [])
         
         # Inject few-shot examples from similar successful traces
         if settings.ENABLE_TRACE_LEARNING:
@@ -451,17 +452,29 @@ class ReflectiveAgent:
         
         return tools
 
-    def _construct_prompt(self, base_system_prompt: str) -> str:
+    def _construct_prompt(self, base_system_prompt: str, detected_intents: Optional[List[str]] = None) -> str:
         # Dynamic sections based on feature flags
         creative_category = ""
         image_rules = ""
         
         if settings.ENABLE_IMAGE_GENERATION:
             creative_category = "6. Creative: generate_image\n"
-            image_rules = """- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
+            
+            # Build image type hint based on detected intents
+            image_type_hint = ""
+            if detected_intents:
+                if "image_self" in detected_intents:
+                    image_type_hint = "- DETECTED INTENT: image_self - User wants a self-portrait OF YOU. Set image_type='self' when calling generate_image.\n"
+                elif "image_refine" in detected_intents:
+                    image_type_hint = "- DETECTED INTENT: image_refine - User is tweaking a previous image. Set image_type='refine' when calling generate_image.\n"
+                elif "image_other" in detected_intents:
+                    image_type_hint = "- DETECTED INTENT: image_other - User wants an image of something else (not you). Set image_type='other' when calling generate_image.\n"
+            
+            image_rules = f"""- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
 - Gathering information is NOT the same as generating an image.
 - After gathering context, if the task requires an image, call generate_image with a detailed prompt.
-"""
+- Set image_type correctly: 'self' for self-portraits of YOU, 'refine' for tweaking previous images, 'other' for everything else.
+{image_type_hint}"""
 
         return f"""You are a reflective AI agent designed to answer complex questions deeply.
 You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, search recent channel messages, and generate images.
