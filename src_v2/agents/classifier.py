@@ -78,6 +78,13 @@ class ComplexityClassifier:
 - "image_refine": User is modifying/tweaking a PREVIOUS image ("same but darker", "try again", "keep the hair but change X", "make it more Y", "tweak", "adjust the last one"). Implies continuing from prior generation.
 NOTE: These are mutually exclusive. Choose the most specific one. "image_refine" takes priority if refining.'''
 
+        # Event detection intents (for cross-bot universe events)
+        if settings.ENABLE_UNIVERSE_EVENTS:
+            intent_section += '''\n- "event_positive": User expresses strong POSITIVE emotion (excitement, joy, celebration, great news, achievement, gratitude). Examples: "I'm so happy!", "Best day ever", "Finally made it!", "Over the moon".
+- "event_negative": User expresses strong NEGATIVE emotion (sadness, frustration, disappointment, bad news, loss, distress). Examples: "I'm devastated", "Worst day", "So upset", "Don't know what to do".
+- "event_life_update": User shares MAJOR life news (new job, promotion, moving/relocation, graduation, engagement, marriage, baby, home purchase, retirement). NOT minor daily updates.
+NOTE: Only detect these for genuinely significant emotional expressions or life events, not casual mentions.'''
+
         # Build dynamic complexity section for image gen
         image_gen_example = ""
         if settings.ENABLE_IMAGE_GENERATION:

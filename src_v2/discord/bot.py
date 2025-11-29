@@ -1225,13 +1225,15 @@ class WhisperBot(commands.Bot):
                     
                     # 4.8 Universe Event Detection (Phase 3.4)
                     # Detect significant events and publish to the event bus
+                    # Pass detected_intents for LLM-based detection (falls back to regex if not available)
                     if settings.ENABLE_UNIVERSE_EVENTS:
                         try:
                             from src_v2.universe.detector import event_detector
                             await event_detector.analyze_and_publish(
                                 user_id=user_id,
                                 user_message=raw_user_message,
-                                character_name=self.character_name
+                                character_name=self.character_name,
+                                detected_intents=detected_intents
                             )
                         except Exception as e:
                             logger.debug(f"Failed to detect universe event: {e}")

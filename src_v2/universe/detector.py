@@ -56,13 +56,18 @@ class EventDetector:
     
     This is called after each response. If a significant event is detected,
     it's published to the universe event bus for cross-bot sharing.
+    
+    Detection can use either:
+    1. LLM-detected intents (preferred) - passed from the classifier
+    2. Regex patterns (fallback) - for when intents aren't available
     """
     
     async def analyze_and_publish(
         self,
         user_id: str,
         user_message: str,
-        character_name: str
+        character_name: str,
+        detected_intents: Optional[List[str]] = None
     ) -> Optional[UniverseEvent]:
         """
         Analyze a user message for significant events and publish if found.
@@ -71,6 +76,7 @@ class EventDetector:
             user_id: Discord user ID
             user_message: The user's message text
             character_name: The bot that received this message
+            detected_intents: Optional list of intents from LLM classifier
             
         Returns:
             The published event if one was detected, None otherwise
@@ -78,16 +84,66 @@ class EventDetector:
         if not settings.ENABLE_UNIVERSE_EVENTS:
             return None
         
-        # Try each detection type
-        event = self._detect_emotional_spike(user_id, user_message, character_name)
+        event: Optional[UniverseEvent] = None
+        
+        # Prefer LLM-detected intents if available
+        if detected_intents:
+            event = self._detect_from_intents(user_id, user_message, character_name, detected_intents)
+        
+        # Fallback to regex if no intent-based detection
+        if not event:
+            event = self._detect_emotional_spike(user_id, user_message, character_name)
+        
+        if not event:
+            event = self._detect_life_update(user_id, user_message, character_name)
+        
         if event:
             await event_bus.publish(event)
             return event
         
-        event = self._detect_life_update(user_id, user_message, character_name)
-        if event:
-            await event_bus.publish(event)
-            return event
+        return None
+    
+    def _detect_from_intents(
+        self,
+        user_id: str,
+        message: str,
+        character_name: str,
+        intents: List[str]
+    ) -> Optional[UniverseEvent]:
+        """Detect events from LLM-classified intents."""
+        
+        if "event_positive" in intents:
+            logger.debug(f"LLM detected positive emotion event for user {user_id}")
+            return UniverseEvent(
+                event_type=EventType.EMOTIONAL_SPIKE,
+                user_id=user_id,
+                source_bot=character_name,
+                summary="is feeling very happy",
+                topic="positive_emotion",
+                metadata={"sentiment": "positive", "source": "llm_intent"}
+            )
+        
+        if "event_negative" in intents:
+            logger.debug(f"LLM detected negative emotion event for user {user_id}")
+            return UniverseEvent(
+                event_type=EventType.EMOTIONAL_SPIKE,
+                user_id=user_id,
+                source_bot=character_name,
+                summary="seems to be going through a tough time",
+                topic="negative_emotion",
+                metadata={"sentiment": "negative", "source": "llm_intent"}
+            )
+        
+        if "event_life_update" in intents:
+            logger.debug(f"LLM detected life update event for user {user_id}")
+            return UniverseEvent(
+                event_type=EventType.USER_UPDATE,
+                user_id=user_id,
+                source_bot=character_name,
+                summary="shared some personal news",
+                topic="life_update",
+                metadata={"source": "llm_intent"}
+            )
         
         return None
     
