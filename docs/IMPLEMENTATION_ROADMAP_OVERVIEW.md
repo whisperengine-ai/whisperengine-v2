@@ -71,7 +71,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
-| Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
+| Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
 | Low | E6 | Character-to-Character | 1 week | E8 | ✅ Complete |
 | Low | E12 | Agentic Dreams (DreamWeaver) | 3-5 days | Insight Agent | 📋 Proposed |
 | — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
