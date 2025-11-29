@@ -160,22 +160,27 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             
         except Exception as e:
             logger.error(f"CharacterAgent failed: {e}")
-            return "I'm having a bit of trouble thinking clearly right now. Can you say that again?"
+            import traceback
+            traceback.print_exc()
+            return f"I'm having a bit of trouble thinking clearly right now. (Error: {str(e)})"
 
     async def _execute_tool(self, tool: BaseTool, tool_call: dict, messages: List[BaseMessage]):
         """Executes a tool and appends the result to messages."""
+        tool_id = tool_call.get("id", "unknown_id")
+        tool_name = tool_call.get("name", "unknown_tool")
+        
         try:
             result = await tool.ainvoke(tool_call["args"])
             messages.append(ToolMessage(
-                tool_call_id=tool_call["id"],
-                name=tool_call["name"],
+                tool_call_id=tool_id,
+                name=tool_name,
                 content=str(result)
             ))
         except Exception as e:
             logger.error(f"Tool execution failed: {e}")
             messages.append(ToolMessage(
-                tool_call_id=tool_call["id"],
-                name=tool_call["name"],
+                tool_call_id=tool_id,
+                name=tool_name,
                 content=f"Error: {str(e)}"
             ))
 
