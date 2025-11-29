@@ -1,35 +1,28 @@
 # Discord Search Tools
 
-**Document Version:** 1.1  
+**Document Version:** 2.0  
 **Created:** November 28, 2025  
-**Last Updated:** November 29, 2025  
-**Status:** 🚧 In Progress (Phase 2 complete)  
+**Last Updated:** November 28, 2025  
+**Status:** ✅ Implemented (Phase 1 & 2 complete)  
 **Priority:** Medium  
 **Complexity:** Low-Medium  
-**Estimated Time:** 2-3 days
+**Estimated Time:** 2-3 days (completed in 1 day)
 
 ---
 
 ## 🎯 Problem Statement
 
-The LLM currently has no way to **actively search Discord** for context. The existing approach is wasteful and limited:
+The LLM previously had no way to **actively search Discord** for context. The old approach was wasteful and limited:
 
-**Current state (to be removed):**
-- `bot.py` pre-fetches last 10 messages via `get_channel_context()` on **every single request**
-- This is injected into the system prompt as `[RECENT CHANNEL ACTIVITY]`
-- The previous `GetRecentActivityTool` just returned this same string—it did NOT query Discord
-- **Wasteful:** Fetches 10 messages even for simple requests like "hello" or "tell me a joke"
-- **Limited:** Only 10 messages, no filtering, includes bot messages that may not be relevant
-- **No search:** LLM can't ask for specific topics or users
+**Previous state (now removed):**
+- `bot.py` pre-fetched last 10 messages via `get_channel_context()` on **every single request**
+- This was injected into the system prompt as `[RECENT CHANNEL ACTIVITY]`
+- The `GetRecentActivityTool` just returned this same string—it did NOT query Discord
+- **Wasteful:** Fetched 10 messages even for simple requests like "hello" or "tell me a joke"
+- **Limited:** Only 10 messages, no filtering, included bot messages that may not be relevant
+- **No search:** LLM couldn't ask for specific topics or users
 
-When users ask questions like:
-- "What did I say about turtles earlier?"
-- "What has Sarah been talking about today?"
-- "Find where we discussed the project deadline"
-
-...the bot either fails to find the information or relies on vector memory (which may not have indexed recent channel messages).
-
-**Action:** Remove pre-fetch entirely. Replace with on-demand Discord search tools that the LLM calls only when needed.
+**Solution implemented:** On-demand Discord search tools that the LLM calls only when needed.
 
 ---
 
@@ -37,15 +30,16 @@ When users ask questions like:
 
 Add a suite of **Discord Search Tools** that allow the LLM to query Discord directly via the Discord API. These tools enable on-demand, targeted searches rather than pre-fetching everything.
 
-### Tool Suite
+### Tool Suite (Implemented)
 
-| Tool | Purpose | API Method |
-|------|---------|------------|
-| `search_channel_messages` | Search recent channel messages by keyword/topic | `channel.history()` + filter |
-| `search_user_messages` | Find messages from a specific user | `channel.history()` + author filter |
-| `get_message_context` | Get messages around a specific message ID | `channel.history(around=)` |
-| `search_thread_messages` | Search within a thread | `thread.history()` + filter |
-| `get_channel_summary` | Get a summary of recent channel activity | `channel.history()` + LLM summarization |
+| Tool | Purpose | Status |
+|------|---------|--------|
+| `search_channel_messages` | Search recent channel messages by keyword/topic (scans 200 msgs) | ✅ |
+| `search_user_messages` | Find messages from a specific user (scans 200 msgs) | ✅ |
+| `get_message_context` | Get messages around a specific message ID | ✅ |
+| `get_recent_messages` | Get latest N messages without filtering | ✅ |
+| `search_thread_messages` | Search within a thread | 🔜 Deferred |
+| `get_channel_summary` | LLM-generated summary of channel activity | 🔜 Deferred |
 
 ---
 
@@ -376,7 +370,7 @@ Update router prompt to include:
 
 ## 📋 Implementation Checklist
 
-### Phase 1: Core Tools (Day 1-2)
+### Phase 1: Core Tools ✅
 - [x] Remove `GetRecentActivityTool` from `src_v2/tools/universe_tools.py`
 - [x] Remove `GetRecentActivityTool` from `ReflectiveAgent._get_tools()`
 - [x] Remove `channel_context` parameter threading (no longer needed for tool)
@@ -390,9 +384,12 @@ Update router prompt to include:
 - [x] Register tools in `ReflectiveAgent._get_tools()`
 - [x] Update agent prompts to mention new tools
 
-### Phase 2: Enhanced Tools (Day 2-3)
+### Phase 2: Enhanced Tools ✅
 - [x] Implement `GetMessageContextTool`
 - [x] Implement `GetRecentMessagesTool` (simpler alternative to summary - no LLM call)
+- [x] Extract `format_message()` helper to reduce code duplication
+- [x] Use `smart_truncate()` for middle-truncation consistency
+- [x] Fix JSON serialization warning for channel object in prompt logging
 - [ ] Implement `SearchThreadMessagesTool` (deferred - needs thread detection logic)
 - [ ] Implement `GetChannelSummaryTool` (deferred - expensive LLM call per use)
 - [ ] Add feature flag: `ENABLE_DISCORD_SEARCH_TOOLS` (deferred - tools are low-cost)
@@ -446,4 +443,5 @@ channel:{channel_id}:messages -> List of last 100 messages (5 min TTL)
 ---
 
 **Version History:**
+- 2.0 (Nov 28, 2025): Implementation complete (Phase 1 & 2)
 - 1.0 (Nov 28, 2025): Initial specification

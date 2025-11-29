@@ -64,7 +64,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🔴 High | S1 | Content Safety Review | 2-3 days | — | 📋 Proposed |
 | 🔴 High | S2 | Classifier Observability | 1 day | — | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | 📋 Proposed |
-| 🟡 Medium | E11 | Discord Search Tools | 2-3 days | — | 📋 Proposed |
+| 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | 📋 Proposed |
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | 📋 Proposed |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | E10 | 📋 Proposed |
@@ -1424,32 +1424,37 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [CHANNEL_OBSERVER.md](./roadmaps/CHANNEL_OBSERVER.md)
 
-### 📋 Phase E11: Discord Search Tools (On-Demand Channel Search)
-**Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Low-Medium
-**Status:** 📋 Proposed
+### ✅ Phase E11: Discord Search Tools (On-Demand Channel Search)
+**Priority:** 🟡 Medium | **Time:** 1 day | **Complexity:** Low-Medium
+**Status:** ✅ Complete (Nov 28, 2025)
 **Dependencies:** None
 
-**Problem:** The LLM has no way to actively search Discord for context. When users ask "What did I say about turtles earlier?" or "What has Sarah been talking about?", the bot fails because it relies on pre-fetched context or vector memory (which may not have recent messages).
+**Problem:** The LLM had no way to actively search Discord for context. When users asked "What did I say about turtles earlier?" or "What has Sarah been talking about?", the bot failed because it relied on pre-fetched context or vector memory (which may not have recent messages).
 
-**Solution:** Add Discord Search Tools that allow the LLM to query Discord directly via the Discord API on-demand.
+**Solution:** Added Discord Search Tools that allow the LLM to query Discord directly via the Discord API on-demand.
 
-**Tools:**
+**Implemented Tools:**
 
-| Tool | Purpose |
-|------|---------|
-| `search_channel_messages` | Search recent channel messages by keyword/topic |
-| `search_user_messages` | Find messages from a specific user |
-| `get_message_context` | Get messages around a specific message ID |
-| `search_thread_messages` | Search within a thread |
-| `get_channel_summary` | LLM-generated summary of recent activity |
+| Tool | Purpose | Status |
+|------|---------|--------|
+| `search_channel_messages` | Search recent 200 messages by keyword | ✅ |
+| `search_user_messages` | Find messages from a specific user | ✅ |
+| `get_message_context` | Get messages around a specific message ID | ✅ |
+| `get_recent_messages` | Get latest N messages (for "catch me up") | ✅ |
+| `search_thread_messages` | Search within a thread | 🔜 Deferred |
+| `get_channel_summary` | LLM-generated summary of recent activity | 🔜 Deferred |
 
-**Key Insight:** The previous `GetRecentActivityTool` was a no-op (returned pre-fetched context already in the system prompt). These new tools give the LLM *agency* to search Discord when it decides to, not just when we pre-fetch.
+**What was removed:**
+- `GetRecentActivityTool` (no-op that returned pre-fetched context)
+- `get_channel_context()` pre-fetch in `bot.py` (wasteful - fetched 10 messages on every request)
+- `[RECENT CHANNEL ACTIVITY]` system prompt injection
 
-**Benefits:**
-- LLM can search for specific topics on-demand
-- Better answers to "what did I just say about X?"
-- Filter by user: "what has Mark been saying?"
-- Works for recent channel context that isn't in vector memory yet
+**Files changed:**
+- `src_v2/tools/discord_tools.py` (NEW) - All Discord search tools
+- `src_v2/agents/character_agent.py` - Tool registration & prompts
+- `src_v2/agents/reflective.py` - Tool registration & prompts
+- `src_v2/agents/engine.py` - Channel threading, fixed JSON serialization
+- `src_v2/discord/bot.py` - Removed pre-fetch, passes channel to engine
 
 **Spec:** [DISCORD_SEARCH_TOOLS.md](./roadmaps/DISCORD_SEARCH_TOOLS.md)
 
