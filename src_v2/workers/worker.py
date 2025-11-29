@@ -797,6 +797,7 @@ async def run_reflection(
 ) -> Dict[str, Any]:
     """
     Analyze user patterns across recent summaries and update insights.
+    Also infers user-specific goals from conversation patterns.
     
     Args:
         ctx: arq context
@@ -815,11 +816,13 @@ async def run_reflection(
         result = await reflection_engine.analyze_user_patterns(user_id, character_name)
         
         if result:
-            logger.info(f"Reflection complete for user {user_id}: {len(result.insights)} insights, {len(result.updated_traits)} traits")
+            inferred_goal_slugs = [g.slug for g in result.inferred_goals] if result.inferred_goals else []
+            logger.info(f"Reflection complete for user {user_id}: {len(result.insights)} insights, {len(result.updated_traits)} traits, {len(inferred_goal_slugs)} inferred goals")
             return {
                 "success": True,
                 "insights": result.insights,
                 "traits": result.updated_traits,
+                "inferred_goals": inferred_goal_slugs,
                 "user_id": user_id,
                 "character_name": character_name
             }

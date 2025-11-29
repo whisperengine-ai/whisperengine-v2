@@ -7,7 +7,9 @@ Part of Autonomous Agents Phase 3.1.
 from typing import Dict, Any, List, Optional
 from loguru import logger
 from src_v2.core.database import db_manager
-from src_v2.evolution.goals import goal_manager, GOAL_SOURCE_PRIORITY
+from src_v2.evolution.goals import goal_manager
+from src_v2.memory.manager import memory_manager
+from src_v2.core.character import character_manager
 from src_v2.agents.llm_factory import create_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
@@ -16,17 +18,20 @@ from langchain_core.output_parsers import JsonOutputParser
 class GoalStrategist:
     """
     Analyzes goal progress and generates strategies for achieving them.
+    Also generates NEW goals based on community trends and character purpose.
     
     Design Principles:
     - Queries Neo4j first for verification (facts about user)
     - Falls back to chat logs only if Neo4j is inconclusive
     - Generates strategies as "internal desires" not commands
+    - Generates new goals that align with character identity
     """
     
     def __init__(self):
-        self.llm = create_llm(temperature=0.3)  # Slightly creative but focused
+        self.llm = create_llm(temperature=0.7)  # Higher temp for creative goal generation
         self.parser = JsonOutputParser()
         
+        # 1. Strategy Prompt (for existing goals)
         self.strategy_prompt = ChatPromptTemplate.from_template("""
 You are helping {character_name} develop a natural strategy for a personal goal.
 
@@ -60,7 +65,41 @@ Return JSON:
 }}
 """)
         
-        self.chain = self.strategy_prompt | self.llm | self.parser
+        # 2. Goal Generation Prompt (for NEW goals)
+        self.generation_prompt = ChatPromptTemplate.from_template("""
+You are the "Ambition Engine" for {character_name}.
+Your task is to generate NEW goals for this character based on their identity and recent community events.
+
+CHARACTER IDENTITY:
+{system_prompt}
+
+RECENT COMMUNITY THEMES (what users are talking about):
+{community_themes}
+
+EXISTING GOALS:
+{existing_goals}
+
+Generate 1-2 NEW goals that:
+1. Align with the character's core purpose and personality
+2. React to recent community themes or gaps in knowledge
+3. Are distinct from existing goals
+4. Are actionable and measurable
+
+Return JSON list of objects:
+[
+    {{
+        "slug": "unique_snake_case_id",
+        "description": "What the character wants to accomplish",
+        "success_criteria": "Specific observable outcome",
+        "priority": 1-10 (integer),
+        "category": "community_growth" or "personal_growth" or "investigation",
+        "reasoning": "Why this goal fits now"
+    }}
+]
+""")
+        
+        self.strategy_chain = self.strategy_prompt | self.llm | self.parser
+        self.generation_chain = self.generation_prompt | self.llm | self.parser
 
     async def analyze_goal(
         self, 
@@ -85,7 +124,7 @@ Return JSON:
             progress_percent = int(progress * 100)
             
             # 4. Generate strategy
-            result = await self.chain.ainvoke({
+            result = await self.strategy_chain.ainvoke({
                 "character_name": character_name,
                 "goal_description": goal["description"],
                 "goal_criteria": goal["success_criteria"],
@@ -176,6 +215,97 @@ Return JSON:
             logger.warning(f"Failed to get chat history for user {user_id}: {e}")
             return None
 
+    async def generate_new_goals(self, character_name: str) -> List[Dict[str, Any]]:
+        """
+        Generates NEW goals for the character based on community trends.
+        """
+        try:
+            logger.info(f"Generating new strategic goals for {character_name}")
+            
+            # 1. Get Character Context
+            character = character_manager.load_character(character_name)
+            if not character:
+                logger.warning(f"Character {character_name} not found for goal generation")
+                return []
+            
+            # 2. Get Community Themes (last 48 hours)
+            collection = f"whisperengine_memory_{character_name}"
+            summaries = await memory_manager.get_summaries_since(
+                hours=48,
+                limit=20,
+                collection_name=collection
+            )
+            
+            community_themes = "No recent community activity."
+            if summaries:
+                topics = []
+                for s in summaries:
+                    topics.extend(s.get("topics", []))
+                if topics:
+                    # Simple frequency count
+                    from collections import Counter
+                    common = Counter(topics).most_common(5)
+                    community_themes = ", ".join([f"{t} ({c})" for t, c in common])
+            
+            # 3. Get Existing Goals (to avoid duplicates)
+            # We need a dummy user_id to fetch goals, or we can query DB directly.
+            # Let's query DB directly for all active goals for this character
+            existing_goals_text = "None"
+            if db_manager.postgres_pool:
+                async with db_manager.postgres_pool.acquire() as conn:
+                    rows = await conn.fetch("""
+                        SELECT slug, description FROM v2_goals 
+                        WHERE character_name = $1
+                        AND (expires_at IS NULL OR expires_at > NOW())
+                    """, character_name)
+                    if rows:
+                        existing_goals_text = "\n".join([f"- {r['slug']}: {r['description']}" for r in rows])
+
+            # 4. Generate Goals
+            result = await self.generation_chain.ainvoke({
+                "character_name": character_name,
+                "system_prompt": character.system_prompt[:2000], # Truncate to save tokens
+                "community_themes": community_themes,
+                "existing_goals": existing_goals_text
+            })
+            
+            # Strategic goals expire after 30 days (community trends change)
+            from datetime import datetime, timedelta
+            expires_at = datetime.now() + timedelta(days=30)
+            
+            new_goals = []
+            if isinstance(result, list):
+                for goal_data in result:
+                    # Validate required fields
+                    if "slug" in goal_data and "description" in goal_data:
+                        # Insert into DB
+                        if db_manager.postgres_pool:
+                            async with db_manager.postgres_pool.acquire() as conn:
+                                # Check existence again to be safe
+                                exists = await conn.fetchval("""
+                                    SELECT id FROM v2_goals 
+                                    WHERE character_name = $1 AND slug = $2
+                                """, character_name, goal_data["slug"])
+                                
+                                if not exists:
+                                    await conn.execute("""
+                                        INSERT INTO v2_goals (character_name, slug, description, success_criteria, priority, source, category, expires_at)
+                                        VALUES ($1, $2, $3, $4, $5, 'strategic', $6, $7)
+                                    """, character_name, goal_data["slug"], goal_data["description"], 
+                                       goal_data.get("success_criteria", "Manual verification"),
+                                       int(goal_data.get("priority", 5)),
+                                       goal_data.get("category", "strategic"),
+                                       expires_at)
+                                    
+                                    logger.info(f"Created new strategic goal: {goal_data['slug']} (expires: {expires_at.date()})")
+                                    new_goals.append(goal_data)
+            
+            return new_goals
+
+        except Exception as e:
+            logger.error(f"Failed to generate new goals for {character_name}: {e}")
+            return []
+
     async def run_nightly_analysis(self, character_name: str):
         """
         Runs the nightly goal analysis for a character.
@@ -183,6 +313,9 @@ Return JSON:
         Called by the insight worker on a schedule.
         """
         logger.info(f"Starting nightly goal analysis for {character_name}")
+        
+        # 1. Generate NEW goals based on community status
+        await self.generate_new_goals(character_name)
         
         if not db_manager.postgres_pool:
             logger.warning("Database not available, skipping goal analysis")

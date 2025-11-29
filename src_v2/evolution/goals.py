@@ -107,7 +107,9 @@ class GoalManager:
 
     async def get_active_goals(self, user_id: str, character_name: str) -> List[Dict[str, Any]]:
         """
-        Retrieves active (not completed) goals for the user, ordered by priority.
+        Retrieves active (not completed, not expired) goals for the user.
+        Ordered by source hierarchy (core > user > inferred > strategic), then by priority.
+        User-specific goals (target_user_id) only shown to that user.
         """
         if not db_manager.postgres_pool:
             return []
@@ -117,8 +119,9 @@ class GoalManager:
 
         async with db_manager.postgres_pool.acquire() as conn:
             # Get goals that are NOT completed for this user
-            # We join with progress table to check status
-            # Include source/strategy for context injection
+            # - Filter out expired goals
+            # - User-specific goals only shown to their target user
+            # - Order by source hierarchy, then priority
             query = """
                 SELECT g.id, g.slug, g.description, g.success_criteria, g.priority,
                        g.source, g.category, g.current_strategy,
@@ -128,7 +131,17 @@ class GoalManager:
                 LEFT JOIN v2_user_goal_progress p ON g.id = p.goal_id AND p.user_id = $1
                 WHERE g.character_name = $2
                 AND (p.status IS NULL OR p.status != 'completed')
-                ORDER BY g.priority DESC
+                AND (g.expires_at IS NULL OR g.expires_at > NOW())
+                AND (g.target_user_id IS NULL OR g.target_user_id = $1)
+                ORDER BY 
+                    CASE g.source 
+                        WHEN 'core' THEN 100
+                        WHEN 'user' THEN 80
+                        WHEN 'inferred' THEN 60
+                        WHEN 'strategic' THEN 40
+                        ELSE 0
+                    END DESC,
+                    g.priority DESC
             """
             rows = await conn.fetch(query, user_id, character_name)
             return [dict(row) for row in rows]

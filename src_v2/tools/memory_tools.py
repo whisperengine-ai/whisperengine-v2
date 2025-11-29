@@ -115,6 +115,102 @@ This gives users a "peek behind the curtain" into my inner life."""
 
 
 # =============================================================================
+# USER-REQUESTED GOALS - Let users ask the bot to work on something
+# =============================================================================
+
+class CreateUserGoalInput(BaseModel):
+    description: str = Field(
+        description="What the user wants the bot to help with or remember to do (e.g., 'help me practice Spanish', 'remind me to exercise')"
+    )
+    duration_days: int = Field(
+        default=7,
+        description="How many days this goal should be active (1-30, default 7)"
+    )
+
+
+class CreateUserGoalTool(BaseTool):
+    """Create a goal based on user's explicit request."""
+    name: str = "create_user_goal"
+    description: str = """Create a personal goal when the user explicitly asks you to:
+- "Help me with X"
+- "I want you to remind me about Y"
+- "Can you work on Z with me?"
+- "Let's practice A together"
+- "Keep me accountable for B"
+
+This creates a goal that you'll actively work towards in future conversations.
+Goals expire after the specified duration (default 7 days).
+
+DO NOT use this for:
+- Simple one-time requests
+- Questions or information lookup
+- Things that can be done immediately"""
+    args_schema: Type[BaseModel] = CreateUserGoalInput
+    
+    user_id: str = Field(exclude=True)
+    character_name: str = Field(exclude=True)
+
+    def _run(self, description: str, duration_days: int = 7) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, description: str, duration_days: int = 7) -> str:
+        from src_v2.core.database import db_manager
+        from datetime import datetime, timedelta
+        import re
+        
+        try:
+            # Validate duration
+            duration_days = max(1, min(30, duration_days))
+            
+            # Generate a slug from description
+            slug = re.sub(r'[^a-z0-9]+', '_', description.lower())[:50]
+            slug = f"user_{slug}_{datetime.now().strftime('%m%d')}"
+            
+            # Calculate expiry
+            expires_at = datetime.now() + timedelta(days=duration_days)
+            
+            if not db_manager.postgres_pool:
+                return "I couldn't save this goal right now. Please try again later."
+            
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Check if similar goal already exists
+                existing = await conn.fetchval("""
+                    SELECT id FROM v2_goals 
+                    WHERE character_name = $1 
+                    AND target_user_id = $2
+                    AND description ILIKE $3
+                    AND (expires_at IS NULL OR expires_at > NOW())
+                """, self.character_name, self.user_id, f"%{description[:30]}%")
+                
+                if existing:
+                    return f"I'm already working on something similar with you! I'll keep focusing on that."
+                
+                # Insert the goal
+                await conn.execute("""
+                    INSERT INTO v2_goals (
+                        character_name, slug, description, success_criteria, 
+                        priority, source, category, target_user_id, expires_at
+                    )
+                    VALUES ($1, $2, $3, $4, $5, 'user', 'user_requested', $6, $7)
+                """, 
+                    self.character_name,
+                    slug,
+                    description,
+                    f"User expresses satisfaction or goal is achieved",
+                    8,  # User goals are high priority
+                    self.user_id,
+                    expires_at
+                )
+                
+                logger.info(f"Created user goal '{slug}' for {self.user_id} (expires: {expires_at})")
+                return f"Got it! I've made a note to help you with: **{description}**. I'll keep this in mind for the next {duration_days} days."
+                
+        except Exception as e:
+            logger.error(f"Error creating user goal: {e}")
+            return f"I had trouble saving that goal, but I'll try to remember!"
+
+
+# =============================================================================
 # STANDARD MEMORY TOOLS
 # =============================================================================
 

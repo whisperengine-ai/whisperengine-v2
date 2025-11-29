@@ -17,7 +17,8 @@ from src_v2.tools.memory_tools import (
     ExploreGraphTool,
     DiscoverCommonGroundTool,
     CharacterEvolutionTool,
-    SearchMyThoughtsTool
+    SearchMyThoughtsTool,
+    CreateUserGoalTool
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
@@ -427,6 +428,9 @@ class ReflectiveAgent:
             
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
             SearchMyThoughtsTool(character_name=character_name),
+            
+            # User-Requested Goals (help me with X, remind me about Y)
+            CreateUserGoalTool(user_id=user_id, character_name=character_name),
             
             # Graph & Relationship Tools
             ExploreGraphTool(user_id=user_id, bot_name=character_name),
