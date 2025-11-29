@@ -63,6 +63,21 @@ class MemoryManager:
                 logger.info("Qdrant collection initialized with single vector.")
             else:
                 logger.info(f"Qdrant collection {self.collection_name} already exists.")
+
+            # --- Initialize Shared Artifacts Collection (Phase E13) ---
+            if settings.ENABLE_STIGMERGIC_DISCOVERY:
+                from src_v2.memory.shared_artifacts import SharedArtifactManager
+                shared_collection = SharedArtifactManager.COLLECTION_NAME
+                shared_exists = any(c.name == shared_collection for c in collections)
+                
+                if not shared_exists:
+                    logger.info(f"Creating Shared Artifacts collection: {shared_collection}")
+                    vectors_config = VectorParams(size=384, distance=Distance.COSINE)
+                    await db_manager.qdrant_client.create_collection(
+                        collection_name=shared_collection,
+                        vectors_config=vectors_config
+                    )
+                    logger.info("Shared Artifacts collection initialized.")
                 
         except Exception as e:
             logger.error(f"Failed to initialize Qdrant: {e}")

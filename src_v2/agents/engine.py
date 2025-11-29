@@ -842,6 +842,26 @@ class AgentEngine:
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
             system_content += knowledge_context
 
+            # 2.7.5 Inject Stigmergic Discovery (Phase E13)
+            if settings.ENABLE_STIGMERGIC_DISCOVERY:
+                from src_v2.memory.shared_artifacts import shared_artifact_manager
+                other_bot_insights = await shared_artifact_manager.discover_artifacts(
+                    query=user_message,
+                    artifact_types=["epiphany", "observation"],
+                    exclude_bot=character.name,
+                    user_id=user_id,
+                    limit=settings.STIGMERGIC_DISCOVERY_LIMIT
+                )
+                
+                if other_bot_insights:
+                    stigmergic_context = "\n\n[INSIGHTS FROM OTHER CHARACTERS]\n"
+                    for insight in other_bot_insights:
+                        source = (insight.get("source_bot") or "unknown").title()
+                        content = insight.get("content", "")[:200]
+                        stigmergic_context += f"- {source} noticed: {content}\n"
+                    system_content += stigmergic_context
+                    logger.debug(f"Injected {len(other_bot_insights)} shared artifacts")
+
             # 2.8 Identity Reinforcement
             if context_variables.get("user_name"):
                 system_content += f"\n\nIMPORTANT: You are talking to {context_variables['user_name']}. Do NOT confuse them with anyone mentioned in the chat history or reply context."

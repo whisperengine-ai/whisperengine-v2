@@ -501,7 +501,22 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
                 points=[point]
             )
             
-            logger.info(f"Saved diary entry for {self.bot_name} on {date_str}: {point_id}")
+            # --- Shared Artifact Storage (Phase E13) ---
+            if settings.ENABLE_STIGMERGIC_DISCOVERY:
+                from src_v2.memory.shared_artifacts import shared_artifact_manager
+                await shared_artifact_manager.store_artifact(
+                    artifact_type="diary",
+                    content=entry.entry,
+                    source_bot=self.bot_name,
+                    user_id=None,  # Diary is about the bot's day, not a specific user
+                    metadata={
+                        "mood": entry.mood,
+                        "themes": entry.themes,
+                        "date": date_str
+                    }
+                )
+            
+            logger.info(f"Saved diary entry for {self.bot_name} on {date_str}")
             return point_id
             
         except Exception as e:

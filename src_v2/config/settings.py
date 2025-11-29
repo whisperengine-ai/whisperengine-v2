@@ -220,6 +220,11 @@ class Settings(BaseSettings):
     # --- Scheduled Reminders (Phase E5) ---
     ENABLE_REMINDERS: bool = True  # Enable reminder system
 
+    # --- Stigmergic Shared Artifacts (Phase E13) ---
+    ENABLE_STIGMERGIC_DISCOVERY: bool = True  # Allow bots to discover each other's artifacts
+    STIGMERGIC_CONFIDENCE_THRESHOLD: float = 0.7  # Min confidence for cross-bot artifacts
+    STIGMERGIC_DISCOVERY_LIMIT: int = 3  # Max artifacts from other bots per query
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

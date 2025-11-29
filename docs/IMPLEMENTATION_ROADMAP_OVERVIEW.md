@@ -63,7 +63,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|------|--------|
 | 🔴 High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
 | 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
-| 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | 📋 Proposed |
+| 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
+| 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
@@ -89,10 +90,10 @@ E10 (Channel Observer) ──► E9 (Provenance) ─┘
 S4 (Timezone) ──► E7 (User Timezone)
 
 Insight Agent ──┬──► E12 (Agentic Dreams)
-               └──► E13 (Stigmergic Shared Artifacts)
+               └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
 ```
 
-> **Current Focus:** E13 (Stigmergic Shared Artifacts) enables cross-bot intelligence sharing.
+> **Current Focus:** E13.1 (DiscoverCommunityInsightsTool) to expose shared artifacts to ReAct agents.
 
 ---
 

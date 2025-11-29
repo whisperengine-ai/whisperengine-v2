@@ -12,6 +12,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.config.settings import settings
+from src_v2.memory.shared_artifacts import shared_artifact_manager
 
 
 class AnalyzePatternsInput(BaseModel):
@@ -141,6 +142,17 @@ class GenerateEpiphanyTool(BaseTool):
                 },
                 collection_name=f"whisperengine_memory_{self.character_name}"
             )
+            
+            # --- Shared Artifact Storage (Phase E13) ---
+            if settings.ENABLE_STIGMERGIC_DISCOVERY:
+                await shared_artifact_manager.store_artifact(
+                    artifact_type="epiphany",
+                    content=f"Observation: {observation}\nRealization: {epiphany_text}",
+                    source_bot=self.character_name,
+                    user_id=self.user_id,
+                    confidence=0.85,
+                    metadata={"observation": observation}
+                )
             
             logger.info(f"Generated epiphany for user {self.user_id}: {epiphany_text[:50]}...")
             return f"Epiphany stored successfully: '{epiphany_text}'"

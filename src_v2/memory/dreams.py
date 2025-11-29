@@ -646,6 +646,21 @@ Create a surreal dream echoing these experiences.""")
                 points=[point]
             )
             
+            # --- Shared Artifact Storage (Phase E13) ---
+            if settings.ENABLE_STIGMERGIC_DISCOVERY:
+                from src_v2.memory.shared_artifacts import shared_artifact_manager
+                await shared_artifact_manager.store_artifact(
+                    artifact_type="dream",
+                    content=dream.dream,
+                    source_bot=self.bot_name,
+                    user_id=None,  # Dreams are bot-centric, even if triggered by a user
+                    metadata={
+                        "mood": dream.mood,
+                        "symbols": dream.symbols,
+                        "memory_echoes": dream.memory_echoes
+                    }
+                )
+            
             logger.info(f"Saved dream for user {user_id}: {point_id}")
             return point_id
             
