@@ -6,9 +6,9 @@
 
 WhisperEngine v2 creates AI agents with persistent memory and adaptive behavior. Beyond simple chatbots, agents have **Long-Term Memory**, **Advanced Reasoning**, **Knowledge Graphs**, and **Autonomous Engagement** — processing inputs through six distinct data streams to build a comprehensive context.
 
-Built on a "Four Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB), it combines the speed of vector search with the precision of knowledge graphs.
+Built on a "Five Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis), it combines the speed of vector search with the precision of knowledge graphs.
 
-**Version:** 2.0.2 | **Python:** 3.13+ | **Status:** Production Ready
+**Version:** 2.3 | **Python:** 3.13+ | **Status:** Production Ready
 
 ## ✨ What Makes WhisperEngine Different
 
@@ -111,7 +111,7 @@ cp .env.example .env.elena
 
 ### Start Infrastructure
 
-The Four Pillars (PostgreSQL, Qdrant, Neo4j, InfluxDB):
+The Five Pillars (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis):
 
 ```bash
 # Start everything (Docker is primary, even for dev)
@@ -229,19 +229,22 @@ pytest tests_v2/ --cov=src_v2 --cov-report=html
 ```
 src_v2/
 ├── agents/          # Cognitive engine, LLM interactions, reflective mode
-├── memory/          # Qdrant vectors, summarization, embeddings
+├── memory/          # Qdrant vectors, summarization, dreams, diary
 ├── knowledge/       # Neo4j graph, fact extraction
 ├── evolution/       # Trust scores, feedback analysis
 ├── discord/         # Bot, commands, scheduler, proactive messaging
 ├── voice/           # TTS (ElevenLabs), audio processing
 ├── api/             # FastAPI endpoints
 ├── core/            # Database, character loading, settings
+├── workers/         # Background task processing
+├── universe/        # Universe simulation and state
+├── broadcast/       # Broadcasting capabilities
 └── utils/           # Helpers, validation, time utilities
 ```
 
 ## 🏗️ Architecture
 
-### The Four Pillars
+### The Five Pillars
 
 See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definitions.
 
@@ -251,6 +254,7 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 | **Qdrant** | [Vector memory](docs/architecture/MEMORY_SYSTEM_V2.md) search | Fast ANN search, payload filtering |
 | **Neo4j** | [Knowledge graph](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) (facts, relationships) | Cypher queries, graph traversal |
 | **InfluxDB** | Metrics, analytics | Time-series data, Flux queries |
+| **Redis** | Cache layer, task queue (arq) | Fast access, background jobs |
 
 ### Key Design Patterns
 
@@ -271,6 +275,10 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 - ✅ Knowledge graph ([Neo4j](docs/features/KNOWLEDGE_GRAPH_MEMORY.md)) with fact extraction
 - ✅ Trust/evolution system ([8 stages](docs/architecture/TRUST_EVOLUTION_SYSTEM.md): Stranger → Soulmate)
 - ✅ Background [fact](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) and [preference](docs/features/USER_PREFERENCES.md) extraction
+- ✅ **Dreams & Diary**: Offline memory consolidation and narrative generation
+- ✅ **Universe Simulation**: Shared state and events across agents
+- ✅ **Broadcasting**: Multi-channel announcements and interactions
+- ✅ **Background Workers**: Robust task queue system using Redis/arq
 
 ### Discord Integration
 - ✅ DM support + server mentions
@@ -289,7 +297,6 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 See the full [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) for detailed planning.
 
 **Coming Soon:**
-- 🔜 Redis caching layer (30-50% DB reduction)
 - 🔜 Streaming LLM responses
 - 🔜 Hot-reload character definitions
 - 🔜 [Channel lurking](docs/roadmaps/CHANNEL_LURKING.md) (passive engagement)

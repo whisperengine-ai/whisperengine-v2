@@ -1,11 +1,32 @@
+#!/usr/bin/env python3
+"""
+Check dream entries for any bot in Qdrant.
+Usage: python check_dreams.py <bot_name>
+"""
 import asyncio
+import sys
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 
+# Available bots for validation
+AVAILABLE_BOTS = [
+    "elena", "ryan", "dotty", "aria", "dream", 
+    "jake", "sophia", "marcus", "nottaylor"
+]
+
 async def main():
+    if len(sys.argv) < 2:
+        print("Usage: python check_dreams.py <bot_name>")
+        print(f"Available bots: {', '.join(AVAILABLE_BOTS)}")
+        return
+
+    bot_name = sys.argv[1].lower()
+    if bot_name not in AVAILABLE_BOTS:
+        print(f"Warning: '{bot_name}' is not in the standard list, but proceeding anyway.")
+
     # Connect to Qdrant (assuming localhost:6333 based on standard setup)
     client = AsyncQdrantClient(url="http://localhost:6333")
-    collection_name = "whisperengine_memory_nottaylor"
+    collection_name = f"whisperengine_memory_{bot_name}"
     
     print(f"Checking collection: {collection_name}")
     
@@ -52,7 +73,11 @@ async def main():
                 payload = point.payload
                 if payload:
                     print(f"\nDate: {payload.get('timestamp', 'Unknown')}")
-                    print(f"Content: {payload.get('content', '')[:200]}...")
+                    content = payload.get('content', '')
+                    if content:
+                        print(f"Content: {content[:200]}...")
+                    else:
+                        print("Content: [Empty]")
                 
     except Exception as e:
         print(f"Error: {e}")
