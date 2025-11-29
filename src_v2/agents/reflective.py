@@ -487,12 +487,13 @@ class ReflectiveAgent:
                 elif "image_refine" in detected_intents:
                     image_type_hint = "- DETECTED INTENT: image_refine - User is tweaking a previous image. Set image_type='refine' when calling generate_image.\n"
                 elif "image_other" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_other - User wants an image of something else (not you). Set image_type='other' when calling generate_image.\n"
+                    image_type_hint = "- DETECTED INTENT: image_other - User wants an image of something else (not you). Set image_type='other' when calling generate_image. DO NOT describe yourself in the prompt.\n"
             
             image_rules = f"""- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
 - Gathering information is NOT the same as generating an image.
 - After gathering context, if the task requires an image, call generate_image with a detailed prompt.
 - Set image_type correctly: 'self' for self-portraits of YOU, 'refine' for tweaking previous images, 'other' for everything else.
+- CRITICAL: If image_type='other', do NOT include your own physical description in the prompt. Describe the subject (user, object, scene) only.
 {image_type_hint}"""
 
         return f"""You are a reflective AI agent designed to answer complex questions deeply.

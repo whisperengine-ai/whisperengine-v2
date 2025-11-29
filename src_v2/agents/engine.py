@@ -154,6 +154,13 @@ class AgentEngine:
             complexity_result = "COMPLEX_MID"
             _complexity = "COMPLEX_MID"
 
+        # Promote complexity for image intents to ensure Reflective Agent handles them (with proper hints)
+        image_intents = ["image_self", "image_other", "image_refine"]
+        if any(intent in detected_intents for intent in image_intents) and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            logger.info(f"Promoting complexity to COMPLEX_MID due to image intent: {detected_intents}")
+            complexity_result = "COMPLEX_MID"
+            _complexity = "COMPLEX_MID"
+
         # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
         if complexity_result == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")

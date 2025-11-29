@@ -17,7 +17,7 @@ from src_v2.config.settings import settings
 from src_v2.core.quota import quota_manager
 
 class GenerateImageInput(BaseModel):
-    prompt: str = Field(description="A detailed description of the image to generate. Include specific physical details, artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting), lighting, and mood. Be creative and vivid. For self-portraits, use the character's visual description provided in the tool description.")
+    prompt: str = Field(description="A detailed description of the image to generate. Include specific physical details, artistic style (e.g., photorealistic, cinematic, anime, watercolor, oil painting), lighting, and mood. Be creative and vivid. For self-portraits (image_type='self'), use the character's visual description. For other images (image_type='other'), describe the subject directly (do NOT include the character's appearance).")
     image_type: str = Field(
         description="The type of image being generated. 'self' = self-portrait of the AI character, 'other' = image of user/scenery/objects/other people, 'refine' = tweaking a previous image.",
         default="other",

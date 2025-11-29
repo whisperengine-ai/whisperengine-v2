@@ -145,9 +145,10 @@ class ComplexityClassifier:
             
         if settings.ENABLE_IMAGE_GENERATION:
             intent_section += '''\n- "image_self": User wants an image OF the AI character itself (self-portrait, selfie, "show me what you look like", "draw yourself", "your face", "picture of you"). The subject is the AI.
-- "image_other": User wants an image of something else - the user themselves, scenery, objects, other people, or abstract concepts. NOT a self-portrait of the AI.
+- "image_other": User wants an image of something else - the user themselves ("draw me", "what do I look like", "what you think I look like", "picture of me"), scenery, objects, other people, or abstract concepts. NOT a self-portrait of the AI.
 - "image_refine": User is modifying/tweaking a PREVIOUS image ("same but darker", "try again", "keep the hair but change X", "make it more Y", "tweak", "adjust the last one"). Implies continuing from prior generation.
-NOTE: These are mutually exclusive. Choose the most specific one. "image_refine" takes priority if refining.'''
+NOTE: These are mutually exclusive. Choose the most specific one. "image_refine" takes priority if refining.
+CRITICAL DISTINCTION: "Show me what YOU look like" = image_self. "Show me what I look like" = image_other.'''
             
         if settings.ENABLE_REMINDERS:
             intent_section += '\n- "reminder": User wants to set a reminder, be reminded about something, or schedule a future notification (e.g. "remind me in 10 minutes", "set a reminder for tomorrow", "don\'t let me forget to...").'
@@ -165,6 +166,7 @@ NOTE: Only detect these for genuinely significant emotional expressions or life 
             image_gen_example = """   - "Create an image of..." (image generation tool)
    - "Show me what you see" (image generation tool)
    - "Draw yourself" (image_self intent)
+   - "Draw me" or "What do I look like?" (image_other intent)
    - "Make it darker" after an image was generated (image_refine intent)"""
 
         system_prompt = f"""Analyze the user input given the recent conversation context. 
