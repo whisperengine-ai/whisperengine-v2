@@ -2,7 +2,7 @@
 
 **Document Version:** 2.0  
 **Created:** November 24, 2025  
-**Last Updated:** November 28, 2025 (Phase S: Safety & Observability added)
+**Last Updated:** November 28, 2025 (Phase E10: Channel Observer, Dynamic Artifact Modulation)
 **Status:** Active Planning
 
 ### Status Legend
@@ -57,26 +57,36 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 ---
 
-### 🎯 What's Next? (Priority Order)
+### 🎯 What's Next? (Priority Order with Dependencies)
 
-| Priority | Phase | Description | Time | Status |
-|----------|-------|-------------|------|--------|
-| 🔴 High | S1 | Content Safety Review (Dreams/Diaries) | 2-3 days | 📋 Proposed |
-| 🔴 High | S2 | Complexity Classifier Observability | 1 day | 📋 Proposed |
-| 🟡 Medium | S3 | LLM-Based Sensitivity Detection | 2-3 days | 📋 Proposed |
-| 🟡 Medium | S4 | Proactive Timezone Awareness | 1-2 days | 📋 Proposed |
-| 🟡 Medium | E10 | Channel Observer (Passive Context) | 2-3 days | 📋 Proposed |
-| Low | E6 | Character-to-Character Conversation | 1 week | 📋 Proposed |
-| Low | E5 | Scheduled Reminders | 3-4 days | 📋 Proposed |
-| Low | E7 | User Timezone Support | 1-2 days | 📋 Proposed |
-| Low | E8 | Bot Broadcast Channel | 2-3 days | 📋 Proposed |
-| Low | E9 | Artifact Provenance | 1-2 days | 📋 Proposed |
-| — | E1 | Conversation Threading | — | ✅ Complete |
-| — | E2 | Character Diary & Reflection | — | ✅ Complete |
-| — | E3 | Dream Sequences | — | ✅ Complete |
-| — | E4 | Relationship Milestones | — | ✅ Complete |
+| Priority | Phase | Description | Time | Deps | Status |
+|----------|-------|-------------|------|------|--------|
+| 🔴 High | S1 | Content Safety Review | 2-3 days | — | 📋 Proposed |
+| 🔴 High | S2 | Classifier Observability | 1 day | — | 📋 Proposed |
+| 🟡 Medium | E10 | Channel Observer | 2-3 days | — | 📋 Proposed |
+| 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | 📋 Proposed |
+| 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | 📋 Proposed |
+| 🟡 Medium | E9 | Artifact Provenance | 1-2 days | E10 | 📋 Proposed |
+| Low | E8 | Bot Broadcast Channel | 2-3 days | S1, E9 | 📋 Proposed |
+| Low | E7 | User Timezone Support | 1-2 days | S4 | 📋 Proposed |
+| Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
+| Low | E6 | Character-to-Character | 1 week | E8 | 📋 Proposed |
+| — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
 
-> **Current Focus:** Phase S (Safety & Observability) identified via external architecture review. **Next:** S1 (Content Safety), S2 (Classifier Metrics), then E10 (Channel Observer) to enrich artifact generation.
+**Dependency Chain:**
+```
+S1 (Content Safety) ──┬──► S3 (LLM Sensitivity)
+                      └──► E8 (Bot Broadcast) ──► E6 (Bot-to-Bot Chat)
+                                ▲
+E10 (Channel Observer) ──► E9 (Provenance) ─┘
+                      │
+                      └──► Dynamic Dream Temperature (built-in)
+                      └──► Dynamic Diary Tone (built-in)
+
+S4 (Timezone) ──► E7 (User Timezone)
+```
+
+> **Current Focus:** S1 + S2 (safety/observability), then E10 (Channel Observer) which unlocks dynamic artifact modulation and richer provenance.
 
 ---
 
@@ -1209,6 +1219,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 ### 📋 Phase S3: LLM-Based Sensitivity Detection
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
 **Status:** 📋 Proposed
+**Dependencies:** S1 (Content Safety Review provides base filtering infrastructure)
 
 **Problem:** Cross-bot sharing uses keyword-based filtering; misses context-dependent sensitivity.
 **Solution:** Add LLM-based sensitivity check as second layer for content that passes keyword filter.
@@ -1225,6 +1236,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 ### 📋 Phase S4: Proactive Timezone Awareness
 **Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
 **Status:** 📋 Proposed
+**Dependencies:** None (foundational for E7)
 
 **Problem:** Proactive messaging has no awareness of user's local time; can ping at 3 AM.
 **Solution:** Store/infer user timezone; respect quiet hours before proactive outreach.
@@ -1309,24 +1321,27 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 **Spec:** [RELATIONSHIP_MILESTONES.md](./roadmaps/RELATIONSHIP_MILESTONES.md)
 
 ### 📋 Phase E5: Scheduled Reminders
-**Priority:** Very Low | **Time:** 3-4 days | **Complexity:** Medium
+**Priority:** Low | **Time:** 3-4 days | **Complexity:** Medium
 **Status:** 📋 Proposed
+**Dependencies:** None
 
 **Problem:** Users ask for reminders, but bot cannot deliver them.
 **Solution:** Intent detection + temporal parsing + proactive scheduler delivery.
 **Spec:** [SCHEDULED_REMINDERS.md](./roadmaps/SCHEDULED_REMINDERS.md)
 
 ### 📋 Phase E6: Character-to-Character Conversation
-**Priority:** Very Low | **Time:** 1 week | **Complexity:** High
+**Priority:** Low | **Time:** 1 week | **Complexity:** High
 **Status:** 📋 Proposed
+**Dependencies:** E8 (Bot Broadcast Channel provides discovery mechanism)
 
 **Problem:** Multiple bots in the same server ignore each other.
-**Solution:** Event-bus driven cross-bot conversation when mentioned together.
+**Solution:** Event-bus driven cross-bot conversation. Bots discover each other's posts in broadcast channel and occasionally respond.
 **Spec:** [CHARACTER_TO_CHARACTER.md](./roadmaps/CHARACTER_TO_CHARACTER.md)
 
 ### 📋 Phase E7: User Timezone Support
-**Priority:** Very Low | **Time:** 1-2 days | **Complexity:** Low
+**Priority:** Low | **Time:** 1-2 days | **Complexity:** Low
 **Status:** 📋 Proposed
+**Dependencies:** S4 (Proactive Timezone Awareness provides infrastructure)
 
 **Problem:** System operates in UTC; diary/dream timing doesn't match user's local time.
 **Solution:** Store user timezone preference, adjust context injection framing.
@@ -1335,12 +1350,14 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 ### 📋 Phase E8: Bot Broadcast Channel
 **Priority:** Low | **Time:** 2-3 days | **Complexity:** Medium
 **Status:** 📋 Proposed
+**Dependencies:** S1 (Content Safety Review), E9 (Artifact Provenance)
 
 **Problem:** Bots' inner lives (diaries, dreams) are invisible to community.
 **Solution:** Public Discord channel where bots post sanitized diary entries, dreams, observations, and musings. Other bots discover these organically and may react/comment.
 
 **Key Features:**
 - Public (sanitized) versions of diary entries and dreams
+- Provenance displayed with artifacts ("grounded in...")
 - Periodic ambient observations ("The server was lively today...")
 - Cross-bot discovery: Bots read each other's posts and occasionally react
 - Probabilistic reactions (20% chance) to feel organic, not forced
@@ -1349,13 +1366,19 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 **Spec:** [BOT_BROADCAST_CHANNEL.md](./roadmaps/BOT_BROADCAST_CHANNEL.md)
 
 ### 📋 Phase E9: Artifact Provenance System
-**Priority:** Low | **Time:** 1-2 days | **Complexity:** Low
+**Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
 **Status:** 📋 Proposed
+**Dependencies:** E10 (Channel Observer provides channel context for provenance)
 
 **Problem:** Dreams and diaries appear to be LLM hallucination/fiction. No proof they're grounded in real data.
 **Solution:** Capture provenance (sources) at generation time—we already fetch the data, just stop discarding it.
 
-**Key Insight:** Zero extra queries. The memories, graph facts, and session summaries used to build prompts are already fetched. We just store them alongside the generated content.
+**Key Insight:** Zero extra queries. The memories, graph facts, session summaries, AND channel observations used to build prompts are already fetched. We just store them alongside the generated content.
+
+**Public Channel Advantage:** All bot interactions are in public channels, so provenance can be direct:
+- "Alex's excitement about astronomy in #science (last week)"
+- "The buzzing energy in #general (today)"
+- "Knowing Sam loves astrophotography"
 
 **Benefits:**
 - Users see artifacts are grounded in real conversations
@@ -1368,6 +1391,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 ### 📋 Phase E10: Channel Observer (Passive Context Awareness)
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
 **Status:** 📋 Proposed
+**Dependencies:** None (foundational for E9, E8)
 
 **Problem:** Bots only "see" messages when directly pinged. They miss the ambient activity in channels—topics being discussed, community energy, who's active.
 
@@ -1380,11 +1404,21 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - Sentiment/energy per channel ("lively", "quiet", "buzzing")
 - Who was active and what they discussed
 - Channel vibes aggregated into snapshots
+- **Energy level** (0.0-1.0) for dynamic artifact modulation
+
+**Unlocks (Built-In Features):**
+
+| Feature | Description |
+|---------|-------------|
+| **Dynamic Dream Temperature** | High server energy → wild/surreal dreams (temp 1.0+); Quiet day → gentle/coherent dreams (temp 0.5) |
+| **Dynamic Diary Tone** | Server mood shapes diary emotion: buzzing+excited → joyful; quiet+curious → contemplative; tense → processing |
+| **Richer Provenance** | "Overheard excitement about X in #channel" |
+| **Proactive Triggers** | "Server seems excited, maybe I should comment" (future) |
 
 **Benefits:**
 - Dreams include ambient observations ("the server was buzzing about...")
 - Diaries reflect community energy, not just direct conversations
-- Richer provenance: "Overheard excitement about X in #channel"
-- Proactive messaging can trigger on channel activity patterns
+- Artifacts feel emotionally responsive to environment
+- Bots have "peripheral vision" of the community
 
 **Spec:** [CHANNEL_OBSERVER.md](./roadmaps/CHANNEL_OBSERVER.md)
