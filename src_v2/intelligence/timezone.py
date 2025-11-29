@@ -111,10 +111,10 @@ class TimezoneManager:
             async with db_manager.postgres_pool.acquire() as conn:
                 # Get last 200 message timestamps for this user
                 rows = await conn.fetch("""
-                    SELECT created_at 
+                    SELECT timestamp 
                     FROM v2_chat_history
                     WHERE user_id = $1 AND character_name = $2 AND role = 'user'
-                    ORDER BY created_at DESC
+                    ORDER BY timestamp DESC
                     LIMIT 200
                 """, user_id, character_name)
                 
@@ -125,7 +125,7 @@ class TimezoneManager:
                 # Count messages by UTC hour
                 hour_counts = Counter()
                 for row in rows:
-                    ts = row['created_at']
+                    ts = row['timestamp']
                     if ts:
                         hour_counts[ts.hour] += 1
                 

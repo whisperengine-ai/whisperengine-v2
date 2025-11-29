@@ -238,7 +238,7 @@ async def run_diary_generation(
         user_names = [f"{user_count} different {'people' if user_count > 1 else 'person'}"]
         
         # Generate diary entry
-        entry = await diary_manager.generate_diary_entry(
+        entry, provenance = await diary_manager.generate_diary_entry(
             summaries=summaries,
             character_context=character_context,
             user_names=user_names
@@ -253,7 +253,7 @@ async def run_diary_generation(
             }
         
         # Save to Qdrant
-        point_id = await diary_manager.save_diary_entry(entry)
+        point_id = await diary_manager.save_diary_entry(entry, provenance=provenance)
         
         if point_id:
             logger.info(f"Diary entry saved for {character_name}: mood={entry.mood}, themes={entry.themes}")

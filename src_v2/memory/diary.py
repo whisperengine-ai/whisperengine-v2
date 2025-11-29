@@ -9,7 +9,7 @@ The diary entry is:
 - Stored in Qdrant with type='diary'
 - Injected into character context to inform their mood and perspective
 """
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 __all__ = ["DiaryEntry", "DiaryManager", "get_diary_manager"]
 from datetime import datetime, timezone, timedelta
@@ -24,6 +24,7 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
 from src_v2.safety.content_review import content_safety_checker
+from src_v2.core.provenance import ProvenanceCollector
 
 
 class DiaryEntry(BaseModel):
@@ -90,7 +91,7 @@ Write your diary entry for today.""")
         summaries: List[Dict[str, Any]],
         character_context: str,
         user_names: List[str]
-    ) -> Optional[DiaryEntry]:
+    ) -> Tuple[Optional[DiaryEntry], List[Dict[str, Any]]]:
         """
         Generates a diary entry from the day's session summaries.
         
@@ -100,11 +101,14 @@ Write your diary entry for today.""")
             user_names: List of display names the character interacted with today
             
         Returns:
-            DiaryEntry if successful, None on failure
+            Tuple of (DiaryEntry, provenance_data) if successful, (None, []) on failure
         """
         if not summaries:
             logger.info(f"No summaries to generate diary for {self.bot_name}")
-            return None
+            return None, []
+        
+        # Initialize provenance collector (Phase E9)
+        collector = ProvenanceCollector("diary", self.bot_name)
         
         # Format summaries for the prompt
         summary_text = ""
@@ -115,6 +119,15 @@ Write your diary entry for today.""")
             summary_text += f"Emotions: {emotions}\n"
             summary_text += f"Topics: {topics}\n"
             summary_text += f"Summary: {s.get('content', 'No summary available')}\n\n"
+            
+            # Add to provenance
+            collector.add_conversation(
+                who=s.get("user_id", "someone"),
+                topic=topics,
+                where="chat",
+                when="today",
+                technical={"session_id": s.get("session_id")}
+            )
         
         try:
             result = await self.chain.ainvoke({
@@ -132,22 +145,23 @@ Write your diary entry for today.""")
                 review = await content_safety_checker.review_content(result.entry, "diary entry")
                 if not review.safe:
                     logger.warning(f"Diary entry flagged for safety concerns: {review.concerns}. Skipping.")
-                    return None
+                    return None, []
 
                 logger.info(f"Generated diary entry for {self.bot_name}: mood={result.mood}, themes={result.themes}")
-                return result
+                return result, collector.get_provenance_data()
             else:
                 logger.warning(f"Unexpected result type from diary LLM: {type(result)}")
-                return None
+                return None, []
             
         except Exception as e:
             logger.error(f"Failed to generate diary entry: {e}")
-            return None
+            return None, []
 
     async def save_diary_entry(
         self,
         entry: DiaryEntry,
-        date: Optional[datetime] = None
+        date: Optional[datetime] = None,
+        provenance: Optional[List[Dict[str, Any]]] = None
     ) -> Optional[str]:
         """
         Saves a diary entry to Qdrant.
@@ -155,6 +169,7 @@ Write your diary entry for today.""")
         Args:
             entry: The generated DiaryEntry
             date: The date for this diary entry (defaults to today)
+            provenance: List of source data dicts (Phase E9)
             
         Returns:
             Point ID if successful, None on failure
@@ -183,6 +198,7 @@ Write your diary entry for today.""")
                     "notable_users": entry.notable_users,
                     "themes": entry.themes,
                     "emotional_highlights": entry.emotional_highlights,
+                    "provenance": provenance or [],
                     "timestamp": entry_date.isoformat(),
                     "visibility": "private"  # Character's private diary
                 }

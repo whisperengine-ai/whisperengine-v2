@@ -1025,7 +1025,7 @@ class AgentEngine:
                 return ""
             
             # Generate the dream
-            dream = await dream_manager.generate_dream(
+            dream, provenance = await dream_manager.generate_dream(
                 user_id=user_id,
                 user_name=user_name,
                 memories=memories,
@@ -1035,8 +1035,8 @@ class AgentEngine:
             
             if dream:
                 # Save dream to prevent repetition
-                await dream_manager.save_dream(user_id, dream)
-                return dream_manager.format_dream_context(dream, days_apart)
+                await dream_manager.save_dream(user_id, dream, provenance)
+                return dream_manager.format_dream_context(dream, days_apart, provenance)
             
         except Exception as e:
             logger.debug(f"Failed to get dream context for {char_name}: {e}")

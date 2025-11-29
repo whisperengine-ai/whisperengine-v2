@@ -11,7 +11,7 @@ Dreams are:
 - Stored in Qdrant with type='dream' to prevent repetition
 - Injected into character context so they can "share" the dream naturally
 """
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 __all__ = ["DreamContent", "DreamManager", "get_dream_manager"]
 
@@ -27,6 +27,7 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
 from src_v2.safety.content_review import content_safety_checker
+from src_v2.core.provenance import ProvenanceCollector, SourceType
 
 
 class DreamContent(BaseModel):
@@ -161,7 +162,7 @@ Create a surreal dream that echoes these shared experiences.""")
         memories: List[Dict[str, Any]],
         character_context: str,
         days_apart: int = 1
-    ) -> Optional[DreamContent]:
+    ) -> Tuple[Optional[DreamContent], List[Dict[str, Any]]]:
         """
         Generates a dream sequence based on shared memories.
         
@@ -173,11 +174,14 @@ Create a surreal dream that echoes these shared experiences.""")
             days_apart: Days since last interaction
             
         Returns:
-            DreamContent if successful, None on failure
+            Tuple of (DreamContent, provenance_data) if successful, (None, []) on failure
         """
         if not memories:
             logger.info(f"No memories available for dream generation with user {user_id}")
-            return None
+            return None, []
+        
+        # Initialize provenance collector (Phase E9)
+        collector = ProvenanceCollector("dream", self.bot_name)
         
         # Format memories for the prompt
         memory_text = ""
@@ -189,6 +193,15 @@ Create a surreal dream that echoes these shared experiences.""")
             memory_text += f"Topics: {topics}\n"
             memory_text += f"Emotions: {emotions}\n"
             memory_text += f"Content: {content[:300]}...\n\n" if len(content) > 300 else f"Content: {content}\n\n"
+            
+            # Add to provenance
+            collector.add_memory(
+                who=user_name,
+                topic=topics,
+                when="past",
+                memory_id=m.get("id"),
+                score=m.get("score")
+            )
         
         try:
             result = await self.chain.ainvoke({
@@ -204,22 +217,23 @@ Create a surreal dream that echoes these shared experiences.""")
                 review = await content_safety_checker.review_content(result.dream, "dream")
                 if not review.safe:
                     logger.warning(f"Dream flagged for safety concerns: {review.concerns}. Skipping.")
-                    return None
+                    return None, []
                 
                 logger.info(f"Generated dream for user {user_id}: mood={result.mood}, symbols={result.symbols}")
-                return result
+                return result, collector.get_provenance_data()
             else:
                 logger.warning(f"Unexpected result type from dream LLM: {type(result)}")
-                return None
+                return None, []
             
         except Exception as e:
             logger.error(f"Failed to generate dream: {e}")
-            return None
+            return None, []
 
     async def save_dream(
         self,
         user_id: str,
-        dream: DreamContent
+        dream: DreamContent,
+        provenance: Optional[List[Dict[str, Any]]] = None
     ) -> Optional[str]:
         """
         Saves a dream to Qdrant.
@@ -227,6 +241,7 @@ Create a surreal dream that echoes these shared experiences.""")
         Args:
             user_id: Discord user ID
             dream: The generated DreamContent
+            provenance: List of source data dicts (Phase E9)
             
         Returns:
             Point ID if successful, None on failure
@@ -252,6 +267,7 @@ Create a surreal dream that echoes these shared experiences.""")
                     "mood": dream.mood,
                     "symbols": dream.symbols,
                     "memory_echoes": dream.memory_echoes,
+                    "provenance": provenance or [],
                     "timestamp": now.isoformat(),
                     "date": now.strftime("%Y-%m-%d")
                 }
@@ -311,13 +327,19 @@ Create a surreal dream that echoes these shared experiences.""")
             logger.error(f"Failed to get last dream for user {user_id}: {e}")
             return None
 
-    def format_dream_context(self, dream: DreamContent, days_apart: int = 1) -> str:
+    def format_dream_context(
+        self, 
+        dream: DreamContent, 
+        days_apart: int = 1,
+        provenance: Optional[List[Dict[str, Any]]] = None
+    ) -> str:
         """
         Formats a dream for injection into character context.
         
         Args:
             dream: DreamContent object
             days_apart: Days since last interaction
+            provenance: Optional list of source data dicts
             
         Returns:
             Formatted string for prompt injection
@@ -327,6 +349,14 @@ Create a surreal dream that echoes these shared experiences.""")
         context = "\n[YOU HAD A DREAM ABOUT THIS USER]\n"
         context += f"Dream ({time_phrase}): {dream.dream}\n"
         context += f"Mood: {dream.mood}\n"
+        
+        if provenance:
+            context += "Inspirations (Real memories):\n"
+            for p in provenance:
+                desc = p.get('description', '')
+                if desc:
+                    context += f"- {desc}\n"
+        
         context += "(You can naturally mention this dream when greeting them - "
         context += "share it as something that just came to mind. Keep it brief.)\n"
         
