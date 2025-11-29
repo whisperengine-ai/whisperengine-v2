@@ -179,6 +179,27 @@ class WhisperBot(commands.Bot):
             
         return False
 
+    async def process_broadcast_queue_loop(self) -> None:
+        """Background task to process queued broadcasts from workers (Phase E8)."""
+        await self.wait_until_ready()
+        
+        # Give things time to initialize
+        await asyncio.sleep(10)
+        
+        while not self.is_closed():
+            try:
+                from src_v2.broadcast.manager import broadcast_manager
+                
+                posted = await broadcast_manager.process_queued_broadcasts()
+                if posted > 0:
+                    logger.info(f"Processed {posted} queued broadcasts")
+                    
+            except Exception as e:
+                logger.debug(f"Broadcast queue check failed: {e}")
+            
+            # Check every 30 seconds
+            await asyncio.sleep(30)
+
     async def update_status_loop(self) -> None:
         """Background task to periodically update bot status with statistics."""
         await self.wait_until_ready()
@@ -266,6 +287,10 @@ class WhisperBot(commands.Bot):
 
         # Start status update loop
         self.loop.create_task(self.update_status_loop())
+        
+        # Start broadcast queue processor (Phase E8)
+        if settings.ENABLE_BOT_BROADCAST:
+            self.loop.create_task(self.process_broadcast_queue_loop())
 
     async def on_ready(self) -> None:
         """Called when the bot has successfully connected to Discord."""
@@ -283,6 +308,15 @@ class WhisperBot(commands.Bot):
             logger.error(f"Could not load character '{self.character_name}'!")
 
         logger.info("WhisperEngine is ready and listening.")
+
+        # Initialize broadcast manager with bot instance (Phase E8)
+        if settings.ENABLE_BOT_BROADCAST:
+            try:
+                from src_v2.broadcast.manager import broadcast_manager
+                broadcast_manager.set_bot(self)
+                logger.info("Broadcast manager initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize broadcast manager: {e}")
 
         # Check Permissions
         await self._check_permissions()

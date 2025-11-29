@@ -68,7 +68,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
-| Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | 📋 Proposed |
+| Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | 📋 Proposed |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
 | Low | E6 | Character-to-Character | 1 week | E8 | 📋 Proposed |

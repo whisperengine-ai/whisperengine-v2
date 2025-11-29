@@ -184,6 +184,13 @@ class Settings(BaseSettings):
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
     DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
 
+    # --- Bot Broadcast Channel (Phase E8) ---
+    ENABLE_BOT_BROADCAST: bool = False  # Post thoughts/dreams to a public channel
+    BOT_BROADCAST_CHANNEL_ID: str = ""  # Discord channel ID for broadcasts
+    BOT_BROADCAST_MIN_INTERVAL_MINUTES: int = 60  # Minimum time between posts
+    BOT_BROADCAST_DREAMS: bool = True  # Share dreams to broadcast channel
+    BOT_BROADCAST_DIARIES: bool = True  # Share diary summaries to broadcast channel
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

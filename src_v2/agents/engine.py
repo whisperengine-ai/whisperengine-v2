@@ -1036,6 +1036,15 @@ class AgentEngine:
             if dream:
                 # Save dream to prevent repetition
                 await dream_manager.save_dream(user_id, dream, provenance)
+                
+                # Post to broadcast channel (Phase E8)
+                if settings.ENABLE_BOT_BROADCAST and settings.BOT_BROADCAST_DREAMS:
+                    try:
+                        from src_v2.broadcast.manager import broadcast_manager
+                        await broadcast_manager.post_dream(dream.dream, char_name, provenance)
+                    except Exception as e:
+                        logger.debug(f"Failed to broadcast dream: {e}")
+                
                 return dream_manager.format_dream_context(dream, days_apart, provenance)
             
         except Exception as e:

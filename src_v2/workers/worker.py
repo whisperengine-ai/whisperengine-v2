@@ -255,6 +255,25 @@ async def run_diary_generation(
         # Save to Qdrant
         point_id = await diary_manager.save_diary_entry(entry, provenance=provenance)
         
+        # Queue public version for broadcast channel (Phase E8)
+        # Worker doesn't have Discord access, so we queue for the bot to post
+        broadcast_queued = False
+        if settings.ENABLE_BOT_BROADCAST and settings.BOT_BROADCAST_DIARIES:
+            try:
+                from src_v2.broadcast.manager import broadcast_manager
+                
+                public_version = await diary_manager.create_public_version(entry)
+                if public_version:
+                    broadcast_queued = await broadcast_manager.queue_diary(
+                        public_version,
+                        character_name,
+                        provenance
+                    )
+                    if broadcast_queued:
+                        logger.info(f"Diary broadcast queued for {character_name}")
+            except Exception as e:
+                logger.warning(f"Failed to queue diary broadcast: {e}")
+        
         if point_id:
             logger.info(f"Diary entry saved for {character_name}: mood={entry.mood}, themes={entry.themes}")
             return {
@@ -263,7 +282,8 @@ async def run_diary_generation(
                 "mood": entry.mood,
                 "themes": entry.themes,
                 "notable_users": entry.notable_users,
-                "point_id": point_id
+                "point_id": point_id,
+                "broadcast_queued": broadcast_queued
             }
         else:
             return {

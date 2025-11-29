@@ -334,6 +334,56 @@ Write your diary entry for today.""")
         
         return context
 
+    async def create_public_version(self, entry: DiaryEntry) -> Optional[str]:
+        """
+        Create a broadcast-safe version of the diary entry (Phase E8).
+        
+        Rules:
+        - Replace specific user names with general terms
+        - Keep emotional tone and themes
+        - Shorter than private version (2-3 sentences)
+        
+        Args:
+            entry: The private DiaryEntry
+            
+        Returns:
+            Public-safe summary string, or None on failure
+        """
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are creating a public version of a character's private diary entry.
+
+Rules:
+- Replace specific user names with general terms ("someone", "a friend", "people")
+- Remove anything that could identify a specific person
+- Keep the emotional essence and themes
+- Make it 2-3 sentences (much shorter than original)
+- Keep the character's voice and personality
+- This will be posted publicly, so be thoughtful"""),
+            ("human", """Private diary entry:
+{entry}
+
+Mood: {mood}
+Themes: {themes}
+
+Write the public version (2-3 sentences):""")
+        ])
+        
+        try:
+            llm = create_llm(temperature=0.7, mode="utility")
+            chain = prompt | llm
+            
+            result = await chain.ainvoke({
+                "entry": entry.entry,
+                "mood": entry.mood,
+                "themes": ", ".join(entry.themes) if entry.themes else "general"
+            })
+            
+            return result.content.strip()
+            
+        except Exception as e:
+            logger.error(f"Failed to create public diary version: {e}")
+            return None
+
 
 # Factory function for getting DiaryManager instances
 _diary_managers: Dict[str, DiaryManager] = {}
