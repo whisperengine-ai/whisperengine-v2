@@ -106,14 +106,14 @@ class WorkerSettings:
     
     # Cron jobs (scheduled tasks)
     cron_jobs = [
-        # Generate diaries for all active characters nightly at 4 AM UTC
+        # Generate diaries for all active characters at end of day (default: 10 PM UTC)
         cron(
             run_nightly_diary_generation,
             hour={settings.DIARY_GENERATION_HOUR_UTC},
             minute={0},
             run_at_startup=False  # Don't run immediately on worker start
         ),
-        # Generate dreams for all active characters nightly at 5 AM UTC (after diaries)
+        # Generate dreams for all active characters in morning (default: 7 AM UTC)
         cron(
             run_nightly_dream_generation,
             hour={settings.DREAM_GENERATION_HOUR_UTC},

@@ -9,7 +9,7 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """
     Cron job that generates diary entries for all active characters.
     
-    Runs nightly at the configured hour (default 4 AM UTC).
+    Runs at end of day (default 10 PM UTC) to reflect on the day's events.
     Scans the characters/ directory for available characters and
     triggers diary generation for each one.
     
@@ -112,7 +112,7 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """
     Cron job that generates dreams for all active characters.
     
-    Runs nightly at the configured hour (default 5 AM UTC, 1 hour after diaries).
+    Runs in the morning (default 7 AM UTC) to share dreams upon waking.
     Scans the characters/ directory for available characters and
     triggers dream generation for each one.
     

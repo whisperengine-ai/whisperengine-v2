@@ -179,7 +179,7 @@ class Settings(BaseSettings):
     ENABLE_CHARACTER_DIARY: bool = True  # Generate nightly diary entries for characters
     DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
     DIARY_ALWAYS_GENERATE: bool = True  # Generate diary even without user interactions (reflective entries)
-    DIARY_GENERATION_HOUR_UTC: int = 4  # Hour (UTC) when diary is generated (default: 4 AM)
+    DIARY_GENERATION_HOUR_UTC: int = 22  # Hour (UTC) when diary is generated (default: 10 PM - end of day)
     
     # --- Session Summarization ---
     SUMMARY_MESSAGE_THRESHOLD: int = 20  # Messages per session before auto-summarization
@@ -189,7 +189,7 @@ class Settings(BaseSettings):
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
     DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
     DREAM_ALWAYS_GENERATE: bool = True  # Generate nightly dream even without user interactions
-    DREAM_GENERATION_HOUR_UTC: int = 5  # Hour (UTC) when nightly dreams are generated (default: 5 AM)
+    DREAM_GENERATION_HOUR_UTC: int = 7  # Hour (UTC) when dreams are generated (default: 7 AM - morning)
     
     # --- Agentic Narrative Generation (Phase E10) ---
     # When enabled, diary/dream generation uses the DreamWeaver agent which:

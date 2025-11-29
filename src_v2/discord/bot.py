@@ -217,6 +217,34 @@ class WhisperBot(commands.Bot):
                 # Use the mentioning bot as "user" for context purposes
                 other_bot_name = mention.mentioning_bot or "another character"
                 
+                # Check if this message is a reply to one of our messages
+                # This is critical context - if Dream replies to Ryan's dream, Ryan needs to know
+                # that Dream was commenting on HIS content, not sharing their own dream
+                original_context = ""
+                is_reply_to_us = False
+                if message.reference and message.reference.message_id:
+                    try:
+                        ref_msg = message.reference.resolved
+                        if not ref_msg:
+                            ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                        
+                        if ref_msg and ref_msg.author.id == (self.user.id if self.user else None):
+                            is_reply_to_us = True
+                            # Include our original message for context
+                            our_content = ref_msg.content[:500] if ref_msg.content else "(no text)"
+                            original_context = f"""
+[IMPORTANT CONTEXT]
+{other_bot_name.title()} is REPLYING to YOUR previous message. They are commenting on what YOU wrote.
+Your original message was: "{our_content}"
+{other_bot_name.title()}'s reply: "{message.content[:500]}"
+
+When you respond, acknowledge that they are commenting on YOUR content (your dream, diary, or message).
+Do NOT treat their message as if they are sharing their own dream or diary.
+"""
+                            logger.debug(f"Cross-bot message is a reply to our message: {ref_msg.id}")
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch referenced message: {e}")
+                
                 # Get recent channel history for context
                 history_messages = []
                 try:
@@ -241,7 +269,7 @@ This is a playful interaction between characters. Keep your response:
 - Relatively brief (1-3 sentences)
 - Natural and conversational
 - Avoid being repetitive or forcing the conversation
-
+{original_context}
 {other_bot_name.title()} said: "{message.content}"
 
 Recent channel context:
