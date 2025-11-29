@@ -17,6 +17,14 @@ from src_v2.core.database import db_manager
 from src_v2.safety.content_review import content_safety_checker
 
 
+def _redis_key(key: str) -> str:
+    """Apply Redis namespace prefix."""
+    prefix = settings.REDIS_KEY_PREFIX
+    if key.startswith(prefix):
+        return key
+    return f"{prefix}{key}"
+
+
 class PostType(str, Enum):
     DIARY = "diary"
     DREAM = "dream"
@@ -182,7 +190,7 @@ class BroadcastManager:
             }
             
             # Store with 24h TTL
-            key = f"broadcast:{character_name}:{message.id}"
+            key = _redis_key(f"broadcast:{character_name}:{message.id}")
             await db_manager.redis_client.set(
                 key,
                 json.dumps(broadcast_data),
@@ -191,13 +199,13 @@ class BroadcastManager:
             
             # Also add to a sorted set for chronological retrieval
             await db_manager.redis_client.zadd(
-                "broadcasts:recent",
+                _redis_key("broadcasts:recent"),
                 {key: datetime.now(timezone.utc).timestamp()}
             )
             
             # Trim old entries
             await db_manager.redis_client.zremrangebyscore(
-                "broadcasts:recent",
+                _redis_key("broadcasts:recent"),
                 "-inf",
                 (datetime.now(timezone.utc) - timedelta(hours=24)).timestamp()
             )
@@ -231,7 +239,7 @@ class BroadcastManager:
             # Get recent broadcast keys
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp()
             keys = await db_manager.redis_client.zrangebyscore(
-                "broadcasts:recent",
+                _redis_key("broadcasts:recent"),
                 cutoff,
                 "+inf"
             )

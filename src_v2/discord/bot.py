@@ -1056,14 +1056,14 @@ Recent channel context:
 
                 # Fire-and-forget Preference Extraction
                 if settings.ENABLE_PREFERENCE_EXTRACTION:
-                    async def process_preferences(uid, msg, char_name):
-                        prefs = await preference_extractor.extract_preferences(msg)
-                        if prefs:
-                            logger.info(f"Detected preferences for {uid}: {prefs}")
-                            for key, value in prefs.items():
-                                await trust_manager.update_preference(uid, char_name, key, value)
-                                
-                    self.loop.create_task(process_preferences(user_id, raw_user_message, self.character_name))
+                    try:
+                        await task_queue.enqueue_preference_extraction(
+                            user_id=user_id,
+                            character_name=self.character_name,
+                            message_content=raw_user_message
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to enqueue preference extraction: {e}")
 
                 # 2.5 Check for Summarization
                 if session_id:
@@ -1360,9 +1360,14 @@ Recent channel context:
                     # 4.5 Goal Analysis (Fire-and-forget)
                     # Analyze the interaction (User Message + AI Response)
                     interaction_text = f"User: {user_message}\nAI: {response}"
-                    self.loop.create_task(
-                        goal_analyzer.check_goals(user_id, character.name, interaction_text)
-                    )
+                    try:
+                        await task_queue.enqueue_goal_analysis(
+                            user_id=user_id,
+                            character_name=self.character_name,
+                            interaction_text=interaction_text
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to enqueue goal analysis: {e}")
                     
                     # 4.6 Trust Update (Engagement Reward)
                     # Small trust increase for every positive interaction
@@ -1928,13 +1933,14 @@ Recent channel context:
                     logger.info(f"Included image from referenced message: {attachment.url}")
                 
                 if trigger_vision and settings.LLM_SUPPORTS_VISION:
-                    asyncio.create_task(
-                        vision_manager.analyze_and_store(
+                    try:
+                        await task_queue.enqueue_vision_analysis(
                             image_url=attachment.url,
                             user_id=user_id,
                             channel_id=str(channel.id)
                         )
-                    )
+                    except Exception as e:
+                        logger.error(f"Failed to enqueue vision analysis: {e}")
             
             # 3. Document Handling
             else:

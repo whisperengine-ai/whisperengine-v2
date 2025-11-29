@@ -154,6 +154,48 @@ class TaskQueue:
             priority=priority
         )
     
+    async def enqueue_goal_analysis(
+        self,
+        user_id: str,
+        character_name: str,
+        interaction_text: str
+    ) -> Optional[str]:
+        """Enqueue a goal analysis task."""
+        return await self.enqueue(
+            "run_goal_analysis",
+            user_id=user_id,
+            character_name=character_name,
+            interaction_text=interaction_text
+        )
+
+    async def enqueue_preference_extraction(
+        self,
+        user_id: str,
+        character_name: str,
+        message_content: str
+    ) -> Optional[str]:
+        """Enqueue a preference extraction task."""
+        return await self.enqueue(
+            "run_preference_extraction",
+            user_id=user_id,
+            character_name=character_name,
+            message_content=message_content
+        )
+
+    async def enqueue_vision_analysis(
+        self,
+        image_url: str,
+        user_id: str,
+        channel_id: str
+    ) -> Optional[str]:
+        """Enqueue a vision analysis task."""
+        return await self.enqueue(
+            "run_vision_analysis",
+            image_url=image_url,
+            user_id=user_id,
+            channel_id=channel_id
+        )
+
     async def enqueue_summarization(
         self,
         user_id: str,

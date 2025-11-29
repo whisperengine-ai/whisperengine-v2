@@ -3,11 +3,19 @@ from typing import Optional, Any, Dict
 from datetime import datetime
 from loguru import logger
 from src_v2.core.database import db_manager
+from src_v2.config.settings import settings
 
 class CacheManager:
     def __init__(self):
         self.default_ttl = 300  # 5 minutes
         self.attention_ttl = 1800  # 30 minutes for attention keys
+        self._prefix = settings.REDIS_KEY_PREFIX
+
+    def _key(self, key: str) -> str:
+        """Apply namespace prefix to key if not already prefixed."""
+        if key.startswith(self._prefix):
+            return key
+        return f"{self._prefix}{key}"
 
     @property
     def redis(self):
@@ -17,7 +25,7 @@ class CacheManager:
         if not self.redis:
             return None
         try:
-            return await self.redis.get(key)
+            return await self.redis.get(self._key(key))
         except Exception as e:
             logger.warning(f"Redis get failed for {key}: {e}")
             return None
@@ -26,7 +34,7 @@ class CacheManager:
         if not self.redis:
             return False
         try:
-            await self.redis.set(key, value, ex=ttl or self.default_ttl)
+            await self.redis.set(self._key(key), value, ex=ttl or self.default_ttl)
             return True
         except Exception as e:
             logger.warning(f"Redis set failed for {key}: {e}")
@@ -53,7 +61,7 @@ class CacheManager:
         if not self.redis:
             return False
         try:
-            await self.redis.delete(key)
+            await self.redis.delete(self._key(key))
             return True
         except Exception as e:
             logger.warning(f"Redis delete failed for {key}: {e}")
@@ -64,7 +72,8 @@ class CacheManager:
         if not self.redis:
             return 0
         try:
-            keys = await self.redis.keys(pattern)
+            prefixed_pattern = self._key(pattern)
+            keys = await self.redis.keys(prefixed_pattern)
             if keys:
                 await self.redis.delete(*keys)
             return len(keys)

@@ -38,8 +38,13 @@ from src_v2.workers.tasks.social_tasks import (
     run_store_observation,
     run_universe_observation,
     run_relationship_update,
-    run_gossip_dispatch
+    run_gossip_dispatch,
 )
+from src_v2.workers.tasks.analysis_tasks import (
+    run_goal_analysis,
+    run_preference_extraction
+)
+from src_v2.workers.tasks.vision_tasks import run_vision_analysis
 from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
     run_nightly_dream_generation
@@ -89,6 +94,9 @@ class WorkerSettings:
         run_universe_observation,
         run_relationship_update,
         run_goal_strategist,
+        run_goal_analysis,
+        run_preference_extraction,
+        run_vision_analysis,
         run_gossip_dispatch,
         run_diary_generation,  # Phase E2: Character Diary
         run_agentic_diary_generation,

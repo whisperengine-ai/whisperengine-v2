@@ -23,6 +23,14 @@ from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 
 
+def _redis_key(key: str) -> str:
+    """Apply Redis namespace prefix."""
+    prefix = settings.REDIS_KEY_PREFIX
+    if key.startswith(prefix):
+        return key
+    return f"{prefix}{key}"
+
+
 @dataclass
 class ConversationChain:
     """Tracks a bot-to-bot conversation chain."""
@@ -91,7 +99,7 @@ class CrossBotManager:
             # Each bot registers itself on startup with a TTL (24 hours)
             # This ensures dead bots are eventually removed from the registry
             if self._bot and self._bot.user:
-                key = f"crossbot:bot:{self._bot_name.lower() if self._bot_name else 'unknown'}"
+                key = _redis_key(f"crossbot:bot:{self._bot_name.lower() if self._bot_name else 'unknown'}")
                 await db_manager.redis_client.set(
                     key,
                     str(self._bot.user.id),
@@ -101,8 +109,9 @@ class CrossBotManager:
             # Load all known bots by scanning for keys
             # Pattern: crossbot:bot:*
             cursor = 0  # redis-py with decode_responses=True uses int cursor, not bytes
+            pattern = _redis_key("crossbot:bot:*")
             while True:
-                cursor, keys = await db_manager.redis_client.scan(cursor, match="crossbot:bot:*", count=100)
+                cursor, keys = await db_manager.redis_client.scan(cursor, match=pattern, count=100)
                 for key in keys:
                     try:
                         # key is already str because decode_responses=True
@@ -110,7 +119,8 @@ class CrossBotManager:
                             key_str = key.decode()
                         else:
                             key_str = key
-                            
+                        
+                        # Extract bot name from key (format: whisper:crossbot:bot:name)
                         bot_name = key_str.split(":")[-1]
                         discord_id = await db_manager.redis_client.get(key)
                         
@@ -302,7 +312,7 @@ class CrossBotManager:
             }
             
             # Queue for the mentioned bot to process
-            queue_key = f"crossbot:mentions:{mention.mentioned_bot}"
+            queue_key = _redis_key(f"crossbot:mentions:{mention.mentioned_bot}")
             await db_manager.redis_client.rpush(queue_key, json.dumps(mention_data))
             
             # Set TTL on queue (5 minutes)
@@ -327,12 +337,13 @@ class CrossBotManager:
             return []
         
         mentions = []
-        queue_key = f"crossbot:mentions:{self._bot_name}"
+        queue_key = _redis_key(f"crossbot:mentions:{self._bot_name}")
         
         try:
             import json
             
-            # Process up to 5 mentions per call
+            # Process up to 5 mentions per call using non-blocking LPOP
+            # For real-time processing, use BLPOP in a dedicated loop
             for _ in range(5):
                 data = await db_manager.redis_client.lpop(queue_key)
                 if not data:
