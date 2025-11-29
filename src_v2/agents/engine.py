@@ -851,10 +851,34 @@ class AgentEngine:
 
             system_content += channel_context_str
 
-            # 2.9 Meta-Instructions (Anti-AI-Break)
+            # 2.9 User Timezone (Phase E7)
+            try:
+                from src_v2.intelligence.timezone import timezone_manager
+                from zoneinfo import ZoneInfo
+                
+                time_settings = await timezone_manager.get_user_time_settings(user_id, character.name)
+                if time_settings.timezone:
+                    user_tz = ZoneInfo(time_settings.timezone)
+                    user_now = datetime.datetime.now(user_tz)
+                    
+                    # Format: "Monday, 8:30 PM"
+                    time_str = user_now.strftime("%A, %I:%M %p")
+                    
+                    # Determine time of day for greeting context
+                    hour = user_now.hour
+                    time_of_day = "night"
+                    if 5 <= hour < 12: time_of_day = "morning"
+                    elif 12 <= hour < 17: time_of_day = "afternoon"
+                    elif 17 <= hour < 21: time_of_day = "evening"
+                    
+                    system_content += f"\n\n[USER LOCAL TIME]\nIt is currently {time_str} ({time_of_day}) for {context_variables.get('user_name', 'the user')}.\n(Timezone: {time_settings.timezone})"
+            except Exception as e:
+                logger.debug(f"Failed to inject timezone context: {e}")
+
+            # 2.10 Meta-Instructions (Anti-AI-Break)
             system_content += self._get_meta_instructions()
             
-            # 2.10 Timestamp Instruction (Anti-Hallucination)
+            # 2.11 Timestamp Instruction (Anti-Hallucination)
             system_content += "\n\n[SYSTEM NOTE]\nChat history messages are prefixed with relative timestamps (e.g. [2 mins ago]). These are for your context only. DO NOT generate these timestamps in your response."
 
         except Exception as e:

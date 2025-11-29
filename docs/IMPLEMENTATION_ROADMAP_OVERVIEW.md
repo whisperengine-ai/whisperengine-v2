@@ -69,7 +69,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
-| Low | E7 | User Timezone Support | 1-2 days | S4 | 📋 Proposed |
+| Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
 | Low | E6 | Character-to-Character | 1 week | E8 | 📋 Proposed |
 | — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
@@ -87,7 +87,7 @@ E10 (Channel Observer) ──► E9 (Provenance) ─┘
 S4 (Timezone) ──► E7 (User Timezone)
 ```
 
-> **Current Focus:** S1 + S2 (safety/observability), then E10 (Channel Observer) which unlocks dynamic artifact modulation and richer provenance.
+> **Current Focus:** E5 (Scheduled Reminders) or E6 (Character-to-Character).
 
 ---
 
@@ -122,6 +122,10 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Trust/evolution system (8 stages, -100 to +100 scale)
 - ✅ Proactive messaging system (Phase 13)
 - ✅ Background fact/preference extraction
+- ✅ Character Diary (Phase E2)
+- ✅ Dream Sequences (Phase E3)
+- ✅ Relationship Milestones (Phase E4)
+- ✅ Bot Broadcast Channel (Phase E8)
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions
@@ -132,6 +136,9 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Generative Art (Image Generation via Flux Pro 1.1)
 - ✅ Channel Lurking (Passive Engagement)
 - ✅ User Identification in Group Chats (Display Name Storage)
+- ✅ Conversation Threading (Phase E1)
+- ✅ Discord Search Tools (Phase E11)
+- ✅ User Timezone Support (Phase E7)
 
 **Background Processing (COMPLETE):**
 - ✅ arq-based task queue (Redis persistent jobs)
@@ -139,11 +146,17 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Insight Agent (reasoning traces + epiphanies + pattern learning)
 - ✅ Knowledge extraction offloaded to worker (no longer blocks response pipeline)
 - ✅ Summarization + Reflection offloaded to worker
+- ✅ Artifact Provenance (Phase E9)
+- ✅ Proactive Timezone Awareness (Phase S4)
+
+**Safety & Observability (COMPLETE):**
+- ✅ Content Safety Review (Phase S1)
+- ✅ Classifier Observability (Phase S2)
+- ✅ LLM Sensitivity Detection (Phase S3)
 
 **NOT YET IMPLEMENTED:**
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
-- 📋 Phase S: Safety & Observability (4 items proposed - HIGH priority)
-- 📋 Phase E: Character Depth & Engagement (6 items proposed)
+- 📋 Phase E: Remaining items (E5, E6, E7)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
 **DEFERRED/ARCHIVED:**

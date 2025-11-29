@@ -11,6 +11,7 @@ from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
 from src_v2.universe.privacy import privacy_manager
 from src_v2.universe.manager import universe_manager
+from src_v2.intelligence.timezone import timezone_manager
 
 class CharacterCommands(app_commands.Group):
     def __init__(self):
@@ -679,6 +680,72 @@ class UniverseCommands(app_commands.Group):
             logger.error(f"Error getting planet info: {e}")
             await interaction.followup.send("Failed to retrieve planet info.", ephemeral=True)
 
+class TimezoneCommands(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="timezone", description="Manage your timezone and quiet hours")
+
+    @app_commands.command(name="set", description="Set your timezone manually")
+    @app_commands.describe(timezone="Your IANA timezone (e.g., America/New_York, Europe/London)")
+    async def set_timezone(self, interaction: discord.Interaction, timezone: str):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            character_name = settings.DISCORD_BOT_NAME or "default"
+            
+            success = await timezone_manager.set_manual_timezone(user_id, character_name, timezone)
+            
+            if success:
+                await interaction.followup.send(f"✅ Timezone set to **{timezone}**.", ephemeral=True)
+            else:
+                await interaction.followup.send(f"❌ Invalid timezone '{timezone}'. Please use an IANA timezone like 'America/New_York' or 'Europe/London'.", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error setting timezone: {e}")
+            await interaction.followup.send("Failed to set timezone.", ephemeral=True)
+
+    @app_commands.command(name="get", description="Show your current timezone settings")
+    async def get_timezone(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            character_name = settings.DISCORD_BOT_NAME or "default"
+            
+            settings_obj = await timezone_manager.get_user_time_settings(user_id, character_name)
+            
+            if settings_obj.timezone:
+                confidence_str = f"{int(settings_obj.timezone_confidence * 100)}%"
+                msg = f"**Your Timezone Settings:**\n"
+                msg += f"🌍 Timezone: `{settings_obj.timezone}` (Confidence: {confidence_str})\n"
+                msg += f"🌙 Quiet Hours: {settings_obj.quiet_hours_start}:00 - {settings_obj.quiet_hours_end}:00 local time"
+            else:
+                msg = "I don't know your timezone yet. I'll try to guess it from your activity, or you can set it with `/timezone set`."
+            
+            await interaction.followup.send(msg, ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error getting timezone: {e}")
+            await interaction.followup.send("Failed to get timezone settings.", ephemeral=True)
+
+    @app_commands.command(name="quiet", description="Set your quiet hours (when I shouldn't message you proactively)")
+    @app_commands.describe(start="Start hour (0-23)", end="End hour (0-23)")
+    async def set_quiet(self, interaction: discord.Interaction, start: int, end: int):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            character_name = settings.DISCORD_BOT_NAME or "default"
+            
+            if not (0 <= start <= 23) or not (0 <= end <= 23):
+                await interaction.followup.send("❌ Hours must be between 0 and 23.", ephemeral=True)
+                return
+
+            success = await timezone_manager.set_quiet_hours(user_id, character_name, start, end)
+            
+            if success:
+                await interaction.followup.send(f"✅ Quiet hours set to **{start}:00 - {end}:00** local time.", ephemeral=True)
+            else:
+                await interaction.followup.send("Failed to set quiet hours.", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error setting quiet hours: {e}")
+            await interaction.followup.send("Failed to set quiet hours.", ephemeral=True)
+
 class WhisperCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -687,6 +754,7 @@ class WhisperCommands(commands.Cog):
         self.bot.tree.add_command(SpamCommands())
         self.bot.tree.add_command(PrivacyCommands())
         self.bot.tree.add_command(UniverseCommands())
+        self.bot.tree.add_command(TimezoneCommands())
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(WhisperCommands(bot))

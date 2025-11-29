@@ -5,8 +5,8 @@ Infers user timezone from Discord activity patterns and manages quiet hours
 for proactive messaging. Prevents bots from messaging users at 3 AM.
 """
 
-from typing import Optional, Tuple, List
-from datetime import datetime, timezone as tz
+from typing import Optional, Tuple
+from datetime import datetime
 from collections import Counter
 from dataclasses import dataclass
 from loguru import logger
@@ -91,6 +91,65 @@ class TimezoneManager:
                 logger.debug(f"Saved inferred timezone {timezone} (confidence: {confidence:.2f}) for user {user_id}")
         except Exception as e:
             logger.warning(f"Failed to save inferred timezone: {e}")
+
+    async def set_manual_timezone(
+        self,
+        user_id: str,
+        character_name: str,
+        timezone: str
+    ) -> bool:
+        """Set a user's timezone manually (confidence 1.0)."""
+        if not db_manager.postgres_pool:
+            return False
+            
+        try:
+            # Validate timezone string
+            import pytz
+            try:
+                pytz.timezone(timezone)
+            except pytz.UnknownTimeZoneError:
+                return False
+                
+            async with db_manager.postgres_pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE v2_user_relationships
+                    SET timezone = $1, timezone_confidence = 1.0
+                    WHERE user_id = $2 AND character_name = $3
+                """, timezone, user_id, character_name)
+                
+                logger.info(f"Manually set timezone {timezone} for user {user_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to set manual timezone: {e}")
+            return False
+
+    async def set_quiet_hours(
+        self,
+        user_id: str,
+        character_name: str,
+        start_hour: int,
+        end_hour: int
+    ) -> bool:
+        """Set quiet hours for a user."""
+        if not db_manager.postgres_pool:
+            return False
+            
+        if not (0 <= start_hour <= 23) or not (0 <= end_hour <= 23):
+            return False
+            
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE v2_user_relationships
+                    SET quiet_hours_start = $1, quiet_hours_end = $2
+                    WHERE user_id = $3 AND character_name = $4
+                """, start_hour, end_hour, user_id, character_name)
+                
+                logger.info(f"Set quiet hours {start_hour}-{end_hour} for user {user_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to set quiet hours: {e}")
+            return False
     
     async def infer_timezone_from_activity(
         self, 
