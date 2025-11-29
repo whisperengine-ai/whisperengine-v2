@@ -1201,6 +1201,23 @@ Using the information above, formulate a final response to the user in my authen
             except Exception as e:
                 logger.error(f"Voice synthesis failed, using raw reflective response: {e}")
         
+        # Save reasoning trace for future reuse (Phase 3.2)
+        if settings.ENABLE_TRACE_LEARNING and trace and len(trace) > 2:
+            try:
+                from src_v2.workers.task_queue import task_queue
+                # Extract trace summary for storage
+                trace_context = self._format_trace_for_storage(trace, user_message, response_text)
+                await task_queue.enqueue_insight_analysis(
+                    user_id=user_id,
+                    character_name=character.name,
+                    trigger="reflective_completion",
+                    priority=4,
+                    recent_context=trace_context
+                )
+                logger.debug(f"Enqueued trace analysis for user {user_id}")
+            except Exception as trace_err:
+                logger.warning(f"Failed to enqueue trace analysis: {trace_err}")
+        
         if settings.ENABLE_PROMPT_LOGGING:
             await self._log_prompt(
                 character_name=character.name,
@@ -1404,6 +1421,45 @@ Using the information above, formulate a final response to the user in my authen
             
         except Exception as e:
             logger.warning(f"Failed to log prompt: {e}")
+
+    def _format_trace_for_storage(self, trace: List[BaseMessage], user_query: str, final_response: str) -> str:
+        """
+        Formats a reasoning trace for InsightAgent analysis.
+        Extracts tool calls and reasoning steps for pattern learning.
+        """
+        tools_used = []
+        reasoning_steps = []
+        
+        for msg in trace:
+            if isinstance(msg, AIMessage):
+                # Extract tool calls
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    for tc in msg.tool_calls:
+                        tool_name = tc.get("name")
+                        if tool_name:
+                            tools_used.append(tool_name)
+                # Extract reasoning content
+                if msg.content and len(str(msg.content)) > 10:
+                    reasoning_steps.append(str(msg.content)[:200])  # Truncate long thoughts
+            elif isinstance(msg, ToolMessage):
+                # Tool results help understand what worked
+                if msg.content and "Error" not in str(msg.content):
+                    reasoning_steps.append(f"Tool {msg.name} succeeded")
+        
+        # Format for InsightAgent
+        formatted = f"""[REFLECTIVE TRACE]
+User Query: {user_query}
+Tools Used: {', '.join(set(tools_used)) if tools_used else 'none'}
+Reasoning Steps: {len(reasoning_steps)}
+Final Response: {final_response[:150]}...
+
+This trace represents a successful reflective reasoning session.
+Analyze it to extract:
+1. Query pattern type (emotional support, information lookup, creative task, etc.)
+2. Effective tool combination
+3. Complexity estimate (for future routing)
+"""
+        return formatted
 
     async def _log_metrics(self, user_id: Optional[str], character_name: str, latency: float, mode: str, complexity: Any):
         """Logs response metrics to InfluxDB."""

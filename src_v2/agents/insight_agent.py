@@ -139,6 +139,7 @@ TRIGGER: {trigger}
 - 'time': Scheduled periodic analysis
 - 'session_end': Conversation session just ended
 - 'feedback': User gave positive reactions recently
+- 'reflective_completion': A reflective reasoning session just completed (analyze the trace)
 
 YOUR GOALS:
 1. ANALYZE patterns in the user's conversation style and topics
@@ -166,6 +167,8 @@ When done, provide a brief summary of what you learned."""
             base += " Their session just ended, so look for themes from this conversation."
         elif trigger == "volume":
             base += " They've been very active, so look for patterns in their engagement."
+        elif trigger == "reflective_completion":
+            base = "A reflective reasoning session just completed. Analyze the trace below and store it as a reasoning pattern for similar future queries. Focus on: query type, tools used, and complexity level."
             
         if recent_context:
             base += f"\n\nRecent context:\n{recent_context}"
