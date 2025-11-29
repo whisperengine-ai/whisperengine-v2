@@ -1130,27 +1130,20 @@ Recent channel context:
                     self.loop.create_task(self._check_and_summarize(session_id, user_id))
 
                 # 3. Generate response
-                # Get user's timezone preference for context-aware datetime
-                user_timezone_str = None
+                # Get character's timezone for context-aware datetime
+                # The character experiences time in their own timezone (where they "live")
+                from zoneinfo import ZoneInfo
+                from src_v2.core.behavior import get_character_timezone
+                
+                char_timezone_str = get_character_timezone(character.name)
                 try:
-                    relationship = await trust_manager.get_relationship_level(user_id, character.name)
-                    user_timezone_str = relationship.get("preferences", {}).get("timezone")
+                    char_tz = ZoneInfo(char_timezone_str)
+                    char_now = datetime.now(char_tz)
+                    datetime_display = char_now.strftime("%A, %B %d, %Y at %I:%M %p") + f" ({char_timezone_str})"
                 except Exception as e:
-                    logger.debug(f"Could not fetch timezone preference: {e}")
-                
-                # Format datetime with user's timezone if available
-                from datetime import timezone as tz
-                now = datetime.now()
-                datetime_display = now.strftime("%A, %B %d, %Y at %H:%M")
-                
-                if user_timezone_str:
-                    try:
-                        from zoneinfo import ZoneInfo
-                        user_tz = ZoneInfo(user_timezone_str)
-                        user_now = datetime.now(user_tz)
-                        datetime_display = user_now.strftime("%A, %B %d, %Y at %H:%M") + f" ({user_timezone_str})"
-                    except Exception as e:
-                        logger.debug(f"Invalid timezone '{user_timezone_str}': {e}")
+                    logger.debug(f"Invalid character timezone '{char_timezone_str}': {e}, using local time")
+                    now = datetime.now()
+                    datetime_display = now.strftime("%A, %B %d, %Y at %I:%M %p")
                 
                 # Determine channel context
                 channel_name = "DM"

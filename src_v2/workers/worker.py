@@ -47,7 +47,8 @@ from src_v2.workers.tasks.analysis_tasks import (
 from src_v2.workers.tasks.vision_tasks import run_vision_analysis
 from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
-    run_nightly_dream_generation
+    run_nightly_dream_generation,
+    run_nightly_goal_strategist
 )
 
 
@@ -105,18 +106,27 @@ class WorkerSettings:
     ]
     
     # Cron jobs (scheduled tasks)
+    # These run hourly and check each character's timezone to determine if
+    # it's the right local time for that character's scheduled task.
     cron_jobs = [
-        # Generate diaries for all active characters at end of day (default: 10 PM UTC)
+        # Check hourly for characters where it's diary time (default: 10 PM local)
         cron(
             run_nightly_diary_generation,
-            hour={settings.DIARY_GENERATION_HOUR_UTC},
+            hour=None,  # Run every hour
             minute={0},
             run_at_startup=False  # Don't run immediately on worker start
         ),
-        # Generate dreams for all active characters in morning (default: 7 AM UTC)
+        # Check hourly for characters where it's dream time (default: 7 AM local)
         cron(
             run_nightly_dream_generation,
-            hour={settings.DREAM_GENERATION_HOUR_UTC},
+            hour=None,  # Run every hour
+            minute={0},
+            run_at_startup=False
+        ),
+        # Check hourly for characters where it's goal strategist time (default: 11 PM local)
+        cron(
+            run_nightly_goal_strategist,
+            hour=None,  # Run every hour
             minute={0},
             run_at_startup=False
         ),

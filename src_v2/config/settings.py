@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     # --- Autonomous Agents (Phase 3) ---
     ENABLE_AUTONOMOUS_DRIVES: bool = False
     ENABLE_GOAL_STRATEGIST: bool = False
+    GOAL_STRATEGIST_LOCAL_HOUR: int = 23  # Local hour (in character's timezone) when goal strategist runs (11 PM)
     ENABLE_UNIVERSE_EVENTS: bool = False
     ENABLE_TRACE_LEARNING: bool = False
 
@@ -179,7 +180,7 @@ class Settings(BaseSettings):
     ENABLE_CHARACTER_DIARY: bool = True  # Generate nightly diary entries for characters
     DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
     DIARY_ALWAYS_GENERATE: bool = True  # Generate diary even without user interactions (reflective entries)
-    DIARY_GENERATION_HOUR_UTC: int = 22  # Hour (UTC) when diary is generated (default: 10 PM - end of day)
+    DIARY_GENERATION_LOCAL_HOUR: int = 22  # Local hour (in character's timezone) when diary is generated (10 PM)
     
     # --- Session Summarization ---
     SUMMARY_MESSAGE_THRESHOLD: int = 20  # Messages per session before auto-summarization
@@ -189,7 +190,7 @@ class Settings(BaseSettings):
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
     DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
     DREAM_ALWAYS_GENERATE: bool = True  # Generate nightly dream even without user interactions
-    DREAM_GENERATION_HOUR_UTC: int = 7  # Hour (UTC) when dreams are generated (default: 7 AM - morning)
+    DREAM_GENERATION_LOCAL_HOUR: int = 7  # Local hour (in character's timezone) when dreams are generated (7 AM)
     
     # --- Agentic Narrative Generation (Phase E10) ---
     # When enabled, diary/dream generation uses the DreamWeaver agent which:

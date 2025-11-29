@@ -127,8 +127,16 @@ Look for unfinished discussions or topics the user didn't respond to - this is y
                 # Private DM - all topics are fair game
                 channel_context = "(Private conversation - all known topics are available)"
             
-            # Prepare variables for the template
-            current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Prepare variables for the template - use character's timezone
+            from src_v2.core.behavior import get_character_timezone
+            try:
+                from zoneinfo import ZoneInfo
+                char_tz_str = get_character_timezone(character_name)
+                char_tz = ZoneInfo(char_tz_str)
+                char_now = datetime.now(char_tz)
+                current_datetime = char_now.strftime("%A, %B %d, %Y at %I:%M %p") + f" ({char_tz_str})"
+            except Exception:
+                current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             universe_overview = await universe_manager.get_universe_overview()
             universe_context = f"Planets: {universe_overview.get('planet_count', 0)}\n"
@@ -154,6 +162,9 @@ This feeling is motivating you to connect. Let this feeling color your message t
 [RELATIONSHIP STATUS]
 Level: {relationship.get('level', 'Stranger')}
 Trust: {relationship.get('trust_score', 0)}
+
+[CURRENT TIME]
+{current_datetime}
 
 [RECENT CONVERSATION HISTORY]
 {recent_memories_str}

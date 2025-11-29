@@ -12,6 +12,7 @@ class BehaviorProfile(BaseModel):
     purpose: str = Field(..., description="The character's core reason for existing (1 sentence).")
     drives: Dict[str, float] = Field(default_factory=dict, description="Intrinsic motivations (0.0-1.0).")
     constitution: List[str] = Field(default_factory=list, description="Hard constraints and ethical rules.")
+    timezone: str = Field(default="America/Los_Angeles", description="Character's local timezone (IANA format).")
 
     def to_prompt_section(self) -> str:
         """
@@ -50,3 +51,14 @@ def load_behavior_profile(character_dir: str, raise_on_error: bool = False) -> O
             raise
         logger.error(f"Failed to load behavior profile from {core_path}: {e}")
         return None
+
+
+def get_character_timezone(character_name: str, characters_dir: str = "characters") -> str:
+    """
+    Get a character's timezone from their core.yaml.
+    Returns 'America/Los_Angeles' (Pacific) as default.
+    """
+    profile = load_behavior_profile(os.path.join(characters_dir, character_name))
+    if profile:
+        return profile.timezone
+    return "America/Los_Angeles"
