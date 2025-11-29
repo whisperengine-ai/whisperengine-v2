@@ -10,6 +10,7 @@ from influxdb_client import Point
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
+from src_v2.tools.reminder_tools import SetReminderTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -22,7 +23,7 @@ class CognitiveRouter:
     def __init__(self):
         self.llm = create_llm(temperature=0.0, mode="router") # Low temp for deterministic routing
 
-    async def route_and_retrieve(self, user_id: str, query: str, chat_history: Optional[List[BaseMessage]] = None, guild_id: Optional[str] = None) -> Dict[str, Any]:
+    async def route_and_retrieve(self, user_id: str, query: str, chat_history: Optional[List[BaseMessage]] = None, guild_id: Optional[str] = None, channel_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Analyzes the query, selects tools, executes them, and returns the context.
         
@@ -47,6 +48,14 @@ class CognitiveRouter:
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
         ]
+
+        # Add Reminder Tool if enabled and channel_id is available
+        if settings.ENABLE_REMINDERS and channel_id:
+            tools.append(SetReminderTool(
+                user_id=user_id, 
+                channel_id=channel_id, 
+                character_name=character_name
+            ))
         
         # Note: Image generation is handled in Reflective Mode only, not in the router
         

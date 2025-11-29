@@ -377,6 +377,11 @@ Recent channel context:
             logger.info("Proactive Scheduler enabled and started.")
         else:
             logger.info("Proactive Scheduler disabled in settings.")
+        
+        # Start Reminder Loop (Phase E5) - independent of proactive messaging
+        if settings.ENABLE_REMINDERS:
+            self.loop.create_task(self.scheduler._reminder_loop())
+            logger.info("Reminder loop started.")
 
         # Initialize Lurk Detector
         if settings.ENABLE_CHANNEL_LURKING:

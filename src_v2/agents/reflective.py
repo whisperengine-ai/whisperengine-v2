@@ -25,6 +25,7 @@ from src_v2.tools.insight_tools import (
     DetectThemesTool
 )
 from src_v2.tools.image_tools import GenerateImageTool
+from src_v2.tools.reminder_tools import SetReminderTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.config.settings import settings
 from src_v2.knowledge.document_context import has_document_context
@@ -450,6 +451,16 @@ class ReflectiveAgent:
         if settings.ENABLE_IMAGE_GENERATION:
             tools.append(GenerateImageTool(character_name=character_name, user_id=user_id))
         
+        # Conditionally add reminder tool (Phase E5)
+        if settings.ENABLE_REMINDERS and channel:
+            channel_id = str(channel.id) if hasattr(channel, 'id') else None
+            if channel_id:
+                tools.append(SetReminderTool(
+                    user_id=user_id,
+                    channel_id=channel_id,
+                    character_name=character_name
+                ))
+        
         return tools
 
     def _construct_prompt(self, base_system_prompt: str, detected_intents: Optional[List[str]] = None) -> str:
@@ -490,9 +501,11 @@ AVAILABLE TOOL CATEGORIES:
 3. Introspection: analyze_conversation_patterns, detect_recurring_themes
 4. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
 5. Discord Search: search_channel_messages (keyword search), search_user_messages (specific person), get_message_context (context around a message), get_recent_messages (latest messages)
+6. Utility: set_reminder (schedule a reminder for the user)
 {creative_category}
 TOOL USAGE RULES:
-{image_rules}- search_channel_messages: Use when asked "what did I just say?", "what happened earlier?", or to find recent messages by keyword.
+{image_rules}- set_reminder: Use when the user asks to be reminded of something at a specific time. Call set_reminder with the content and time_string.
+- search_channel_messages: Use when asked "what did I just say?", "what happened earlier?", or to find recent messages by keyword.
 - search_user_messages: Use when asked "what did [name] say?" or to find messages from a specific person.
 - get_message_context: Use when a reply references an older message and you need surrounding context.
 - get_recent_messages: Use for "catch me up", "what's happening?", or general channel awareness.

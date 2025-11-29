@@ -197,6 +197,9 @@ class Settings(BaseSettings):
     CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
     CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
 
+    # --- Scheduled Reminders (Phase E5) ---
+    ENABLE_REMINDERS: bool = True  # Enable reminder system
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

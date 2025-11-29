@@ -418,6 +418,11 @@ class AgentEngine:
         if "memory" in detected_intents and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
             logger.info("Promoting complexity to COMPLEX_MID due to 'memory' intent")
             complexity_result = "COMPLEX_MID"
+            
+        # "reminder" intent requires SetReminderTool which is only in Reflective Mode (COMPLEX_MID+)
+        if "reminder" in detected_intents and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            logger.info("Promoting complexity to COMPLEX_MID due to 'reminder' intent")
+            complexity_result = "COMPLEX_MID"
 
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
         if complexity_result == "MANIPULATION":
@@ -1160,7 +1165,21 @@ class AgentEngine:
         if user_id and not context_variables.get("memory_context"):
             try:
                 guild_id = context_variables.get("guild_id")
-                router_result: Dict[str, Any] = await self.router.route_and_retrieve(user_id, user_message, chat_history, guild_id=guild_id)
+                
+                # Extract channel_id from context variables
+                channel_id = None
+                if "channel" in context_variables:
+                    channel = context_variables["channel"]
+                    if hasattr(channel, "id"):
+                        channel_id = str(channel.id)
+                
+                router_result: Dict[str, Any] = await self.router.route_and_retrieve(
+                    user_id, 
+                    user_message, 
+                    chat_history, 
+                    guild_id=guild_id,
+                    channel_id=channel_id
+                )
                 memory_context: str = router_result.get("context", "")
                 reasoning: str = router_result.get("reasoning", "")
                 

@@ -26,8 +26,8 @@ class InsightAgent:
     """
     
     def __init__(self):
-        # Use router model (cheaper) for insight analysis
-        self.llm = create_llm(temperature=0.3, mode="router")
+        # Use reflective model for insight analysis - needs good tool use and reasoning
+        self.llm = create_llm(temperature=0.3, mode="reflective")
         self.max_steps = 5  # Keep it short - insights should be quick
     
     async def analyze(

@@ -148,6 +148,9 @@ class ComplexityClassifier:
 - "image_other": User wants an image of something else - the user themselves, scenery, objects, other people, or abstract concepts. NOT a self-portrait of the AI.
 - "image_refine": User is modifying/tweaking a PREVIOUS image ("same but darker", "try again", "keep the hair but change X", "make it more Y", "tweak", "adjust the last one"). Implies continuing from prior generation.
 NOTE: These are mutually exclusive. Choose the most specific one. "image_refine" takes priority if refining.'''
+            
+        if settings.ENABLE_REMINDERS:
+            intent_section += '\n- "reminder": User wants to set a reminder, be reminded about something, or schedule a future notification (e.g. "remind me in 10 minutes", "set a reminder for tomorrow", "don\'t let me forget to...").'
 
         # Event detection intents (for cross-bot universe events)
         if settings.ENABLE_UNIVERSE_EVENTS:

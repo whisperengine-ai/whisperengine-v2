@@ -157,7 +157,6 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 
 **NOT YET IMPLEMENTED:**
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
-- 📋 Phase E: Remaining items (E5)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
 **DEFERRED/ARCHIVED:**
@@ -1335,9 +1334,9 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [RELATIONSHIP_MILESTONES.md](./roadmaps/RELATIONSHIP_MILESTONES.md)
 
-### 📋 Phase E5: Scheduled Reminders
+### ✅ Phase E5: Scheduled Reminders
 **Priority:** Low | **Time:** 3-4 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+**Status:** ✅ Complete
 **Dependencies:** None
 
 **Problem:** Users ask for reminders, but bot cannot deliver them.
