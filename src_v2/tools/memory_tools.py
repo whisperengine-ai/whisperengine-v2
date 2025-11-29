@@ -105,12 +105,36 @@ class SearchEpisodesTool(BaseTool):
             if not results:
                 return "No specific memories found."
             
+            # Filter out low-value results:
+            # - Meta-questions about memory/channel (these are queries, not content)
+            # - Very short messages
+            meta_patterns = [
+                "what did i say", "what have we talked", "what is in my memory",
+                "what are the recent messages", "what has been discussed",
+                "do you remember", "what do you know about me"
+            ]
+            
+            filtered_results = []
+            for r in results:
+                content = r.get('content', '') or ''
+                content_lower = content.lower()
+                
+                # Skip meta-questions and very short content
+                is_meta_question = any(pattern in content_lower for pattern in meta_patterns)
+                is_too_short = len(content.strip()) < 10
+                
+                if not is_meta_question and not is_too_short:
+                    filtered_results.append(r)
+            
+            if not filtered_results:
+                return "No substantive memories found matching your query."
+            
             # Limit results for Reflective Mode to reduce token bloat
             limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
-            results = results[:limit]
+            filtered_results = filtered_results[:limit]
             
-            formatted = "\n".join([f"- {r['content']}" for r in results])
-            return f"Found {len(results)} Episodes (top matches):\n{formatted}"
+            formatted = "\n".join([f"- {r['content']}" for r in filtered_results])
+            return f"Found {len(filtered_results)} Episodes (top matches):\n{formatted}"
         except Exception as e:
             return f"Error searching episodes: {e}"
 

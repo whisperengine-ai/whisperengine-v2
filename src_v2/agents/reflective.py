@@ -225,13 +225,22 @@ class ReflectiveAgent:
                     # Remove the empty response from history
                     messages.pop()
                     
+                    # Find the last tool output to reference in the nudge
+                    last_tool_output = None
+                    for msg in reversed(messages):
+                        if isinstance(msg, ToolMessage):
+                            last_tool_output = msg.content[:200] if msg.content else None
+                            break
+                    
                     # Add a contextual nudge message
-                    if tools_used > 0:
-                        nudge_content = "You received tool output but haven't completed the user's request. Continue with your task - if they asked for an image, call generate_image now."
+                    if tools_used > 0 and last_tool_output:
+                        nudge_content = f"You called a tool and received this output: '{last_tool_output}...'. Now provide a helpful response to the user based on this information. Do NOT return an empty response."
+                    elif tools_used > 0:
+                        nudge_content = "You received tool output but haven't responded. Please provide a helpful response based on the tool results."
                     elif has_document_context(user_input):
-                        nudge_content = "The user shared a document with you. You can see a preview in their message. Please acknowledge what they shared and respond thoughtfully. If you need more details from the document, use search_specific_memories."
+                        nudge_content = "The user shared a document with you. Please acknowledge what they shared and respond thoughtfully."
                     else:
-                        nudge_content = "You returned an empty response. Please use a tool (like discover_common_ground) or provide a final answer."
+                        nudge_content = "You returned an empty response. Please use a tool or provide a final answer to the user's question."
                     
                     # Avoid User->User sequence which crashes some providers
                     if messages and isinstance(messages[-1], HumanMessage):
@@ -283,8 +292,39 @@ class ReflectiveAgent:
             
             else:
                 # No tool calls -> Final Answer
-                # If content is empty (rare but possible with some models), return a fallback
+                # If content is empty (rare but possible with some models), try to use tool outputs
                 if not content:
+                    # Check if we have tool outputs we can use for a fallback response
+                    if tools_used > 0:
+                        logger.warning("LLM returned empty content after tool execution. Attempting fallback synthesis.")
+                        # Find the last tool messages and synthesize a response
+                        tool_outputs = []
+                        for msg in reversed(messages):
+                            if isinstance(msg, ToolMessage):
+                                tool_outputs.insert(0, f"{msg.name}: {msg.content}")
+                            elif isinstance(msg, AIMessage) and msg.tool_calls:
+                                break  # Stop at the AI message that called the tools
+                        
+                        if tool_outputs:
+                            # Try one more time with a direct synthesis prompt
+                            synthesis_prompt = (
+                                f"Based on these tool results, provide a helpful response to the user:\n\n"
+                                + "\n".join(tool_outputs) +
+                                "\n\nRespond naturally and helpfully. Do not call any more tools."
+                            )
+                            messages.append(HumanMessage(content=synthesis_prompt))
+                            try:
+                                # Use base LLM without tools for synthesis
+                                synthesis_response = await self.llm.ainvoke(messages)
+                                if synthesis_response.content:
+                                    logger.info(f"Fallback synthesis successful after {steps} steps.")
+                                    return str(synthesis_response.content), messages
+                            except Exception as e:
+                                logger.error(f"Fallback synthesis failed: {e}")
+                        
+                        # If synthesis also failed, return with tool context
+                        return "I found some information but had trouble formulating a response. Please try asking again.", messages
+                    
                     return "I'm not sure how to answer that.", messages
                 
                 # --- SELF-CORRECTION LOGIC ---

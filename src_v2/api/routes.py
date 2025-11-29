@@ -150,8 +150,8 @@ async def get_diagnostics() -> DiagnosticsResponse:
     # Get model config
     llm_models = {
         "main": settings.LLM_MODEL_NAME,
-        "reflective": getattr(settings, "LLM_REFLECTIVE_MODEL", settings.LLM_MODEL_NAME),
-        "router": getattr(settings, "LLM_ROUTER_MODEL", "openai/gpt-4o-mini"),
+        "reflective": settings.REFLECTIVE_LLM_MODEL_NAME if settings.ENABLE_REFLECTIVE_MODE else settings.LLM_MODEL_NAME,
+        "router": settings.ROUTER_LLM_MODEL_NAME or "openai/gpt-4o-mini",
     }
     
     # Feature flags
