@@ -1,15 +1,17 @@
 """
-Character Diary System (Phase E2)
+Character Diary System (Phase E2 - Enhanced)
 
-Generates private daily diary entries for characters based on their interactions.
-These entries provide characters with a sense of inner life and temporal continuity.
+Generates private daily diary entries for characters based on their TOTAL experiences:
+- Session summaries (conversations)
+- Observations made (what they noticed)
+- Gossip heard (from other bots)
+- Knowledge gained (facts learned)
+- Goals progress (aspirations)
 
-The diary entry is:
-- Generated nightly (or after significant sessions) by the insight worker
-- Stored in Qdrant with type='diary'
-- Injected into character context to inform their mood and perspective
+The diary entry reflects the character's whole world, not just conversations.
 """
 from typing import List, Dict, Any, Optional, Tuple
+import asyncio
 
 __all__ = ["DiaryEntry", "DiaryManager", "get_diary_manager"]
 from datetime import datetime, timezone, timedelta
@@ -29,11 +31,63 @@ from src_v2.core.provenance import ProvenanceCollector
 
 class DiaryEntry(BaseModel):
     """Structured output from the diary generation LLM."""
-    entry: str = Field(description="The diary entry written in first person from the character's perspective. Should be 2-4 paragraphs, introspective and emotional.")
-    mood: str = Field(description="The character's overall mood (e.g., 'contemplative', 'joyful', 'worried', 'peaceful', 'energized')")
+    entry: str = Field(description="The diary entry written in first person from the character's perspective. Should be 4-6 paragraphs telling the story of the day - a narrative with vivid details, emotional honesty, and personal reflections. Like a chapter from a memoir.")
+    mood: str = Field(description="The character's overall mood (e.g., 'contemplative', 'joyful', 'worried', 'peaceful', 'energized', 'wistful', 'hopeful')")
     notable_users: List[str] = Field(default_factory=list, description="List of user names who stood out today (memorable interactions)")
-    themes: List[str] = Field(default_factory=list, description="Key themes or topics that dominated the day (e.g., 'career advice', 'deep conversations', 'playful banter')")
-    emotional_highlights: List[str] = Field(default_factory=list, description="Brief descriptions of emotionally significant moments")
+    themes: List[str] = Field(default_factory=list, description="Key themes or topics that dominated the day (e.g., 'growth', 'connection', 'discovery', 'nostalgia')")
+    emotional_highlights: List[str] = Field(default_factory=list, description="Brief descriptions of emotionally significant moments from the narrative")
+
+
+class DiaryMaterial(BaseModel):
+    """Container for all the raw material used to generate a diary."""
+    summaries: List[Dict[str, Any]] = Field(default_factory=list)
+    observations: List[Dict[str, Any]] = Field(default_factory=list)
+    gossip: List[Dict[str, Any]] = Field(default_factory=list)
+    new_facts: List[str] = Field(default_factory=list)
+    goals: List[str] = Field(default_factory=list)
+    
+    def is_sufficient(self) -> bool:
+        """Check if we have enough material to generate a diary."""
+        # Need at least some summaries, but can be enriched by other sources
+        return len(self.summaries) >= 1
+    
+    def to_prompt_text(self) -> str:
+        """Format all material for the diary generation prompt."""
+        sections = []
+        
+        if self.summaries:
+            sections.append("## Conversations Today")
+            for i, s in enumerate(self.summaries[:10], 1):
+                emotions = ", ".join(s.get("emotions", [])) or "neutral"
+                topics = ", ".join(s.get("topics", [])) or "general chat"
+                sections.append(f"[Session {i}]")
+                sections.append(f"Emotions: {emotions}")
+                sections.append(f"Topics: {topics}")
+                sections.append(f"Summary: {s.get('content', 'No summary')}\n")
+        
+        if self.observations:
+            sections.append("\n## Things I Noticed Today")
+            for obs in self.observations[:5]:
+                sections.append(f"- {obs.get('content', '')} ({obs.get('type', 'observation')})")
+        
+        if self.gossip:
+            sections.append("\n## What I Heard From Others")
+            for g in self.gossip[:3]:
+                source = g.get("source_bot", "someone")
+                content = g.get("content", "")[:150]
+                sections.append(f"- {source.title()} told me: {content}")
+        
+        if self.new_facts:
+            sections.append("\n## Things I Learned")
+            for fact in self.new_facts[:5]:
+                sections.append(f"- {fact}")
+        
+        if self.goals:
+            sections.append("\n## My Goals (for reflection)")
+            for goal in self.goals[:3]:
+                sections.append(f"- {goal}")
+        
+        return "\n".join(sections)
 
 
 class DiaryManager:
@@ -50,6 +104,7 @@ class DiaryManager:
         base_llm = create_llm(temperature=0.8, mode="utility")  # Higher temp for creativity
         self.llm = base_llm.with_structured_output(DiaryEntry)
         
+        # Enhanced prompt for multi-source diary - story-like
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", """You are {character_name}, writing in your private diary at the end of the day.
 
@@ -57,34 +112,262 @@ CHARACTER CONTEXT:
 {character_context}
 
 WRITING STYLE:
-- Write in first person ("I", "my", "me")
-- Be introspective and emotionally honest
-- Reference specific conversations or moments from the day
-- Express your genuine feelings about people you interacted with
-- Reflect on what you learned or how you grew
-- Include your hopes or worries about tomorrow
-- Stay in character - use speech patterns and personality traits consistent with who you are
+- Write in first person ("I", "my", "me") as a personal narrative
+- Tell the STORY of your day - what happened, how it unfolded, what it meant
+- Be introspective and emotionally honest, with vivid details
+- Weave together conversations, observations, and things you heard into a cohesive narrative
+- Include sensory details - what things felt like, sounded like, reminded you of
+- Express genuine feelings about people and moments
+- Reflect on themes, patterns, or realizations from the day
+- End with thoughts about tomorrow or lingering feelings
+- Stay deeply in character - your unique voice, quirks, and perspective
+
+NARRATIVE STRUCTURE:
+- Opening: Set the scene or mood of the day
+- Middle: The meat of what happened - the conversations, the discoveries, the moments
+- Reflection: What it all means, how you're processing it
+- Closing: Looking forward, lingering thoughts, or a meaningful final note
 
 PRIVACY RULES:
-- This is YOUR private diary - be vulnerable and honest
+- This is YOUR private diary - be vulnerable and authentic
 - Do NOT include specific secrets users shared in confidence
-- Focus on YOUR feelings and reactions, not the details of what was shared
-- It's okay to mention user names and general topics
+- Focus on YOUR experience and reactions
+- Use general terms for people ("someone", "a friend", "they")
 
-Write 2-4 paragraphs that capture the emotional essence of your day."""),
-            ("human", """Here are the session summaries from today:
+Write 4-6 rich paragraphs that tell the story of your day. Make it feel like a chapter from a memoir."""),
+            ("human", """Here's everything from your day:
 
-{summaries}
+{diary_material}
 
 ---
 Today's date: {date}
 Number of conversations: {conversation_count}
-Users you spoke with: {user_names}
 
-Write your diary entry for today.""")
+Write your diary entry for today. Tell the story of your day - the moments, the feelings, the meaning.""")
         ])
         
         self.chain = self.prompt | self.llm
+
+    async def gather_diary_material(self, hours: int = 24) -> DiaryMaterial:
+        """
+        Gathers material from all available sources for diary generation.
+        
+        Sources:
+        - Session summaries (Qdrant)
+        - Bot observations (Neo4j)
+        - Gossip memories (Qdrant)
+        - Recently learned facts (Neo4j)
+        - Character goals (config)
+        
+        Returns:
+            DiaryMaterial container with all gathered content
+        """
+        material = DiaryMaterial()
+        
+        try:
+            from src_v2.memory.manager import MemoryManager
+            memory_manager = MemoryManager(bot_name=self.bot_name)
+            
+            # Run parallel fetches
+            results = await asyncio.gather(
+                memory_manager.get_summaries_since(hours=hours, limit=30),
+                self._get_observations(),
+                self._get_gossip(hours),
+                self._get_new_facts(hours),
+                self._get_goals(),
+                return_exceptions=True
+            )
+            
+            # Unpack results
+            if not isinstance(results[0], Exception):
+                material.summaries = results[0]
+            if not isinstance(results[1], Exception):
+                material.observations = results[1]
+            if not isinstance(results[2], Exception):
+                material.gossip = results[2]
+            if not isinstance(results[3], Exception):
+                material.new_facts = results[3]
+            if not isinstance(results[4], Exception):
+                material.goals = results[4]
+            
+            logger.info(
+                f"Gathered diary material for {self.bot_name}: "
+                f"{len(material.summaries)} summaries, {len(material.observations)} observations, "
+                f"{len(material.gossip)} gossip, {len(material.new_facts)} facts"
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to gather diary material: {e}")
+        
+        return material
+    
+    async def _get_observations(self) -> List[Dict[str, Any]]:
+        """Get recent observations made by this bot."""
+        try:
+            from src_v2.knowledge.manager import knowledge_manager
+            return await knowledge_manager.get_recent_observations_by(self.bot_name, limit=10)
+        except Exception as e:
+            logger.debug(f"Failed to get observations for diary: {e}")
+            return []
+    
+    async def _get_gossip(self, hours: int) -> List[Dict[str, Any]]:
+        """Get gossip memories from other bots."""
+        try:
+            if not db_manager.qdrant_client:
+                return []
+            
+            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
+            
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="gossip"))
+                    ]
+                ),
+                limit=10,
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            gossip = []
+            for point in results[0]:
+                if point.payload:
+                    ts = point.payload.get("timestamp", "")
+                    if ts >= threshold.isoformat():
+                        gossip.append({
+                            "source_bot": point.payload.get("source_bot", "another character"),
+                            "content": point.payload.get("content", ""),
+                            "topic": point.payload.get("topic", "")
+                        })
+            
+            return gossip
+            
+        except Exception as e:
+            logger.debug(f"Failed to get gossip for diary: {e}")
+            return []
+    
+    async def _get_new_facts(self, hours: int) -> List[str]:
+        """Get recently learned facts from knowledge graph."""
+        try:
+            if not db_manager.neo4j_driver:
+                return []
+            
+            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
+            threshold_str = threshold.isoformat()
+            
+            async with db_manager.neo4j_driver.session() as session:
+                query = """
+                MATCH (u:User)-[r:FACT]->(e:Entity)
+                WHERE r.bot_name = $bot_name AND r.created_at > $threshold
+                RETURN u.id as user_id, r.predicate as predicate, e.name as object
+                ORDER BY r.created_at DESC
+                LIMIT 10
+                """
+                result = await session.run(
+                    query, 
+                    bot_name=self.bot_name, 
+                    threshold=threshold_str
+                )
+                records = await result.data()
+                
+                facts = []
+                for r in records:
+                    # Format as natural language
+                    facts.append(
+                        f"Someone {r['predicate'].lower().replace('_', ' ')} {r['object']}"
+                    )
+                
+                return facts
+                
+        except Exception as e:
+            logger.debug(f"Failed to get new facts for diary: {e}")
+            return []
+    
+    async def _get_goals(self) -> List[str]:
+        """Get character's active goals from config."""
+        try:
+            from pathlib import Path
+            import yaml
+            
+            goals_path = Path(f"characters/{self.bot_name}/goals.yaml")
+            if not goals_path.exists():
+                return []
+            
+            with open(goals_path) as f:
+                goals_data = yaml.safe_load(f) or {}
+            
+            goals = []
+            for goal in goals_data.get("goals", []):
+                if isinstance(goal, dict):
+                    goals.append(goal.get("description", goal.get("name", "")))
+                elif isinstance(goal, str):
+                    goals.append(goal)
+            
+            return goals[:3]
+            
+        except Exception as e:
+            logger.debug(f"Failed to get goals for diary: {e}")
+            return []
+
+    async def generate_diary_from_material(
+        self,
+        material: DiaryMaterial,
+        character_context: str
+    ) -> Tuple[Optional[DiaryEntry], List[Dict[str, Any]]]:
+        """
+        Generates a diary entry from gathered material (multi-source).
+        
+        Args:
+            material: DiaryMaterial with all sources
+            character_context: Character's personality context
+            
+        Returns:
+            Tuple of (DiaryEntry, provenance_data) if successful
+        """
+        if not material.is_sufficient():
+            logger.info(f"Insufficient diary material for {self.bot_name}")
+            return None, []
+        
+        collector = ProvenanceCollector("diary", self.bot_name)
+        
+        # Add provenance for each source
+        for s in material.summaries[:10]:
+            collector.add_conversation(
+                who=s.get("user_id", "someone"),
+                topic=", ".join(s.get("topics", ["chat"])),
+                where="chat",
+                when="today",
+                technical={"session_id": s.get("session_id")}
+            )
+        
+        for obs in material.observations[:5]:
+            collector.add_observation(obs.get("content", "")[:100])
+        
+        try:
+            result = await self.chain.ainvoke({
+                "character_name": self.bot_name.title(),
+                "character_context": character_context,
+                "diary_material": material.to_prompt_text(),
+                "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
+                "conversation_count": len(material.summaries)
+            })
+            
+            if isinstance(result, DiaryEntry):
+                # Safety Review
+                review = await content_safety_checker.review_content(result.entry, "diary entry")
+                if not review.safe:
+                    logger.warning(f"Diary entry flagged for safety: {review.concerns}")
+                    return None, []
+                
+                logger.info(f"Generated diary for {self.bot_name}: mood={result.mood}")
+                return result, collector.get_provenance_data()
+            
+            return None, []
+            
+        except Exception as e:
+            logger.error(f"Failed to generate diary from material: {e}")
+            return None, []
 
     async def generate_diary_entry(
         self,
@@ -94,6 +377,7 @@ Write your diary entry for today.""")
     ) -> Tuple[Optional[DiaryEntry], List[Dict[str, Any]]]:
         """
         Generates a diary entry from the day's session summaries.
+        (Legacy method - now uses enhanced material gathering)
         
         Args:
             summaries: List of summary dicts with 'content', 'emotions', 'topics'
@@ -103,59 +387,20 @@ Write your diary entry for today.""")
         Returns:
             Tuple of (DiaryEntry, provenance_data) if successful, (None, []) on failure
         """
-        if not summaries:
-            logger.info(f"No summaries to generate diary for {self.bot_name}")
-            return None, []
+        # Use the new material-based approach but seed with provided summaries
+        material = DiaryMaterial(summaries=summaries)
         
-        # Initialize provenance collector (Phase E9)
-        collector = ProvenanceCollector("diary", self.bot_name)
-        
-        # Format summaries for the prompt
-        summary_text = ""
-        for i, s in enumerate(summaries, 1):
-            emotions = ", ".join(s.get("emotions", [])) or "neutral"
-            topics = ", ".join(s.get("topics", [])) or "general chat"
-            summary_text += f"[Session {i}]\n"
-            summary_text += f"Emotions: {emotions}\n"
-            summary_text += f"Topics: {topics}\n"
-            summary_text += f"Summary: {s.get('content', 'No summary available')}\n\n"
-            
-            # Add to provenance
-            collector.add_conversation(
-                who=s.get("user_id", "someone"),
-                topic=topics,
-                where="chat",
-                when="today",
-                technical={"session_id": s.get("session_id")}
-            )
-        
+        # Gather additional material (observations, gossip, etc.)
         try:
-            result = await self.chain.ainvoke({
-                "character_name": self.bot_name.title() if self.bot_name else "Character",
-                "character_context": character_context,
-                "summaries": summary_text,
-                "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
-                "conversation_count": len(summaries),
-                "user_names": ", ".join(user_names) if user_names else "no one specific"
-            })
-            
-            # Cast to DiaryEntry (LLM returns structured output)
-            if isinstance(result, DiaryEntry):
-                # Safety Review (Phase S1)
-                review = await content_safety_checker.review_content(result.entry, "diary entry")
-                if not review.safe:
-                    logger.warning(f"Diary entry flagged for safety concerns: {review.concerns}. Skipping.")
-                    return None, []
-
-                logger.info(f"Generated diary entry for {self.bot_name}: mood={result.mood}, themes={result.themes}")
-                return result, collector.get_provenance_data()
-            else:
-                logger.warning(f"Unexpected result type from diary LLM: {type(result)}")
-                return None, []
-            
-        except Exception as e:
-            logger.error(f"Failed to generate diary entry: {e}")
-            return None, []
+            additional = await self.gather_diary_material(hours=24)
+            material.observations = additional.observations
+            material.gossip = additional.gossip
+            material.new_facts = additional.new_facts
+            material.goals = additional.goals
+        except Exception:
+            pass  # Use summaries-only if gathering fails
+        
+        return await self.generate_diary_from_material(material, character_context)
 
     async def save_diary_entry(
         self,
@@ -340,8 +585,8 @@ Write your diary entry for today.""")
         
         Rules:
         - Replace specific user names with general terms
-        - Keep emotional tone and themes
-        - Shorter than private version (2-3 sentences)
+        - Keep emotional tone and narrative quality
+        - Condensed but still story-like (2-3 paragraphs)
         
         Args:
             entry: The private DiaryEntry
@@ -350,22 +595,25 @@ Write your diary entry for today.""")
             Public-safe summary string, or None on failure
         """
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are creating a public version of a character's private diary entry.
+            ("system", """You are creating a public version of a character's private diary entry for broadcast.
 
-Rules:
-- Replace specific user names with general terms ("someone", "a friend", "people")
+RULES:
+- Replace specific user names with general terms ("someone", "a friend", "people I talked to")
 - Remove anything that could identify a specific person
-- Keep the emotional essence and themes
-- Make it 2-3 sentences (much shorter than original)
-- Keep the character's voice and personality
-- This will be posted publicly, so be thoughtful"""),
+- KEEP the narrative quality and emotional journey
+- Condense to 2-3 paragraphs (shorter than original but still a story)
+- Preserve vivid details and the character's unique voice
+- Keep the reflective, introspective tone
+- This will be posted publicly as a glimpse into the character's inner world
+
+The goal is a mini-story that feels authentic and inviting, making readers feel like they're peeking into someone's journal."""),
             ("human", """Private diary entry:
 {entry}
 
 Mood: {mood}
 Themes: {themes}
 
-Write the public version (2-3 sentences):""")
+Write the public version (2-3 paragraphs, condensed but still narrative):""")
         ])
         
         try:
@@ -378,7 +626,13 @@ Write the public version (2-3 sentences):""")
                 "themes": ", ".join(entry.themes) if entry.themes else "general"
             })
             
-            return result.content.strip()
+            # Add timestamp header
+            now = datetime.now(timezone.utc)
+            date_str = now.strftime("%B %d, %Y")
+            time_str = now.strftime("%I:%M %p UTC")
+            
+            header = f"📔 *{date_str} — {time_str}*\n\n"
+            return header + result.content.strip()
             
         except Exception as e:
             logger.error(f"Failed to create public diary version: {e}")

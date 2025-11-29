@@ -1803,9 +1803,8 @@ Recent channel context:
             # 2. Count messages
             message_count = await memory_manager.count_messages_since(user_id, self.character_name, start_time)
             
-            # 3. Check threshold (e.g., 20 messages)
-            SUMMARY_THRESHOLD = 20
-            if message_count >= SUMMARY_THRESHOLD:
+            # 3. Check threshold
+            if message_count >= settings.SUMMARY_MESSAGE_THRESHOLD:
                 logger.info(f"Session {session_id} reached {message_count} messages. Enqueueing summarization.")
                 
                 # Fetch messages

@@ -391,6 +391,8 @@ class BroadcastManager:
             return 0
         
         posted = 0
+        requeue_items = []  # Items for other bots
+        my_bot_name = settings.DISCORD_BOT_NAME.lower() if settings.DISCORD_BOT_NAME else ""
         
         try:
             import json
@@ -403,6 +405,13 @@ class BroadcastManager:
                 
                 try:
                     item = json.loads(item_json)
+                    item_bot_name = item.get("character_name", "").lower()
+                    
+                    # Only process broadcasts for THIS bot
+                    if item_bot_name != my_bot_name:
+                        # Not for us - requeue it
+                        requeue_items.append(item_json)
+                        continue
                     
                     result = await self.post_to_channel(
                         content=item["content"],
@@ -417,6 +426,10 @@ class BroadcastManager:
                     
                 except Exception as e:
                     logger.warning(f"Failed to process queued broadcast: {e}")
+            
+            # Requeue items for other bots
+            for item_json in requeue_items:
+                await db_manager.redis_client.rpush("broadcast:queue", item_json)
             
         except Exception as e:
             logger.error(f"Error processing broadcast queue: {e}")

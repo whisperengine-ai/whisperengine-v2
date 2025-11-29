@@ -625,5 +625,279 @@ class MemoryManager:
             logger.error(f"Failed to get recent summaries: {e}")
             return []
 
+    async def get_high_meaningfulness_memories(
+        self,
+        hours: int = 24,
+        limit: int = 10,
+        min_meaningfulness: float = 0.6,
+        collection_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get high-meaningfulness memories from the last N hours (for dream generation).
+        
+        Retrieves individual memories (not summaries) that have high meaningfulness
+        scores, suitable for synthesizing into surreal dreams.
+        
+        Args:
+            hours: How many hours back to look (default 24)
+            limit: Maximum number of memories to return
+            min_meaningfulness: Minimum meaningfulness score (0.0-1.0)
+            collection_name: Override collection name
+            
+        Returns:
+            List of memory payloads with content, emotions, topics, etc.
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        collection = collection_name or self.collection_name
+        
+        try:
+            # Calculate threshold timestamp (datetime is imported at top of file)
+            threshold = datetime.datetime.now() - datetime.timedelta(hours=hours)
+            threshold_iso = threshold.isoformat()
+            
+            # Get memories (type="memory" or messages with high engagement)
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=collection,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="memory"))
+                    ]
+                ),
+                limit=limit * 5,  # Fetch extra for filtering
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            memories = []
+            for point in results[0]:
+                payload = point.payload
+                if not payload:
+                    continue
+                
+                ts = payload.get("timestamp", "")
+                if ts < threshold_iso:
+                    continue
+                
+                # Check meaningfulness score
+                meaningfulness = payload.get("meaningfulness_score", 0.5)
+                if isinstance(meaningfulness, (int, float)) and meaningfulness >= min_meaningfulness:
+                    memories.append({
+                        "content": payload.get("content", ""),
+                        "summary": payload.get("summary", payload.get("content", "")),
+                        "emotions": payload.get("emotions", []),
+                        "topics": payload.get("topics", []),
+                        "meaningfulness_score": meaningfulness,
+                        "user_id": payload.get("user_id"),
+                        "timestamp": ts
+                    })
+            
+            # Also check summaries if we don't have enough memories
+            if len(memories) < limit:
+                summary_results = await db_manager.qdrant_client.scroll(
+                    collection_name=collection,
+                    scroll_filter=Filter(
+                        must=[
+                            FieldCondition(key="type", match=MatchValue(value="summary"))
+                        ]
+                    ),
+                    limit=limit * 3,
+                    with_payload=True,
+                    with_vectors=False
+                )
+                
+                for point in summary_results[0]:
+                    payload = point.payload
+                    if not payload:
+                        continue
+                    
+                    ts = payload.get("timestamp", "")
+                    if ts < threshold_iso:
+                        continue
+                    
+                    # Normalize meaningfulness score (summaries use 1-5 scale)
+                    raw_score = payload.get("meaningfulness_score", 3)
+                    if isinstance(raw_score, (int, float)):
+                        if raw_score > 1:  # Probably 1-5 scale
+                            meaningfulness = raw_score / 5.0
+                        else:
+                            meaningfulness = raw_score
+                        
+                        if meaningfulness >= min_meaningfulness:
+                            memories.append({
+                                "content": payload.get("content", ""),
+                                "summary": payload.get("content", ""),
+                                "emotions": payload.get("emotions", []),
+                                "topics": payload.get("topics", []),
+                                "meaningfulness_score": meaningfulness,
+                                "user_id": payload.get("user_id"),
+                                "timestamp": ts
+                            })
+            
+            # Sort by meaningfulness (descending) and then timestamp
+            memories.sort(key=lambda x: (x.get("meaningfulness_score", 0), x.get("timestamp", "")), reverse=True)
+            
+            logger.debug(f"Found {len(memories)} high-meaningfulness memories in last {hours} hours")
+            return memories[:limit]
+            
+        except Exception as e:
+            logger.error(f"Failed to get high meaningfulness memories: {e}")
+            return []
+
+    async def search_by_type(
+        self,
+        memory_type: str,
+        collection_name: Optional[str] = None,
+        limit: int = 10,
+        hours: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for memories by type (observation, gossip, diary, dream, epiphany, etc).
+        
+        Used by DreamWeaver agent to gather different types of material.
+        
+        Args:
+            memory_type: The type of memory to search for
+            collection_name: Override collection name
+            limit: Maximum number of results
+            hours: Optional - only get memories from last N hours
+            
+        Returns:
+            List of memory payloads matching the type
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        collection = collection_name or self.collection_name
+        
+        try:
+            # Build filter conditions
+            must_conditions = [
+                FieldCondition(key="type", match=MatchValue(value=memory_type))
+            ]
+            
+            # Calculate threshold if hours specified
+            threshold_iso = None
+            if hours:
+                threshold = datetime.datetime.now() - datetime.timedelta(hours=hours)
+                threshold_iso = threshold.isoformat()
+            
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=collection,
+                scroll_filter=Filter(must=must_conditions),
+                limit=limit * 3 if hours else limit,  # Fetch extra if filtering by time
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            memories = []
+            for point in results[0]:
+                payload = point.payload
+                if not payload:
+                    continue
+                
+                # Filter by time if specified
+                if threshold_iso:
+                    ts = payload.get("timestamp", payload.get("created_at", ""))
+                    if ts and ts < threshold_iso:
+                        continue
+                
+                memories.append({
+                    "content": payload.get("content", ""),
+                    "metadata": payload,
+                    "user_id": payload.get("user_id"),
+                    "created_at": payload.get("timestamp", payload.get("created_at", "")),
+                    "type": memory_type
+                })
+                
+                if len(memories) >= limit:
+                    break
+            
+            logger.debug(f"Found {len(memories)} memories of type '{memory_type}'")
+            return memories
+            
+        except Exception as e:
+            logger.error(f"Failed to search by type '{memory_type}': {e}")
+            return []
+
+    async def search_all_summaries(
+        self,
+        query: str,
+        collection_name: Optional[str] = None,
+        limit: int = 10,
+        hours: Optional[int] = 24
+    ) -> List[Dict[str, Any]]:
+        """
+        Search summaries across ALL users (for diary/dream generation).
+        
+        Unlike search_summaries which requires a user_id, this searches
+        globally across the bot's collection.
+        
+        Args:
+            query: Semantic query string
+            collection_name: Override collection name
+            limit: Maximum results to return
+            hours: Only get summaries from last N hours
+            
+        Returns:
+            List of summary payloads
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        collection = collection_name or self.collection_name
+        
+        try:
+            embedding = await self.embedding_service.embed_query_async(query)
+            
+            # Build filter - type must be summary
+            must_conditions = [
+                FieldCondition(key="type", match=MatchValue(value="summary"))
+            ]
+            
+            search_result = await db_manager.qdrant_client.query_points(
+                collection_name=collection,
+                query=embedding,
+                query_filter=Filter(must=must_conditions),
+                limit=limit * 2  # Fetch extra for filtering
+            )
+            
+            # Calculate threshold if hours specified
+            threshold_iso = None
+            if hours:
+                threshold = datetime.datetime.now() - datetime.timedelta(hours=hours)
+                threshold_iso = threshold.isoformat()
+            
+            summaries = []
+            for point in search_result.points:
+                payload = point.payload
+                if not payload:
+                    continue
+                
+                # Filter by time if specified
+                if threshold_iso:
+                    ts = payload.get("timestamp", payload.get("created_at", ""))
+                    if ts and ts < threshold_iso:
+                        continue
+                
+                summaries.append({
+                    "content": payload.get("content", ""),
+                    "user_id": payload.get("user_id"),
+                    "timestamp": payload.get("timestamp", ""),
+                    "topics": payload.get("topics", []),
+                    "emotions": payload.get("emotions", [])
+                })
+                
+                if len(summaries) >= limit:
+                    break
+            
+            logger.debug(f"Found {len(summaries)} summaries across all users")
+            return summaries
+            
+        except Exception as e:
+            logger.error(f"Failed to search all summaries: {e}")
+            return []
+
 # Global instance
 memory_manager = MemoryManager()

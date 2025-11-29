@@ -17,6 +17,7 @@ class SourceType(str, Enum):
     CHANNEL = "channel"             # Channel context
     OTHER_BOT = "other_bot"         # Another bot's post/knowledge
     COMMUNITY = "community"         # General community observation
+    OBSERVATION = "observation"     # Bot's observation about something
 
 @dataclass
 class GroundingSource:
@@ -128,6 +129,18 @@ class ProvenanceCollector:
             narrative=f"Knowing {who} {fact}",
             who=who, topic=fact,
             technical=technical
+        ))
+
+    def add_observation(
+        self,
+        content: str,
+        observation_type: Optional[str] = None
+    ):
+        """Add an observation made by the character."""
+        self.sources.append(GroundingSource(
+            source_type=SourceType.OBSERVATION,
+            narrative=f"Noticed: {content}",
+            topic=observation_type or "observation"
         ))
 
     def add_source(self, source: GroundingSource):

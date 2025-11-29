@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import yaml
 from pathlib import Path
 from loguru import logger
@@ -899,6 +899,78 @@ PRIVACY RESTRICTION ENABLED:
             facts.append(f"User {predicate} {obj}")
             
         return facts
+
+    async def get_recent_facts(
+        self,
+        bot_name: str,
+        limit: int = 15,
+        hours: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get recent facts from the knowledge graph (for diary/dream generation).
+        
+        Returns facts across all users, optionally filtered by recency.
+        
+        Args:
+            bot_name: The bot's name (for context)
+            limit: Maximum number of facts to return
+            hours: Optional - only get facts from last N hours
+            
+        Returns:
+            List of fact dicts with subject, predicate, object
+        """
+        if not db_manager.neo4j_driver:
+            return []
+        
+        try:
+            # Build the query - get facts created by this bot
+            if hours:
+                query = """
+                MATCH (u:User)-[r:FACT]->(o:Entity)
+                WHERE r.learned_by = $bot_name
+                  AND r.created_at >= datetime() - duration({hours: $hours})
+                RETURN u.id as subject, r.predicate as predicate, o.name as object, 
+                       r.confidence as confidence, r.created_at as created_at
+                ORDER BY r.created_at DESC
+                LIMIT $limit
+                """
+                params = {"bot_name": bot_name, "hours": hours, "limit": limit}
+            else:
+                query = """
+                MATCH (u:User)-[r:FACT]->(o:Entity)
+                WHERE r.learned_by = $bot_name
+                RETURN u.id as subject, r.predicate as predicate, o.name as object,
+                       r.confidence as confidence, r.created_at as created_at
+                ORDER BY r.created_at DESC
+                LIMIT $limit
+                """
+                params = {"bot_name": bot_name, "limit": limit}
+            
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(query, **params)
+                records = await result.data()
+                
+                facts = []
+                for r in records:
+                    # Format user ID nicely
+                    subject = r.get("subject", "someone")
+                    if subject and len(subject) > 8:
+                        subject = f"User_{subject[-4:]}"  # Just last 4 chars
+                    
+                    facts.append({
+                        "subject": subject,
+                        "predicate": r.get("predicate", "has"),
+                        "object": r.get("object", "something"),
+                        "confidence": r.get("confidence", 0.5),
+                        "created_at": str(r.get("created_at")) if r.get("created_at") else None
+                    })
+                
+                logger.debug(f"Found {len(facts)} recent facts for {bot_name}")
+                return facts
+                
+        except Exception as e:
+            logger.error(f"Failed to get recent facts: {e}")
+            return []
 
 # Global instance
 knowledge_manager = KnowledgeManager()

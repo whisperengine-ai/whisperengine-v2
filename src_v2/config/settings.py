@@ -178,11 +178,23 @@ class Settings(BaseSettings):
     ENABLE_CHARACTER_DIARY: bool = True  # Generate nightly diary entries for characters
     DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
     DIARY_GENERATION_HOUR_UTC: int = 4  # Hour (UTC) when diary is generated (default: 4 AM)
+    
+    # --- Session Summarization ---
+    SUMMARY_MESSAGE_THRESHOLD: int = 20  # Messages per session before auto-summarization
 
     # --- Dream Sequences (Phase E3) ---
     ENABLE_DREAM_SEQUENCES: bool = True  # Generate dreams when user returns after long absence
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
     DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
+    DREAM_GENERATION_HOUR_UTC: int = 5  # Hour (UTC) when nightly dreams are generated (default: 5 AM)
+    
+    # --- Agentic Narrative Generation (Phase E10) ---
+    # When enabled, diary/dream generation uses the DreamWeaver agent which:
+    # 1. Plans the narrative arc (story structure, emotional journey)
+    # 2. Uses tools to gather correlated data from multiple sources
+    # 3. Takes extended steps since it's batch mode (no user waiting)
+    # This produces richer, more coherent narratives but uses more LLM tokens.
+    ENABLE_AGENTIC_NARRATIVES: bool = False  # Use reflective agent for diary/dream generation
 
     # --- Bot Broadcast Channel (Phase E8) ---
     ENABLE_BOT_BROADCAST: bool = False  # Post thoughts/dreams to a public channel
