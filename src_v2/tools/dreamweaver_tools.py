@@ -23,7 +23,6 @@ from typing import Type, Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
 from loguru import logger
-from datetime import datetime, timezone, timedelta
 
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
@@ -443,7 +442,7 @@ running in batch mode without direct Discord access.
             all_memories = (memories or []) + (dream_memories or []) + (gossip_memories or []) + (observation_memories or [])
             
             # Helper to get source_bot from memory (could be in metadata or top-level)
-            def get_source_bot(m: Dict) -> str:
+            def get_source_bot(m: Dict[str, Any]) -> str:
                 # Check metadata first
                 metadata = m.get("metadata", {})
                 if isinstance(metadata, dict):
@@ -592,7 +591,11 @@ Examples of community-sourced deep answers:
                     content = m.get("content", "")
                     if "?" in content or "ask" in content.lower():
                         if content[:100] not in seen_content:
-                            source_bot = m.get("source_bot", "another bot")
+                            # Check metadata first, then top-level for source_bot
+                            metadata = m.get("metadata", {})
+                            source_bot = (
+                                metadata.get("source_bot") if isinstance(metadata, dict) else None
+                            ) or m.get("source_bot", "another bot")
                             questions.append({
                                 "question": content[:200],
                                 "user": f"via {source_bot}",
