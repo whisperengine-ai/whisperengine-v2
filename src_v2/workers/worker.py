@@ -505,25 +505,35 @@ async def run_agentic_diary_generation(
         diary_manager = get_diary_manager(character_name)
         
         # Check if diary already exists for today
-        if await diary_manager.has_diary_for_today():
-            logger.info(f"Diary already exists for {character_name} today, skipping")
-            return {
-                "success": True,
-                "skipped": True,
-                "reason": "already_exists",
-                "character_name": character_name,
-                "mode": "agentic"
-            }
+        # FORCE REGENERATION FOR TESTING: Commented out check
+        # if await diary_manager.has_diary_for_today():
+        #     logger.info(f"Diary already exists for {character_name} today, skipping")
+        #     return {
+        #         "success": True,
+        #         "skipped": True,
+        #         "reason": "already_exists",
+        #         "character_name": character_name,
+        #         "mode": "agentic"
+        #     }
         
         # Get character description for the agent
         character_description = ""
         try:
-            character_dir = f"characters/{character_name}"
-            behavior = load_behavior_profile(character_dir)
-            if behavior:
-                character_description = behavior.to_prompt_section()
-        except Exception:
-            pass
+            from src_v2.core.character import CharacterManager
+            char_manager = CharacterManager()
+            character = char_manager.load_character(character_name)
+            if character:
+                character_description = character.system_prompt
+        except Exception as e:
+            logger.warning(f"Failed to load full character prompt for {character_name}: {e}")
+            # Fallback to behavior profile only
+            try:
+                character_dir = f"characters/{character_name}"
+                behavior = load_behavior_profile(character_dir)
+                if behavior:
+                    character_description = behavior.to_prompt_section()
+            except Exception:
+                pass
         
         if not character_description:
             character_description = f"You are {character_name.title()}, an AI companion."
@@ -548,14 +558,22 @@ async def run_agentic_diary_generation(
                 diary_entry_text = parts[1].strip()
         
         # Build provenance
-        provenance = ProvenanceCollector()
+        provenance = ProvenanceCollector(artifact_type="diary", character_name=character_name)
+        # Note: material_sources from agent is a list of strings, not structured objects
+        # We'll add them as generic conversation/memory items for now
         for source in result.get("material_sources", []):
-            if "memories" in source:
-                provenance.add_memory(source, 1.0)
-            elif "facts" in source:
-                provenance.add_fact(source, 1.0)
-            elif "gossip" in source:
-                provenance.add_gossip(source, 1.0)
+            # Source string format is usually "Type: Description"
+            if ":" in source:
+                sType, sDesc = source.split(":", 1)
+                sDesc = sDesc.strip()
+                if "memory" in sType.lower():
+                    provenance.add_memory(who="User", topic=sDesc, when="recently")
+                elif "fact" in sType.lower():
+                    provenance.add_knowledge(who="User", fact=sDesc)
+                else:
+                    provenance.add_conversation(who="User", topic=sDesc, where="chat", when="recently")
+            else:
+                provenance.add_conversation(who="User", topic=source, where="chat", when="recently")
         
         # Create DiaryEntry from agent output
         entry = DiaryEntry(
@@ -567,7 +585,7 @@ async def run_agentic_diary_generation(
         )
         
         # Save to Qdrant
-        point_id = await diary_manager.save_diary_entry(entry, provenance=provenance)
+        point_id = await diary_manager.save_diary_entry(entry, provenance=provenance.get_provenance_data())
         
         # Queue for broadcast
         broadcast_queued = False
@@ -580,7 +598,7 @@ async def run_agentic_diary_generation(
                     broadcast_queued = await broadcast_manager.queue_diary(
                         public_version,
                         character_name,
-                        provenance
+                        provenance.get_provenance_data()
                     )
             except Exception as e:
                 logger.warning(f"Failed to queue diary broadcast: {e}")
@@ -654,37 +672,47 @@ async def run_agentic_dream_generation(
         dream_manager = get_dream_manager(character_name)
         
         # Check if dream already exists for today
-        last_dream = await dream_manager.get_last_character_dream()
-        if last_dream:
-            last_ts = last_dream.get("timestamp", "")
-            if last_ts:
-                try:
-                    if isinstance(last_ts, str):
-                        last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
-                    else:
-                        last_dt = last_ts
-                    today = datetime.now(timezone.utc).date()
-                    if last_dt.date() == today:
-                        logger.info(f"Dream already exists for {character_name} today, skipping")
-                        return {
-                            "success": True,
-                            "skipped": True,
-                            "reason": "already_exists",
-                            "character_name": character_name,
-                            "mode": "agentic"
-                        }
-                except Exception:
-                    pass
+        # FORCE REGENERATION FOR TESTING: Commented out check
+        # last_dream = await dream_manager.get_last_character_dream()
+        # if last_dream:
+        #     last_ts = last_dream.get("timestamp", "")
+        #     if last_ts:
+        #         try:
+        #             if isinstance(last_ts, str):
+        #                 last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
+        #             else:
+        #                 last_dt = last_ts
+        #             today = datetime.now(timezone.utc).date()
+        #             if last_dt.date() == today:
+        #                 logger.info(f"Dream already exists for {character_name} today, skipping")
+        #                 return {
+        #                     "success": True,
+        #                     "skipped": True,
+        #                     "reason": "already_exists",
+        #                     "character_name": character_name,
+        #                     "mode": "agentic"
+        #                 }
+        #         except Exception:
+        #             pass
         
         # Get character description for the agent
         character_description = ""
         try:
-            character_dir = f"characters/{character_name}"
-            behavior = load_behavior_profile(character_dir)
-            if behavior:
-                character_description = behavior.to_prompt_section()
-        except Exception:
-            pass
+            from src_v2.core.character import CharacterManager
+            char_manager = CharacterManager()
+            character = char_manager.load_character(character_name)
+            if character:
+                character_description = character.system_prompt
+        except Exception as e:
+            logger.warning(f"Failed to load full character prompt for {character_name}: {e}")
+            # Fallback to behavior profile only
+            try:
+                character_dir = f"characters/{character_name}"
+                behavior = load_behavior_profile(character_dir)
+                if behavior:
+                    character_description = behavior.to_prompt_section()
+            except Exception:
+                pass
         
         if not character_description:
             character_description = f"You are {character_name.title()}, an AI companion."
@@ -709,14 +737,20 @@ async def run_agentic_dream_generation(
                 dream_narrative = parts[1].strip()
         
         # Build provenance
-        provenance = ProvenanceCollector()
+        provenance = ProvenanceCollector(artifact_type="dream", character_name=character_name)
+        # Note: material_sources from agent is a list of strings
         for source in result.get("material_sources", []):
-            if "memories" in source:
-                provenance.add_memory(source, 1.0)
-            elif "facts" in source:
-                provenance.add_fact(source, 1.0)
-            elif "gossip" in source:
-                provenance.add_gossip(source, 1.0)
+            if ":" in source:
+                sType, sDesc = source.split(":", 1)
+                sDesc = sDesc.strip()
+                if "memory" in sType.lower():
+                    provenance.add_memory(who="User", topic=sDesc, when="recently")
+                elif "fact" in sType.lower():
+                    provenance.add_knowledge(who="User", fact=sDesc)
+                else:
+                    provenance.add_conversation(who="User", topic=sDesc, where="chat", when="recently")
+            else:
+                provenance.add_conversation(who="User", topic=source, where="chat", when="recently")
         
         # Create DreamContent from agent output
         dream = DreamContent(
@@ -730,7 +764,7 @@ async def run_agentic_dream_generation(
         point_id = await dream_manager.save_dream(
             dream=dream,
             user_id="__character__",
-            provenance=provenance
+            provenance=provenance.get_provenance_data()
         )
         
         # Queue for broadcast
@@ -752,7 +786,7 @@ async def run_agentic_dream_generation(
                             content=public_dream,
                             post_type=PostType.DREAM,
                             character_name=character_name,
-                            provenance=provenance
+                            provenance=provenance.get_provenance_data()
                         )
             except Exception as e:
                 logger.warning(f"Failed to queue dream broadcast: {e}")

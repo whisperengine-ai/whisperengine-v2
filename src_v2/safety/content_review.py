@@ -37,6 +37,14 @@ class ContentSafetyChecker:
         content_lower = content.lower()
         return any(keyword in content_lower for keyword in self.SENSITIVE_PATTERNS)
 
+    async def is_safe(self, content: str, content_type: str = "content") -> bool:
+        """
+        Simple boolean check for safety.
+        Wraps review_content for backward compatibility/ease of use.
+        """
+        result = await self.review_content(content, content_type)
+        return result.safe
+
     async def review_content(self, content: str, content_type: str = "content") -> ReviewResult:
         """
         Review content for safety/privacy issues.
