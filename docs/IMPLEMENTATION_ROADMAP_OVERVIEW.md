@@ -71,7 +71,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | 📋 Proposed |
-| Low | E6 | Character-to-Character | 1 week | E8 | 📋 Proposed |
+| Low | E6 | Character-to-Character | 1 week | E8 | ✅ Complete |
 | — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
 
 **Dependency Chain:**
@@ -87,7 +87,7 @@ E10 (Channel Observer) ──► E9 (Provenance) ─┘
 S4 (Timezone) ──► E7 (User Timezone)
 ```
 
-> **Current Focus:** E5 (Scheduled Reminders) or E6 (Character-to-Character).
+> **Current Focus:** E5 (Scheduled Reminders) is the last remaining Phase E item.
 
 ---
 
@@ -126,6 +126,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Dream Sequences (Phase E3)
 - ✅ Relationship Milestones (Phase E4)
 - ✅ Bot Broadcast Channel (Phase E8)
+- ✅ Cross-Bot Chat (Phase E6)
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions
@@ -156,7 +157,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 
 **NOT YET IMPLEMENTED:**
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
-- 📋 Phase E: Remaining items (E5, E6, E7)
+- 📋 Phase E: Remaining items (E5)
 - ⏳ Phase D: User sharding, federation (future multiverse)
 
 **DEFERRED/ARCHIVED:**
@@ -1343,27 +1344,27 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 **Solution:** Intent detection + temporal parsing + proactive scheduler delivery.
 **Spec:** [SCHEDULED_REMINDERS.md](./roadmaps/SCHEDULED_REMINDERS.md)
 
-### 📋 Phase E6: Character-to-Character Conversation
+### ✅ Phase E6: Character-to-Character Conversation
 **Priority:** Low | **Time:** 1 week | **Complexity:** High
-**Status:** 📋 Proposed
+**Status:** ✅ Complete
 **Dependencies:** E8 (Bot Broadcast Channel provides discovery mechanism)
 
 **Problem:** Multiple bots in the same server ignore each other.
 **Solution:** Event-bus driven cross-bot conversation. Bots discover each other's posts in broadcast channel and occasionally respond.
 **Spec:** [CHARACTER_TO_CHARACTER.md](./roadmaps/CHARACTER_TO_CHARACTER.md)
 
-### 📋 Phase E7: User Timezone Support
+### ✅ Phase E7: User Timezone Support
 **Priority:** Low | **Time:** 1-2 days | **Complexity:** Low
-**Status:** 📋 Proposed
+**Status:** ✅ Complete
 **Dependencies:** S4 (Proactive Timezone Awareness provides infrastructure)
 
 **Problem:** System operates in UTC; diary/dream timing doesn't match user's local time.
 **Solution:** Store user timezone preference, adjust context injection framing.
 **Spec:** [USER_TIMEZONE_SUPPORT.md](./roadmaps/USER_TIMEZONE_SUPPORT.md)
 
-### 📋 Phase E8: Bot Broadcast Channel
+### ✅ Phase E8: Bot Broadcast Channel
 **Priority:** Low | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+**Status:** ✅ Complete
 **Dependencies:** S1 (Content Safety Review), E9 (Artifact Provenance)
 
 **Problem:** Bots' inner lives (diaries, dreams) are invisible to community.

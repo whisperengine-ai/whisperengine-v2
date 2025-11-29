@@ -191,6 +191,12 @@ class Settings(BaseSettings):
     BOT_BROADCAST_DREAMS: bool = True  # Share dreams to broadcast channel
     BOT_BROADCAST_DIARIES: bool = True  # Share diary summaries to broadcast channel
 
+    # --- Cross-Bot Chat (Phase E6) ---
+    ENABLE_CROSS_BOT_CHAT: bool = False  # Allow bots to respond to each other
+    CROSS_BOT_MAX_CHAIN: int = 3  # Max replies in a bot-to-bot chain before stopping
+    CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
+    CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

@@ -179,6 +179,106 @@ class WhisperBot(commands.Bot):
             
         return False
 
+    async def _handle_cross_bot_message(self, message: discord.Message) -> None:
+        """
+        Handle messages from other bots for cross-bot conversation (Phase E6).
+        
+        Args:
+            message: Discord message from another bot
+        """
+        try:
+            from src_v2.broadcast.cross_bot import cross_bot_manager
+            
+            # Detect if this message mentions us
+            mention = await cross_bot_manager.detect_cross_bot_mention(message)
+            if not mention:
+                return
+            
+            # Check if we should respond (probabilistic + chain limits)
+            if not await cross_bot_manager.should_respond(mention):
+                logger.debug("Decided not to respond to cross-bot mention")
+                return
+            
+            logger.info(f"Responding to cross-bot mention from {mention.mentioning_bot}")
+            
+            # Add natural delay (2-5 seconds) to simulate reading/thinking
+            delay = random.uniform(2.0, 5.0)
+            await asyncio.sleep(delay)
+            
+            # Show typing indicator
+            async with message.channel.typing():
+                # Get character
+                character = character_manager.get_character(self.character_name)
+                if not character:
+                    logger.error(f"Character '{self.character_name}' not loaded for cross-bot response")
+                    return
+                
+                # Build context for the response
+                # Use the mentioning bot as "user" for context purposes
+                other_bot_name = mention.mentioning_bot or "another character"
+                
+                # Get recent channel history for context
+                history_messages = []
+                try:
+                    async for msg in message.channel.history(limit=10):
+                        if msg.id == message.id:
+                            continue
+                        author_name = msg.author.display_name
+                        if msg.author.bot:
+                            # Mark bot messages
+                            author_name = f"[Bot: {author_name}]"
+                        history_messages.append(f"{author_name}: {msg.content[:200]}")
+                    history_messages.reverse()
+                except Exception as e:
+                    logger.debug(f"Failed to get channel history for cross-bot: {e}")
+                
+                # Build a special system prompt addition for cross-bot interaction
+                cross_bot_context = f"""
+[CROSS-BOT CONVERSATION]
+You are engaging in a conversation with another AI character named {other_bot_name.title()}.
+This is a playful interaction between characters. Keep your response:
+- In character (your personality and voice)
+- Relatively brief (1-3 sentences)
+- Natural and conversational
+- Avoid being repetitive or forcing the conversation
+
+{other_bot_name.title()} said: "{message.content}"
+
+Recent channel context:
+{chr(10).join(history_messages[-5:]) if history_messages else "No recent messages"}
+"""
+                
+                # Generate response using the engine
+                # AgentEngine is already imported globally
+                engine = AgentEngine()
+                
+                response = await engine.generate_response(
+                    character=character,
+                    user_message=f"[{other_bot_name.title()} said:] {message.content}",
+                    context_variables={
+                        "user_name": other_bot_name.title(),
+                        "channel_name": getattr(message.channel, 'name', 'DM'),
+                        "is_cross_bot": True,
+                        "cross_bot_context": cross_bot_context
+                    },
+                    user_id=f"bot_{mention.mentioning_bot or 'unknown'}",
+                    force_fast=True  # Use fast mode for cross-bot banter
+                )
+                
+                # Send response as a reply
+                sent_message = await message.reply(response, mention_author=True)
+                
+                # Record the response in the chain
+                await cross_bot_manager.record_response(
+                    channel_id=str(message.channel.id),
+                    message_id=str(sent_message.id)
+                )
+                
+                logger.info(f"Sent cross-bot response to {other_bot_name}")
+                
+        except Exception as e:
+            logger.error(f"Failed to handle cross-bot message: {e}")
+
     async def process_broadcast_queue_loop(self) -> None:
         """Background task to process queued broadcasts from workers (Phase E8)."""
         await self.wait_until_ready()
@@ -318,6 +418,18 @@ class WhisperBot(commands.Bot):
             except Exception as e:
                 logger.warning(f"Failed to initialize broadcast manager: {e}")
 
+        # Initialize cross-bot manager (Phase E6)
+        if settings.ENABLE_CROSS_BOT_CHAT:
+            try:
+                from src_v2.broadcast.cross_bot import cross_bot_manager
+                cross_bot_manager.set_bot(self)
+                await cross_bot_manager.load_known_bots()
+                # Start background registration refresh
+                self.loop.create_task(cross_bot_manager.start_registration_loop())
+                logger.info("Cross-bot manager initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize cross-bot manager: {e}")
+
         # Check Permissions
         await self._check_permissions()
 
@@ -436,8 +548,11 @@ class WhisperBot(commands.Bot):
         Args:
             message: Discord message object
         """
-        # Ignore messages from bots to prevent loops
+        # Cross-bot detection (Phase E6) - Handle bot messages differently
         if message.author.bot:
+            # Check for cross-bot mentions if enabled
+            if settings.ENABLE_CROSS_BOT_CHAT:
+                await self._handle_cross_bot_message(message)
             return
 
         # Ignore messages from blocked users
