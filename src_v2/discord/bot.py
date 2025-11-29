@@ -839,11 +839,23 @@ Recent channel context:
                                 sticker_names = [s.name for s in ref_msg.stickers]
                                 content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
 
-                            if content:
-                                ref_text = smart_truncate(content, 500)
-                                    
+                            # Check if the referenced message has images (for refinement detection)
+                            ref_has_images = bool(ref_msg.attachments and any(
+                                att.content_type and att.content_type.startswith("image/") 
+                                for att in ref_msg.attachments
+                            ))
+
+                            if content or ref_has_images:
+                                ref_text = smart_truncate(content, 500) if content else ""
                                 ref_author = ref_msg.author.display_name
-                                user_message = f"[Replying to {ref_author}: \"{ref_text}\"]\n{user_message}"
+                                
+                                # Add image marker for refinement detection
+                                image_marker = " [with image]" if ref_has_images else ""
+                                
+                                if ref_text:
+                                    user_message = f"[Replying to {ref_author}{image_marker}: \"{ref_text}\"]\n{user_message}"
+                                else:
+                                    user_message = f"[Replying to {ref_author}'s image{image_marker}]\n{user_message}"
                                 logger.info(f"Injected reply context: {user_message}")
                             
                             # 2. Attachments (Images & Documents)

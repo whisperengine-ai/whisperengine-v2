@@ -13,12 +13,13 @@ REFINEMENT_PATTERNS = [
     r"^change\s+the",         # "change the background"
     r"^remove\s+the",         # "remove the hat"
     r"^add\s+",               # "add a scarf"
-    r"^make\s+(?:it|her|him|them)", # "make it darker", "make her smile"
+    r"^make\s+(?:it|her|him|them|me)", # "make it darker", "make her smile", "make me look more X"
     r"^try\s+(?:again|with)", # "try again with blue eyes"
     r"^more\s+",              # "more dramatic lighting"
     r"^less\s+",              # "less saturated"
     r"^different\s+",         # "different outfit"
     r"like\s+(?:the\s+)?(?:last|before|previous)", # "like the last one but..."
+    r"look\s+more",           # "look more hispanic", "look more like X"
 ]
 
 
@@ -28,6 +29,14 @@ def is_refinement_request(prompt: str) -> bool:
     Returns True if the prompt matches common refinement patterns.
     """
     prompt_lower = prompt.lower().strip()
+    
+    # Strip Discord reply context prefix so ^anchored patterns work
+    # e.g. "[Replying to Bot's image [with image]]\nmake me look more hispanic"
+    if prompt_lower.startswith("[replying to"):
+        # Find the end of the reply prefix and extract the actual message
+        newline_idx = prompt_lower.find("\n")
+        if newline_idx != -1:
+            prompt_lower = prompt_lower[newline_idx + 1:].strip()
     
     for pattern in REFINEMENT_PATTERNS:
         if re.search(pattern, prompt_lower):
@@ -168,6 +177,14 @@ class ImageSessionManager:
             await r.delete(key)
         except Exception as e:
             logger.error(f"Failed to clear image session: {e}")
+
+    async def has_recent_session(self, user_id: str) -> bool:
+        """
+        Check if user has a recent image generation session (within TTL).
+        Used for refinement detection.
+        """
+        session = await self.get_session(user_id)
+        return session is not None
 
 # Global instance
 image_session = ImageSessionManager()

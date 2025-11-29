@@ -483,13 +483,14 @@ class ReflectiveAgent:
             image_type_hint = ""
             if detected_intents:
                 if "image_self" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_self - User wants a self-portrait OF YOU. Set image_type='self' when calling generate_image.\n"
+                    image_type_hint = "- DETECTED INTENT: image_self - User wants a self-portrait OF YOU. You MUST call generate_image with image_type='self'.\n"
                 elif "image_refine" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_refine - User is tweaking a previous image. Set image_type='refine' when calling generate_image.\n"
+                    image_type_hint = "- DETECTED INTENT: image_refine - User is tweaking/refining a previous image. You MUST call generate_image with image_type='refine' and include the user's modification request in your prompt.\n"
                 elif "image_other" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_other - User wants an image of something else (not you). Set image_type='other' when calling generate_image. DO NOT describe yourself in the prompt.\n"
+                    image_type_hint = "- DETECTED INTENT: image_other - User wants an image of something else (not you). You MUST call generate_image with image_type='other'. DO NOT describe yourself in the prompt.\n"
             
-            image_rules = f"""- If the user asks you to CREATE, GENERATE, SHOW, or MAKE an image, you MUST call the generate_image tool.
+            image_rules = f"""- If the user asks you to CREATE, GENERATE, SHOW, MAKE, CHANGE, MODIFY, or REFINE an image, you MUST call the generate_image tool.
+- If a detected intent starts with "image_", you MUST call generate_image. Do not just describe what you would create - actually call the tool.
 - Gathering information is NOT the same as generating an image.
 - After gathering context, if the task requires an image, call generate_image with a detailed prompt.
 - Set image_type correctly: 'self' for self-portraits of YOU, 'refine' for tweaking previous images, 'other' for everything else.

@@ -10,6 +10,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.document_context import history_has_document_context
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
+from src_v2.image_gen.session import image_session, is_refinement_request
 
 # Classification result type including manipulation detection
 ClassificationResult = Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"]
@@ -91,7 +92,31 @@ class ComplexityClassifier:
         history_length = len(chat_history)
         message_length = len(text)
         
-        # 0. Check for historical reasoning traces (Adaptive Depth)
+        # 0a. Fast-path: Check for image refinement if user has recent session
+        # This catches cases where the bot's image message isn't in chat history
+        if user_id and settings.ENABLE_IMAGE_GENERATION:
+            try:
+                has_session = await image_session.has_recent_session(user_id)
+                is_refine = is_refinement_request(text)
+                logger.debug(f"Image refinement check: user={user_id}, has_session={has_session}, is_refine={is_refine}, text_start='{text[:50]}...'")
+                
+                if has_session and is_refine:
+                    logger.info(f"Fast-path refinement detection: User {user_id} has recent image session and message matches refinement patterns")
+                    _record_classification_metric(
+                        bot_name=bot_name or "unknown",
+                        predicted="COMPLEX_MID",
+                        intents=["image_refine"],
+                        message_length=message_length,
+                        history_length=history_length,
+                        classification_time_ms=(time.time() - start_time) * 1000,
+                        used_trace=False,
+                        trace_similarity=0.0
+                    )
+                    return {"complexity": "COMPLEX_MID", "intents": ["image_refine"]}
+            except Exception as e:
+                logger.warning(f"Failed to check image session for refinement: {e}")
+        
+        # 0b. Check for historical reasoning traces (Adaptive Depth)
         if user_id and bot_name:
             try:
                 traces = await memory_manager.search_reasoning_traces(text, user_id, limit=1, collection_name=f"whisperengine_memory_{bot_name}")
@@ -144,11 +169,10 @@ class ComplexityClassifier:
             intent_section += '\n- "voice": User explicitly asks for a voice response, audio message, to "speak", "say this", or "send audio".'
             
         if settings.ENABLE_IMAGE_GENERATION:
-            intent_section += '''\n- "image_self": User wants an image OF the AI character itself (self-portrait, selfie, "show me what you look like", "draw yourself", "your face", "picture of you"). The subject is the AI.
-- "image_other": User wants an image of something else - the user themselves ("draw me", "what do I look like", "what you think I look like", "picture of me"), scenery, objects, other people, or abstract concepts. NOT a self-portrait of the AI.
-- "image_refine": User is modifying/tweaking a PREVIOUS image ("same but darker", "try again", "keep the hair but change X", "make it more Y", "tweak", "adjust the last one"). Implies continuing from prior generation.
-NOTE: These are mutually exclusive. Choose the most specific one. "image_refine" takes priority if refining.
-CRITICAL DISTINCTION: "Show me what YOU look like" = image_self. "Show me what I look like" = image_other.'''
+            intent_section += '''\n- "image_self": User wants an image OF the AI character ("show me what you look like", "draw yourself", "selfie"). Subject = AI.
+- "image_other": User wants an image of something else ("draw me", "what do I look like", scenery, objects). Subject = NOT the AI.
+- "image_refine": User is modifying a PREVIOUS image ("make it darker", "more hispanic", "change the hair", replying to an image with tweaks).
+Priority: image_refine > image_self/image_other. If replying to an image with modification words, use image_refine.'''
             
         if settings.ENABLE_REMINDERS:
             intent_section += '\n- "reminder": User wants to set a reminder, be reminded about something, or schedule a future notification (e.g. "remind me in 10 minutes", "set a reminder for tomorrow", "don\'t let me forget to...").'
