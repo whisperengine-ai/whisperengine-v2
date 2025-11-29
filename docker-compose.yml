@@ -43,6 +43,8 @@ services:
   neo4j:
     image: neo4j:5.15.0
     container_name: whisperengine-v2-neo4j
+    # Fix for "Neo4j is already running" error on restart by removing stale PID file
+    entrypoint: ["tini", "-g", "--", "/bin/bash", "-c", "rm -f /var/lib/neo4j/run/neo4j.pid && /startup/docker-entrypoint.sh neo4j"]
     ports:
       - "7474:7474"  # HTTP
       - "7687:7687"  # Bolt

@@ -96,7 +96,9 @@ async def register_bot_endpoint() -> None:
         # In Docker, the service name is usually the bot name
         # We assume the service name matches the bot name
         # If running locally (not docker), this might be localhost
-        hostname = bot_name if settings.ENVIRONMENT == "production" else "localhost"
+        import os
+        is_docker = os.path.exists('/.dockerenv')
+        hostname = bot_name if is_docker else "localhost"
         
         # Construct internal URL
         # Note: We use the service name as hostname for Docker networking
