@@ -43,16 +43,23 @@ async def _try_http_callback(
     try:
         import httpx
         
-        # Build the bot's internal API URL
-        # When running in Docker, bots are accessible via their service name
-        bot_service = character_name.lower()
-        bot_port = settings.API_PORT or 8000
+        # 1. Try to discover the bot's endpoint from Redis
+        urls_to_try = []
         
-        # Try localhost first (for same-container calls), then Docker service name
-        urls_to_try = [
-            f"http://localhost:{bot_port}/api/internal/callback/broadcast",
-            f"http://{bot_service}:{bot_port}/api/internal/callback/broadcast",
-        ]
+        if db_manager.redis_client:
+            key = f"{settings.REDIS_KEY_PREFIX}discovery:endpoint:{character_name.lower()}"
+            discovered_url = await db_manager.redis_client.get(key)
+            if discovered_url:
+                # discovered_url is like "http://ryan:8001"
+                urls_to_try.append(f"{discovered_url}/api/internal/callback/broadcast")
+        
+        # 2. Fallback: Try standard Docker service name (assuming port 8000 if not discovered)
+        # This handles cases where discovery hasn't happened yet or Redis is down
+        bot_service = character_name.lower()
+        urls_to_try.append(f"http://{bot_service}:8000/api/internal/callback/broadcast")
+        
+        # 3. Fallback: Try localhost (for same-container calls)
+        urls_to_try.append(f"http://localhost:8000/api/internal/callback/broadcast")
         
         payload = {
             "content": content,
@@ -72,7 +79,7 @@ async def _try_http_callback(
                     if response.status_code == 200:
                         result = response.json()
                         if result.get("success"):
-                            logger.debug(f"HTTP callback succeeded for {post_type}")
+                            logger.debug(f"HTTP callback succeeded for {post_type} to {url}")
                             return True
                 except httpx.ConnectError:
                     continue  # Try next URL

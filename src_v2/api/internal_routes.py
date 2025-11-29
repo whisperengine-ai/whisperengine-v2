@@ -78,6 +78,40 @@ def get_discord_bot():
     return _discord_bot
 
 
+async def register_bot_endpoint() -> None:
+    """
+    Register this bot's internal API endpoint in Redis for discovery.
+    Called by bot.py on startup and periodically.
+    """
+    try:
+        from src_v2.core.database import db_manager
+        
+        if not db_manager.redis_client:
+            logger.warning("Redis not available for endpoint registration")
+            return
+
+        bot_name = settings.DISCORD_BOT_NAME.lower()
+        port = settings.API_PORT
+        
+        # In Docker, the service name is usually the bot name
+        # We assume the service name matches the bot name
+        # If running locally (not docker), this might be localhost
+        hostname = bot_name if settings.ENVIRONMENT == "production" else "localhost"
+        
+        # Construct internal URL
+        # Note: We use the service name as hostname for Docker networking
+        url = f"http://{hostname}:{port}"
+        
+        # Store in Redis with TTL
+        key = f"{settings.REDIS_KEY_PREFIX}discovery:endpoint:{bot_name}"
+        await db_manager.redis_client.set(key, url, ex=3600)  # 1 hour TTL
+        
+        logger.debug(f"Registered internal endpoint: {url}")
+        
+    except Exception as e:
+        logger.warning(f"Failed to register endpoint: {e}")
+
+
 # ============================================================================
 # Endpoints
 # ============================================================================

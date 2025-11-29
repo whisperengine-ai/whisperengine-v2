@@ -306,6 +306,20 @@ Recent channel context:
             # Check every 60 seconds (reduced frequency since HTTP callbacks are primary)
             await asyncio.sleep(60)
 
+    async def refresh_endpoint_registration_loop(self) -> None:
+        """Background task to refresh internal API endpoint registration in Redis."""
+        await self.wait_until_ready()
+        
+        while not self.is_closed():
+            try:
+                from src_v2.api.internal_routes import register_bot_endpoint
+                await register_bot_endpoint()
+            except Exception as e:
+                logger.debug(f"Endpoint registration refresh failed: {e}")
+            
+            # Refresh every 30 minutes (TTL is 1 hour)
+            await asyncio.sleep(1800)
+
     async def update_status_loop(self) -> None:
         """Background task to periodically update bot status with statistics."""
         await self.wait_until_ready()
@@ -422,8 +436,12 @@ Recent channel context:
 
         # Register with internal API for worker callbacks
         try:
-            from src_v2.api.internal_routes import set_discord_bot
+            from src_v2.api.internal_routes import set_discord_bot, register_bot_endpoint
             set_discord_bot(self)
+            # Register endpoint immediately
+            await register_bot_endpoint()
+            # Start background refresh loop
+            self.loop.create_task(self.refresh_endpoint_registration_loop())
             logger.info("Registered with internal API for worker callbacks")
         except Exception as e:
             logger.warning(f"Failed to register with internal API: {e}")
