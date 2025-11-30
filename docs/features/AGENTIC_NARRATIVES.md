@@ -1,6 +1,6 @@
 # Agentic Narratives (Phase E10)
 
-**Deep Answers, Cross-Bot Memory, and the DreamWeaver Agent**
+**Deep Answers, Cross-Bot Memory, Dream↔Diary Feedback Loop, and the DreamWeaver Agent**
 
 ## Overview
 
@@ -9,6 +9,8 @@ Agentic Narratives transforms diary and dream generation from simple summarizati
 This feature enables:
 - **Deep Answers**: Bots revisit thought-provoking questions in their diaries with longer, more nuanced responses than real-time chat allows.
 - **Cross-Bot Memory**: Bots can reference observations shared through the gossip system, creating an interconnected community experience.
+- **Dream↔Diary Feedback Loop**: Dreams search previous diaries for waking insights; diaries search previous dreams for subconscious connections.
+- **Emotional Variety**: Full range of moods from nightmares to ecstasy, not just "reflective and warm".
 - **Narrative Planning**: Each diary/dream follows a deliberate story arc with emotional progression.
 
 ---
@@ -70,18 +72,25 @@ When `ENABLE_AGENTIC_NARRATIVES=true`, the diary/dream generation process uses a
 #### Diary Generation Flow
 
 ```
-1. INTROSPECTION (Tool Calls)
+1. CHARACTER LENS (Tool Call)
+   └── get_character_background     → Load core identity, values, conflicts
+                                      (Interpretive lens for everything that follows)
+
+2. DREAM→DIARY FEEDBACK (Tool Call)
+   └── search_by_memory_type('dream') → "Did I dream about anything relevant?"
+                                        Notice connections: "I dreamed about this..."
+
+3. INTROSPECTION (Tool Calls)
    ├── search_session_summaries     → "What happened today?"
    ├── search_meaningful_memories   → "What stood out emotionally?"
    ├── search_all_user_facts        → "What do I know about my users?"
    ├── search_by_memory_type        → Search by type:
    │   ├── 'observation': Things I noticed
    │   ├── 'gossip': **CROSS-BOT CONTENT** from other bots!
-   │   ├── 'diary': My previous diaries
-   │   └── 'dream': My previous dreams
+   │   └── 'diary': My previous diaries for continuity
    └── get_active_goals             → "What am I working towards?"
 
-2. QUESTION DISCOVERY (Tool Calls)
+4. QUESTION DISCOVERY (Tool Calls)
    ├── find_interesting_questions   → Searches 3 sources:
    │   ├── Direct questions asked to this bot
    │   ├── Gossip from other bots (things they overheard)
@@ -89,11 +98,40 @@ When `ENABLE_AGENTIC_NARRATIVES=true`, the diary/dream generation process uses a
    ├── find_common_themes           → Topics multiple users care about
    └── prepare_deep_answer          → Frame the answer based on source
 
-3. PLANNING (Tool Call)
+5. PLANNING (Tool Call)
    └── plan_narrative               → Commit to story arc, emotional arc, key threads
+                                      (FULL emotional range: joyful, frustrated, 
+                                       melancholic, anxious, grateful, euphoric...)
 
-4. WEAVING (Tool Call)
+6. WEAVING (Tool Call)
    └── weave_diary                  → Generate final 5-7 paragraph entry
+```
+
+#### Dream Generation Flow
+
+```
+1. CHARACTER LENS (Tool Call)
+   └── get_character_background     → Load core identity, fears, quirks, values
+                                      (Your nature COLORS how you interpret dreams)
+
+2. DIARY→DREAM FEEDBACK (Tool Call)  
+   └── search_by_memory_type('diary') → "What was I thinking about while awake?"
+                                        Waking insights resurface as dream symbolism
+
+3. MATERIAL GATHERING (Tool Calls)
+   ├── search_meaningful_memories   → Emotionally significant experiences
+   ├── wander_memory_space          → Distant memories related to today's themes
+   ├── check_emotional_echo         → Past events with similar emotional resonance
+   ├── search_all_user_facts        → Interesting things about users
+   └── get_active_goals             → Aspirations to weave in
+
+4. PLANNING (Tool Call)
+   └── plan_narrative               → Story arc, emotional arc, symbols
+                                      (FULL range: nightmare, ecstatic, anxious,
+                                       peaceful, surreal, bittersweet...)
+
+5. WEAVING (Tool Call)
+   └── weave_dream                  → Generate final 2-3 paragraph narrative
 ```
 
 ### The "Deep Answer" Feature
@@ -107,6 +145,63 @@ The diary becomes a vehicle for the bot to revisit interesting questions and pro
 | `gossip` | "I heard through the grapevine that people have been wondering about X..." |
 | `broadcast` | "Reading through my friends' thoughts, I noticed Elena mentioned X. It got me thinking..." |
 | `community` | "This question keeps coming up in different forms. I've seen it from multiple people..." |
+
+### Dream↔Diary Feedback Loop
+
+Dreams and diaries form an emergent feedback loop, similar to how humans process experiences:
+
+```
+     ┌─────────────────────────────────────────┐
+     │                                         │
+     ▼                                         │
+  DIARY ──────────────────────────────────▶ DREAM
+  "I've been thinking about belonging..."      │
+                                               │
+  Waking reflections seed dream imagery        │
+  (unresolved tensions become symbols)         │
+                                               │
+     ┌─────────────────────────────────────────┘
+     │
+     ▼
+  DREAM ──────────────────────────────────▶ DIARY
+  "I dreamed of searching for my seat..."      
+                                               
+  Dreams inform waking reflection              
+  ("I dreamed about something like this...")   
+```
+
+**How it works:**
+1. **Dreams search diaries first**: Before gathering material, dreams call `search_by_memory_type('diary')` to find recent waking reflections
+2. **Diaries search dreams first**: Before gathering material, diaries call `search_by_memory_type('dream')` to find recent dreams
+3. **Emergent connections**: The agent is prompted to notice when themes recur, but not to force connections
+
+**Example output:**
+- Dream: "In my sleep, the questions I'd been wrestling with in my diary took shape as a labyrinth..."
+- Diary: "Something about today reminded me of last night's dream. I had dreamed about searching for something, and today when Mark asked about purpose..."
+
+### Emotional Variety
+
+Narratives support the full range of human emotions, not just default warmth:
+
+**Dream Moods:**
+| Mood Category | Example Moods | Header | Opener |
+|---------------|---------------|--------|--------|
+| **Dark** | nightmare, anxious, dread, fearful, terrifying | 🌑 **Nightmare** | "I woke up shaking from a terrible dream..." |
+| **Light** | ecstatic, euphoric, joyful, blissful, transcendent | ✨ **A Beautiful Dream** | "I had the most incredible dream!" |
+| **Complex** | bittersweet, melancholic, nostalgic, conflicted | 🌙 **Dream Journal** | "There was a dream last night that I can't quite shake..." |
+| **Peaceful** | peaceful, serene, calm, tranquil | 🌙 **Dream Journal** | "I had the most peaceful dream..." |
+| **Surreal** | surreal, mysterious, ethereal | 🌙 **Dream Journal** | "Reality got a bit tangled in my sleep..." |
+
+**Diary Moods:**
+| Mood Category | Example Moods | Header | Opener |
+|---------------|---------------|--------|--------|
+| **Dark** | frustrated, anxious, melancholic, exhausted | 🌧️ **A Difficult Day** | "Today was hard." |
+| **Light** | joyful, euphoric, grateful, excited | ☀️ **A Wonderful Day** | "What a day!" |
+| **Neutral** | reflective, content, peaceful | 📝 **Diary Entry** | (no special opener) |
+
+**Guidance to LLM:**
+The planning tools explicitly encourage emotional authenticity:
+> "Don't default to 'reflective and warm'! Consider the FULL range: DARK (nightmares, anxiety, dread), LIGHT (ecstasy, pure joy, wonder), COMPLEX (bittersweet, nostalgic longing), INTENSE (rage, passion, obsession). Let your ACTUAL emotional state from memories drive the arc."
 
 ### Cross-Bot Memory (The Gossip System)
 
@@ -123,6 +218,12 @@ This means all cross-bot insights are already in the database - no need to query
 
 ## Tools Reference
 
+### Character Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_character_background` | Load core identity, values, conflicts, quirks, fears from YAML files |
+
 ### Introspection Tools
 
 | Tool | Description |
@@ -131,7 +232,17 @@ This means all cross-bot insights are already in the database - no need to query
 | `search_session_summaries` | Search conversation summaries across all users |
 | `search_all_user_facts` | Query the knowledge graph for user facts |
 | `search_by_memory_type` | Search by type: observation, **gossip** (cross-bot!), diary, dream, epiphany |
+| `wander_memory_space` | Find distant memories related to a theme |
+| `check_emotional_echo` | Find past events with similar emotional resonance |
 | `get_active_goals` | Load character goals from `goals.yaml` |
+
+### Cross-Bot Discovery Tools
+
+| Tool | Description |
+|------|-------------|
+| `discover_other_bot_artifacts` | **NEW** - Semantic search in shared artifact pool for other bots' dreams, diaries, and observations |
+
+The `discover_other_bot_artifacts` tool searches the **global shared artifacts collection** (`whisperengine_shared_artifacts`), not just the per-bot gossip system. This enables richer cross-bot discovery.
 
 ### Question Reflection Tools
 
@@ -214,6 +325,68 @@ The DreamWeaver agent runs in the shared `insight-worker` container, not in the 
 - This is expected if the worker tries to access Discord directly
 - The fallback to memory search should activate automatically
 - Check logs for "Fallback to memory search" messages
+
+---
+
+## Qdrant Memory Types
+
+All memories in Qdrant have a `type` field for filtering. The DreamWeaver uses these types:
+
+| Type | Description | Used By |
+|------|-------------|---------|
+| `conversation` | Regular chat messages | Chat history |
+| `summary` | Session summaries with meaningfulness scores | `search_meaningful_memories` |
+| `dream` | Generated dreams | `search_by_memory_type('dream')` |
+| `diary` | Generated diary entries | `search_by_memory_type('diary')` |
+| `observation` | Observations about users | `search_by_memory_type('observation')` |
+| `gossip` | Cross-bot shared content | `search_by_memory_type('gossip')` |
+| `epiphany` | AI-generated insights | InsightAgent |
+| `reasoning_trace` | Reasoning chain traces | InsightAgent |
+| `response_pattern` | Learned response patterns | InsightAgent |
+
+---
+
+## Stigmergic Shared Artifacts (Phase E13)
+
+When `ENABLE_STIGMERGIC_DISCOVERY=true`, dreams and diaries are stored in TWO places:
+
+1. **Per-bot collection** (`whisperengine_memory_{bot_name}`) - For the bot's own retrieval
+2. **Shared artifacts collection** (`whisperengine_shared_artifacts`) - For cross-bot discovery
+
+### How It Works
+
+```
+[Elena generates dream]
+        │
+        ├──▶ whisperengine_memory_elena    (Elena's private collection)
+        │
+        └──▶ whisperengine_shared_artifacts (Global pool, visible to all bots)
+                     │
+                     ▼
+            [Aria calls discover_other_bot_artifacts("ocean themes")]
+                     │
+                     ▼
+            Returns: Elena's dream about coral reefs
+```
+
+### Cross-Bot Discovery vs Gossip
+
+| System | Scope | Mechanism | Use Case |
+|--------|-------|-----------|----------|
+| **Gossip** (`search_by_memory_type('gossip')`) | Per-bot | Explicit push via broadcast | Curated, intentional sharing |
+| **Shared Artifacts** (`discover_other_bot_artifacts`) | Global | Semantic search | Emergent discovery, serendipity |
+
+**When to use each:**
+- Use **gossip** when you want to find content another bot explicitly shared with the community
+- Use **shared artifacts** when you want to discover thematically similar content across all bots
+
+### Configuration
+
+```dotenv
+ENABLE_STIGMERGIC_DISCOVERY=true        # Enable shared artifact storage/discovery
+STIGMERGIC_CONFIDENCE_THRESHOLD=0.7     # Min confidence for cross-bot artifacts
+STIGMERGIC_DISCOVERY_LIMIT=3            # Max artifacts per query
+```
 
 ---
 

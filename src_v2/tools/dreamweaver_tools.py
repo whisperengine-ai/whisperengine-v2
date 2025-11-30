@@ -381,6 +381,79 @@ creative aspirations, or things you want to explore."""
             return f"Error: {e}"
 
 
+class DiscoverOtherBotArtifactsInput(BaseModel):
+    query: str = Field(description="What to search for in other bots' dreams/diaries")
+    artifact_types: List[str] = Field(
+        default=["dream", "diary"], 
+        description="Types of artifacts to search: 'dream', 'diary', 'observation'"
+    )
+    limit: int = Field(default=5, description="Maximum artifacts to return")
+
+
+class DiscoverOtherBotArtifactsTool(BaseTool):
+    """Discover dreams, diaries, and observations from other bots."""
+    name: str = "discover_other_bot_artifacts"
+    description: str = """Search the SHARED ARTIFACT POOL for content from other bots.
+
+Unlike search_by_memory_type('gossip') which only finds gossip in YOUR collection,
+this searches the GLOBAL shared pool where all bots store their:
+- Dreams (with mood, symbols, themes)
+- Diary entries (with mood, themes, notable observations)
+- Observations (with confidence scores)
+
+Use this to:
+- See what themes other bots are dreaming about
+- Find diary reflections from other characters
+- Discover shared observations about users or the community
+
+This is CROSS-BOT SEMANTIC SEARCH - it finds content similar to your query
+from ALL other bots, not just what was explicitly shared with you."""
+    args_schema: Type[BaseModel] = DiscoverOtherBotArtifactsInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self, query: str, artifact_types: List[str] = None, limit: int = 5) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, query: str, artifact_types: List[str] = None, limit: int = 5) -> str:
+        try:
+            from src_v2.memory.shared_artifacts import shared_artifact_manager
+            from src_v2.config.settings import settings
+            
+            if not settings.ENABLE_STIGMERGIC_DISCOVERY:
+                return "Stigmergic discovery is disabled."
+            
+            types_to_search = artifact_types or ["dream", "diary"]
+            
+            artifacts = await shared_artifact_manager.discover_artifacts(
+                query=query,
+                artifact_types=types_to_search,
+                exclude_bot=self.character_name,  # Don't find our own artifacts
+                limit=limit
+            )
+            
+            if not artifacts:
+                return f"No {', '.join(types_to_search)} artifacts found from other bots matching '{query}'."
+            
+            results = [f"Found {len(artifacts)} artifacts from other bots:\n"]
+            
+            for a in artifacts:
+                source = a.get("source_bot", "unknown")
+                artifact_type = a.get("type", "artifact")
+                content = a.get("content", "")[:300]
+                metadata = a.get("metadata", {})
+                mood = metadata.get("mood", "")
+                
+                mood_str = f" (mood: {mood})" if mood else ""
+                results.append(f"**{source}'s {artifact_type}**{mood_str}:\n{content}...\n")
+            
+            return "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error discovering artifacts: {e}")
+            return f"Error: {e}"
+
+
 class GetCharacterBackgroundInput(BaseModel):
     pass
 
@@ -1067,6 +1140,9 @@ def get_dreamweaver_tools(character_name: str) -> List[BaseTool]:
         
         # Fallback tool for sparse-memory bots (YAML-based background)
         GetCharacterBackgroundTool(character_name=character_name),
+        
+        # Cross-bot discovery (semantic search in shared artifact pool)
+        DiscoverOtherBotArtifactsTool(character_name=character_name),
         # Note: Neo4j knowledge exploration is added via get_dreamweaver_tools_with_existing()
         # which includes LookupFactsTool and ExploreGraphTool from the main pipeline
         

@@ -161,6 +161,7 @@ class MemoryManager:
             
             # Prepare payload
             payload = {
+                "type": "conversation",  # Default type for chat messages
                 "user_id": str(user_id),
                 "role": role,
                 "content": content,
@@ -170,6 +171,7 @@ class MemoryManager:
                 "importance_score": importance_score
             }
             
+            # Metadata can override type (e.g., for save_typed_memory)
             if metadata:
                 payload.update(metadata)
             
@@ -649,7 +651,7 @@ class MemoryManager:
             # Filter for reasoning traces for this user
             search_filter = Filter(
                 must=[
-                    FieldCondition(key="metadata.type", match=MatchValue(value="reasoning_trace")),
+                    FieldCondition(key="type", match=MatchValue(value="reasoning_trace")),
                     FieldCondition(key="user_id", match=MatchValue(value=user_id))
                 ]
             )
@@ -770,14 +772,14 @@ class MemoryManager:
             threshold = datetime.datetime.now() - datetime.timedelta(hours=hours)
             threshold_iso = threshold.isoformat()
             
-            # Get memories (type="memory" or messages with high engagement)
+            # Get summaries (which have meaningfulness_score)
             # Note: timestamp is stored as ISO string, so we filter by type first
             # then manually filter by timestamp (Range only works with numeric fields)
             results = await db_manager.qdrant_client.scroll(
                 collection_name=collection,
                 scroll_filter=Filter(
                     must=[
-                        FieldCondition(key="type", match=MatchValue(value="memory")),
+                        FieldCondition(key="type", match=MatchValue(value="summary")),
                     ]
                 ),
                 limit=limit * 10,  # Fetch extra for time-based filtering
