@@ -1,0 +1,2 @@
+# This file ensures the journal directory exists in git
+# Daily and weekly logs go in monthly subfolders: journal/2024-12/2024-12-01.md

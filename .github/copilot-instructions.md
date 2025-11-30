@@ -2,7 +2,27 @@
 
 **Optimized for solo developer with AI-assisted tools** (Dec 2024)
 
-WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture.
+WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture. **This is also an emergence research project** — we study how agentic AI systems develop emergent behaviors over time.
+
+## 🧪 Research Philosophy
+
+**Core Principle: Observe First, Constrain Later**
+
+We treat WhisperEngine as an emergence research platform, not just software. Key tenets:
+- **Document behaviors before deciding if they need correction** — premature optimization prevents discovery
+- **Minimal viable instrumentation** — add only metrics needed to answer current questions
+- **Embrace surprise** — unexpected behaviors are data, not bugs
+- **Character autonomy** — bots are subjects, not just objects
+
+**Research Documentation:**
+- `docs/research/` — Research journal (daily logs, weekly summaries, experiments)
+- `docs/emergence_philosophy/` — Claude-to-Claude architecture reviews and philosophy docs
+- `docs/roadmaps/FEEDBACK_LOOP_STABILITY.md` — Phase E16: Emergence guardrails spec
+
+**Research Cadence:**
+- **Daily logs** (~5-10 min): Raw observations in `docs/research/journal/YYYY-MM/`
+- **Weekly summaries** (~20-30 min): Pattern synthesis
+- **Experiments**: Formal hypothesis testing with templates
 
 ## 🤖 Bot Configurations
 
@@ -392,9 +412,11 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - **Character System**: `docs/testing/CHARACTERS.md` (folder structure, evolution, testing)
 - **Roadmap**: `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` (prioritized by complexity for solo dev)
 - **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
+- **Research Journal**: `docs/research/` (daily logs, weekly summaries, experiment templates)
+- **Emergence Philosophy**: `docs/emergence_philosophy/` (Claude collaboration on emergence principles)
 
 ---
 
-**Version**: 2.3 (Nov 28, 2025 - LLM-based intent detection for voice/image)  
+**Version**: 2.4 (Nov 30, 2025 - Research journal & emergence philosophy)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`
