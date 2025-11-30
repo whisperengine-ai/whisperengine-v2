@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.1  
+**Document Version:** 2.2  
 **Created:** November 24, 2025  
-**Last Updated:** November 30, 2025 (Phase E12: Agentic Dreams complete)
+**Last Updated:** November 30, 2025 (Phase E13.1: DiscoverCommunityInsightsTool complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -64,7 +64,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | � High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
 | 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
 | 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
-| 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | 📋 Proposed |
+| 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | ✅ Complete |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
@@ -93,7 +93,7 @@ Insight Agent ──┬──► E12 (Agentic Dreams)
                └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
 ```
 
-> **Current Focus:** E13.1 (DiscoverCommunityInsightsTool) to expose shared artifacts to ReAct agents. E12 (Agentic Dreams) is now complete.
+> **Status:** All major phases complete. E13.1 (DiscoverCommunityInsightsTool) implemented Nov 30, 2025.
 
 ---
 

@@ -24,7 +24,8 @@ from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverv
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
 from src_v2.tools.insight_tools import (
     AnalyzePatternsTool,
-    DetectThemesTool
+    DetectThemesTool,
+    DiscoverCommunityInsightsTool
 )
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.reminder_tools import SetReminderTool
@@ -440,6 +441,9 @@ class ReflectiveAgent:
             # Introspection & Pattern Tools
             AnalyzePatternsTool(user_id=user_id, bot_name=character_name),
             DetectThemesTool(user_id=user_id, bot_name=character_name),
+            
+            # Community/Cross-Bot Discovery (Phase E13.1)
+            DiscoverCommunityInsightsTool(character_name=character_name),
             
             # Context Tools
             CheckPlanetContextTool(guild_id=guild_id),

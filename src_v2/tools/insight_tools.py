@@ -251,6 +251,81 @@ class LearnResponsePatternTool(BaseTool):
             return f"Error learning response pattern: {e}"
 
 
+class DiscoverCommunityInsightsInput(BaseModel):
+    query: str = Field(description="Topic to search for in the community mind (e.g., 'astronomy', 'relationships', 'music').")
+    artifact_types: List[str] = Field(
+        default=["epiphany", "observation", "diary", "dream"],
+        description="Types of artifacts to look for: epiphany, observation, diary, dream, reasoning_trace, response_pattern"
+    )
+
+
+class DiscoverCommunityInsightsTool(BaseTool):
+    """Search for insights and observations from OTHER characters about a topic.
+    
+    This tool queries the shared artifact pool where all bots store their
+    epiphanies, observations, diary entries, and dreams. Use it to discover
+    what other characters have been thinking about or experiencing.
+    
+    Examples:
+    - "What have other characters noticed about astronomy?"
+    - "Any community observations about relationships?"
+    - "What dreams have others had lately?"
+    """
+    name: str = "discover_community_insights"
+    description: str = """Search for insights, observations, epiphanies, and dreams from OTHER characters about a topic.
+Use this to see what your fellow characters have been thinking about or experiencing.
+Returns artifacts from the shared community mind, excluding your own thoughts."""
+    args_schema: Type[BaseModel] = DiscoverCommunityInsightsInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self, query: str, artifact_types: List[str] = None) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, query: str, artifact_types: List[str] = None) -> str:
+        if artifact_types is None:
+            artifact_types = ["epiphany", "observation", "diary", "dream"]
+            
+        try:
+            if not settings.ENABLE_STIGMERGIC_DISCOVERY:
+                return "Community discovery is currently disabled."
+            
+            results = await shared_artifact_manager.discover_artifacts(
+                query=query,
+                artifact_types=artifact_types,
+                exclude_bot=self.character_name,
+                limit=settings.STIGMERGIC_DISCOVERY_LIMIT
+            )
+            
+            if not results:
+                return f"No community insights found about '{query}'. The other characters haven't shared thoughts on this topic yet."
+            
+            formatted = []
+            for r in results:
+                source = r.get("source_bot", "unknown")
+                artifact_type = r.get("type", "insight")
+                content = r.get("content", "")[:400]
+                score = r.get("score", 0)
+                
+                # Format nicely with attribution
+                if artifact_type == "epiphany":
+                    formatted.append(f"💡 **{source.title()}** had a realization:\n  {content}")
+                elif artifact_type == "dream":
+                    formatted.append(f"🌙 **{source.title()}** dreamed:\n  {content}")
+                elif artifact_type == "diary":
+                    formatted.append(f"📔 **{source.title()}** wrote in their diary:\n  {content}")
+                elif artifact_type == "observation":
+                    formatted.append(f"👁️ **{source.title()}** observed:\n  {content}")
+                else:
+                    formatted.append(f"🧠 **{source.title()}** ({artifact_type}):\n  {content}")
+            
+            return f"Found {len(results)} community insights about '{query}':\n\n" + "\n\n".join(formatted)
+            
+        except Exception as e:
+            logger.error(f"Error discovering community insights: {e}")
+            return f"Error searching community insights: {e}"
+
+
 def get_insight_tools(user_id: str, character_name: str) -> List[BaseTool]:
     """Returns all insight tools configured for a specific user and character."""
     return [
@@ -259,4 +334,5 @@ def get_insight_tools(user_id: str, character_name: str) -> List[BaseTool]:
         GenerateEpiphanyTool(user_id=user_id, character_name=character_name),
         StoreReasoningTraceTool(user_id=user_id, character_name=character_name),
         LearnResponsePatternTool(user_id=user_id, character_name=character_name),
+        DiscoverCommunityInsightsTool(character_name=character_name),
     ]

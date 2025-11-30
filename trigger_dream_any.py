@@ -36,6 +36,10 @@ def setup_env(bot_name: str):
     os.environ["DISCORD_BOT_NAME"] = bot_name
     os.environ["ENABLE_AGENTIC_NARRATIVES"] = "true"
     
+    # Set the correct API port for HTTP callbacks
+    bot_port = BOT_PORTS.get(bot_name, 8000)
+    os.environ["API_PORT"] = str(bot_port)
+    
     # Override DB URLs for local execution (since .env files use Docker hostnames)
     os.environ["POSTGRES_URL"] = "postgresql://whisper:password@localhost:5432/whisperengine_v2"
     os.environ["QDRANT_URL"] = "http://localhost:6333"

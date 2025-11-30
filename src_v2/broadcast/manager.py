@@ -59,8 +59,9 @@ async def _try_http_callback(
         bot_service = character_name.lower()
         urls_to_try.append(f"http://{bot_service}:8000/api/internal/callback/broadcast")
         
-        # 3. Fallback: Try localhost (for same-container calls)
-        urls_to_try.append(f"http://localhost:8000/api/internal/callback/broadcast")
+        # 3. Fallback: Try localhost with configured API port (for local testing)
+        api_port = settings.API_PORT
+        urls_to_try.append(f"http://localhost:{api_port}/api/internal/callback/broadcast")
         
         payload = {
             "content": content,

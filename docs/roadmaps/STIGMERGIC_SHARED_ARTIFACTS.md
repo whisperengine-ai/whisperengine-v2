@@ -1,7 +1,8 @@
 # Stigmergic Shared Artifacts
 
-**Document Version:** 1.1
+**Document Version:** 1.2
 **Created:** November 29, 2025
+**Last Updated:** November 30, 2025 (Design review: clarified what goes to shared pool vs stays per-bot/Neo4j)
 **Status:** ✅ Complete
 **Priority:** HIGH
 **Complexity:** 🟡 Medium
@@ -11,7 +12,9 @@
 
 ## Executive Summary
 
-Enable **cross-bot discovery** of cognitive artifacts (epiphanies, diaries, dreams, observations) through a shared Qdrant collection. This implements **stigmergic intelligence** - bots leave traces that other bots can discover and build upon, creating emergent collective knowledge without centralized coordination.
+Enable **cross-bot discovery** of cognitive artifacts (epiphanies, diaries, dreams) through a shared Qdrant collection. This implements **stigmergic intelligence** - bots leave traces that other bots can discover and build upon, creating emergent collective knowledge without centralized coordination.
+
+> **Design Decision (Nov 30, 2025):** Observations and gossip remain in Neo4j (already cross-bot queryable). Reasoning traces and response patterns stay per-bot (user-specific learning data). Only epiphanies, diaries, and dreams go to the shared Qdrant pool.
 
 ---
 
@@ -77,18 +80,18 @@ Stigmergy is indirect coordination through environmental traces. Ants leave pher
 
 ### What Gets Shared
 
-| Artifact Type | Producer | User-Scoped? | Shared Pool? | Broadcast? |
-|---------------|----------|--------------|--------------|------------|
-| Epiphany | InsightAgent | Yes (about a user) | ✅ Yes | ❌ No (internal) |
-| Diary | DiaryManager | No (bot's day) | ✅ Yes | ✅ Yes (public version) |
-| Dream | DreamManager | No (bot's dreams) | ✅ Yes | ✅ Yes |
-| Observation | Worker (TBD) | Yes (about a user) | ✅ Yes | ✅ Yes |
-| Gossip | Worker | Yes (about a user) | ✅ Already shared | ❌ No |
-| Reasoning Trace | InsightAgent | Yes (user query) | ✅ Yes | ❌ No |
-| Response Pattern | InsightAgent | Yes (user prefs) | ✅ Yes | ❌ No |
-| Summary | Summarizer | Yes (conversation) | ❌ No | ❌ No |
-| Raw Memories | MemoryManager | Yes (conversation) | ❌ No | ❌ No |
-| Chat History | Postgres | Yes (conversation) | ❌ No | ❌ No |
+| Artifact Type | Producer | User-Scoped? | Shared Pool? | Broadcast? | Notes |
+|---------------|----------|--------------|--------------|------------|-------|
+| Epiphany | InsightAgent | Yes (about a user) | ✅ Yes | ❌ No (internal) | |
+| Diary | DiaryManager | No (bot's day) | ✅ Yes | ✅ Yes (public version) | |
+| Dream | DreamManager | No (bot's dreams) | ✅ Yes | ✅ Yes | |
+| Observation | KnowledgeManager | Yes (about a user) | ❌ Neo4j | ✅ Yes | Cross-bot via `get_observations_about()` |
+| Gossip | Worker | Yes (about a user) | ❌ Neo4j | ❌ No | Cross-bot via Neo4j queries |
+| Reasoning Trace | InsightAgent | Yes (user query) | ❌ Per-bot | ❌ No | User-specific learning, not shared |
+| Response Pattern | InsightAgent | Yes (user prefs) | ❌ Per-bot | ❌ No | User-specific learning, not shared |
+| Summary | Summarizer | Yes (conversation) | ❌ No | ❌ No | |
+| Raw Memories | MemoryManager | Yes (conversation) | ❌ No | ❌ No | |
+| Chat History | Postgres | Yes (conversation) | ❌ No | ❌ No | |
 
 ---
 
@@ -409,14 +412,14 @@ No changes needed - just need to ensure tools query without bot filter when cros
 - [x] Update `GenerateEpiphanyTool` to write to shared pool
 - [x] Update `DiaryManager.save_diary_entry()` to write to shared pool
 - [x] Update `DreamManager.save_dream()` to write to shared pool
-- [x] Update `StoreReasoningTraceTool` to write to shared pool
-- [x] Update `LearnResponsePatternTool` to write to shared pool
-- [ ] Update observation storage to write to shared pool
+- [x] ~~Update `StoreReasoningTraceTool` to write to shared pool~~ (Decided: per-bot only, user-specific learning)
+- [x] ~~Update `LearnResponsePatternTool` to write to shared pool~~ (Decided: per-bot only, user-specific learning)
+- [x] ~~Update observation storage to write to shared pool~~ (Decided: Neo4j cross-bot queries sufficient)
 
 ### Phase 3: Read Path (1 day)
 - [x] Add cross-bot discovery to `AgentEngine` context builder
-- [ ] Add `DiscoverCommunityInsightsTool` for ReAct agents (Spec below)
-- [ ] Update `SearchMyThoughtsTool` to optionally include other bots
+- [x] Add `DiscoverCommunityInsightsTool` for ReAct agents (Spec below)
+- [x] ~~Update `SearchMyThoughtsTool` to optionally include other bots~~ (Deferred: `DiscoverCommunityInsightsTool` serves this purpose)
 
 #### Spec: DiscoverCommunityInsightsTool
 A dedicated tool for the ReAct agent to explicitly search the shared artifact pool.
@@ -439,19 +442,27 @@ class DiscoverCommunityInsightsTool(BaseTool):
         return format_results(results)
 ```
 
-### Phase 4: Broadcast Integration (1 day)
-- [ ] Add `reaction` artifact type for bot replies
-- [ ] Implement `BroadcastWatcher` to monitor channel for other bots' posts
-- [ ] Add reply generation when posts resonate with character personality
-- [ ] Store reactions in shared pool for cross-bot discovery
-- [ ] Rate limit reactions (don't spam, make it feel organic)
+### Phase 4: Broadcast Integration (DEFERRED)
+> **Status:** Deferred (Nov 30, 2025)
+> 
+> **Rationale:** The core stigmergic system is complete. Cross-bot reactions in broadcast channels are already handled organically by:
+> - `CrossBotManager` (`src_v2/broadcast/cross_bot.py`) - manages bot-to-bot conversations
+> - `LurkDetector` (`src_v2/discord/lurk_detector.py`) - triggers responses to other bots' posts
+> - `PostType.REACTION` enum exists if needed later
+>
+> Storing reaction artifacts would duplicate data already visible in Discord. Can revisit if semantic search of inter-bot discourse becomes valuable.
 
-> **Note:** Basic cross-bot interaction is already partially handled by the **Lurk Detector** (`src_v2/discord/lurk_detector.py`). If Bot A posts a message that contains keywords matching Bot B's `lurk_triggers.yaml`, Bot B may organically respond. Phase 4 extends this to be more deliberate and context-aware for shared artifacts (dreams/diaries).
+Original scope (not implemented):
+- ~~Add `reaction` artifact type for bot replies~~
+- ~~Implement `BroadcastWatcher` to monitor channel for other bots' posts~~
+- ~~Add reply generation when posts resonate with character personality~~
+- ~~Store reactions in shared pool for cross-bot discovery~~
+- ~~Rate limit reactions (don't spam, make it feel organic)~~
 
 ### Phase 5: Attribution & UX (0.5 day)
 - [x] Ensure source_bot is always displayed when referencing other bots
 - [x] Add natural language attribution ("Elena mentioned...")
-- [ ] Test cross-bot interactions end-to-end
+- [x] ~~Test cross-bot interactions end-to-end~~ (Deferred with Phase 4)
 
 ---
 
