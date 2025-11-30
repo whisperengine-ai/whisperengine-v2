@@ -147,6 +147,13 @@ class Settings(BaseSettings):
     LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
     LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
 
+    # --- Autonomous Activity (Phase E12) ---
+    ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for all autonomous activity
+    ENABLE_AUTONOMOUS_REACTIONS: bool = False  # React to messages with emojis
+    REACTION_CHANNEL_HOURLY_MAX: int = 10  # Max reactions per channel per hour
+    REACTION_SAME_USER_COOLDOWN_SECONDS: int = 300  # Min seconds between reactions to same user
+    REACTION_DAILY_MAX: int = 100  # Global daily limit for reactions
+
     # --- Manipulation Timeout ---
     ENABLE_MANIPULATION_TIMEOUTS: bool = False  # Track and timeout manipulation attempts (disabled by default)
     MANIPULATION_TIMEOUT_SCOPE: str = "per_bot"  # "per_bot" or "global"

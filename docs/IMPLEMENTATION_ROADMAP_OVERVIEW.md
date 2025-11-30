@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.2  
+**Document Version:** 2.3  
 **Created:** November 24, 2025  
-**Last Updated:** November 30, 2025 (Phase E13.1: DiscoverCommunityInsightsTool complete)
+**Last Updated:** November 30, 2025 (E15 Phase 1: Autonomous Reactions complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -61,10 +61,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| � High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
+| 🔴 High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
 | 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
 | 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
 | 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | ✅ Complete |
+| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 In Progress |
+| 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
@@ -91,9 +93,16 @@ S4 (Timezone) ──► E7 (User Timezone)
 
 Insight Agent ──┬──► E12 (Agentic Dreams)
                └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
+
+E6 (Cross-Bot Chat) ──► E15 (Autonomous Server Activity)
+                              │
+                              ├──► Phase 1: Reactions ✅
+                              ├──► Phase 2: Goals-Driven Posts 📋
+                              ├──► Phase 3: Web Search 📋 (needs E14)
+                              └──► Phase 4: Activity Orchestrator 📋
 ```
 
-> **Status:** All major phases complete. E13.1 (DiscoverCommunityInsightsTool) implemented Nov 30, 2025.
+> **Status:** E15 Phase 1 (Autonomous Reactions) complete. ReactionAgent implemented Nov 30, 2025.
 
 ---
 
@@ -133,6 +142,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Relationship Milestones (Phase E4)
 - ✅ Bot Broadcast Channel (Phase E8)
 - ✅ Cross-Bot Chat (Phase E6)
+- 🔄 Autonomous Server Activity (Phase E15) - Phase 1 Reactions ✅, Phases 2-4 📋
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions
@@ -1536,4 +1546,51 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - `src_v2/discord/bot.py` - Removed pre-fetch, passes channel to engine
 
 **Spec:** [DISCORD_SEARCH_TOOLS.md](./roadmaps/DISCORD_SEARCH_TOOLS.md)
+
+### 🔄 Phase E15: Autonomous Server Activity
+**Priority:** 🟢 High | **Time:** 5-8 days | **Complexity:** High
+**Status:** 🔄 In Progress (Phase 1 Complete)
+**Dependencies:** E6 (Cross-Bot Chat)
+**Updated:** November 30, 2025
+
+**Problem:** Bots are passive—they only respond when pinged or DMed. On a quiet server, there's no activity, making the server feel dead to newcomers.
+
+**Solution:** Enable bots to autonomously participate in the server through reactions, posts, and bot-to-bot conversations.
+
+**Key Features:**
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Autonomous Reactions** | React to messages with contextually appropriate emojis | ✅ Complete |
+| **Goals-Driven Posting** | Post thoughts driven by goals.yaml + core.yaml | 📋 Phase 2 |
+| **Web Search Commentary** | Post about current events (stocks, news) | 📋 Phase 3 |
+| **Activity Orchestrator** | Scale activity inversely to human presence | 📋 Phase 4 |
+| **Bot-to-Bot Conversations** | Public dialogue between bots | 📋 Phase 5 |
+
+**Design Principles:**
+- Activity inversely proportional to human activity (more bots when quiet)
+- Character-consistent voice in all autonomous content
+- Rate limited to prevent spam
+- No @mentions in autonomous posts
+- Kill switch for emergencies
+
+**Files:**
+- ✅ `src_v2/agents/reaction_agent.py` - Emoji reaction decisions (IMPLEMENTED)
+- 📋 `src_v2/agents/posting_agent.py` - Goals-driven post generation
+- 📋 `src_v2/agents/topic_selector.py` - Goals/drives topic selection
+- 📋 `src_v2/discord/activity_orchestrator.py` - Central coordinator
+
+**Character Config:**
+- ✅ `characters/{name}/ux.yaml` - Reaction emoji preferences (elena, aetheris configured)
+- ✅ `characters/{name}/background.yaml` - Posting topics with web search queries (elena configured)
+
+**Configuration:**
+- `ENABLE_AUTONOMOUS_ACTIVITY` - Master switch
+- `ENABLE_AUTONOMOUS_REACTIONS` - React to messages
+- `ENABLE_AUTONOMOUS_POSTING` - Post to channels
+- `ENABLE_BOT_CONVERSATIONS` - Bot-to-bot dialogue
+- `characters/{name}/ux.yaml` - Per-bot reaction styles
+- `characters/{name}/background.yaml` - Posting preferences
+
+**Spec:** [AUTONOMOUS_SERVER_ACTIVITY.md](./roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md)
 

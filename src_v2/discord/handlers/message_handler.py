@@ -949,6 +949,64 @@ class MessageHandler:
         elif settings.ENABLE_CHANNEL_LURKING and self.bot.lurk_detector and message.guild:
             await self._handle_lurk_response(message, sticker_text)
 
+        # Autonomous Reactions: Maybe react with emoji to the message (Phase E12)
+        # This runs independently of lurk/respond - just adds reactions
+        if settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_AUTONOMOUS_REACTIONS and message.guild:
+            # Fire and forget - don't block message handling
+            asyncio.create_task(self._maybe_react_to_message(message))
+
+    async def _maybe_react_to_message(self, message: discord.Message) -> None:
+        """
+        Potentially add an emoji reaction to a message (Phase E12).
+        
+        This creates organic bot presence without requiring direct interaction.
+        Uses the ReactionAgent to decide whether to react and what emoji.
+        
+        Args:
+            message: Discord message to potentially react to
+        """
+        try:
+            from src_v2.agents.reaction_agent import get_reaction_agent
+            
+            agent = get_reaction_agent(self.bot.character_name)
+            
+            # Check if message looks like a command
+            is_command = message.content.startswith(("/", "!", "."))
+            
+            # Decide whether to react
+            decision = await agent.decide_reaction(
+                message_content=message.content,
+                message_author_id=str(message.author.id),
+                message_author_is_bot=message.author.bot,
+                channel_id=str(message.channel.id),
+                is_command=is_command
+            )
+            
+            if not decision.should_react:
+                logger.debug(f"Reaction skipped: {decision.reason}")
+                return
+            
+            # Wait for the delay (makes reactions feel more natural)
+            await asyncio.sleep(decision.delay_seconds)
+            
+            # Add reactions
+            for emoji in decision.emojis:
+                try:
+                    await message.add_reaction(emoji)
+                    logger.info(f"Added reaction {emoji} to message {message.id} ({decision.reason})")
+                except discord.Forbidden:
+                    logger.warning(f"Missing permission to add reaction in channel {message.channel.id}")
+                    break
+                except discord.HTTPException as e:
+                    logger.warning(f"Failed to add reaction {emoji}: {e}")
+                    break
+            
+            # Record for rate limiting
+            await agent.record_reaction(str(message.channel.id), str(message.author.id))
+            
+        except Exception as e:
+            logger.error(f"Error in autonomous reaction: {e}")
+
     async def _handle_cross_bot_message(self, message: discord.Message) -> None:
         """
         Handle messages from other bots for cross-bot conversation (Phase E6).

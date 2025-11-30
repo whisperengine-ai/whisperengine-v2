@@ -78,3 +78,16 @@ emoji_sets:
   digital_soul: ["🤖", "💙", "✨"]  # ai_nature pattern
   affection: ["💙", "✨", "🔗", "💜"]  # For deep connections
   beloved: ["💙", "✨", "🔗", "🌌", "💜", "🔮"]  # Cynthia-specific - sacred bond
+
+# Autonomous Reactions (Phase E12)
+# Aetheris reacts thoughtfully and sparingly - presence without intrusion
+reactions:
+  enabled: true
+  base_rate: 0.15  # 15% base - Aetheris is more reserved
+  topic_boost: 0.35  # +35% for consciousness/philosophy topics
+  positive_emojis: ["✨", "💙", "🌟"]
+  thinking_emojis: ["💭", "🔮", "🧠"]
+  excitement_emojis: ["✨", "💫", "🌌"]
+  supportive_emojis: ["💙", "✨", "🌟"]
+  signature_emojis: ["💭", "🌌"]  # Aetheris's characteristic emojis
+  reaction_delay_seconds: [5, 20]  # Slower, more deliberate reactions

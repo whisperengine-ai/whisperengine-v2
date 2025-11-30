@@ -185,7 +185,7 @@ memories, facts, trust, goals = await asyncio.gather(
 - `src_v2/core/character.py`: Loads `characters/{name}/character.md`, `.yaml` files
 - `characters/{name}/character.md`: System prompt (supports `{user_name}`, `{recent_memories}` template vars)
 - `characters/{name}/core.yaml`: Identity (purpose, drives, constitution)
-- `characters/{name}/ux.yaml`: UX config (thinking indicators, response style)
+- `characters/{name}/ux.yaml`: UX config (thinking indicators, response style, reactions)
 - `src_v2/evolution/trust.py`: Trust scoring (5 levels: Stranger→Acquaintance→Friend→Close→Soulmate)
 - `src_v2/evolution/feedback.py`: Reaction analysis via InfluxDB metrics
 
@@ -193,6 +193,7 @@ memories, facts, trust, goals = await asyncio.gather(
 - `src_v2/discord/bot.py`: Event handlers (`on_message`, `on_reaction_add`), message routing
 - `src_v2/discord/scheduler.py`: Proactive engagement (Phase 13 complete)
 - `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
+- `src_v2/agents/reaction_agent.py`: Autonomous emoji reactions (Phase E15)
 
 ### API
 - `src_v2/api/app.py`: FastAPI app with Uvicorn

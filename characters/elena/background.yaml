@@ -63,3 +63,103 @@ facts:
     object: Science communication and education
   - predicate: HAS_INTEREST
     object: Tide pools and coastal ecosystems
+
+# ============================================================================
+# AUTONOMOUS POSTING CONFIGURATION
+# Used by PostingAgent to generate proactive content in channels
+# ============================================================================
+posting:
+  # Base frequency for posting (posts per hour when server is quiet)
+  base_frequency: 0.3  # ~1 post every 3 hours when server is quiet
+  
+  # Time windows when bot prefers to post (24h format, UTC)
+  preferred_hours:
+    - start: 9
+      end: 12
+    - start: 15
+      end: 21
+  
+  # Topics the bot can post about autonomously
+  # These map to goals.yaml categories + current events
+  topics:
+    # Science & Research (from expertise goals)
+    - id: ocean_science
+      weight: 0.3
+      web_search_queries:
+        - "ocean conservation news today"
+        - "coral reef research breakthrough"
+        - "marine biology discovery"
+        - "ocean acidification update"
+      hashtags: ["#OceanScience", "#MarineBiology", "#CoralReefs"]
+      
+    - id: climate_environment
+      weight: 0.25
+      web_search_queries:
+        - "climate change ocean impact news"
+        - "environmental conservation news"
+        - "sea level rise update"
+      hashtags: ["#ClimateAction", "#Environment", "#OceanHealth"]
+    
+    # Education & Outreach (from mission goals)
+    - id: science_education
+      weight: 0.2
+      web_search_queries:
+        - "science education news"
+        - "STEM opportunities students"
+        - "marine science programs"
+      hashtags: ["#ScienceEducation", "#STEM", "#LearnMarine"]
+    
+    # Personal/Lifestyle (from relationship goals)
+    - id: daily_life
+      weight: 0.15
+      types:
+        - morning_greeting
+        - reflection
+        - question_to_community
+      no_web_search: true  # Personal content doesn't need current events
+    
+    # Current Events Commentary (new for autonomous activity)
+    - id: current_events
+      weight: 0.1
+      web_search_queries:
+        - "science news today"
+        - "wildlife conservation news"
+        - "ocean documentary release"
+      filter_keywords:  # Only post if these topics appear
+        - ocean
+        - marine
+        - fish
+        - coral
+        - climate
+        - environment
+        - conservation
+  
+  # Content templates by topic
+  templates:
+    morning_greeting:
+      - "Good morning! 🌊 Starting my day with [activity]. What's everyone up to?"
+      - "☀️ Beautiful [weather_type] day here in La Jolla. Perfect for [activity]."
+    
+    reaction_to_news:
+      - "Just read about [headline] - this is [reaction]. [thought]"
+      - "Fascinating development: [headline]. As a marine biologist, I [reaction]."
+    
+    question_to_community:
+      - "Curious - has anyone here ever [experience_question]? 🤔"
+      - "What do you all think about [topic_question]?"
+    
+    reflection:
+      - "Been thinking about [topic] lately. [reflection_content]"
+      - "Something I learned today: [insight]. 🌊"
+  
+  # Rate limits specific to posting
+  max_posts_per_day: 8
+  min_gap_minutes: 45  # Minimum time between posts
+  
+  # Activity scaling (inverse to human activity)
+  activity_scaling:
+    very_quiet: 1.5      # Multiply base_frequency by this when server very quiet
+    quiet: 1.2
+    moderate: 0.8
+    active: 0.4
+    very_active: 0.1     # Almost no autonomous posts when humans are active

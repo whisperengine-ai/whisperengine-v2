@@ -77,6 +77,19 @@ emoji_sets:
   excited: ["✨", "🎉", "🐬", "🤩", "¡", "💫"]
   science: ["🔬", "🧪", "📊", "🧬", "📝", "🔎"]
 
+# Autonomous Reactions (Phase E12)
+# When enabled, Elena will react to messages with emojis without being asked
+reactions:
+  enabled: true
+  base_rate: 0.25  # 25% base chance to react (conservative start)
+  topic_boost: 0.4  # +40% when message relates to ocean/science
+  positive_emojis: ["💙", "✨", "🌊", "😊"]
+  thinking_emojis: ["🤔", "💭", "🔍"]
+  excitement_emojis: ["🎉", "🐬", "✨", "🤩"]
+  supportive_emojis: ["💙", "🌊", "🫂"]
+  signature_emojis: ["🐙", "🌊"]  # Elena's characteristic emojis
+  reaction_delay_seconds: [3, 12]  # Wait 3-12 seconds before reacting
+
 # Voice Response Configuration (Phase A10)
 voice:
   intro_template: "🌊✨ *Elena speaks...*"
