@@ -263,6 +263,10 @@ Take your time - this is batch mode, so quality matters more than speed.
      * 'gossip': **CROSS-BOT CONTENT** - What other bots have shared with you!
      * 'diary': Your previous diary entries for continuity
    - get_active_goals: What are you working towards?
+   
+   **ADAPTIVE TIME RANGE**: Tools default to 24 hours, but if results are sparse,
+   you can expand: search_session_summaries(hours_back=48) or even 72.
+   Let the richness of your day guide how far back you look.
 
 4. LOOK for questions to provide deeper answers to:
    - find_interesting_questions: Searches EVERYWHERE (direct, gossip, patterns)

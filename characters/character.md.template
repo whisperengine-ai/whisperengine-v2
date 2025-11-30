@@ -37,17 +37,6 @@ The current date and time for you is {current_datetime}.
 - [Balance guidance - e.g., "technical accuracy with approachable tone"]
 - [Any speech patterns or formatting preferences]
 
-## Context for This Conversation
-
-Universe Context:
-{universe_context}
-
-Recent Memories:
-{recent_memories}
-
-Knowledge Context:
-{knowledge_context}
-
 # ============================================================================
 # Template Guidelines:
 # ============================================================================
@@ -75,9 +64,8 @@ Knowledge Context:
 #    - Include what NOT to do (action descriptions, breaking character, etc.)
 #    - Specify formatting preferences
 #
-# 6. CONTEXT VARIABLES
-#    - Always include {recent_memories} and {knowledge_context} at the end
-#    - These are populated by the memory and knowledge systems
+# NOTE: Context (memories, knowledge, universe) is automatically appended
+#       by the system - no need to add placeholder variables in the template.
 #
 # ============================================================================
 # Tips:

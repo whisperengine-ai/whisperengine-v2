@@ -183,7 +183,7 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### Character & Evolution
 - `src_v2/core/character.py`: Loads `characters/{name}/character.md`, `.yaml` files
-- `characters/{name}/character.md`: System prompt (supports `{user_name}`, `{recent_memories}` template vars)
+- `characters/{name}/character.md`: System prompt (supports `{user_name}`, `{current_datetime}` template vars)
 - `characters/{name}/core.yaml`: Identity (purpose, drives, constitution)
 - `characters/{name}/ux.yaml`: UX config (thinking indicators, response style, reactions)
 - `src_v2/evolution/trust.py`: Trust scoring (5 levels: Stranger→Acquaintance→Friend→Close→Soulmate)
