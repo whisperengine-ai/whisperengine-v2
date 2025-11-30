@@ -15,6 +15,7 @@ from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.safety.content_review import content_safety_checker
+from src_v2.discord.utils.message_utils import chunk_message
 
 
 def _redis_key(key: str) -> str:
@@ -213,17 +214,24 @@ class BroadcastManager:
                     logger.error(f"Broadcast channel not found or not a text channel: {channel_id}")
                     continue
                 
-                # Send message
-                message = None
-                if reply_to and reply_to.channel.id == channel_id:
-                    message = await reply_to.reply(formatted)
-                else:
-                    message = await channel.send(formatted)
+                # Chunk message if over Discord's 2000 char limit
+                message_chunks = chunk_message(formatted)
                 
-                if message:
-                    sent_messages.append(message)
-                    # Store broadcast record
-                    await self._store_broadcast(message, post_type, character_name, content, provenance)
+                # Send message(s)
+                first_message = None
+                for i, chunk in enumerate(message_chunks):
+                    if i == 0 and reply_to and reply_to.channel.id == channel_id:
+                        message = await reply_to.reply(chunk)
+                    else:
+                        message = await channel.send(chunk)
+                    
+                    if i == 0:
+                        first_message = message
+                
+                if first_message:
+                    sent_messages.append(first_message)
+                    # Store broadcast record (use first message for reference)
+                    await self._store_broadcast(first_message, post_type, character_name, content, provenance)
                 
             except discord.Forbidden:
                 logger.error(f"No permission to post in broadcast channel {channel_id_str}")

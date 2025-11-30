@@ -26,6 +26,9 @@ BOT_PORTS = {
     "sophia": 8006,
     "marcus": 8007,
     "nottaylor": 8008,
+    "gabriel": 8009,
+    "aethys": 8010,
+    "aetheris": 8011,
 }
 
 def setup_env(bot_name: str):
