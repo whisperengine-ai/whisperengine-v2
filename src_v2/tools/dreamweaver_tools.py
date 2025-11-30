@@ -127,6 +127,114 @@ emotional tone, and key moments. Good for getting an overview of the day."""
             return f"Error: {e}"
 
 
+class WanderMemoryInput(BaseModel):
+    query: str = Field(description="The concept or symbol to search for (e.g., 'apples', 'fear of heights')")
+    min_age_days: int = Field(default=30, description="Minimum age of the memory in days (to find distant memories)")
+    limit: int = Field(default=5, description="Number of memories to return")
+
+
+class WanderMemoryTool(BaseTool):
+    """Search for memories that are semantically related but temporally distant."""
+    name: str = "wander_memory_space"
+    description: str = """Use this to find 'deep cuts' - memories from the distant past that relate to a current thought.
+This mimics the way dreams connect recent events (day residue) with old, forgotten memories.
+Example: If thinking about 'apples', use this to find memories about apples from months ago."""
+    args_schema: Type[BaseModel] = WanderMemoryInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self, query: str, min_age_days: int = 30, limit: int = 5) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, query: str, min_age_days: int = 30, limit: int = 5) -> str:
+        try:
+            import time
+            collection = f"whisperengine_memory_{self.character_name}"
+            
+            # Calculate max_timestamp (current time - min_age_days)
+            max_ts = time.time() - (min_age_days * 86400)
+            
+            memories = await memory_manager.search_memories_advanced(
+                query=query,
+                max_timestamp=max_ts,
+                limit=limit,
+                collection_name=collection
+            )
+            
+            if not memories:
+                return f"No distant memories found for '{query}' older than {min_age_days} days."
+            
+            results = []
+            for m in memories:
+                content = m.get("content", "")[:300]
+                ts = m.get("timestamp", 0)
+                date_str = time.strftime('%Y-%m-%d', time.localtime(ts))
+                results.append(f"- [{date_str}] {content}")
+            
+            return f"Found {len(memories)} distant memories for '{query}':\n\n" + "\n\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error wandering memory: {e}")
+            return f"Error: {e}"
+
+
+class CheckEmotionalEchoInput(BaseModel):
+    emotion: str = Field(description="The emotion to search for (e.g., 'joy', 'anxiety', 'nostalgia')")
+    limit: int = Field(default=5, description="Number of memories to return")
+
+
+class CheckEmotionalEchoTool(BaseTool):
+    """Search for memories that match a specific emotional tone."""
+    name: str = "check_emotional_echo"
+    description: str = """Find memories that share a specific emotional resonance, regardless of the topic.
+Useful for connecting disparate events through shared feeling.
+Example: If the current theme is 'anxiety', find other times you felt anxiety."""
+    args_schema: Type[BaseModel] = CheckEmotionalEchoInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self, emotion: str, limit: int = 5) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, emotion: str, limit: int = 5) -> str:
+        try:
+            collection = f"whisperengine_memory_{self.character_name}"
+            
+            # We search for the emotion as the query, but also filter by metadata if possible
+            # For now, we'll rely on semantic search for the emotion + metadata filter
+            
+            # Try strict metadata filter first (if emotions are stored in metadata)
+            memories = await memory_manager.search_memories_advanced(
+                query=f"feeling of {emotion}",
+                metadata_filter={"emotions": emotion}, 
+                limit=limit,
+                collection_name=collection
+            )
+            
+            # Fallback: if strict metadata filter fails, try just semantic search
+            if not memories:
+                memories = await memory_manager.search_memories_advanced(
+                    query=f"feeling of {emotion}",
+                    limit=limit,
+                    collection_name=collection
+                )
+            
+            if not memories:
+                return f"No emotional echoes found for '{emotion}'."
+            
+            results = []
+            for m in memories:
+                content = m.get("content", "")[:300]
+                emotions = ", ".join(m.get("emotions", [])) if isinstance(m.get("emotions"), list) else str(m.get("emotions", "unknown"))
+                results.append(f"- (Emotions: {emotions}) {content}")
+            
+            return f"Found {len(memories)} memories echoing '{emotion}':\n\n" + "\n\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error checking emotional echo: {e}")
+            return f"Error: {e}"
+
+
 class SearchAllUserFactsInput(BaseModel):
     limit: int = Field(default=15, description="Maximum facts to return")
 
@@ -768,6 +876,8 @@ def get_dreamweaver_tools(character_name: str) -> List[BaseTool]:
         # Introspection tools (batch-friendly, cross-user)
         SearchMeaningfulMemoriesTool(character_name=character_name),
         SearchSessionSummariesTool(character_name=character_name),
+        WanderMemoryTool(character_name=character_name),
+        CheckEmotionalEchoTool(character_name=character_name),
         SearchAllUserFactsTool(character_name=character_name),
         SearchByTypeTool(character_name=character_name),  # Also handles cross-bot via gossip type
         GetActiveGoalsTool(character_name=character_name),

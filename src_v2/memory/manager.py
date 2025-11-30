@@ -3,7 +3,7 @@ import uuid
 import datetime
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from loguru import logger
-from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
+from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue, Range
 from src_v2.core.database import db_manager, retry_db_operation, require_db
 from src_v2.config.settings import settings
 from src_v2.memory.embeddings import EmbeddingService
@@ -316,6 +316,69 @@ class MemoryManager:
             
         except Exception as e:
             logger.error(f"Failed to search memories: {e}")
+            return []
+
+    async def search_memories_advanced(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        limit: int = 5,
+        min_timestamp: Optional[float] = None,
+        max_timestamp: Optional[float] = None,
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        collection_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Advanced search with time range and metadata filtering.
+        Useful for 'dreaming' (finding old memories) or specific emotional queries.
+        """
+        if not db_manager.qdrant_client:
+            return []
+
+        target_collection = collection_name or self.collection_name
+        
+        try:
+            embedding = await self.embedding_service.embed_query_async(query)
+            
+            must_conditions = []
+            
+            # User Filter
+            if user_id:
+                must_conditions.append(
+                    FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                )
+                
+            # Time Range Filter
+            if min_timestamp is not None or max_timestamp is not None:
+                range_filter = Range()
+                if min_timestamp is not None:
+                    range_filter.gte = min_timestamp
+                if max_timestamp is not None:
+                    range_filter.lte = max_timestamp
+                
+                must_conditions.append(
+                    FieldCondition(key="timestamp", range=range_filter)
+                )
+                
+            # Metadata Filter (e.g., {"emotions": "joy"})
+            # Note: This assumes simple key-value matching for now
+            if metadata_filter:
+                for key, value in metadata_filter.items():
+                    must_conditions.append(
+                        FieldCondition(key=key, match=MatchValue(value=value))
+                    )
+
+            results = await db_manager.qdrant_client.query_points(
+                collection_name=target_collection,
+                query=embedding,
+                query_filter=Filter(must=must_conditions) if must_conditions else None,
+                limit=limit
+            )
+            
+            return [point.payload for point in results.points if point.payload]
+            
+        except Exception as e:
+            logger.error(f"Advanced memory search failed: {e}")
             return []
 
     async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -677,7 +740,8 @@ class MemoryManager:
                 collection_name=collection,
                 scroll_filter=Filter(
                     must=[
-                        FieldCondition(key="type", match=MatchValue(value="memory"))
+                        FieldCondition(key="type", match=MatchValue(value="memory")),
+                        FieldCondition(key="timestamp", range=Range(gte=threshold_iso))
                     ]
                 ),
                 limit=limit * 5,  # Fetch extra for filtering
@@ -714,7 +778,8 @@ class MemoryManager:
                     collection_name=collection,
                     scroll_filter=Filter(
                         must=[
-                            FieldCondition(key="type", match=MatchValue(value="summary"))
+                            FieldCondition(key="type", match=MatchValue(value="summary")),
+                            FieldCondition(key="timestamp", range=Range(gte=threshold_iso))
                         ]
                     ),
                     limit=limit * 3,

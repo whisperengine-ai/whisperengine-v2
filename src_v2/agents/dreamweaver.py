@@ -115,10 +115,10 @@ GUIDELINES:
 
 1. FIRST, use the introspection tools to gather material:
    - search_meaningful_memories: Find emotionally significant recent experiences
+   - wander_memory_space: Find distant memories related to today's themes (Day Residue -> Deep Memory)
+   - check_emotional_echo: Find past events with similar emotional resonance
    - search_all_user_facts: Look up interesting things you know about users
-   - search_observations: Find notable observations you've made
-   - search_gossip: Check if other bots have shared interesting tidbits
-   - search_recent_diaries: Check your recent diary for continuity
+   - search_by_memory_type: Find observations, gossip, or other specific memory types
    - get_active_goals: See what aspirations to weave in
 
 2. THEN, use plan_narrative to create a story arc:
@@ -302,6 +302,38 @@ Use at least 3-4 tool calls to gather rich material before planning."""
                                 "topic": fact_text
                             })
                         if len(sources) >= 3:
+                            break
+
+            elif tool_name == "wander_memory_space":
+                # Parse distant memories - format: "- [2023-10-27] content"
+                query = tool_args.get("query", "something")
+                for line in observation.split("\n"):
+                    if line.startswith("- ["):
+                        try:
+                            date_part = line.split("]")[0].replace("- [", "").strip()
+                            sources.append({
+                                "type": "memory",
+                                "description": f"Distant memory about '{query}'",
+                                "when": date_part,
+                                "topic": query
+                            })
+                        except Exception:
+                            pass
+                        if len(sources) >= 2:
+                            break
+
+            elif tool_name == "check_emotional_echo":
+                # Parse emotional echoes - format: "- (Emotions: joy, hope) content"
+                emotion = tool_args.get("emotion", "feeling")
+                for line in observation.split("\n"):
+                    if line.startswith("- (Emotions:"):
+                        sources.append({
+                            "type": "memory",
+                            "description": f"Memory of feeling {emotion}",
+                            "topic": emotion,
+                            "when": "past"
+                        })
+                        if len(sources) >= 2:
                             break
                             
             elif tool_name == "search_by_memory_type":

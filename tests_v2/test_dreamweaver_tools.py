@@ -5,13 +5,15 @@ Verifies that all tools load correctly and can be invoked (with mocked backends)
 """
 import asyncio
 import sys
-sys.path.insert(0, '/Users/markcastillo/git/whisperengine-v2')
+sys.path.insert(0, '/Users/mark/git/whisperengine-v2')
 
 from src_v2.tools.dreamweaver_tools import (
     get_dreamweaver_tools,
     get_dreamweaver_tools_with_existing,
     SearchMeaningfulMemoriesTool,
     SearchSessionSummariesTool,
+    WanderMemoryTool,
+    CheckEmotionalEchoTool,
     SearchAllUserFactsTool,
     SearchByTypeTool,
     GetActiveGoalsTool,
@@ -31,6 +33,8 @@ def test_tool_loading():
     expected_tools = [
         "search_meaningful_memories",
         "search_session_summaries",
+        "wander_memory_space",
+        "check_emotional_echo",
         "search_all_user_facts",
         "search_by_memory_type",  # Also handles cross-bot via gossip type
         "get_active_goals",
