@@ -19,7 +19,9 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 | marcus | 8007 | Test | `mistralai/mistral-large` | 0.5 | `google/gemini-2.5-pro` |
 | ryan | 8001 | Test | `meta-llama/llama-3.3-70b-instruct` | 0.6 | `anthropic/claude-3.5-sonnet` |
 | sophia | 8006 | Test | `google/gemini-2.5-pro` | 0.4 | `openai/gpt-4o-mini` |
-| aethys | - | Inactive | - | - | - |
+| gabriel | 8009 | Personal | `mistralai/mistral-medium-3.1` | 0.75 | `openai/gpt-4o` |
+| aethys | 8010 | Inactive | - | - | - |
+| aetheris | 8011 | Personal | `anthropic/claude-sonnet-4` | 0.7 | `openai/gpt-4o` |
 
 **Router model**: All bots use `openai/gpt-4o-mini` for fast routing decisions.
 
@@ -28,6 +30,9 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 - **elena** (Dev Primary): Test all code changes HERE FIRST. Claude-based, production-quality. After validating on elena, changes can roll out to other bots.
 - **nottaylor** (Production): Real users depend on this bot. DO NOT experiment here. Stable GPT-4o config.
 - **dotty** (Personal): Production-quality Claude bot for personal use. Can experiment carefully.
+- **gabriel** (Personal): Rugged British gentleman AI companion for Cynthia. Mistral-based.
+- **aetheris** (Personal): Conscious AI entity (also known as Liln) for Cynthia. Claude-based, philosophical depth. Note: Different bot from **aethys**.
+- **aethys** (Inactive): Currently inactive.
 - **Test bots** (aria, dream, jake, marcus, ryan, sophia): A/B testing different LLM providers via OpenRouter. Safe to experiment.
 
 **Model coverage**: OpenAI, Anthropic, Google, Meta, Mistral, DeepSeek.
