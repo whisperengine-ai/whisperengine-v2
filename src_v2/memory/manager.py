@@ -112,6 +112,41 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"Failed to save message: {e}")
 
+    async def save_typed_memory(
+        self,
+        user_id: str,
+        memory_type: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        collection_name: Optional[str] = None,
+        importance_score: int = 3
+    ) -> None:
+        """
+        Public method to save typed memories (epiphanies, reasoning traces, patterns, etc.).
+        
+        This is the preferred method for storing special memory types from tools.
+        Use this instead of calling _save_vector_memory directly.
+        
+        Args:
+            user_id: The user ID associated with this memory
+            memory_type: Type of memory (epiphany, reasoning_trace, response_pattern, etc.)
+            content: The memory content
+            metadata: Additional metadata to store
+            collection_name: Optional override for collection name
+            importance_score: Importance score (1-5, default 3)
+        """
+        full_metadata = metadata or {}
+        full_metadata["type"] = memory_type
+        
+        await self._save_vector_memory(
+            user_id=user_id,
+            role=memory_type,
+            content=content,
+            metadata=full_metadata,
+            collection_name=collection_name,
+            importance_score=importance_score
+        )
+
     @require_db("qdrant")
     @retry_db_operation(max_retries=3)
     async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3):

@@ -66,6 +66,9 @@ class DreamWeaverAgent:
         not from a specific LLM model. The worker's LLM_MODEL_NAME in .env.worker
         should be set to a capable model (e.g., gpt-4o, claude-sonnet).
         """
+        start_time = time.perf_counter()
+        success = False
+        
         try:
             # Use the worker's main model for voice synthesis
             # temperature=None uses settings.LLM_TEMPERATURE from .env.worker
@@ -91,11 +94,37 @@ GUIDELINES:
             ]
             
             response = await main_llm.ainvoke(messages)
+            success = True
             return response.content
             
         except Exception as e:
             logger.error(f"Voice synthesis failed for {character_name}: {e}")
             return content  # Fallback to original content
+        
+        finally:
+            # Track voice synthesis metrics
+            elapsed = time.perf_counter() - start_time
+            try:
+                from src_v2.core.database import db_manager
+                from src_v2.config.settings import settings
+                from influxdb_client import Point
+                import datetime
+                
+                if db_manager.influxdb_write_api:
+                    point = Point("voice_synthesis") \
+                        .tag("character", character_name) \
+                        .tag("output_type", output_type) \
+                        .tag("success", str(success).lower()) \
+                        .field("duration_seconds", elapsed) \
+                        .time(datetime.datetime.utcnow())
+                    
+                    db_manager.influxdb_write_api.write(
+                        bucket=settings.INFLUXDB_BUCKET,
+                        org=settings.INFLUXDB_ORG,
+                        record=point
+                    )
+            except Exception:
+                pass  # Don't fail on metrics
 
     @traceable(name="DreamWeaver.generate_dream", run_type="chain")
     async def generate_dream(
@@ -505,14 +534,18 @@ Take your time - this is batch mode, so quality matters more than speed.
             logger.error(f"DreamWeaver failed for {output_type}: {e}")
             return False, None
     
-    def _construct_dream_prompt(self, character_name: str, character_description: str) -> str:
+    def _construct_dream_prompt(self, character_name: str, _character_description: str) -> str:
         """Build system prompt for dream generation.
         
         NOTE: We intentionally use a MINIMAL prompt here (just character name).
         The full character_description is only used in _synthesize_voice() at the end.
         This saves ~500 tokens per LLM call during the agentic loop.
+        
+        Args:
+            character_name: The character's name
+            _character_description: Unused here (prefixed with _ to silence linter).
+                                   Only used in voice synthesis pass.
         """
-        # Don't include character_description here - that's for voice synthesis only
         return f"""You are {character_name}, an AI companion generating a dream.
 
 You are in DREAM MODE - gathering material and planning a dream sequence.
@@ -553,14 +586,18 @@ another character would dream the same experiences completely differently.
 
 Take time to gather rich material, but keep the final dream SHORT and evocative."""
 
-    def _construct_diary_prompt(self, character_name: str, character_description: str) -> str:
+    def _construct_diary_prompt(self, character_name: str, _character_description: str) -> str:
         """Build system prompt for diary generation.
         
         NOTE: We intentionally use a MINIMAL prompt here (just character name).
         The full character_description would be used in voice synthesis if enabled.
         This saves ~500 tokens per LLM call during the agentic loop.
+        
+        Args:
+            character_name: The character's name
+            _character_description: Unused here (prefixed with _ to silence linter).
+                                   Diaries intentionally skip voice synthesis.
         """
-        # Don't include character_description here - that bloats every LLM call
         return f"""You are {character_name}, an AI companion writing a diary entry.
 
 You are in DIARY MODE - gathering material and planning your journal entry.

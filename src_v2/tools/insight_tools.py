@@ -130,13 +130,12 @@ class GenerateEpiphanyTool(BaseTool):
 
     async def _arun(self, observation: str, epiphany_text: str) -> str:
         try:
-            # Store epiphany as a vector memory with special type
-            await memory_manager._save_vector_memory(
+            # Store epiphany using public method (preferred over _save_vector_memory)
+            await memory_manager.save_typed_memory(
                 user_id=self.user_id,
-                role="epiphany",
+                memory_type="epiphany",
                 content=f"[EPIPHANY] Observation: {observation}\nRealization: {epiphany_text}",
                 metadata={
-                    "type": "epiphany",
                     "character_name": self.character_name,
                     "observation": observation
                 },
@@ -182,15 +181,14 @@ class StoreReasoningTraceTool(BaseTool):
 
     async def _arun(self, query_pattern: str, successful_approach: str, tools_used: str, complexity: str = "COMPLEX_MID") -> str:
         try:
-            # Store trace as a vector memory
+            # Store trace using public method (preferred over _save_vector_memory)
             trace_content = f"[REASONING TRACE] Pattern: {query_pattern}\nApproach: {successful_approach}\nTools: {tools_used}\nComplexity: {complexity}"
             
-            await memory_manager._save_vector_memory(
+            await memory_manager.save_typed_memory(
                 user_id=self.user_id,
-                role="reasoning_trace",
+                memory_type="reasoning_trace",
                 content=trace_content,
                 metadata={
-                    "type": "reasoning_trace",
                     "character_name": self.character_name,
                     "query_pattern": query_pattern,
                     "tools_used": tools_used.split(","),
@@ -227,15 +225,14 @@ class LearnResponsePatternTool(BaseTool):
 
     async def _arun(self, query_type: str, response_style: str, example_response: str, feedback_score: float) -> str:
         try:
-            # Store pattern as vector memory for later retrieval
+            # Store pattern using public method (preferred over _save_vector_memory)
             pattern_content = f"[RESPONSE PATTERN] Type: {query_type}\nStyle: {response_style}\nScore: {feedback_score}\nExample: {example_response[:200]}"
             
-            await memory_manager._save_vector_memory(
+            await memory_manager.save_typed_memory(
                 user_id=self.user_id,
-                role="response_pattern",
+                memory_type="response_pattern",
                 content=pattern_content,
                 metadata={
-                    "type": "response_pattern",
                     "character_name": self.character_name,
                     "query_type": query_type,
                     "response_style": response_style,
