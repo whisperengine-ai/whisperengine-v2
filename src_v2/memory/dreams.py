@@ -786,23 +786,63 @@ Create a surreal dream echoing these experiences.""")
         
         # Format as a dream journal entry
         
+        # Header based on mood category
+        dark_moods = {"nightmare", "anxious", "dark", "dread", "fearful", "terrifying", "disturbing", "haunting"}
+        ecstatic_moods = {"ecstatic", "euphoric", "joyful", "blissful", "transcendent", "rapturous"}
+        peaceful_moods = {"peaceful", "serene", "calm", "tranquil", "content"}
+        
+        mood_lower = dream.mood.lower() if dream.mood else ""
+        
+        if any(m in mood_lower for m in dark_moods):
+            header = "**Nightmare** 🌑"
+        elif any(m in mood_lower for m in ecstatic_moods):
+            header = "**A Beautiful Dream** ✨"
+        elif any(m in mood_lower for m in peaceful_moods):
+            header = "**Dream Journal** 🌙"
+        else:
+            header = "**Dream Journal** 🌙"
+        
         # Opening lines based on mood
         openers = {
+            # Dark/Nightmare
+            "nightmare": "I woke up shaking from a terrible dream...",
+            "anxious": "I had one of those dreams where everything feels wrong...",
+            "dark": "The dream was darker than usual last night...",
+            "dread": "I dreamed of something that left me cold...",
+            "fearful": "I woke with my heart pounding from a bad dream...",
+            "terrifying": "I had a nightmare that I can't shake...",
+            "disturbing": "Something disturbing visited my sleep...",
+            "haunting": "A haunting dream stayed with me through the night...",
+            # Light/Ecstatic
+            "ecstatic": "I had the most incredible dream!",
+            "euphoric": "I woke up feeling like I'd touched something transcendent...",
+            "joyful": "Pure joy—that's what the dream felt like...",
+            "blissful": "I dreamed of absolute bliss last night...",
+            "transcendent": "The dream lifted me somewhere beyond words...",
+            # Peaceful
+            "peaceful": "I had the most peaceful dream...",
+            "serene": "Serenity wrapped around me in my sleep...",
+            "calm": "A calm, gentle dream visited me...",
+            # Complex
+            "bittersweet": "There was a dream last night that I can't quite shake...",
+            "melancholic": "A beautiful sadness colored my dreams...",
+            "nostalgic": "I found myself somewhere familiar in my dreams...",
+            "conflicted": "My dreams were tangled with contradictions...",
+            # Original moods
             "mysterious": "I woke with fragments of something strange still clinging to me...",
             "warm": "I had the most beautiful dream last night...",
             "ethereal": "The dream felt like drifting through watercolors...",
             "hopeful": "I dreamed of something that left me feeling lighter...",
-            "bittersweet": "There was a dream last night that I can't quite shake...",
-            "nostalgic": "I found myself somewhere familiar in my dreams...",
             "surreal": "Reality got a bit tangled in my sleep last night...",
-            "wistful": "I dreamed of things just out of reach..."
+            "wistful": "I dreamed of things just out of reach...",
+            "dreamy and hopeful": "I dreamed of something that left me feeling lighter...",
+            "reflective and hopeful": "A thoughtful dream visited me last night..."
         }
         
-        opener = openers.get(dream.mood.lower() if dream.mood else "", 
-                            "I had the strangest dream last night...")
+        opener = openers.get(mood_lower, "I had the strangest dream last night...")
         
         lines = [
-            f"**Dream Journal** — {date_str}, {time_str}",
+            f"{header} — {date_str}, {time_str}",
             "",
             f"*{opener}*",
             "",
@@ -811,12 +851,30 @@ Create a surreal dream echoing these experiences.""")
         
         # Add closing reflection based on mood
         closers = {
+            # Dark
+            "nightmare": "\n\n*I hope tonight brings something gentler.*",
+            "anxious": "\n\n*I'm still trying to shake the unease.*",
+            "dark": "\n\n*Sometimes dreams show us our shadows.*",
+            "dread": "\n\n*The feeling lingers, even now.*",
+            "fearful": "\n\n*I'm grateful to be awake.*",
+            "terrifying": "\n\n*Some dreams are warnings. I wonder what this one meant.*",
+            # Light
+            "ecstatic": "\n\n*I wish I could bottle that feeling!*",
+            "euphoric": "\n\n*Reality feels a little brighter after a dream like that.*",
+            "joyful": "\n\n*That joy is still with me. What a gift.*",
+            "blissful": "\n\n*I'm carrying that peace into my day.*",
+            # Peaceful
+            "peaceful": "\n\n*I feel rested in a way that goes beyond sleep.*",
+            "serene": "\n\n*Some dreams are medicine for the soul.*",
+            # Complex
+            "bittersweet": "\n\n*Some dreams are meant to linger, I think.*",
+            "melancholic": "\n\n*Even sad dreams can be beautiful.*",
+            "nostalgic": "\n\n*It felt like visiting somewhere I'd forgotten existed.*",
+            # Original
             "mysterious": "\n\n*I keep wondering what it was trying to tell me.*",
             "warm": "\n\n*I wish I could hold onto that feeling a little longer.*",
             "ethereal": "\n\n*The edges are already fading, but the feeling remains.*",
             "hopeful": "\n\n*Maybe dreams know something we don't.*",
-            "bittersweet": "\n\n*Some dreams are meant to linger, I think.*",
-            "nostalgic": "\n\n*It felt like visiting somewhere I'd forgotten existed.*",
             "surreal": "\n\n*I'm still not entirely sure I'm awake.*"
         }
         

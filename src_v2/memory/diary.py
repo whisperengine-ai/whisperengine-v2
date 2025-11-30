@@ -744,13 +744,33 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
                 "themes": ", ".join(entry.themes) if entry.themes else "general"
             })
             
-            # Add timestamp header (consistent with dream journal format)
+            # Add timestamp header with mood-aware formatting
             now = datetime.now(timezone.utc)
             date_str = now.strftime("%B %d, %Y")
             time_str = now.strftime("%I:%M %p UTC")
             
-            header = f"**Diary Entry** — {date_str}, {time_str}\n\n"
-            return header + result.content.strip()
+            # Header and opener based on mood category
+            mood_lower = (entry.mood or "").lower()
+            
+            dark_moods = {"frustrated", "anxious", "melancholic", "conflicted", "sad", "exhausted", "overwhelmed"}
+            joyful_moods = {"joyful", "euphoric", "grateful", "excited", "delighted", "happy"}
+            peaceful_moods = {"peaceful", "content", "serene", "calm", "satisfied"}
+            
+            if any(m in mood_lower for m in dark_moods):
+                header = "**A Difficult Day** 🌧️"
+                opener = "*Today was hard.*\n\n"
+            elif any(m in mood_lower for m in joyful_moods):
+                header = "**A Wonderful Day** ☀️"
+                opener = "*What a day!*\n\n"
+            elif any(m in mood_lower for m in peaceful_moods):
+                header = "**Diary Entry** 📝"
+                opener = "*A quiet day to reflect.*\n\n"
+            else:
+                header = "**Diary Entry** 📝"
+                opener = ""
+            
+            formatted = f"{header} — {date_str}, {time_str}\n\n{opener}{result.content.strip()}"
+            return formatted
             
         except Exception as e:
             logger.error(f"Failed to create public diary version: {e}")

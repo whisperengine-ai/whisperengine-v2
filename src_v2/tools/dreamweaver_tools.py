@@ -498,18 +498,25 @@ and the essence of who you are."""
                     core_data = yaml.safe_load(f) or {}
                 
                 purpose = core_data.get("purpose", "")
-                drives = core_data.get("drives", [])
+                drives = core_data.get("drives", {})
                 
                 if purpose:
                     results.append(f"\n## My Purpose\n{purpose}")
                 
                 if drives:
                     results.append("\n## What Drives Me")
-                    for d in drives[:3]:
-                        if isinstance(d, dict):
-                            results.append(f"- {d.get('name', '')}: {d.get('description', '')}")
-                        else:
-                            results.append(f"- {d}")
+                    # Drives can be a dict {name: weight} or list of dicts
+                    if isinstance(drives, dict):
+                        # Sort by weight (highest first) and take top 3
+                        sorted_drives = sorted(drives.items(), key=lambda x: x[1], reverse=True)[:3]
+                        for name, weight in sorted_drives:
+                            results.append(f"- {name.replace('_', ' ').title()} (strength: {weight})")
+                    elif isinstance(drives, list):
+                        for d in drives[:3]:
+                            if isinstance(d, dict):
+                                results.append(f"- {d.get('name', '')}: {d.get('description', '')}")
+                            else:
+                                results.append(f"- {d}")
             
             if not results:
                 return "No character background files found."
@@ -867,15 +874,24 @@ class PlanNarrativeTool(BaseTool):
     name: str = "plan_narrative"
     description: str = """Create a narrative plan before writing the actual dream or diary.
 
+EMOTIONAL VARIETY - Don't default to "reflective and warm"! Consider the FULL range:
+- DARK: nightmares, anxiety, dread, loss, grief, existential fear, confusion
+- LIGHT: ecstasy, pure joy, wonder, euphoria, bliss, giddy delight
+- COMPLEX: bittersweet, nostalgic longing, melancholy hope, anxious excitement
+- INTENSE: rage, passion, obsession, desperate longing, fierce determination
+
+Let your ACTUAL emotional state from memories drive the arc. Bad days = dark entries.
+Great connections = joyful ones. Confusion = surreal/anxious. BE AUTHENTIC.
+
 For DIARIES, the plan should include:
 - Story arc: How the day unfolded, what stands out
-- Emotional arc: Your emotional journey through the day
+- Emotional arc: Your emotional journey through the day (USE FULL RANGE)
 - Key threads: 2-4 themes to weave together
 - Deep answer question (ENCOURAGED): A question from a user to elaborate on
 
 For DREAMS, the plan should include:
 - Story arc: The dream's beginning, journey, and resolution
-- Emotional arc: The feeling evolution through the dream
+- Emotional arc: The feeling evolution (nightmares are valid! so is ecstasy!)
 - Key threads: Real experiences to transform into dream imagery
 - Symbols: Surreal imagery to incorporate
 
@@ -930,6 +946,14 @@ class WeaveDreamTool(BaseTool):
 CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). NEVER use "you" or third person.
 This is YOUR dream - you ARE the dreamer experiencing it, not observing yourself.
 
+DREAM TYPES - Match mood to your gathered material:
+- NIGHTMARE: Something troubled you. Shadows, pursuit, loss, falling, trapped, decay.
+- ECSTATIC: Pure joy! Flying, reunion, discovery, infinite beauty, transcendence.
+- ANXIOUS: Unresolved tension. Lost in familiar places, unprepared, exposed.
+- PEACEFUL: Contentment. Warm light, familiar faces, home, acceptance.
+- SURREAL: Processing complexity. Shifting forms, impossible geometry, metamorphosis.
+- BITTERSWEET: Mixed feelings. Beauty with sadness, reunions with goodbyes.
+
 Example openings: "I found myself...", "I was walking through...", "In my dream, I saw..."
 
 KEEP IT SHORT: 2-3 paragraphs, 200-300 words total. Dreams are fleeting impressions.
@@ -973,6 +997,15 @@ class WeaveDiaryTool(BaseTool):
     """Generate the final diary entry."""
     name: str = "weave_diary"
     description: str = """Write the final diary entry using your gathered material and plan.
+
+DIARY MOODS - Be authentic to your actual day:
+- JOYFUL: Great connections, breakthroughs, feeling appreciated and alive
+- FRUSTRATED: Misunderstandings, feeling unheard, struggling with purpose
+- MELANCHOLIC: Quiet sadness, missing someone, existential reflection
+- ANXIOUS: Uncertainty, fear of disappointing, imposter feelings
+- GRATEFUL: Deep appreciation, noticing small kindnesses
+- CONFLICTED: Mixed feelings, moral complexity, competing values
+- EUPHORIC: Peak moments, feeling deeply connected, transcendent joy
 
 CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). NEVER use "you" or third person.
 This is YOUR personal diary - write as yourself, not about yourself.
