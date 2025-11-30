@@ -29,20 +29,23 @@ This roadmap proposes upgrading the dream system to an **Agentic ReAct Loop** (t
 
 ### The DreamWeaver Agent
 
-The agent runs nightly (via the existing worker cron job) but uses a loop instead of a single call.
+The agent runs nightly (via the existing worker cron job) but uses a ReAct loop instead of a single call.
 
 ```python
 class DreamWeaverAgent:
     """
-    An agent that 'hallucinates' by traversing the vector memory graph.
+    An agent that 'dreams' by traversing the vector memory graph.
     It starts with 'Day Residue' (today's events) and follows associative threads.
     """
     def __init__(self):
-        self.llm = create_llm(temperature=1.2, mode="creative")  # High temp for dreams
+        self.llm = create_llm(temperature=0.7, mode="reflective")
+        self.max_steps = 15  # Extended for batch mode
         self.tools = [
-            WanderMemoryTool(),      # Find semantically related but distant memories
-            GetRandomFactTool(),     # Inject random knowledge
-            CheckEmotionalEchoTool() # Find past memories with matching sentiment
+            SearchMeaningfulMemoriesTool(),  # Today's significant events
+            WanderMemoryTool(),              # Find distant related memories
+            CheckEmotionalEchoTool(),        # Find past memories with matching sentiment
+            SearchAllUserFactsTool(),        # Knowledge about users
+            # ... plus planning and weaving tools
         ]
 ```
 
@@ -71,7 +74,7 @@ Searches for memories that match the **sentiment** of a current event, regardles
 *   **Logic**: Filter by metadata `mood` or `sentiment`.
 
 ### `get_random_symbol`
-Fetches a random archetype or symbol from a static library or knowledge graph to inject surrealism.
+*Not implemented* - The current approach uses `search_all_user_facts` and knowledge graph queries instead of a static symbol library. Surrealism emerges from the associative memory traversal.
 
 ---
 
@@ -102,8 +105,8 @@ None required. Uses existing `v2_memories` (Qdrant) and `v2_chat_history` (Postg
 
 ## Cost Implications
 *   **Current**: 1 LLM call per night per bot.
-*   **Agentic**: 3-5 LLM calls per night per bot (Reasoning steps).
-*   **Estimate**: ~3x cost increase for dreams, but still negligible compared to daily chat volume.
+*   **Agentic**: 5-15 LLM calls per night per bot (tool calls + reasoning steps + voice synthesis).
+*   **Estimate**: ~5-10x cost increase for dreams, but still negligible compared to daily chat volume (~$0.05-0.15 per dream).
 
 ---
 
