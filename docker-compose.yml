@@ -461,6 +461,117 @@ services:
     networks:
       - v2_network
 
+  gabriel:
+    profiles: ["gabriel", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whisperengine-v2-gabriel
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.gabriel
+    environment:
+      - DISCORD_BOT_NAME=gabriel
+      - TZ=America/Los_Angeles
+    ports:
+      - "8009:8009"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - v2_network
+
+  aethys:
+    profiles: ["aethys", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whisperengine-v2-aethys
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.aethys
+    environment:
+      - DISCORD_BOT_NAME=aethys
+      - TZ=America/Los_Angeles
+    ports:
+      - "8010:8010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - v2_network
+
+  aetheris:
+    profiles: ["aetheris", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whisperengine-v2-aetheris
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.aetheris
+    environment:
+      - DISCORD_BOT_NAME=aetheris
+      - TZ=America/Los_Angeles
+    ports:
+      - "8011:8011"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - v2_network
+
   # ========================================
   # API SERVER (Standalone)
   # ========================================
