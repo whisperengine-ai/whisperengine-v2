@@ -43,6 +43,27 @@ Note seeds, temperatures, prompts, and context when documenting behaviors.
 
 ---
 
+## 🏷️ Git Tagging for Research
+
+**Always tag the repo after committing a research log.** This correlates codebase state to observations.
+
+```bash
+# After committing a daily log:
+git tag -a research/YYYY-MM-DD -m "Research log: YYYY-MM-DD"
+git push origin research/YYYY-MM-DD
+
+# For experiments:
+git tag -a research/EXXX-start -m "Experiment EXXX started"
+git tag -a research/EXXX-end -m "Experiment EXXX completed"
+```
+
+**Why this matters:**
+- Dreams/diaries generated before vs after code changes are not comparable
+- Tags let us `git checkout research/2024-11-30` to see exact code state
+- Enables retroactive analysis of "what code produced this behavior?"
+
+---
+
 ## 🔬 Experiment Design
 
 ### Template Structure

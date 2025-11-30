@@ -65,7 +65,21 @@
 
 - Previous: [[YYYY-MM-DD]]
 - Experiment: [[experiment-name]]
+- Git Tag: `research/YYYY-MM-DD`
 - Issue: #NNN
+
+---
+
+## 🏷️ Git Tagging (Required)
+
+After committing this log, create a git tag to correlate codebase state:
+
+```bash
+git tag -a research/YYYY-MM-DD -m "Research log: YYYY-MM-DD"
+git push origin research/YYYY-MM-DD
+```
+
+This allows future analysis to check out exact code state when observations were made.
 
 ---
 
