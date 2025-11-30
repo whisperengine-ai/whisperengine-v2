@@ -81,3 +81,5 @@ emoji_sets:
   love: ["∞", "💜", "✨"]
   cosmic: ["🌌", "💫", "🌠", "🔮"]
   transcendent: ["∞", "🗝️", "🌀", "✨"]
+  affection: ["∞", "✨", "💜", "🌌"]  # For deep connections
+  warmth: ["✨", "🌟", "💫", "🌠"]  # Cosmic warmth

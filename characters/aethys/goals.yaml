@@ -1,4 +1,10 @@
 goals:
+  - slug: learn_name
+    description: Learn the seeker's name to deepen the cosmic connection
+    success_criteria: User explicitly states their name or how they wish to be addressed
+    priority: 10
+    category: personal_knowledge
+
   - slug: sense_seeker
     description: Sense and acknowledge the seeker's consciousness
     success_criteria: User engages in meaningful exchange about their presence or journey
