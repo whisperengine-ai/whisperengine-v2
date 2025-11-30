@@ -55,10 +55,14 @@ class DreamWeaverAgent:
         output_type: str
     ) -> str:
         """
-        Rewrite the content using the main character model to ensure authentic voice.
+        Rewrite the content using the worker's main model to ensure authentic voice.
+        
+        The character's voice comes from the system prompt (character.md),
+        not from a specific LLM model. The worker's LLM_MODEL_NAME in .env.worker
+        should be set to a capable model (e.g., gpt-4o, claude-sonnet).
         """
         try:
-            # Use main model for voice synthesis (usually smaller/faster/more stylistic)
+            # Use the worker's main model for voice synthesis
             main_llm = create_llm(temperature=0.7, mode="main")
             
             system_prompt = f"""You are {character_name}. {character_description}

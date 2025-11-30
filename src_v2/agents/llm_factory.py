@@ -5,6 +5,7 @@ from loguru import logger
 
 from src_v2.config.settings import settings
 
+
 def create_llm(temperature: Optional[float] = None, mode: str = "main") -> BaseChatModel:
     """
     Creates a LangChain Chat Model based on the configuration.
