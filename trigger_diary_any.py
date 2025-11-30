@@ -56,6 +56,10 @@ async def main():
     # Set up environment BEFORE importing modules
     setup_env(bot_name)
     
+    # Now load the bot's env file for other settings (like API keys, LangSmith)
+    from dotenv import load_dotenv
+    load_dotenv(f'.env.{bot_name}', override=False)  # Don't override our localhost URLs
+    
     # Now import after env is set
     from src_v2.core.database import db_manager
     from src_v2.workers.worker import run_agentic_diary_generation
