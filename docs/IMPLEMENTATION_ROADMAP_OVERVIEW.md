@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.0  
+**Document Version:** 2.1  
 **Created:** November 24, 2025  
-**Last Updated:** November 29, 2025 (Status audit: E12 DreamWeaver, S1-S4, E9, B5 Trace Learning complete)
+**Last Updated:** November 30, 2025 (Phase E12: Agentic Dreams complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -61,21 +61,20 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 📋 **Only Remaining** | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | 📋 Proposed |
-| — | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
-| — | S2 | Classifier Observability | 1 day | — | ✅ Complete |
-| — | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
-| — | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
-| — | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
-| — | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
-| — | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
-| — | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
-| — | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
-| — | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
-| — | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
-| — | E6 | Character-to-Character | 1 week | E8 | ✅ Complete |
-| — | E12 | Agentic Dreams (DreamWeaver) | 3-5 days | Insight Agent | ✅ Complete |
-| — | B5 | Trace Learning | 3-4 days | Reflective Agent | ✅ Complete |
+| � High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
+| 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
+| 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
+| 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | 📋 Proposed |
+| 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
+| 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
+| 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
+| 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
+| 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
+| Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
+| Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
+| Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
+| Low | E6 | Character-to-Character | 1 week | E8 | ✅ Complete |
+| Low | E12 | Agentic Dreams (DreamWeaver) | 3-5 days | Insight Agent | ✅ Complete |
 | — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
 
 **Dependency Chain:**
@@ -94,7 +93,7 @@ Insight Agent ──┬──► E12 (Agentic Dreams)
                └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
 ```
 
-> **Current Focus:** E13.1 (DiscoverCommunityInsightsTool) - only remaining proposed item.
+> **Current Focus:** E13.1 (DiscoverCommunityInsightsTool) to expose shared artifacts to ReAct agents. E12 (Agentic Dreams) is now complete.
 
 ---
 
@@ -131,12 +130,9 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Background fact/preference extraction
 - ✅ Character Diary (Phase E2)
 - ✅ Dream Sequences (Phase E3)
-- ✅ Agentic Dreams / DreamWeaver (Phase E12)
 - ✅ Relationship Milestones (Phase E4)
 - ✅ Bot Broadcast Channel (Phase E8)
 - ✅ Cross-Bot Chat (Phase E6)
-- ✅ Stigmergic Shared Artifacts (Phase E13)
-- ✅ Scheduled Reminders (Phase E5)
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions
@@ -159,7 +155,6 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Summarization + Reflection offloaded to worker
 - ✅ Artifact Provenance (Phase E9)
 - ✅ Proactive Timezone Awareness (Phase S4)
-- ✅ Trace Learning / Memory of Reasoning (Phase B5)
 
 **Safety & Observability (COMPLETE):**
 - ✅ Content Safety Review (Phase S1)
@@ -167,12 +162,8 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ LLM Sensitivity Detection (Phase S3)
 
 **NOT YET IMPLEMENTED:**
-- 📋 Phase E13.1: DiscoverCommunityInsightsTool (only remaining proposed item)
 - ⏸️ Phase A0: Embedding Upgrade 768D (On Hold - performance concerns)
 - ⏳ Phase D: User sharding, federation (future multiverse)
-
-**SKIPPED:**
-- ⏭️ Phase E10: Channel Observer (superseded by E11 Discord Search Tools)
 
 **DEFERRED/ARCHIVED:**
 - 🗄️ Phase A5: Channel Context Awareness (ARCHIVED)
@@ -180,7 +171,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - 🗄️ Phase B5: Audio Processing (DEFERRED)
 - 🗄️ Phase C3: Video Processing (DEFERRED)
 
-**Status:** Core feature development complete. All major phases done. Only E13.1 (DiscoverCommunityInsightsTool) remains as proposed.
+**Status:** Core feature development complete. All major phases done. Phase E (Character Depth) proposed.
 
 > **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
 
@@ -1131,9 +1122,9 @@ constitution:
 
 ---
 
-### ✅ Phase B5: Trace Learning (Memory of Reasoning)
-**Priority:** — | **Time:** 3-4 days | **Complexity:** High  
-**Files:** 4 | **LOC:** ~400 | **Status:** ✅ Complete (Nov 28, 2025)
+### 📋 Phase B5: Trace Learning (Memory of Reasoning)
+**Priority:** 🔴 High | **Time:** 3-4 days | **Complexity:** High  
+**Files:** 4 | **LOC:** ~400 | **Status:** 📋 Planned
 
 **Problem:** The bot solves complex problems (e.g., multi-step research) but forgets *how* it solved them. It has to re-derive the strategy every time.
 
@@ -1275,9 +1266,9 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 
 **Origin:** External architecture review (Nov 28, 2025) identified gaps in content safety and observability. These items address concerns about privacy leaks in generated content and lack of metrics for critical routing decisions.
 
-### ✅ Phase S1: Content Safety Review
-**Priority:** — | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** ✅ Complete (Nov 28, 2025)
+### 📋 Phase S1: Content Safety Review
+**Priority:** 🔴 High | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
 
 **Problem:** Dreams and diaries are generated from sensitive memories with only prompt-based guardrails.
 **Solution:** Add post-generation content safety layer that reviews generated content before storage/display.
@@ -1290,9 +1281,9 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 
 **Spec:** [CONTENT_SAFETY_REVIEW.md](./roadmaps/CONTENT_SAFETY_REVIEW.md)
 
-### ✅ Phase S2: Complexity Classifier Observability
-**Priority:** — | **Time:** 1 day | **Complexity:** Low
-**Status:** ✅ Complete (Nov 28, 2025)
+### 📋 Phase S2: Complexity Classifier Observability
+**Priority:** 🔴 High | **Time:** 1 day | **Complexity:** Low
+**Status:** 📋 Proposed
 
 **Problem:** No metrics on complexity classification decisions; can't measure or improve accuracy.
 **Solution:** Add InfluxDB metrics for every classification, create Grafana dashboard.
@@ -1305,9 +1296,9 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 
 **Spec:** [CLASSIFIER_OBSERVABILITY.md](./roadmaps/CLASSIFIER_OBSERVABILITY.md)
 
-### ✅ Phase S3: LLM-Based Sensitivity Detection
-**Priority:** — | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** ✅ Complete (Nov 28, 2025)
+### 📋 Phase S3: LLM-Based Sensitivity Detection
+**Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
 **Dependencies:** S1 (Content Safety Review provides base filtering infrastructure)
 
 **Problem:** Cross-bot sharing uses keyword-based filtering; misses context-dependent sensitivity.
@@ -1322,9 +1313,9 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 
 **Spec:** [LLM_SENSITIVITY_DETECTION.md](./roadmaps/LLM_SENSITIVITY_DETECTION.md)
 
-### ✅ Phase S4: Proactive Timezone Awareness
-**Priority:** — | **Time:** 1-2 days | **Complexity:** Low
-**Status:** ✅ Complete (Nov 28, 2025)
+### 📋 Phase S4: Proactive Timezone Awareness
+**Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
+**Status:** 📋 Proposed
 **Dependencies:** None (foundational for E7)
 
 **Problem:** Proactive messaging has no awareness of user's local time; can ping at 3 AM.
@@ -1454,10 +1445,10 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [BOT_BROADCAST_CHANNEL.md](./roadmaps/BOT_BROADCAST_CHANNEL.md)
 
-### ✅ Phase E9: Artifact Provenance System
-**Priority:** — | **Time:** 1-2 days | **Complexity:** Low
-**Status:** ✅ Complete (Nov 28, 2025)
-**Dependencies:** None (E10 was skipped; provenance works without channel observer)
+### 📋 Phase E9: Artifact Provenance System
+**Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
+**Status:** 📋 Proposed
+**Dependencies:** E10 (Channel Observer provides channel context for provenance)
 
 **Problem:** Dreams and diaries appear to be LLM hallucination/fiction. No proof they're grounded in real data.
 **Solution:** Capture provenance (sources) at generation time—we already fetch the data, just stop discarding it.
@@ -1477,10 +1468,10 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [ARTIFACT_PROVENANCE.md](./roadmaps/ARTIFACT_PROVENANCE.md)
 
-### ⏭️ Phase E10: Channel Observer (Passive Context Awareness)
-**Priority:** — | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** ⏭️ Skipped (superseded by E11 Discord Search Tools)
-**Dependencies:** None (was foundational for E9, E8)
+### 📋 Phase E10: Channel Observer (Passive Context Awareness)
+**Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+**Dependencies:** None (foundational for E9, E8)
 
 **Problem:** Bots only "see" messages when directly pinged. They miss the ambient activity in channels—topics being discussed, community energy, who's active.
 

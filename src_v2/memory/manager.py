@@ -736,15 +736,16 @@ class MemoryManager:
             threshold_iso = threshold.isoformat()
             
             # Get memories (type="memory" or messages with high engagement)
+            # Note: timestamp is stored as ISO string, so we filter by type first
+            # then manually filter by timestamp (Range only works with numeric fields)
             results = await db_manager.qdrant_client.scroll(
                 collection_name=collection,
                 scroll_filter=Filter(
                     must=[
                         FieldCondition(key="type", match=MatchValue(value="memory")),
-                        FieldCondition(key="timestamp", range=Range(gte=threshold_iso))
                     ]
                 ),
-                limit=limit * 5,  # Fetch extra for filtering
+                limit=limit * 10,  # Fetch extra for time-based filtering
                 with_payload=True,
                 with_vectors=False
             )
@@ -779,10 +780,9 @@ class MemoryManager:
                     scroll_filter=Filter(
                         must=[
                             FieldCondition(key="type", match=MatchValue(value="summary")),
-                            FieldCondition(key="timestamp", range=Range(gte=threshold_iso))
                         ]
                     ),
-                    limit=limit * 3,
+                    limit=limit * 5,  # Fetch extra for time-based filtering
                     with_payload=True,
                     with_vectors=False
                 )

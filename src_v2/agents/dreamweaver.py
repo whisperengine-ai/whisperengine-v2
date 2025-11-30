@@ -63,7 +63,8 @@ class DreamWeaverAgent:
         """
         try:
             # Use the worker's main model for voice synthesis
-            main_llm = create_llm(temperature=0.7, mode="main")
+            # temperature=None uses settings.LLM_TEMPERATURE from .env.worker
+            main_llm = create_llm(temperature=None, mode="main")
             
             system_prompt = f"""You are {character_name}. {character_description}
 
