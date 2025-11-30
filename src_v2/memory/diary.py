@@ -392,9 +392,12 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
             collector.add_observation(obs.get("content", "")[:100])
         
         try:
+            # Escape curly braces in character_context to prevent LangChain template interpretation
+            safe_context = character_context.replace("{", "{{").replace("}", "}}")
+            
             result = await self.chain.ainvoke({
                 "character_name": self.bot_name.title(),
-                "character_context": character_context,
+                "character_context": safe_context,
                 "diary_material": material.to_prompt_text(),
                 "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
                 "conversation_count": len(material.summaries)

@@ -336,3 +336,39 @@ def get_insight_tools(user_id: str, character_name: str) -> List[BaseTool]:
         LearnResponsePatternTool(user_id=user_id, character_name=character_name),
         DiscoverCommunityInsightsTool(character_name=character_name),
     ]
+
+
+def get_insight_tools_with_existing(user_id: str, character_name: str) -> List[BaseTool]:
+    """
+    Returns insight tools PLUS reused tools from the main pipeline.
+    
+    This allows the Insight Agent to leverage existing memory_tools that are
+    battle-tested from real-time chat, avoiding code duplication.
+    
+    Args:
+        user_id: User ID for user-specific tools
+        character_name: Bot character name
+    """
+    from src_v2.tools.memory_tools import (
+        LookupFactsTool,
+        ExploreGraphTool,
+        SearchSummariesTool,
+        SearchEpisodesTool,
+        CharacterEvolutionTool,
+    )
+    
+    tools = get_insight_tools(user_id, character_name)
+    
+    # Add reused tools from main pipeline (user-scoped)
+    tools.extend([
+        # Neo4j knowledge queries (reused instead of DetectThemesTool calling directly)
+        LookupFactsTool(user_id=user_id, bot_name=character_name),
+        ExploreGraphTool(user_id=user_id, bot_name=character_name),
+        # Memory search (reused instead of reimplementing)
+        SearchSummariesTool(user_id=user_id),
+        SearchEpisodesTool(user_id=user_id),
+        # Trust/relationship state
+        CharacterEvolutionTool(user_id=user_id, character_name=character_name),
+    ])
+    
+    return tools

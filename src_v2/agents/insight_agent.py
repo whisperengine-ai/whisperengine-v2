@@ -10,11 +10,12 @@ to extract:
 import asyncio
 from typing import List, Optional, Tuple, Dict, Any
 from loguru import logger
+from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage
 from langchain_core.tools import BaseTool
 
 from src_v2.agents.llm_factory import create_llm
-from src_v2.tools.insight_tools import get_insight_tools
+from src_v2.tools.insight_tools import get_insight_tools_with_existing
 from src_v2.config.settings import settings
 
 
@@ -30,6 +31,7 @@ class InsightAgent:
         self.llm = create_llm(temperature=0.3, mode="reflective")
         self.max_steps = 5  # Keep it short - insights should be quick
     
+    @traceable(name="InsightAgent.analyze", run_type="chain")
     async def analyze(
         self,
         user_id: str,
@@ -51,8 +53,8 @@ class InsightAgent:
         """
         logger.info(f"InsightAgent starting analysis for user {user_id} (trigger: {trigger})")
         
-        # 1. Initialize Tools
-        tools = get_insight_tools(user_id, character_name)
+        # 1. Initialize Tools (includes reused tools from memory_tools)
+        tools = get_insight_tools_with_existing(user_id, character_name)
         
         # 2. Construct System Prompt
         system_prompt = self._construct_prompt(character_name, trigger)

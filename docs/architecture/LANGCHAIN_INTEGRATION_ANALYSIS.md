@@ -128,7 +128,7 @@ Custom prompt logging in `AgentEngine._log_prompt()` writes JSON files to `logs/
 # Environment variables (zero code changes)
 export LANGCHAIN_TRACING_V2=true
 export LANGCHAIN_API_KEY=<api-key>
-export LANGCHAIN_PROJECT=whisperengine-v2
+export LANGCHAIN_PROJECT=default
 ```
 
 **Benefits:**
@@ -487,7 +487,7 @@ class FactExtractor:
 # LangSmith Tracing (Optional - for debugging)
 LANGCHAIN_TRACING_V2=false
 LANGCHAIN_API_KEY=
-LANGCHAIN_PROJECT=whisperengine-v2
+LANGCHAIN_PROJECT=default
 ```
 
 **In `main.py` (optional explicit setup):**

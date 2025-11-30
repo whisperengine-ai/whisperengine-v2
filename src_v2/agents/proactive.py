@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from loguru import logger
+from langsmith import traceable
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, BaseMessage
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -21,6 +22,7 @@ class ProactiveAgent:
     def __init__(self) -> None:
         self.llm: BaseChatModel = create_llm(temperature=0.8) # Higher temp for creativity
 
+    @traceable(name="ProactiveAgent.generate_opener", run_type="chain")
     async def generate_opener(
         self, 
         user_id: str, 

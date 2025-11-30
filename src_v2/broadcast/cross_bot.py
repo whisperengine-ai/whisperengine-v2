@@ -67,6 +67,8 @@ class CrossBotMention:
     content: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     chain_id: Optional[str] = None  # ID of the conversation chain
+    is_direct_mention: bool = True  # True if @mention, False if just name-in-text
+    is_direct_reply: bool = False  # True if replying to our message
 
 
 class CrossBotManager:
@@ -80,6 +82,7 @@ class CrossBotManager:
         self._known_bots: Dict[str, int] = {}  # bot_name -> discord_user_id
         self._active_chains: Dict[str, ConversationChain] = {}  # channel_id -> chain
         self._channel_cooldowns: Dict[str, datetime] = {}  # channel_id -> last_interaction_time
+        self._recent_bot_messages: Dict[str, datetime] = {}  # "channel_id:bot_name" -> last_message_time (burst detection)
     
     def set_bot(self, bot: discord.Client) -> None:
         """Set the Discord bot instance."""
@@ -140,15 +143,45 @@ class CrossBotManager:
             logger.warning(f"Failed to load known bots: {e}")
 
     async def start_registration_loop(self) -> None:
-        """Background task to refresh bot registration periodically."""
+        """Background task to refresh bot registration and clean up state."""
         while True:
             try:
                 await self.load_known_bots()
+                self._cleanup_state()
             except Exception as e:
-                logger.error(f"Registration loop error: {e}")
+                logger.error(f"Registration/cleanup loop error: {e}")
             # Refresh every hour
             await asyncio.sleep(3600)
     
+    def _cleanup_state(self) -> None:
+        """Clean up expired state to prevent memory leaks."""
+        try:
+            # Cleanup chains
+            self._cleanup_expired_chains()
+            
+            now = datetime.now(timezone.utc)
+            
+            # Cleanup burst detection cache (older than 5 minutes)
+            expired_bursts = [
+                k for k, t in self._recent_bot_messages.items()
+                if (now - t).total_seconds() > 300
+            ]
+            for k in expired_bursts:
+                del self._recent_bot_messages[k]
+                
+            # Cleanup cooldowns (older than 1 hour)
+            expired_cooldowns = [
+                k for k, t in self._channel_cooldowns.items()
+                if (now - t).total_seconds() > 3600
+            ]
+            for k in expired_cooldowns:
+                del self._channel_cooldowns[k]
+                
+            if expired_bursts or expired_cooldowns:
+                logger.debug(f"Cleaned up cross-bot state: {len(expired_bursts)} bursts, {len(expired_cooldowns)} cooldowns removed")
+        except Exception as e:
+            logger.warning(f"State cleanup failed: {e}")
+
     def is_known_bot(self, user_id: int) -> bool:
         """Check if a Discord user ID belongs to a known bot."""
         return user_id in self._known_bots.values()
@@ -220,26 +253,11 @@ class CrossBotManager:
         if not self.is_known_bot(message.author.id):
             return None
         
-        # Must mention us
-        if self._bot.user not in message.mentions:
-            # Also check for name mentions in content
-            # Use regex to ensure word boundaries to avoid partial matches (e.g. "dreaming" matching "dream")
-            import re
-            our_name = self._bot_name.lower() if self._bot_name else ""
-            if not our_name:
-                return None
-                
-            # Escape name for regex safety
-            escaped_name = re.escape(our_name)
-            # Look for whole word match, case insensitive
-            if not re.search(rf"\b{escaped_name}\b", message.content.lower()):
-                return None
-        
         channel_id = str(message.channel.id)
-        chain = self._get_or_create_chain(channel_id)
         mentioning_bot = self.get_bot_name(message.author.id)
         
-        # Check if this is a direct reply to one of our messages
+        # Check if this is a direct reply to one of our messages FIRST
+        # (needed for burst detection logic)
         is_direct_reply = False
         if message.reference and message.reference.message_id:
             try:
@@ -247,9 +265,30 @@ class CrossBotManager:
                 ref_msg = message.reference.resolved
                 if ref_msg and ref_msg.author.id == self._bot.user.id:
                     is_direct_reply = True
-                    logger.debug(f"Message is a direct reply to our message")
+                    logger.debug("Message is a direct reply to our message")
             except Exception:
                 pass
+        
+        # Must mention us via:
+        # 1. Direct @mention (always triggers), OR
+        # 2. Name in text (triggers but with lower probability - handled by should_respond)
+        has_at_mention = self._bot.user in message.mentions
+        has_name_mention = False
+        
+        if not has_at_mention:
+            # Check for name in text
+            import re
+            our_name = self._bot_name.lower() if self._bot_name else ""
+            if our_name:
+                escaped_name = re.escape(our_name)
+                has_name_mention = bool(re.search(rf"\b{escaped_name}\b", message.content.lower()))
+        
+        # Must have some form of mention
+        if not has_at_mention and not has_name_mention:
+            return None
+        
+        chain = self._get_or_create_chain(channel_id)
+        mentioning_bot = self.get_bot_name(message.author.id)
         
         # Check if we're in an active chain and it's our turn
         in_active_chain = (
@@ -265,6 +304,20 @@ class CrossBotManager:
             if self.is_on_cooldown(channel_id):
                 logger.debug(f"Cross-bot cooldown active for channel {channel_id}")
                 return None
+            
+            # Burst detection: ONLY for unsolicited mentions (not replies/chain responses)
+            # This prevents responding to multi-part messages (like chunked dream journals)
+            if mentioning_bot:
+                burst_key = f"{channel_id}:{mentioning_bot}"
+                last_msg_time = self._recent_bot_messages.get(burst_key)
+                now = datetime.now(timezone.utc)
+                if last_msg_time and (now - last_msg_time).total_seconds() < 30:
+                    # Same bot posted within 30 seconds outside of a conversation chain
+                    # Likely a multi-part message - skip to avoid spam
+                    logger.debug(f"Skipping: burst detection for {mentioning_bot} (within 30s, not in chain)")
+                    self._recent_bot_messages[burst_key] = now
+                    return None
+                self._recent_bot_messages[burst_key] = now
         
         # Check chain limit
         if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
@@ -282,20 +335,33 @@ class CrossBotManager:
             mentioned_bot=self._bot_name or "unknown",
             mentioning_bot=mentioning_bot,
             content=message.content,
-            chain_id=channel_id
+            chain_id=channel_id,
+            is_direct_mention=has_at_mention,
+            is_direct_reply=is_direct_reply
         )
     
     async def should_respond(self, mention: CrossBotMention) -> bool:
         """
         Decide probabilistically whether to respond to a cross-bot mention.
         """
+        # Always respond to direct replies to our messages
+        if mention.is_direct_reply:
+            return True
+        
         # Always respond if chain just started (first bot-to-bot exchange)
         chain = self._active_chains.get(mention.channel_id)
         if chain and chain.message_count == 0:
             return True
         
-        # Probabilistic response based on config
-        return random.random() < settings.CROSS_BOT_RESPONSE_CHANCE
+        # Lower probability for name-in-text mentions (e.g., "Dream Journal")
+        # This reduces spam while still allowing occasional organic responses
+        base_chance = settings.CROSS_BOT_RESPONSE_CHANCE
+        if not mention.is_direct_mention:
+            # 30% of the normal chance for name-in-text mentions
+            base_chance *= 0.3
+            logger.debug(f"Name-in-text mention: reduced probability to {base_chance:.2f}")
+        
+        return random.random() < base_chance
     
     async def record_response(
         self,
@@ -390,7 +456,7 @@ class CrossBotManager:
                 if await self.should_respond(mention):
                     mentions.append(mention)
                 else:
-                    logger.debug(f"Skipping mention (probability check)")
+                    logger.debug("Skipping mention (probability check)")
             
         except Exception as e:
             logger.error(f"Failed to process queued mentions: {e}")

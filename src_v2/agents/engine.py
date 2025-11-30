@@ -8,6 +8,7 @@ import random
 import httpx
 from pathlib import Path
 import aiofiles
+from langsmith import traceable
 
 
 @dataclass
@@ -77,6 +78,7 @@ class AgentEngine:
         
         logger.info("AgentEngine initialized")
 
+    @traceable(name="AgentEngine.generate_response", run_type="chain")
     async def generate_response(
         self, 
         character: Character, 

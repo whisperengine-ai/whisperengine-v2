@@ -179,14 +179,16 @@ DO NOT:
 - Reference real names or identifiable details
 - Explicitly explain symbolism ("this represents...")
 - Make it about only one person or topic
+- Write more than 2-3 paragraphs - dreams are fleeting impressions
 
-Write a dream narrative of 3-5 paragraphs. Make it feel like a short story from a dream journal."""),
+Write a CONCISE dream narrative of 2-3 paragraphs (200-300 words total). 
+Quality over quantity - make every word evocative."""),
             ("human", """Generate a dream based on everything you experienced today:
 
 {dream_material}
 
 ---
-Write a dream narrative that weaves these experiences into a surreal, story-like journey.""")
+Write a SHORT, evocative dream narrative (2-3 paragraphs max) that weaves these experiences into a surreal journey.""")
         ])
         
         self.chain = self.prompt | self.llm
@@ -453,9 +455,13 @@ Create a surreal dream echoing these experiences.""")
             collector.add_observation(obs.get("content", "")[:100])
         
         try:
+            # Escape curly braces in character_context to prevent LangChain template interpretation
+            # Character files contain {user_name}, {current_datetime} which aren't relevant for dreams
+            safe_context = character_context.replace("{", "{{").replace("}", "}}")
+            
             result = await self.chain.ainvoke({
                 "character_name": self.bot_name.title(),
-                "character_context": character_context,
+                "character_context": safe_context,
                 "dream_material": material.to_prompt_text()
             })
             
@@ -572,9 +578,12 @@ Create a surreal dream echoing these experiences.""")
             )
         
         try:
+            # Escape curly braces in character_context to prevent LangChain template interpretation
+            safe_context = character_context.replace("{", "{{").replace("}", "}}")
+            
             result = await self.chain.ainvoke({
                 "character_name": self.bot_name.title() if self.bot_name else "Character",
-                "character_context": character_context,
+                "character_context": safe_context,
                 "user_name": user_name,
                 "memories": memory_text,
                 "days_apart": days_apart

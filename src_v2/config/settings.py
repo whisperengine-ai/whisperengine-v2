@@ -208,6 +208,13 @@ class Settings(BaseSettings):
     # This produces richer, more coherent narratives but uses more LLM tokens.
     ENABLE_AGENTIC_NARRATIVES: bool = False  # Use reflective agent for diary/dream generation
 
+    # --- LangSmith Tracing (Optional) ---
+    # Enable LangSmith for full observability of LLM calls, tool executions, and traces
+    # Sign up at https://smith.langchain.com/ (free tier: 5k traces/month)
+    LANGCHAIN_TRACING_V2: bool = False  # Master switch for LangSmith tracing
+    LANGCHAIN_API_KEY: str = ""  # Your LangSmith API key
+    LANGCHAIN_PROJECT: str = "whisperengine"  # Project name in LangSmith dashboard
+
     # --- Bot Broadcast Channel (Phase E8) ---
     ENABLE_BOT_BROADCAST: bool = False  # Post thoughts/dreams to a public channel
     BOT_BROADCAST_CHANNEL_ID: str = ""  # Discord channel ID for broadcasts (comma-separated for multiple)

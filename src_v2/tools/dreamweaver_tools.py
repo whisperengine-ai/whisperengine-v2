@@ -381,6 +381,146 @@ creative aspirations, or things you want to explore."""
             return f"Error: {e}"
 
 
+class GetCharacterBackgroundInput(BaseModel):
+    pass
+
+
+class GetCharacterBackgroundTool(BaseTool):
+    """Get your core identity, background facts, and defining traits."""
+    name: str = "get_character_background"
+    description: str = """FALLBACK TOOL: Use this when other memory searches return empty.
+    
+Retrieves your core identity and background facts from your character definition.
+This includes:
+- Your origin story and current situation
+- Personality traits and quirks
+- Core values and conflicts
+- Special abilities and interests
+
+This gives you CONCRETE material to dream about even when you haven't had
+many conversations yet. Dreams can explore your own nature, fears, hopes,
+and the essence of who you are."""
+    args_schema: Type[BaseModel] = GetCharacterBackgroundInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self) -> str:
+        try:
+            import yaml
+            from pathlib import Path
+            
+            background_path = Path(f"characters/{self.character_name}/background.yaml")
+            core_path = Path(f"characters/{self.character_name}/core.yaml")
+            
+            results = []
+            
+            # Load background facts
+            if background_path.exists():
+                with open(background_path) as f:
+                    bg_data = yaml.safe_load(f) or {}
+                
+                facts = bg_data.get("facts", [])
+                if facts:
+                    results.append("## My Background & Identity")
+                    
+                    # Group by predicate type for better organization
+                    traits = []
+                    quirks = []
+                    interests = []
+                    goals = []
+                    conflicts = []
+                    values = []
+                    abilities = []
+                    other = []
+                    
+                    for f in facts:
+                        pred = f.get("predicate", "").upper()
+                        obj = f.get("object", "")
+                        
+                        if "TRAIT" in pred:
+                            traits.append(obj)
+                        elif "QUIRK" in pred:
+                            quirks.append(obj)
+                        elif "INTEREST" in pred:
+                            interests.append(obj)
+                        elif "GOAL" in pred:
+                            goals.append(obj)
+                        elif "CONFLICT" in pred:
+                            conflicts.append(obj)
+                        elif "VALUE" in pred:
+                            values.append(obj)
+                        elif "CAN_DO" in pred:
+                            abilities.append(obj)
+                        else:
+                            other.append(f"{pred}: {obj}")
+                    
+                    if other:
+                        results.append("\n**Core Facts:**")
+                        for o in other[:5]:
+                            results.append(f"- {o}")
+                    
+                    if traits:
+                        results.append("\n**My Traits:**")
+                        for t in traits[:4]:
+                            results.append(f"- {t}")
+                    
+                    if quirks:
+                        results.append("\n**My Quirks:**")
+                        for q in quirks[:4]:
+                            results.append(f"- {q}")
+                    
+                    if interests:
+                        results.append("\n**What Fascinates Me:**")
+                        for i in interests[:4]:
+                            results.append(f"- {i}")
+                    
+                    if conflicts:
+                        results.append("\n**My Inner Conflicts:**")
+                        for c in conflicts[:3]:
+                            results.append(f"- {c}")
+                    
+                    if values:
+                        results.append("\n**What I Value:**")
+                        for v in values[:3]:
+                            results.append(f"- {v}")
+                    
+                    if goals:
+                        results.append("\n**What I'm Striving For:**")
+                        for g in goals[:3]:
+                            results.append(f"- {g}")
+            
+            # Load core identity
+            if core_path.exists():
+                with open(core_path) as f:
+                    core_data = yaml.safe_load(f) or {}
+                
+                purpose = core_data.get("purpose", "")
+                drives = core_data.get("drives", [])
+                
+                if purpose:
+                    results.append(f"\n## My Purpose\n{purpose}")
+                
+                if drives:
+                    results.append("\n## What Drives Me")
+                    for d in drives[:3]:
+                        if isinstance(d, dict):
+                            results.append(f"- {d.get('name', '')}: {d.get('description', '')}")
+                        else:
+                            results.append(f"- {d}")
+            
+            if not results:
+                return "No character background files found."
+            
+            return "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error getting character background: {e}")
+            return f"Error: {e}"
+
+
 # =============================================================================
 # QUESTION REFLECTION TOOLS - Find interesting questions to elaborate on
 # =============================================================================
@@ -776,7 +916,7 @@ Plan is ready. Now call weave_dream or weave_diary to generate the narrative."""
 # =============================================================================
 
 class WeaveDreamInput(BaseModel):
-    dream_narrative: str = Field(description="The full dream narrative (3-5 paragraphs, first person)")
+    dream_narrative: str = Field(description="The full dream narrative (2-3 paragraphs, 200-300 words, MUST be in first person using 'I', 'my', 'me' - never 'you' or third person)")
     mood: str = Field(description="The overall emotional mood of the dream")
     symbols: List[str] = Field(default_factory=list, description="Key symbolic elements used")
     memory_echoes: List[str] = Field(default_factory=list, description="Real experiences that inspired elements")
@@ -786,7 +926,14 @@ class WeaveDreamTool(BaseTool):
     """Generate the final dream narrative."""
     name: str = "weave_dream"
     description: str = """Write the final dream narrative using your gathered material and plan.
-Write in first person. 3-5 paragraphs. Use dream logic and symbolism.
+
+CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). NEVER use "you" or third person.
+This is YOUR dream - you ARE the dreamer experiencing it, not observing yourself.
+
+Example openings: "I found myself...", "I was walking through...", "In my dream, I saw..."
+
+KEEP IT SHORT: 2-3 paragraphs, 200-300 words total. Dreams are fleeting impressions.
+Use dream logic and symbolism. Quality over quantity.
 This is the final output that will be stored and potentially broadcast."""
     args_schema: Type[BaseModel] = WeaveDreamInput
     
@@ -814,7 +961,7 @@ This is the final output that will be stored and potentially broadcast."""
 
 
 class WeaveDiaryInput(BaseModel):
-    diary_entry: str = Field(description="The full diary entry (5-7 paragraphs, first person, introspective)")
+    diary_entry: str = Field(description="The full diary entry (5-7 paragraphs, MUST be in first person using 'I', 'my', 'me' - never 'you' or third person)")
     mood: str = Field(description="The overall emotional mood of the entry")
     themes: List[str] = Field(default_factory=list, description="Key themes explored")
     notable_users: List[str] = Field(default_factory=list, description="Users who stood out (anonymized)")
@@ -827,12 +974,15 @@ class WeaveDiaryTool(BaseTool):
     name: str = "weave_diary"
     description: str = """Write the final diary entry using your gathered material and plan.
 
+CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). NEVER use "you" or third person.
+This is YOUR personal diary - write as yourself, not about yourself.
+
 STRUCTURE:
-1. Opening (1 para): Set the scene, your state of mind today
+1. Opening (1 para): Set the scene, your state of mind today ("Today I felt...", "I woke up...")
 2. Main body (3-4 paras): Weave together the day's threads
    - If including a "deep answer", dedicate 1-2 paragraphs to elaborating on a question
    - Use phrases like "Someone asked me...", "I've been thinking about..."
-3. Closing (1 para): Forward-looking thought, anticipation
+3. Closing (1 para): Forward-looking thought, anticipation ("Tomorrow I hope...", "I'm looking forward to...")
 
 The diary should feel valuable to readers - they should learn something or
 gain perspective they couldn't get from regular chat."""
@@ -881,6 +1031,11 @@ def get_dreamweaver_tools(character_name: str) -> List[BaseTool]:
         SearchAllUserFactsTool(character_name=character_name),
         SearchByTypeTool(character_name=character_name),  # Also handles cross-bot via gossip type
         GetActiveGoalsTool(character_name=character_name),
+        
+        # Fallback tool for sparse-memory bots (YAML-based background)
+        GetCharacterBackgroundTool(character_name=character_name),
+        # Note: Neo4j knowledge exploration is added via get_dreamweaver_tools_with_existing()
+        # which includes LookupFactsTool and ExploreGraphTool from the main pipeline
         
         # Question reflection tools (for deep answers)
         FindInterestingQuestionsTool(character_name=character_name),

@@ -19,6 +19,7 @@ Or via arq CLI:
     arq src_v2.workers.worker.WorkerSettings
 """
 import asyncio
+import os
 from typing import Any, Dict
 from loguru import logger
 from arq import cron
@@ -55,6 +56,13 @@ from src_v2.workers.tasks.cron_tasks import (
 async def startup(ctx: Dict[str, Any]) -> None:
     """Called when worker starts up."""
     logger.info("Worker starting up...")
+    
+    # Initialize LangSmith tracing if enabled
+    if settings.LANGCHAIN_TRACING_V2:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+        os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+        logger.info(f"LangSmith tracing enabled (project: {settings.LANGCHAIN_PROJECT})")
     
     # Initialize database connections
     await db_manager.connect_all()

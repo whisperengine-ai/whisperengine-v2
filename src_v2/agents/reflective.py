@@ -3,6 +3,7 @@ import base64
 import httpx
 from typing import List, Optional, Callable, Awaitable, Tuple, Dict, Any
 from loguru import logger
+from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from langchain_core.tools import BaseTool
 
@@ -76,6 +77,7 @@ class ReflectiveAgent:
         
         return sanitized
 
+    @traceable(name="ReflectiveAgent.run", run_type="chain")
     async def run(
         self, 
         user_input: str, 

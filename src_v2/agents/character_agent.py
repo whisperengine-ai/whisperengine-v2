@@ -1,6 +1,7 @@
 import asyncio
 from typing import List, Optional, Callable, Awaitable, Any
 from loguru import logger
+from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from langchain_core.tools import BaseTool
 
@@ -84,6 +85,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         prompt += self.AGENCY_PROMPT_FOOTER
         return prompt
 
+    @traceable(name="CharacterAgent.run", run_type="chain")
     async def run(
         self, 
         user_input: str, 

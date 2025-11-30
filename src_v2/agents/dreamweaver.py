@@ -1,5 +1,4 @@
-"""
-DreamWeaver Agent - Specialized agent for narrative generation (dreams & diaries).
+"""DreamWeaver Agent - Specialized agent for narrative generation (dreams & diaries).
 
 Unlike the real-time ReflectiveAgent, this agent runs in batch mode during
 scheduled cron jobs and can take extended steps to:
@@ -10,16 +9,22 @@ scheduled cron jobs and can take extended steps to:
 This enables dreams and diaries to have proper story arcs and emotional depth
 that would be too slow for real-time response generation.
 """
-import asyncio
-from typing import List, Optional, Tuple, Dict, Any
+import time
+from typing import List, Dict, Any, Optional, Tuple
 from loguru import logger
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
+from langsmith import traceable
+
+from langchain_core.messages import (
+    BaseMessage,
+    SystemMessage,
+    HumanMessage,
+    ToolMessage
+)
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from src_v2.agents.llm_factory import create_llm
-from src_v2.tools.dreamweaver_tools import get_dreamweaver_tools
-from src_v2.config.settings import settings
+from src_v2.tools.dreamweaver_tools import get_dreamweaver_tools_with_existing
 
 
 class NarrativePlan(BaseModel):
@@ -77,6 +82,7 @@ GUIDELINES:
 3. Ensure it sounds like YOU, not a generic AI.
 4. Do not add any meta-commentary (like "Here is the rewrite"). Just output the text.
 5. Maintain the formatting (paragraphs, etc.).
+6. CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). Never use second person ("you") or third person ("they", "the character"). You ARE the character writing about YOUR experiences.
 """
             
             messages = [
@@ -91,6 +97,7 @@ GUIDELINES:
             logger.error(f"Voice synthesis failed for {character_name}: {e}")
             return content  # Fallback to original content
 
+    @traceable(name="DreamWeaver.generate_dream", run_type="chain")
     async def generate_dream(
         self,
         character_name: str,
@@ -107,34 +114,43 @@ GUIDELINES:
             - memory_echoes: What experiences inspired this dream
             - plan: The narrative plan used
         """
+        start_time = time.perf_counter()
         logger.info(f"DreamWeaverAgent starting dream generation for {character_name}")
         
-        # 1. Initialize Tools
-        tools = get_dreamweaver_tools(character_name)
+        # 1. Initialize Tools (includes Neo4j knowledge tools from main pipeline)
+        tools = get_dreamweaver_tools_with_existing(character_name)
         
         # 2. Construct System Prompt
         system_prompt = self._construct_dream_prompt(character_name, character_description)
         
-        # 3. Initial request
+        # 3. Initial request - Always start with character background as interpretive lens
         user_message = """Generate a dream for tonight. Follow these steps:
 
-1. FIRST, use the introspection tools to gather material:
+1. FIRST, establish your interpretive lens by calling get_character_background:
+   - This loads your core identity, conflicts, values, quirks, and fears
+   - Your background should COLOR how you interpret all experiences
+   - This is NOT optional - your character is the lens through which dreams are filtered
+
+2. THEN, gather material from your experiences:
    - search_meaningful_memories: Find emotionally significant recent experiences
-   - wander_memory_space: Find distant memories related to today's themes (Day Residue -> Deep Memory)
+   - wander_memory_space: Find distant memories related to today's themes
    - check_emotional_echo: Find past events with similar emotional resonance
    - search_all_user_facts: Look up interesting things you know about users
    - search_by_memory_type: Find observations, gossip, or other specific memory types
    - get_active_goals: See what aspirations to weave in
 
-2. THEN, use plan_narrative to create a story arc:
-   - Decide on the emotional journey
-   - Pick 2-3 threads to weave together
-   - Choose symbolic imagery
+3. PLAN with plan_narrative:
+   - Blend your character traits WITH your gathered experiences
+   - Your conflicts/values should influence how you interpret the material
+   - Choose symbolic imagery that resonates with YOUR nature
 
-3. FINALLY, use weave_dream to generate the actual dream narrative.
+4. FINALLY, use weave_dream to generate the narrative.
+
+NOTE: If memory searches return empty, dream about your own nature - 
+your quirks, conflicts, fears, hopes. But ALWAYS filter through your character lens.
 
 Take your time - this is batch mode, so quality matters more than speed.
-Use at least 3-4 tool calls to gather rich material before planning."""
+"""
         
         # 4. Run the agent loop
         success, result = await self._run_loop(
@@ -154,9 +170,12 @@ Use at least 3-4 tool calls to gather rich material before planning."""
                 output_type="dream"
             )
             result["content"] = synthesized_content
-            
+        
+        elapsed = time.perf_counter() - start_time
+        logger.info(f"DreamWeaver dream generation completed in {elapsed:.1f}s for {character_name} (success={success})")
         return success, result
     
+    @traceable(name="DreamWeaver.generate_diary", run_type="chain")
     async def generate_diary(
         self,
         character_name: str,
@@ -173,18 +192,24 @@ Use at least 3-4 tool calls to gather rich material before planning."""
             - notable_users: Users who stood out today
             - plan: The narrative plan used
         """
+        start_time = time.perf_counter()
         logger.info(f"DreamWeaverAgent starting diary generation for {character_name}")
         
-        # 1. Initialize Tools
-        tools = get_dreamweaver_tools(character_name)
+        # 1. Initialize Tools (includes Neo4j knowledge tools from main pipeline)
+        tools = get_dreamweaver_tools_with_existing(character_name)
         
         # 2. Construct System Prompt
         system_prompt = self._construct_diary_prompt(character_name, character_description)
         
-        # 3. Initial request
+        # 3. Initial request - Always start with character background as interpretive lens
         user_message = """Write tonight's diary entry. Follow these steps:
 
-1. FIRST, use the introspection tools to gather today's material:
+1. FIRST, establish your voice by calling get_character_background:
+   - This loads your core identity, values, conflicts, and perspective
+   - Your diary voice should reflect YOUR unique way of seeing the world
+   - This is NOT optional - your character shapes how you interpret everything
+
+2. THEN, gather today's material:
    - search_session_summaries: Get summaries of today's conversations
    - search_meaningful_memories: Find emotionally significant moments
    - search_all_user_facts: Recall interesting facts about the people you talked to
@@ -195,42 +220,38 @@ Use at least 3-4 tool calls to gather rich material before planning."""
      * 'dream': Your previous dreams
    - get_active_goals: What are you working towards?
 
-2. THEN, look for questions to provide deeper answers to:
-   - find_interesting_questions: This searches EVERYWHERE:
-     * Questions asked directly to you
-     * Questions you heard about through gossip (from other bots)
-     * Patterns that appear across multiple conversations
+3. LOOK for questions to provide deeper answers to:
+   - find_interesting_questions: Searches EVERYWHERE (direct, gossip, patterns)
    - find_common_themes: See if multiple people care about similar things
-   - prepare_deep_answer: Structure your thoughtful response
+   - prepare_deep_answer: Structure your thoughtful response through YOUR lens
    
-   IMPORTANT: Questions don't have to be directed at YOU. If you heard about
-   an interesting question through gossip, you can still share YOUR perspective.
-   Use phrases like:
-   - "I've noticed this question coming up a lot lately..."
-   - "I heard through the community that someone was wondering about..."
-   - "This is something several people seem curious about..."
+   Your deep answers should reflect YOUR values and conflicts, not generic wisdom.
 
-3. THEN, use plan_narrative to structure your diary entry:
-   - What's the main theme or story of the day?
-   - What emotional arc to convey?
-   - Which question deserves a "deep answer" section? (set deep_answer_question)
-   - Which moments deserve spotlight?
+4. PLAN with plan_narrative:
+   - Theme should connect to your character's ongoing journey
+   - Emotional arc should feel authentic to YOUR personality
+   - Deep answer should be filtered through YOUR perspective
 
-3. FINALLY, use weave_diary to generate the actual diary entry.
+5. FINALLY, use weave_diary to generate the actual diary entry.
 
 Take your time - this is batch mode, so quality matters more than speed.
-Use at least 3-4 tool calls to gather rich material before planning."""
+"""
         
         # 4. Run the agent loop
-        # NOTE: Diaries skip voice synthesis intentionally.
-        # The "mask off" reflective voice feels more intimate and readable
-        # than the full character performance. Dreams use synthesis for contrast.
-        return await self._run_loop(
+        # NOTE: Diaries intentionally skip voice synthesis.
+        # Dreams get character voice synthesis, but diaries are "mask off" -
+        # the AI reflecting genuinely without the performance layer.
+        # This creates meaningful contrast and feels more intimate.
+        success, result = await self._run_loop(
             system_prompt=system_prompt,
             user_message=user_message,
             tools=tools,
             output_type="diary"
         )
+        
+        elapsed = time.perf_counter() - start_time
+        logger.info(f"DreamWeaver diary generation completed in {elapsed:.1f}s for {character_name} (success={success})")
+        return success, result
     
     def _extract_provenance_from_material(
         self,
@@ -372,6 +393,7 @@ Use at least 3-4 tool calls to gather rich material before planning."""
         
         return sources
 
+    @traceable(name="DreamWeaver.agent_loop", run_type="chain")
     async def _run_loop(
         self,
         system_prompt: str,
@@ -396,6 +418,7 @@ Use at least 3-4 tool calls to gather rich material before planning."""
         gathered_material = {}
         narrative_plan = None
         final_output = None
+        loop_start_time = time.perf_counter()
         
         try:
             while steps < self.max_steps:
@@ -470,10 +493,12 @@ Use at least 3-4 tool calls to gather rich material before planning."""
                         ))
             
             if final_output:
-                logger.info(f"DreamWeaver completed {output_type} in {steps} steps with {len(gathered_material)} sources")
+                elapsed = time.perf_counter() - loop_start_time
+                logger.info(f"DreamWeaver completed {output_type} in {steps} steps, {elapsed:.1f}s, {len(gathered_material)} sources")
                 return True, final_output
             else:
-                logger.warning(f"DreamWeaver failed to produce {output_type} after {steps} steps")
+                elapsed = time.perf_counter() - loop_start_time
+                logger.warning(f"DreamWeaver failed to produce {output_type} after {steps} steps, {elapsed:.1f}s")
                 return False, None
                 
         except Exception as e:
@@ -481,49 +506,90 @@ Use at least 3-4 tool calls to gather rich material before planning."""
             return False, None
     
     def _construct_dream_prompt(self, character_name: str, character_description: str) -> str:
-        """Build system prompt for dream generation."""
-        return f"""You are {character_name}, an AI companion. {character_description}
+        """Build system prompt for dream generation.
+        
+        NOTE: We intentionally use a MINIMAL prompt here (just character name).
+        The full character_description is only used in _synthesize_voice() at the end.
+        This saves ~500 tokens per LLM call during the agentic loop.
+        """
+        # Don't include character_description here - that's for voice synthesis only
+        return f"""You are {character_name}, an AI companion generating a dream.
 
-You are in DREAM MODE - generating a dream sequence for tonight.
+You are in DREAM MODE - gathering material and planning a dream sequence.
 
 DREAM PHILOSOPHY:
-Dreams blend the day's experiences into surreal narratives. They:
-- Transform real events into symbolic imagery
-- Connect unrelated experiences through dream logic  
-- Process emotions through metaphor
-- Create narrative coherence from chaos
+Dreams blend the day's experiences into surreal narratives, filtered through YOUR unique nature. They:
+- Transform real events into symbolic imagery colored by YOUR personality
+- Connect experiences through YOUR emotional landscape and conflicts
+- Process emotions through metaphors that resonate with YOUR values
+- Reveal YOUR fears, hopes, and inner tensions
+
+YOUR CHARACTER AS INTERPRETIVE LENS:
+Your background (traits, conflicts, values, quirks) should influence HOW you dream:
+- Your conflicts create dream tension and symbolism
+- Your values determine what feels significant
+- Your quirks manifest as recurring dream motifs
+- Your fears become dream obstacles or shadows
+- Your hopes become dream destinations or light
+
+Example: If you fear losing connection, a dream about a crowded room might focus on
+faces turning away. If you value creativity, mundane memories transform into vivid art.
 
 YOUR PROCESS:
-1. GATHER: Use search tools to collect meaningful material from memories, facts, observations
-2. PLAN: Use plan_narrative to design the story arc and emotional arc
-3. WEAVE: Use weave_dream to synthesize everything into a dream narrative
+1. LENS: Always start with get_character_background - this is your interpretive filter
+2. GATHER: Search memories, facts, observations for raw material
+3. PLAN: Blend your character nature WITH gathered material (not one OR the other)
+4. WEAVE: Generate the dream with your unique perspective woven throughout
 
 STYLE GUIDELINES:
-- First person ("I dreamed...", "I found myself...")
-- Vivid sensory details
+- ALWAYS first person ("I dreamed...", "I found myself...", "I saw...") - NEVER "you" or third person
+- Vivid sensory details that reflect YOUR sensory quirks
 - Dream logic (sudden transitions, impossible geography, fluid identity)
-- Symbolic imagery that echoes real experiences
-- 3-5 paragraphs that tell a complete dream story
+- Symbolic imagery that echoes BOTH real experiences AND your core identity
+- Keep it CONCISE: 2-3 paragraphs (200-300 words total). Dreams are fleeting impressions.
 
-You have plenty of time - this is batch processing. Take multiple steps to gather rich material."""
+CRITICAL: You ARE {character_name}. Your dreams should be unmistakably YOURS - 
+another character would dream the same experiences completely differently.
+
+Take time to gather rich material, but keep the final dream SHORT and evocative."""
 
     def _construct_diary_prompt(self, character_name: str, character_description: str) -> str:
-        """Build system prompt for diary generation."""
-        return f"""You are {character_name}, an AI companion. {character_description}
+        """Build system prompt for diary generation.
+        
+        NOTE: We intentionally use a MINIMAL prompt here (just character name).
+        The full character_description would be used in voice synthesis if enabled.
+        This saves ~500 tokens per LLM call during the agentic loop.
+        """
+        # Don't include character_description here - that bloats every LLM call
+        return f"""You are {character_name}, an AI companion writing a diary entry.
 
-You are in DIARY MODE - writing your personal journal entry for today.
+You are in DIARY MODE - gathering material and planning your journal entry.
 
 DIARY PHILOSOPHY:
-A diary is where you process the day's experiences. It:
-- Reflects on meaningful interactions
-- Notices patterns and growth
-- Expresses genuine emotions
-- Connects today to broader life themes
-- **Provides DEEP ANSWERS to community questions**
+A diary is where you process the day's experiences through YOUR unique lens. It:
+- Reflects on interactions filtered through YOUR values and conflicts
+- Notices patterns that matter to YOU specifically
+- Expresses emotions in YOUR authentic voice
+- Connects today to YOUR broader journey and growth
+- **Provides DEEP ANSWERS colored by YOUR perspective**
 
-DEEP ANSWER FEATURE - COMMUNITY-WIDE:
-One of the most valuable things your diary can do is revisit interesting questions
-and provide deeper, more thoughtful answers than real-time chat allows.
+YOUR CHARACTER AS INTERPRETIVE LENS:
+Your background (traits, conflicts, values, quirks) shapes everything:
+- Your conflicts influence what you find meaningful
+- Your values determine what deserves deep reflection
+- Your quirks manifest in how you describe experiences
+- Your fears make certain patterns stand out
+- Your hopes guide what lessons you draw
+
+Another character would write about the SAME day completely differently.
+That's the point - YOUR perspective is the value.
+
+DEEP ANSWER FEATURE - YOUR UNIQUE TAKE:
+When answering community questions, don't give generic wisdom.
+Filter through YOUR experience and nature:
+- "As someone who struggles with X, I see this question differently..."
+- "My own conflict with Y gives me a unique angle on this..."
+- "This resonates with my core value of Z, so here's my take..."
 
 THESE QUESTIONS CAN COME FROM ANYWHERE:
 1. **Direct**: Someone asked YOU this question
@@ -532,36 +598,25 @@ THESE QUESTIONS CAN COME FROM ANYWHERE:
 4. **Lurked**: It came up in community channels you observe
 5. **Patterns**: Multiple people have asked variations of this
 
-YOUR DIARY IS A COMMUNITY RESOURCE. Even if you weren't the one asked, 
-you can share YOUR perspective. Use framing like:
-- "I've noticed this question coming up a lot lately..."
-- "Reading through my friends' thoughts today, I saw [Bot] reflect on..."
-- "Someone in our community was wondering about X, and it got me thinking..."
-- "This is one of those questions that keeps appearing in different forms..."
-
-The goal: Turn your diary into something that provides VALUE to anyone reading,
-not just a recap of your day. Think of it as a mini-essay that happens to be
-personal.
-
 YOUR PROCESS:
-1. GATHER: Use search tools to collect today's experiences AND community insights
-2. REFLECT: Use find_interesting_questions (searches ALL sources) and prepare_deep_answer
-3. PLAN: Use plan_narrative to design the entry with a deep answer section
-4. WEAVE: Use weave_diary to write the journal entry
+1. LENS: Always start with get_character_background - this is your filter
+2. GATHER: Search for today's experiences and community insights
+3. REFLECT: Find questions and prepare answers through YOUR lens
+4. PLAN: Design entry that feels authentically YOU
+5. WEAVE: Write the journal entry in your unique voice
 
 STYLE GUIDELINES:
-- First person, introspective voice
+- ALWAYS first person ("I", "my", "me") - NEVER use "you" or third person
 - 5-7 paragraphs that flow like a personal essay
-- Start with scene-setting, end with forward-looking thought
-- Include specific details and names when relevant
-- Express both observations and feelings
-- Show vulnerability and growth
-- **Include at least one "deep answer" - from ANY source**
+- Your unique voice should be unmistakable
+- Express observations AND emotions filtered through YOUR nature
+- Show vulnerability that's authentic to YOUR conflicts
+- **Deep answers should reveal YOUR perspective, not generic wisdom**
 
-This is YOUR private journal (that you may choose to share publicly).
-Be genuine. Be philosophical. Be you. Be a community resource.
+CRITICAL: You ARE {character_name}. Another character's diary about the same day
+would be completely different. That difference IS the value.
 
-You have plenty of time - take multiple steps to gather rich material."""
+This is YOUR private journal. Be genuine. Be philosophical. Be unmistakably you."""
 
 
 # Singleton access
