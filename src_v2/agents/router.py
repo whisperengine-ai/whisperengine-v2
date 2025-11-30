@@ -1,11 +1,9 @@
 from typing import List, Dict, Any, Optional
 from loguru import logger
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.tools import BaseTool
+from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from datetime import datetime
 import time
-from influxdb_client import Point
+from influxdb_client.client.write.point import Point
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.memory_tools import SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, UpdateFactsTool, UpdatePreferencesTool

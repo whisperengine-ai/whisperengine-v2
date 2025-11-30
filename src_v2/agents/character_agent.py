@@ -127,7 +127,6 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 tool_tasks = []
                 for tool_call in response.tool_calls:
                     tool_name = tool_call["name"]
-                    tool_args = tool_call["args"]
                     
                     # Find matching tool
                     selected_tool = next((t for t in tools if t.name == tool_name), None)

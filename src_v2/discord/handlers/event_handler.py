@@ -5,7 +5,6 @@ from typing import Any, Optional
 from src_v2.config.settings import settings
 from src_v2.core.character import character_manager
 from src_v2.evolution.trust import trust_manager
-from src_v2.memory.manager import memory_manager
 
 class EventHandler:
     def __init__(self, bot):
@@ -83,9 +82,6 @@ class EventHandler:
                 logger.info(f"Discovered planet: {guild.name}")
         except Exception as e:
             logger.error(f"Failed to register planets during startup: {e}")
-
-        # Check permissions
-        await self._check_permissions()
 
     async def _check_permissions(self) -> None:
         """Checks if the bot has necessary permissions in connected guilds."""

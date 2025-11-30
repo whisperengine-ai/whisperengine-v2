@@ -1047,15 +1047,12 @@ Recent channel context:
 """
                 
                 # Generate response using the engine
-                # AgentEngine is already imported globally
-                from src_v2.agents.engine import AgentEngine
-                engine = AgentEngine()
-                
                 # Use bot's Discord ID as the "user_id" for memory storage
                 # Treat other bots the same as regular users - just use their numeric ID
                 cross_bot_user_id = str(message.author.id)
-                
-                response = await engine.generate_response(
+
+                # Use the bot's existing agent engine instance
+                response = await self.bot.agent_engine.generate_response(
                     character=character,
                     user_message=f"[{other_bot_name.title()} said:] {message.content}",
                     context_variables={
