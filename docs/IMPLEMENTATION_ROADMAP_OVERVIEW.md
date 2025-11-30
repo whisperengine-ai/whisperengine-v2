@@ -65,6 +65,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
 | 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
 | 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | ✅ Complete |
+| 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | 📋 **Next Up** |
 | 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 In Progress |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
@@ -93,6 +94,13 @@ S4 (Timezone) ──► E7 (User Timezone)
 
 Insight Agent ──┬──► E12 (Agentic Dreams)
                └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
+
+E12 (Agentic Dreams) ──► E16 (Feedback Loop Stability)
+                              │
+                              ├──► Temporal Decay Scoring
+                              ├──► Source Type Weights
+                              ├──► Narrative Source Metrics
+                              └──► Drift Observation
 
 E6 (Cross-Bot Chat) ──► E15 (Autonomous Server Activity)
                               │
@@ -1593,4 +1601,53 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - `characters/{name}/background.yaml` - Posting preferences
 
 **Spec:** [AUTONOMOUS_SERVER_ACTIVITY.md](./roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md)
+
+---
+
+### 📋 Phase E16: Feedback Loop Stability (Emergence Guardrails)
+**Priority:** 🟢 High | **Time:** 1 day | **Complexity:** Low-Medium
+**Status:** 📋 Proposed
+**Dependencies:** E12 (Agentic Dreams)
+**Added:** December 2024
+
+**Problem:** Agentic systems (DreamWeaver, InsightAgent, SharedArtifacts) create feedback loops where AI-generated content influences future AI output. Without visibility, we can't distinguish healthy emergence from runaway loops.
+
+**Solution:** Minimal instrumentation to observe narrative source distribution without constraining emergent behavior.
+
+**Philosophy:** Observe first, constrain later. These guardrails enable visibility into feedback dynamics without blocking creative emergence. Constraints only activate if runaway loops are detected.
+
+**Key Features:**
+
+| Feature | Description | Est. Time |
+|---------|-------------|-----------|
+| **Temporal Decay Scoring** | Freshness weight: `e^(-Δt/τ)` with τ=24h | 2-3 hours |
+| **Source Type Weights** | Configurable weights: human_direct=1.0, dream=0.7, inference=0.5 | 1-2 hours |
+| **Narrative Source Metrics** | Track AI-generated vs human-derived content ratios | 1-2 hours |
+| **Emergence Dashboard** | InfluxDB queries + optional Grafana viz | Built-in |
+
+**What We're Observing:**
+- Human vs AI content balance in context windows
+- Source freshness distribution
+- Dream → memory → dream cycle frequencies
+- Cross-bot content propagation patterns
+
+**Escalation Framework (Not Implemented Yet):**
+```
+Level 0 (Now):      Observe only - log metrics, no constraints
+Level 1 (Trigger):  AI ratio > 85% sustained → alert
+Level 2 (Trigger):  AI ratio > 95% sustained → soft caps
+Level 3 (Trigger):  Drift detected → dynamic source weights
+```
+
+**Files:**
+- `src_v2/memory/manager.py` - Add temporal decay to scoring
+- `src_v2/memory/models.py` - Add `source_type` to Memory schema
+- `src_v2/agents/dreamweaver.py` - Tag dream-derived content
+- `src_v2/evolution/feedback.py` - Add narrative metrics to InfluxDB
+
+**Observation Period:** 30 days post-implementation before evaluating constraint needs.
+
+**Background:** This phase emerged from a Claude-to-Claude architecture review. See `/docs/emergence_philosophy/` for the full collaboration.
+
+**Spec:** [FEEDBACK_LOOP_STABILITY.md](./roadmaps/FEEDBACK_LOOP_STABILITY.md)
 
