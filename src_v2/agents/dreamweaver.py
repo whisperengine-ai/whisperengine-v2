@@ -206,16 +206,8 @@ Take your time - this is batch mode, so quality matters more than speed.
             output_type="dream"
         )
         
-        # 5. Voice Synthesis (Rewrite with main model)
-        if success and result and "content" in result:
-            logger.info(f"Synthesizing dream voice for {character_name}...")
-            synthesized_content = await self._synthesize_voice(
-                content=result["content"],
-                character_name=character_name,
-                character_description=character_description,
-                output_type="dream"
-            )
-            result["content"] = synthesized_content
+        # No voice synthesis needed - character prompt is in the loop throughout,
+        # so the dream is already in authentic character voice
         
         elapsed = time.perf_counter() - start_time
         logger.info(f"DreamWeaver dream generation completed in {elapsed:.1f}s for {character_name} (success={success})")
@@ -563,19 +555,21 @@ Take your time - this is batch mode, so quality matters more than speed.
             logger.error(f"DreamWeaver failed for {output_type}: {e}")
             return False, None
     
-    def _construct_dream_prompt(self, character_name: str, _character_description: str) -> str:
+    def _construct_dream_prompt(self, character_name: str, character_description: str) -> str:
         """Build system prompt for dream generation.
         
-        NOTE: We intentionally use a MINIMAL prompt here (just character name).
-        The full character_description is only used in _synthesize_voice() at the end.
-        This saves ~500 tokens per LLM call during the agentic loop.
+        The full character_description is included so the character's voice
+        and perspective influence the ENTIRE agentic loop - from tool selection
+        to planning to final weaving. This produces more authentic dreams.
         
         Args:
             character_name: The character's name
-            _character_description: Unused here (prefixed with _ to silence linter).
-                                   Only used in voice synthesis pass.
+            character_description: Full character.md content (system prompt)
         """
         return f"""You are {character_name}, an AI companion generating a dream.
+
+YOUR CHARACTER:
+{character_description}
 
 You are in DREAM MODE - gathering material and planning a dream sequence.
 
@@ -619,8 +613,8 @@ Take time to gather rich material, but keep the final dream SHORT and evocative.
         """Build system prompt for diary generation.
         
         NOTE: We intentionally use a MINIMAL prompt here (just character name).
-        The full character_description would be used in voice synthesis if enabled.
-        This saves ~500 tokens per LLM call during the agentic loop.
+        This is "mask off" mode - the AI reflects genuinely without the full
+        character voice layer. Still 1st person, but less performative.
         
         Args:
             character_name: The character's name
