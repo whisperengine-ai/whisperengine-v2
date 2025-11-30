@@ -176,7 +176,6 @@ async def run_agentic_diary_generation(
         from src_v2.agents.dreamweaver import get_dreamweaver_agent
         from src_v2.memory.diary import get_diary_manager, DiaryEntry
         from src_v2.core.behavior import load_behavior_profile
-        from src_v2.core.provenance import ProvenanceCollector, SourceType
         
         diary_manager = get_diary_manager(character_name)
         
@@ -233,23 +232,9 @@ async def run_agentic_diary_generation(
             if len(parts) >= 2:
                 diary_entry_text = parts[1].strip()
         
-        # Build provenance
-        provenance = ProvenanceCollector(artifact_type="diary", character_name=character_name)
-        # Note: material_sources from agent is a list of strings, not structured objects
-        # We'll add them as generic conversation/memory items for now
-        for source in result.get("material_sources", []):
-            # Source string format is usually "Type: Description"
-            if ":" in source:
-                sType, sDesc = source.split(":", 1)
-                sDesc = sDesc.strip()
-                if "memory" in sType.lower():
-                    provenance.add_memory(who="User", topic=sDesc, when="recently")
-                elif "fact" in sType.lower():
-                    provenance.add_knowledge(who="User", fact=sDesc)
-                else:
-                    provenance.add_conversation(who="User", topic=sDesc, where="chat", when="recently")
-            else:
-                provenance.add_conversation(who="User", topic=source, where="chat", when="recently")
+        # Get provenance directly from agent (now returns rich dicts)
+        # material_sources is now List[Dict] with type, description, who, when, etc.
+        provenance_data = result.get("material_sources", [])
         
         # Create DiaryEntry from agent output
         entry = DiaryEntry(
@@ -261,7 +246,7 @@ async def run_agentic_diary_generation(
         )
         
         # Save to Qdrant
-        point_id = await diary_manager.save_diary_entry(entry, provenance=provenance.get_provenance_data())
+        point_id = await diary_manager.save_diary_entry(entry, provenance=provenance_data)
         
         # Queue for broadcast
         broadcast_queued = False
@@ -274,7 +259,7 @@ async def run_agentic_diary_generation(
                     broadcast_queued = await broadcast_manager.queue_diary(
                         public_version,
                         character_name,
-                        provenance.get_provenance_data()
+                        provenance_data
                     )
             except Exception as e:
                 logger.warning(f"Failed to queue diary broadcast: {e}")

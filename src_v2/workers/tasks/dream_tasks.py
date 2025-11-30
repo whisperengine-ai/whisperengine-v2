@@ -201,7 +201,6 @@ async def run_agentic_dream_generation(
         from src_v2.agents.dreamweaver import get_dreamweaver_agent
         from src_v2.memory.dreams import get_dream_manager, DreamContent
         from src_v2.core.behavior import load_behavior_profile
-        from src_v2.core.provenance import ProvenanceCollector
         from src_v2.safety.content_review import content_safety_checker
         from datetime import datetime, timezone
         
@@ -272,21 +271,9 @@ async def run_agentic_dream_generation(
             if len(parts) >= 2:
                 dream_narrative = parts[1].strip()
         
-        # Build provenance
-        provenance = ProvenanceCollector(artifact_type="dream", character_name=character_name)
-        # Note: material_sources from agent is a list of strings
-        for source in result.get("material_sources", []):
-            if ":" in source:
-                sType, sDesc = source.split(":", 1)
-                sDesc = sDesc.strip()
-                if "memory" in sType.lower():
-                    provenance.add_memory(who="User", topic=sDesc, when="recently")
-                elif "fact" in sType.lower():
-                    provenance.add_knowledge(who="User", fact=sDesc)
-                else:
-                    provenance.add_conversation(who="User", topic=sDesc, where="chat", when="recently")
-            else:
-                provenance.add_conversation(who="User", topic=source, where="chat", when="recently")
+        # Get provenance directly from agent (now returns rich dicts)
+        # material_sources is now List[Dict] with type, description, who, when, etc.
+        provenance_data = result.get("material_sources", [])
         
         # Create DreamContent from agent output
         dream = DreamContent(
@@ -300,7 +287,7 @@ async def run_agentic_dream_generation(
         point_id = await dream_manager.save_dream(
             dream=dream,
             user_id="__character__",
-            provenance=provenance.get_provenance_data()
+            provenance=provenance_data
         )
         
         # Queue for broadcast
@@ -322,7 +309,7 @@ async def run_agentic_dream_generation(
                             content=public_dream,
                             post_type=PostType.DREAM,
                             character_name=character_name,
-                            provenance=provenance.get_provenance_data()
+                            provenance=provenance_data
                         )
             except Exception as e:
                 logger.warning(f"Failed to queue dream broadcast: {e}")

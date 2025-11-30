@@ -207,6 +207,10 @@ class Settings(BaseSettings):
     BOT_BROADCAST_MIN_INTERVAL_MINUTES: int = 60  # Minimum time between posts
     BOT_BROADCAST_DREAMS: bool = True  # Share dreams to broadcast channel
     BOT_BROADCAST_DIARIES: bool = True  # Share diary summaries to broadcast channel
+    
+    # --- Artifact Provenance Display (Phase E9) ---
+    PROVENANCE_DISPLAY_ENABLED: bool = True  # Show "grounded in" footer on broadcasts
+    PROVENANCE_MAX_SOURCES: int = 3  # Max sources to display in footer (brevity)
 
     @property
     def bot_broadcast_channel_ids_list(self) -> list[str]:

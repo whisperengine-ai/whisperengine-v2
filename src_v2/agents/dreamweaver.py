@@ -227,6 +227,114 @@ Use at least 3-4 tool calls to gather rich material before planning."""
             output_type="diary"
         )
     
+    def _extract_provenance_from_material(
+        self,
+        gathered_material: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract rich provenance data from gathered material.
+        
+        Parses the tool outputs to create meaningful source descriptions
+        instead of just using tool names.
+        """
+        sources = []
+        
+        for tool_name, data in gathered_material.items():
+            # Handle both old string format and new dict format
+            if isinstance(data, dict):
+                observation = data.get("observation", "")
+                tool_args = data.get("args", {})
+            else:
+                observation = data
+                tool_args = {}
+            
+            if not observation or observation.startswith("Error") or observation.startswith("No "):
+                continue
+            
+            # Extract meaningful snippets from each tool's output
+            if tool_name == "search_meaningful_memories":
+                # Parse memories - format: "- [0.85] (user: User_1234, emotions: happy)\n  content"
+                for line in observation.split("\n"):
+                    if line.startswith("- ["):
+                        # Extract user and emotions
+                        if "(user:" in line and "emotions:" in line:
+                            try:
+                                user_part = line.split("user:")[1].split(",")[0].strip()
+                                emotions_part = line.split("emotions:")[1].split(")")[0].strip()
+                                sources.append({
+                                    "type": "memory",
+                                    "description": f"Meaningful moment with {user_part}",
+                                    "who": user_part,
+                                    "topic": emotions_part,
+                                    "when": "recently"
+                                })
+                            except (IndexError, ValueError):
+                                pass
+                        if len(sources) >= 2:  # Limit per tool
+                            break
+                            
+            elif tool_name == "search_session_summaries":
+                # Parse summaries - format: "- Session with User_1234:\n  content"
+                for line in observation.split("\n"):
+                    if line.startswith("- Session with"):
+                        try:
+                            user = line.split("with")[1].split(":")[0].strip()
+                            sources.append({
+                                "type": "conversation",
+                                "description": f"Conversation with {user}",
+                                "who": user,
+                                "when": "today"
+                            })
+                        except (IndexError, ValueError):
+                            pass
+                        if len(sources) >= 2:
+                            break
+                            
+            elif tool_name == "search_all_user_facts":
+                # Parse facts - format: "- subject predicate object"
+                for line in observation.split("\n"):
+                    if line.startswith("- ") and " " in line[2:]:
+                        fact_text = line[2:].strip()
+                        if len(fact_text) < 100:  # Only short facts
+                            sources.append({
+                                "type": "knowledge",
+                                "description": f"Knowing that {fact_text}",
+                                "topic": fact_text
+                            })
+                        if len(sources) >= 3:
+                            break
+                            
+            elif tool_name == "search_by_memory_type":
+                # Could be observations, gossip, etc.
+                memory_type = tool_args.get("memory_type", "").lower()
+                if "gossip" in memory_type:
+                    sources.append({
+                        "type": "other_bot",
+                        "description": "Thoughts shared by other bots",
+                        "when": "recently"
+                    })
+                elif "observation" in memory_type:
+                    sources.append({
+                        "type": "observation",
+                        "description": "Things I've noticed lately",
+                        "when": "recently"
+                    })
+                    
+            elif tool_name == "get_active_goals":
+                sources.append({
+                    "type": "knowledge",
+                    "description": "My own goals and aspirations"
+                })
+                
+            elif tool_name == "find_interesting_questions":
+                sources.append({
+                    "type": "conversation",
+                    "description": "Interesting questions from the community",
+                    "when": "recently"
+                })
+        
+        return sources
+
     async def _run_loop(
         self,
         system_prompt: str,
@@ -281,17 +389,23 @@ Use at least 3-4 tool calls to gather rich material before planning."""
                             try:
                                 observation = await selected_tool.ainvoke(tool_args)
                                 
-                                # Track what we gathered
-                                if tool_name.startswith("search_"):
-                                    gathered_material[tool_name] = observation
+                                # Track what we gathered (with args for context)
+                                if tool_name.startswith("search_") or tool_name.startswith("get_") or tool_name.startswith("find_"):
+                                    gathered_material[tool_name] = {
+                                        "observation": observation,
+                                        "args": tool_args
+                                    }
                                 elif tool_name == "plan_narrative":
                                     narrative_plan = tool_args
                                 elif tool_name in ["weave_dream", "weave_diary"]:
+                                    # Extract rich provenance from gathered material
+                                    provenance_sources = self._extract_provenance_from_material(gathered_material)
+                                    
                                     # This is the final output
                                     final_output = {
                                         "content": observation,
                                         "plan": narrative_plan,
-                                        "material_sources": list(gathered_material.keys()),
+                                        "material_sources": provenance_sources,  # Now rich dicts, not just tool names
                                         **tool_args
                                     }
                                     

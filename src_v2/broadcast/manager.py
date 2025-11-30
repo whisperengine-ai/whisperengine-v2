@@ -116,6 +116,9 @@ POST_PREFIXES = {
     PostType.REACTION: "↩️",
 }
 
+# Provenance footer divider (box drawings light quadruple dash)
+PROVENANCE_DIVIDER = "\n┈┈ grounded in ┈┈"
+
 
 @dataclass
 class BroadcastPost:
@@ -191,8 +194,8 @@ class BroadcastManager:
             logger.warning(f"Safety review failed, blocking broadcast: {e}")
             return []
         
-        # Format message
-        formatted = self._format_broadcast(content, post_type, character_name)
+        # Format message with provenance footer
+        formatted = self._format_broadcast(content, post_type, character_name, provenance)
         
         sent_messages = []
         
@@ -260,15 +263,95 @@ class BroadcastManager:
         min_interval = timedelta(minutes=settings.BOT_BROADCAST_MIN_INTERVAL_MINUTES)
         return datetime.now(timezone.utc) - last_post >= min_interval
     
-    def _format_broadcast(self, content: str, post_type: PostType, character_name: str) -> str:
-        """Format the broadcast message with appropriate prefix."""
+    def _format_provenance_footer(
+        self,
+        provenance: Optional[List[Dict[str, Any]]]
+    ) -> str:
+        """
+        Format provenance sources as a "grounded in" footer.
+        
+        Args:
+            provenance: List of source dictionaries with 'type' and 'description'
+            
+        Returns:
+            Formatted footer string, or empty string if no provenance
+        """
+        if not provenance or not settings.PROVENANCE_DISPLAY_ENABLED:
+            return ""
+        
+        # Emoji mapping for source types
+        source_emojis = {
+            "conversation": "💬",
+            "memory": "💭",
+            "knowledge": "🔗",
+            "channel": "🌐",
+            "other_bot": "🤖",
+            "community": "🌟",
+            "observation": "👁️",
+        }
+        
+        # Limit sources to avoid clutter
+        sources_to_show = provenance[:settings.PROVENANCE_MAX_SOURCES]
+        
+        lines = []
+        seen_descriptions = set()  # Deduplication
+        
+        for source in sources_to_show:
+            source_type = source.get("type", "conversation")
+            description = source.get("description", "")
+            if not description:
+                continue
+            
+            # Skip duplicates
+            if description in seen_descriptions:
+                continue
+            seen_descriptions.add(description)
+            
+            # Log unknown source types for debugging
+            if source_type not in source_emojis:
+                logger.debug(f"Unknown provenance source type: {source_type}")
+            
+            emoji = source_emojis.get(source_type, "💬")
+            
+            # Add temporal context if available
+            when = source.get("when", "")
+            if when:
+                lines.append(f"{emoji} {description} ({when})")
+            else:
+                lines.append(f"{emoji} {description}")
+        
+        if not lines:
+            return ""
+        
+        # Build the footer
+        footer_lines = [PROVENANCE_DIVIDER]
+        footer_lines.extend(lines)
+        
+        return "\n".join(footer_lines)
+
+    def _format_broadcast(
+        self,
+        content: str,
+        post_type: PostType,
+        character_name: str,
+        provenance: Optional[List[Dict[str, Any]]] = None
+    ) -> str:
+        """Format the broadcast message with appropriate prefix and provenance footer."""
         prefix = POST_PREFIXES.get(post_type, "💬")
-        # Insert character name into the content's first line header
-        # Expected content format: "**Type** — Date\n\n..."
+        
+        # Build main content with header
         if content.startswith("**"):
             # Insert character name after the prefix emoji
-            return f"{prefix} {character_name.title()} — {content[2:]}"
-        return f"{prefix} **{character_name.title()}**\n{content}"
+            main_content = f"{prefix} {character_name.title()} — {content[2:]}"
+        else:
+            main_content = f"{prefix} **{character_name.title()}**\n{content}"
+        
+        # Add provenance footer if available
+        footer = self._format_provenance_footer(provenance)
+        if footer:
+            return f"{main_content}\n{footer}"
+        
+        return main_content
     
     async def _store_broadcast(
         self,
