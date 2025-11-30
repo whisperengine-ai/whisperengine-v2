@@ -776,7 +776,6 @@ Create a surreal dream echoing these experiences.""")
         time_str = now.strftime("%I:%M %p UTC")
         
         # Format as a dream journal entry
-        emoji = "💭" if dream.mood in ["reflective", "contemplative", "peaceful", "warm"] else "🌙"
         
         # Opening lines based on mood
         openers = {
@@ -794,7 +793,7 @@ Create a surreal dream echoing these experiences.""")
                             "I had the strangest dream last night...")
         
         lines = [
-            f"{emoji} **Dream Journal** — *{date_str}, {time_str}*",
+            f"**Dream Journal** — {date_str}, {time_str}",
             "",
             f"*{opener}*",
             "",

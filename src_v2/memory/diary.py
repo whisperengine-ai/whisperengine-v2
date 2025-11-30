@@ -746,7 +746,7 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
             date_str = now.strftime("%B %d, %Y")
             time_str = now.strftime("%I:%M %p UTC")
             
-            header = f"📔 **Diary Entry** — *{date_str}, {time_str}*\n\n"
+            header = f"**Diary Entry** — {date_str}, {time_str}\n\n"
             return header + result.content.strip()
             
         except Exception as e:

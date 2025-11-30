@@ -263,6 +263,11 @@ class BroadcastManager:
     def _format_broadcast(self, content: str, post_type: PostType, character_name: str) -> str:
         """Format the broadcast message with appropriate prefix."""
         prefix = POST_PREFIXES.get(post_type, "💬")
+        # Insert character name into the content's first line header
+        # Expected content format: "**Type** — Date\n\n..."
+        if content.startswith("**"):
+            # Insert character name after the prefix emoji
+            return f"{prefix} {character_name.title()} — {content[2:]}"
         return f"{prefix} **{character_name.title()}**\n{content}"
     
     async def _store_broadcast(
