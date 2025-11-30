@@ -16,6 +16,7 @@ Usage:
     python tests_v2/run_regression.py --category chat
     python tests_v2/run_regression.py --category memory
     python tests_v2/run_regression.py --category conversation
+    python tests_v2/run_regression.py --category concurrency
 
     # Quick smoke test (health + basic chat only)
     python tests_v2/run_regression.py --smoke
@@ -51,6 +52,7 @@ TEST_CATEGORIES = {
     "complexity": "TestComplexityRouting",
     "comparison": "TestModelComparison",
     "production": "TestProductionBotStability",
+    "concurrency": "TestConcurrency",
 }
 
 # Bot names for filtering

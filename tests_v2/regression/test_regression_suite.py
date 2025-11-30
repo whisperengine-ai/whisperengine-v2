@@ -538,6 +538,199 @@ class TestProductionBotStability:
 
 
 # =============================================================================
+# Concurrency Tests
+# =============================================================================
+
+class TestConcurrency:
+    """Test concurrent request handling and load behavior."""
+    
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("bot", BOT_CONFIGS[:3], ids=lambda b: b.name)  # Test first 3 bots
+    async def test_light_concurrent_load(self, bot: BotConfig):
+        """Test 5 concurrent requests to a single bot."""
+        client = APIClient(bot.port, timeout=60.0)
+        base_user_id = get_test_user_id(bot.name, "concurrent_light")
+        
+        try:
+            # Send 5 concurrent requests with different user IDs
+            messages = [
+                (f"{base_user_id}_{i}", f"Concurrent message {i+1}") 
+                for i in range(5)
+            ]
+            
+            start = time.time()
+            results = await asyncio.gather(
+                *[client.chat(user_id, msg) for user_id, msg in messages],
+                return_exceptions=True
+            )
+            elapsed = (time.time() - start) * 1000
+            
+            # Count successes
+            successes = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
+            errors = sum(1 for r in results if isinstance(r, Exception))
+            
+            # At least 80% should succeed
+            assert successes >= 4, f"Only {successes}/5 concurrent requests succeeded ({errors} errors)"
+            
+            # Calculate avg response time
+            response_times = [
+                r.get("processing_time_ms", 0) 
+                for r in results 
+                if isinstance(r, dict)
+            ]
+            avg_time = sum(response_times) / len(response_times) if response_times else 0
+            
+            print(f"\n[{bot.name}] Light concurrent load:")
+            print(f"  Success: {successes}/5")
+            print(f"  Total time: {elapsed:.0f}ms")
+            print(f"  Avg response: {avg_time:.0f}ms")
+            
+        except httpx.ConnectError:
+            pytest.skip(f"{bot.name} not running")
+    
+    @pytest.mark.asyncio
+    async def test_medium_concurrent_load(self):
+        """Test 10 concurrent requests to a single bot."""
+        bot = BOT_CONFIGS[0]  # Use elena
+        client = APIClient(bot.port, timeout=90.0)
+        base_user_id = get_test_user_id(bot.name, "concurrent_medium")
+        
+        try:
+            # Send 10 concurrent requests
+            messages = [
+                (f"{base_user_id}_{i}", f"Load test message {i+1}") 
+                for i in range(10)
+            ]
+            
+            start = time.time()
+            results = await asyncio.gather(
+                *[client.chat(user_id, msg) for user_id, msg in messages],
+                return_exceptions=True
+            )
+            elapsed = (time.time() - start) * 1000
+            
+            # Count results
+            successes = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
+            errors = sum(1 for r in results if isinstance(r, Exception))
+            timeouts = sum(1 for r in results if isinstance(r, Exception) and "timeout" in str(r).lower())
+            
+            # At least 70% should succeed under medium load
+            assert successes >= 7, f"Only {successes}/10 concurrent requests succeeded ({errors} errors, {timeouts} timeouts)"
+            
+            response_times = [
+                r.get("processing_time_ms", 0) 
+                for r in results 
+                if isinstance(r, dict)
+            ]
+            avg_time = sum(response_times) / len(response_times) if response_times else 0
+            max_time = max(response_times) if response_times else 0
+            min_time = min(response_times) if response_times else 0
+            
+            print(f"\n[{bot.name}] Medium concurrent load:")
+            print(f"  Success: {successes}/10 ({errors} errors, {timeouts} timeouts)")
+            print(f"  Total time: {elapsed:.0f}ms")
+            print(f"  Response times: min={min_time:.0f}ms, avg={avg_time:.0f}ms, max={max_time:.0f}ms")
+            
+        except httpx.ConnectError:
+            pytest.skip(f"{bot.name} not running")
+    
+    @pytest.mark.asyncio
+    async def test_multi_bot_concurrent_load(self):
+        """Test concurrent requests across multiple bots."""
+        bots = BOT_CONFIGS[:5]  # Test first 5 bots
+        
+        try:
+            # Send 3 concurrent requests to each bot (15 total)
+            tasks = []
+            for bot in bots:
+                client = APIClient(bot.port, timeout=60.0)
+                base_user_id = get_test_user_id(bot.name, "concurrent_multi")
+                for i in range(3):
+                    user_id = f"{base_user_id}_{i}"
+                    tasks.append((bot.name, client.chat(user_id, f"Multi-bot message {i+1}")))
+            
+            start = time.time()
+            results = await asyncio.gather(
+                *[task for _, task in tasks],
+                return_exceptions=True
+            )
+            elapsed = (time.time() - start) * 1000
+            
+            # Analyze results
+            successes = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
+            errors = sum(1 for r in results if isinstance(r, Exception))
+            total = len(results)
+            
+            # At least 80% should succeed
+            assert successes >= total * 0.8, f"Only {successes}/{total} multi-bot requests succeeded ({errors} errors)"
+            
+            response_times = [
+                r.get("processing_time_ms", 0) 
+                for r in results 
+                if isinstance(r, dict)
+            ]
+            avg_time = sum(response_times) / len(response_times) if response_times else 0
+            
+            print(f"\nMulti-bot concurrent load ({len(bots)} bots, {total} requests):")
+            print(f"  Success: {successes}/{total}")
+            print(f"  Total time: {elapsed:.0f}ms")
+            print(f"  Avg response: {avg_time:.0f}ms")
+            
+        except httpx.ConnectError as e:
+            pytest.skip(f"One or more bots not running: {e}")
+    
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("bot", [b for b in BOT_CONFIGS if b.is_production], ids=lambda b: b.name)
+    async def test_stress_concurrent_load(self, bot: BotConfig):
+        """Test 20 concurrent requests to production bots (stress test)."""
+        client = APIClient(bot.port, timeout=120.0)
+        base_user_id = get_test_user_id(bot.name, "concurrent_stress")
+        
+        try:
+            # Send 20 concurrent requests
+            messages = [
+                (f"{base_user_id}_{i}", f"Stress test {i+1}") 
+                for i in range(20)
+            ]
+            
+            start = time.time()
+            results = await asyncio.gather(
+                *[client.chat(user_id, msg) for user_id, msg in messages],
+                return_exceptions=True
+            )
+            elapsed = (time.time() - start) * 1000
+            
+            # Count results
+            successes = sum(1 for r in results if isinstance(r, dict) and r.get("success"))
+            errors = sum(1 for r in results if isinstance(r, Exception))
+            timeouts = sum(1 for r in results if isinstance(r, Exception) and "timeout" in str(r).lower())
+            
+            # At least 60% should succeed under stress
+            success_rate = successes / len(results)
+            assert successes >= 12, f"Only {successes}/20 stress requests succeeded ({errors} errors, {timeouts} timeouts)"
+            
+            response_times = [
+                r.get("processing_time_ms", 0) 
+                for r in results 
+                if isinstance(r, dict)
+            ]
+            
+            if response_times:
+                avg_time = sum(response_times) / len(response_times)
+                max_time = max(response_times)
+                min_time = min(response_times)
+                
+                print(f"\n[{bot.name}] Stress concurrent load:")
+                print(f"  Success: {successes}/20 ({success_rate*100:.1f}%)")
+                print(f"  Errors: {errors} ({timeouts} timeouts)")
+                print(f"  Total time: {elapsed:.0f}ms")
+                print(f"  Response times: min={min_time:.0f}ms, avg={avg_time:.0f}ms, max={max_time:.0f}ms")
+            
+        except httpx.ConnectError:
+            pytest.skip(f"{bot.name} not running")
+
+
+# =============================================================================
 # Cleanup
 # =============================================================================
 
