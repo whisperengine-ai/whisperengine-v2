@@ -50,8 +50,20 @@ class WhisperBot(commands.Bot):
         """Async setup hook called before the bot starts."""
         # Initialize Lurk Detector
         if settings.ENABLE_CHANNEL_LURKING:
-            self.lurk_detector = await get_lurk_detector(self.character_name)
+            self.lurk_detector = get_lurk_detector(self.character_name)
             logger.info(f"Lurk detector initialized for {self.character_name}")
+            
+        # Load slash commands
+        from src_v2.discord.commands import setup as setup_commands
+        await setup_commands(self)
+        logger.info("Slash commands loaded")
+        
+        # Sync commands with Discord
+        try:
+            synced = await self.tree.sync()
+            logger.info(f"Synced {len(synced)} slash commands")
+        except Exception as e:
+            logger.error(f"Failed to sync slash commands: {e}")
             
         # Delegate to BotTasks
         await self.tasks.setup_hook()
@@ -87,6 +99,25 @@ class WhisperBot(commands.Bot):
     async def on_reaction_remove(self, reaction: discord.Reaction, user: discord.User) -> None:
         """Handle reaction removals."""
         await self.event_handler.on_reaction_remove(reaction, user)
+
+    async def close(self) -> None:
+        """Override close to cancel background tasks first."""
+        logger.info("Closing WhisperBot...")
+        
+        # Cancel background tasks
+        if hasattr(self, 'tasks') and self.tasks:
+            await self.tasks.cancel_all_tasks()
+        
+        # Stop scheduler if running
+        if hasattr(self, 'scheduler') and self.scheduler:
+            try:
+                await self.scheduler.stop()
+            except Exception as e:
+                logger.debug(f"Error stopping scheduler: {e}")
+        
+        # Call parent close
+        await super().close()
+        logger.info("WhisperBot closed")
 
 # Create global bot instance
 bot = WhisperBot()

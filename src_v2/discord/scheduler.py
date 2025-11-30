@@ -25,15 +25,31 @@ class ProactiveScheduler:
         self.min_trust_score: int = settings.PROACTIVE_MIN_TRUST_SCORE
         self.silence_threshold_hours: int = settings.PROACTIVE_SILENCE_THRESHOLD_HOURS
         self.is_running: bool = False
+        self._tasks: list = []
 
     def start(self) -> None:
         """Starts the proactive scheduler loop."""
         if self.is_running:
             return
         self.is_running = True
-        self.bot.loop.create_task(self._loop())
-        self.bot.loop.create_task(self._reminder_loop())
+        self._tasks = [
+            self.bot.loop.create_task(self._loop(), name="proactive_scheduler"),
+            self.bot.loop.create_task(self._reminder_loop(), name="reminder_loop"),
+        ]
         logger.info("ProactiveScheduler started.")
+
+    async def stop(self) -> None:
+        """Stops the proactive scheduler gracefully."""
+        if not self.is_running:
+            return
+        self.is_running = False
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+        logger.info("ProactiveScheduler stopped.")
 
     async def _loop(self) -> None:
         """Main scheduler loop that runs periodically."""

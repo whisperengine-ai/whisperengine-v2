@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from loguru import logger
 from typing import Any, Optional
@@ -54,8 +55,11 @@ class EventHandler:
                 from src_v2.broadcast.cross_bot import cross_bot_manager
                 cross_bot_manager.set_bot(self.bot)
                 await cross_bot_manager.load_known_bots()
-                # Start background registration refresh
-                self.bot.loop.create_task(cross_bot_manager.start_registration_loop())
+                # Start background registration refresh (task managed by cross_bot_manager)
+                asyncio.create_task(
+                    cross_bot_manager.start_registration_loop(),
+                    name="cross_bot_registration"
+                )
                 logger.info("Cross-bot manager initialized")
             except Exception as e:
                 logger.warning(f"Failed to initialize cross-bot manager: {e}")

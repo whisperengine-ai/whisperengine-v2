@@ -67,6 +67,8 @@ Don't use tools for:
 - Questions you can answer from general knowledge
 - When the conversation is flowing naturally
 
+IMPORTANT: If the user asks about the universe, planets, servers, channels, or regions - USE the appropriate tool (get_universe_overview, check_planet_context). Don't guess or give vague responses.
+
 If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
 """
 
@@ -145,6 +147,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 
                 # 5. Final Response after tool outputs
                 final_response = await self.llm.ainvoke(messages)
+                logger.debug(f"CharacterAgent: Final LLM response after tools: content='{final_response.content[:200] if final_response.content else 'EMPTY'}' tool_calls={final_response.tool_calls}")
                 
                 # Handle case where model tries to chain tools (returns another tool call instead of text)
                 if isinstance(final_response, AIMessage) and final_response.tool_calls and not final_response.content:
@@ -153,16 +156,21 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                     messages.append(SystemMessage(content="You have used your allowed tool. Please provide a response to the user now based on the information you have."))
                     final_response = await self.llm.ainvoke(messages)
 
+                if not final_response.content:
+                    logger.warning(f"CharacterAgent: Final response after tools is empty. Messages: {len(messages)}, last tool results: {[m for m in messages if isinstance(m, ToolMessage)]}")
                 return str(final_response.content) or "I'm having a bit of trouble processing that. Could you say it again?"
             
             # No tool used, return direct response
+            if not response.content:
+                logger.warning(f"CharacterAgent: LLM returned empty content. tool_calls={response.tool_calls}, response={response}")
             return str(response.content) or "I'm having a bit of trouble thinking clearly right now. Can you say that again?"
             
         except Exception as e:
             logger.error(f"CharacterAgent failed: {e}")
             import traceback
             traceback.print_exc()
-            return f"I'm having a bit of trouble thinking clearly right now. (Error: {str(e)})"
+            # Don't expose internal errors to users - log them instead
+            return "I'm having a bit of trouble thinking clearly right now. Can you try again in a moment?"
 
     async def _execute_tool(self, tool: BaseTool, tool_call: dict, messages: List[BaseMessage]):
         """Executes a tool and appends the result to messages."""
@@ -170,18 +178,23 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         tool_name = tool_call.get("name", "unknown_tool")
         
         try:
+            logger.info(f"CharacterAgent: Executing tool {tool_name} with args: {tool_call.get('args', {})}")
             result = await tool.ainvoke(tool_call["args"])
+            logger.info(f"CharacterAgent: Tool {tool_name} returned: {str(result)[:200]}...")
             messages.append(ToolMessage(
                 tool_call_id=tool_id,
                 name=tool_name,
                 content=str(result)
             ))
         except Exception as e:
-            logger.error(f"Tool execution failed: {e}")
+            logger.error(f"Tool execution failed for {tool_name}: {e}")
+            import traceback
+            traceback.print_exc()
+            # Provide a generic error to the LLM (it will formulate a user-friendly response)
             messages.append(ToolMessage(
                 tool_call_id=tool_id,
                 name=tool_name,
-                content=f"Error: {str(e)}"
+                content="The tool encountered an error and couldn't complete the request."
             ))
 
     def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:

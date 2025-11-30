@@ -1,12 +1,44 @@
 import asyncio
 import discord
 from loguru import logger
+from typing import List
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 
 class BotTasks:
     def __init__(self, bot):
         self.bot = bot
+        self._background_tasks: List[asyncio.Task] = []
+
+    async def setup_hook(self) -> None:
+        """Start background tasks with proper tracking."""
+        self._background_tasks = [
+            self.bot.loop.create_task(self.process_broadcast_queue_loop(), name="broadcast_queue"),
+            self.bot.loop.create_task(self.refresh_endpoint_registration_loop(), name="endpoint_registration"),
+            self.bot.loop.create_task(self.update_status_loop(), name="status_update"),
+        ]
+        logger.info(f"Started {len(self._background_tasks)} background tasks")
+
+    async def cancel_all_tasks(self) -> None:
+        """Cancel all background tasks gracefully."""
+        if not self._background_tasks:
+            return
+        
+        logger.info(f"Cancelling {len(self._background_tasks)} background tasks...")
+        for task in self._background_tasks:
+            if not task.done():
+                task.cancel()
+        
+        # Wait for all tasks to complete cancellation
+        results = await asyncio.gather(*self._background_tasks, return_exceptions=True)
+        for i, result in enumerate(results):
+            if isinstance(result, asyncio.CancelledError):
+                logger.debug(f"Task {self._background_tasks[i].get_name()} cancelled")
+            elif isinstance(result, Exception):
+                logger.error(f"Task {self._background_tasks[i].get_name()} error: {result}")
+        
+        self._background_tasks.clear()
+        logger.info("All background tasks cancelled")
 
     async def process_broadcast_queue_loop(self) -> None:
         """

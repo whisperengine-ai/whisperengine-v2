@@ -129,7 +129,8 @@ Analyze the user's input and decide."""
                         return tool_name, f"--- Result from {tool_name} ---\n{result}", start_time, success
                     except Exception as e:
                         logger.error(f"Tool execution failed for {tool_name}: {e}")
-                        return tool_name, f"Error executing {tool_name}: {e}", start_time, success
+                        # Don't expose internal errors - provide generic message to LLM
+                        return tool_name, f"--- {tool_name} ---\nUnable to retrieve information at this time.", start_time, success
                 else:
                     logger.warning(f"LLM called unknown tool: {tool_name}")
                     return tool_name, None, start_time, False
