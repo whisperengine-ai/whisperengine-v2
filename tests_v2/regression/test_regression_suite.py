@@ -44,17 +44,17 @@ class BotConfig:
     is_production: bool = False
 
 
-# All bot configurations
+# All bot configurations (synced with actual .env.* files as of Nov 30, 2025)
 BOT_CONFIGS = [
-    BotConfig("elena", 8000, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
-    BotConfig("ryan", 8001, "meta-llama/llama-3.3-70b-instruct", "anthropic/claude-3.5-sonnet"),
-    BotConfig("dotty", 8002, "anthropic/claude-3.7-sonnet", "google/gemini-2.5-flash"),
-    BotConfig("aria", 8003, "google/gemini-2.0-flash-001", "anthropic/claude-sonnet-4.5"),
-    BotConfig("dream", 8004, "deepseek/deepseek-chat", "mistralai/mistral-large"),
-    BotConfig("jake", 8005, "openai/gpt-4o-mini", "deepseek/deepseek-r1"),
-    BotConfig("sophia", 8006, "google/gemini-2.5-pro", "openai/gpt-4o-mini"),
-    BotConfig("marcus", 8007, "mistralai/mistral-large", "google/gemini-2.5-pro"),
-    BotConfig("nottaylor", 8008, "openai/gpt-4o", "openai/gpt-4o", is_production=True),
+    BotConfig("elena", 8000, "anthropic/claude-haiku-4.5", "openai/gpt-4o"),
+    BotConfig("ryan", 8001, "anthropic/claude-haiku-4.5", "openai/gpt-4o-mini"),
+    BotConfig("dotty", 8002, "anthropic/claude-haiku-4.5", "openai/gpt-4o-mini"),
+    BotConfig("aria", 8003, "openai/gpt-4o-mini", "openai/gpt-4o-mini"),
+    BotConfig("dream", 8004, "anthropic/claude-haiku-4.5", "openai/gpt-4o"),
+    BotConfig("jake", 8005, "openai/gpt-4o-mini", "openai/gpt-4o-mini"),
+    BotConfig("sophia", 8006, "anthropic/claude-haiku-4.5", "openai/gpt-4o-mini"),
+    BotConfig("marcus", 8007, "anthropic/claude-haiku-4.5", "openai/gpt-4o"),
+    BotConfig("nottaylor", 8008, "anthropic/claude-haiku-4.5", "openai/gpt-4o", is_production=True),
 ]
 
 # Test user prefix to avoid polluting real user data
