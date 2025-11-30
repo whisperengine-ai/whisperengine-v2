@@ -95,6 +95,7 @@ class Settings(BaseSettings):
     ENABLE_GOAL_STRATEGIST: bool = False
     GOAL_STRATEGIST_LOCAL_HOUR: int = 23  # Local hour (in character's timezone) when goal strategist runs (11 PM)
     ENABLE_UNIVERSE_EVENTS: bool = False
+    ENABLE_SENSITIVITY_CHECK: bool = False  # LLM-based sensitivity check for universe events
     ENABLE_TRACE_LEARNING: bool = False
 
     # --- Quotas ---

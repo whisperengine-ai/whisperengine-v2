@@ -101,15 +101,16 @@ class EventDetector:
         if event:
             # S3: LLM-based sensitivity check before publishing
             # This catches context-dependent sensitivity that keywords miss
-            is_sensitive, reason = await sensitivity_checker.is_sensitive(
-                content=user_message,
-                topic=event.topic,
-                event_summary=event.summary
-            )
-            
-            if is_sensitive:
-                logger.info(f"Event blocked by sensitivity check: {reason}")
-                return None
+            if settings.ENABLE_SENSITIVITY_CHECK:
+                is_sensitive, reason = await sensitivity_checker.is_sensitive(
+                    content=user_message,
+                    topic=event.topic,
+                    event_summary=event.summary
+                )
+                
+                if is_sensitive:
+                    logger.info(f"Event blocked by sensitivity check: {reason}")
+                    return None
             
             await event_bus.publish(event)
             return event

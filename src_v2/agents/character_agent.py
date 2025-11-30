@@ -145,6 +145,20 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                     await asyncio.gather(*tool_tasks)
                 
                 # 5. Final Response after tool outputs
+                # Add guidance for handling empty/unhelpful tool results
+                tool_results = [m for m in messages if isinstance(m, ToolMessage)]
+                empty_results = any(
+                    "no relevant" in (m.content or "").lower() or 
+                    "not found" in (m.content or "").lower() or
+                    "no results" in (m.content or "").lower() or
+                    not m.content or m.content.strip() == ""
+                    for m in tool_results
+                )
+                
+                if empty_results:
+                    # Guide the model to respond naturally even without tool results
+                    messages.append(SystemMessage(content="The tool search didn't find specific information, but that's okay. Respond naturally to the user based on what you do know. Don't mention that you couldn't find anything - just have a genuine conversation."))
+                
                 final_response = await self.llm.ainvoke(messages)
                 logger.debug(f"CharacterAgent: Final LLM response after tools: content='{final_response.content[:200] if final_response.content else 'EMPTY'}' tool_calls={final_response.tool_calls}")
                 
