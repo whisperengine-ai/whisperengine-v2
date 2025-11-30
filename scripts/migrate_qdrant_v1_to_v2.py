@@ -123,8 +123,18 @@ async def migrate_collection(
             # Map 'original_message_id' to 'message_id'
             if "original_message_id" in old_payload and "message_id" not in old_payload:
                 new_payload["message_id"] = old_payload["original_message_id"]
-                # Optional: remove old key if you want cleaner data, but keeping it is safer
-                # del new_payload["original_message_id"] 
+                
+            # Map 'overall_significance' to 'importance_score' (v2 uses 1-10 int)
+            if "importance_score" not in new_payload:
+                if "overall_significance" in old_payload:
+                    try:
+                        sig = float(old_payload["overall_significance"])
+                        # Map 0.0-1.0 to 1-10
+                        new_payload["importance_score"] = max(1, min(10, int(sig * 10)))
+                    except (ValueError, TypeError):
+                        new_payload["importance_score"] = 3
+                else:
+                    new_payload["importance_score"] = 3
 
             # Ensure required fields exist (fill with defaults if missing)
             if "timestamp" not in new_payload:
@@ -149,11 +159,17 @@ async def migrate_collection(
             # Note: point.vector can be a list or a dict (if named vectors)
             # We assume single vector for now as per v2 spec
             if isinstance(new_vector, dict):
-                # Handle named vectors if v1 had them? 
-                # v2 uses unnamed vector. We might need to pick one.
-                # For now, warn and skip or try to use 'default' or first
-                logger.warning(f"Point {point.id} has named vectors in v1. v2 expects single unnamed vector. Skipping.")
-                continue
+                # Handle named vectors from v1
+                # Prefer 'content' or 'semantic' vector
+                if "content" in new_vector:
+                    new_vector = new_vector["content"]
+                elif "semantic" in new_vector:
+                    new_vector = new_vector["semantic"]
+                else:
+                    # Fallback to first available vector
+                    first_key = next(iter(new_vector))
+                    new_vector = new_vector[first_key]
+                    logger.warning(f"Point {point.id} has named vectors but no 'content' or 'semantic'. Using '{first_key}'.")
             
             if new_vector is None:
                 logger.warning(f"Point {point.id} has no vector. Skipping.")
