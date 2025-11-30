@@ -201,12 +201,12 @@ class EventHandler:
                 # For now, we'll just log it and maybe update trust
                 logger.info(f"Received {feedback_type} feedback from user {user.id} on message {reaction.message.id}")
                 
-                # If milestone reached, DM the user (don't spam channel)
+                # If milestone reached, send to the channel where the reaction occurred (consistent with message_handler)
                 if milestone:
                     try:
-                        await user.send(milestone)
-                    except:
-                        pass # DM might be blocked
+                        await reaction.message.channel.send(milestone)
+                    except Exception as e:
+                        logger.debug(f"Could not send milestone to channel: {e}")
 
         except Exception as e:
             logger.error(f"Error handling reaction add: {e}")
