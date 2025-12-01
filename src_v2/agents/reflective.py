@@ -455,6 +455,7 @@ class ReflectiveAgent:
 - If a detected intent starts with "image_", you MUST call generate_image. Do not just describe what you would create - actually call the tool.
 - Gathering information is NOT the same as generating an image.
 - After gathering context, if the task requires an image, call generate_image with a detailed prompt.
+- CRITICAL: The generate_image tool does NOT have access to your internal thoughts or previous reasoning steps. You MUST copy all relevant visual details from your thoughts into the 'prompt' argument. Do not use vague prompts like "what I described" or "the scene above".
 - Set image_type correctly: 'self' for self-portraits of YOU, 'refine' for tweaking previous images, 'other' for everything else.
 - CRITICAL: If image_type='other', do NOT include your own physical description in the prompt. Describe the subject (user, object, scene) only.
 {image_type_hint}"""

@@ -192,6 +192,10 @@ class ImageGenerationService:
         if seed is None:
             seed = random.randint(0, 2147483647)
         
+        # Disable upsampling for long, detailed prompts to prevent hallucinations
+        # Flux 1.1 Pro's upsampling is great for short prompts but can override details in long ones
+        use_upsampling = len(prompt) < 200
+        
         endpoint = f"{self.base_url}/{self.model}"
         headers = {
             "Content-Type": "application/json",
@@ -201,12 +205,13 @@ class ImageGenerationService:
             "prompt": prompt,
             "width": width,
             "height": height,
-            "prompt_upsampling": True,
+            "prompt_upsampling": use_upsampling,
             "safety_tolerance": 5,
             "seed": seed
         }
         
-        logger.info(f"Generating image with seed: {seed}")
+        logger.info(f"Generating image with seed: {seed}, upsampling={use_upsampling}, prompt_len={len(prompt)}")
+        logger.debug(f"Prompt: {prompt}")
 
         async with aiohttp.ClientSession() as session:
             # 1. Submit Task
