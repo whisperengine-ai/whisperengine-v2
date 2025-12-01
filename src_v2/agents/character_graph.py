@@ -1,0 +1,367 @@
+import asyncio
+import base64
+import httpx
+import operator
+from typing import List, Optional, Callable, Awaitable, Tuple, Dict, Any, TypedDict, Annotated, Union, Literal
+from loguru import logger
+from langsmith import traceable
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
+from langchain_core.tools import BaseTool
+from langgraph.graph import StateGraph, END
+
+from src_v2.agents.llm_factory import create_llm
+from src_v2.config.settings import settings
+from src_v2.config.constants import get_image_format_for_provider
+from src_v2.tools.memory_tools import (
+    SearchSummariesTool, 
+    SearchEpisodesTool, 
+    LookupFactsTool, 
+    ExploreGraphTool,
+    DiscoverCommonGroundTool,
+    CharacterEvolutionTool
+)
+from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
+from src_v2.tools.image_tools import GenerateImageTool
+from src_v2.tools.math_tools import CalculatorTool
+from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
+
+# Define State
+class CharacterAgentState(TypedDict):
+    user_input: str
+    user_id: str
+    system_prompt: str
+    chat_history: List[BaseMessage]
+    image_urls: Optional[List[str]]
+    
+    # Internal state
+    router_response: Optional[AIMessage]
+    tool_messages: List[ToolMessage]
+    final_response: Optional[str]
+    
+    # Resources
+    tools: List[BaseTool]
+    callback: Optional[Callable[[str], Awaitable[None]]]
+
+class CharacterGraphAgent:
+    """
+    Tier 2 Agent: Capable of a single tool call before responding.
+    Implemented using LangGraph.
+    """
+    
+    # Base prompt - image generation line is added dynamically based on feature flag
+    AGENCY_PROMPT_BASE = """
+
+## Tool Usage (Your Agency)
+
+You have access to tools that let you look things up. Use them when:
+- The user asks about something you might have discussed before
+- You want to recall a specific detail to make the conversation more personal
+- You genuinely need information to give a good response
+- The user asks about your relationship or how close you are
+- You want to find common ground or shared interests
+- The user asks what they or someone else just said in the channel
+
+Available tools:
+- search_archived_summaries: Past conversations and topics (days/weeks ago)
+- search_specific_memories: Specific details and quotes from memory
+- lookup_user_facts: Facts about the user from the knowledge graph
+- explore_knowledge_graph: Explore connections and relationships
+- discover_common_ground: Find what you have in common
+- get_character_evolution: Check your relationship level and trust
+- check_planet_context: See the current server/planet context
+- get_universe_overview: View all planets and channels across the universe
+- search_channel_messages: Find recent messages in the channel by keyword
+- search_user_messages: Find what a specific person said recently
+- get_message_context: Get context around a specific message (when replying to old messages)
+- get_recent_messages: Get latest channel messages without filtering (for "catch me up")
+- calculator: Perform mathematical calculations
+"""
+
+    AGENCY_PROMPT_IMAGE = """- generate_image: Create images for the user
+"""
+
+    AGENCY_PROMPT_FOOTER = """
+Don't use tools for:
+- Simple greetings or casual chat
+- Questions you can answer from general knowledge
+- When the conversation is flowing naturally
+
+IMPORTANT: If the user asks about the universe, planets, servers, channels, or regions - USE the appropriate tool (get_universe_overview, check_planet_context). Don't guess or give vague responses.
+
+If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
+"""
+
+    # Minimal prompt for router LLM - just tool selection, no character personality
+    ROUTER_SYSTEM_PROMPT = """You are a tool router for an AI companion. Your ONLY job is to decide which tools (if any) to call based on the user's message.
+
+RULES:
+1. If the user is just saying "hi" or casual chat, you MAY call lookup_user_facts to personalize (find their name).
+2. If the user asks about past conversations or memories, call the appropriate search tool.
+3. If the user asks about the universe, planets, servers, or channels, use check_planet_context or get_universe_overview.
+4. If the user wants an image generated, call generate_image.
+5. If the user needs a calculation, call calculator.
+6. You can call multiple tools if needed.
+7. If no tools are needed, just respond with an empty message (no content).
+
+Do NOT generate a conversational response. Just decide on tools or respond empty."""
+
+    def __init__(self):
+        # Router LLM for tool selection (fast/cheap)
+        self.router_llm = create_llm(temperature=0.3, mode="router")
+        # Main LLM for final character response (quality voice)
+        self.llm = create_llm(temperature=0.7, mode="main")
+
+    def _get_agency_prompt(self) -> str:
+        """Builds the agency prompt, including image generation only if enabled."""
+        prompt = self.AGENCY_PROMPT_BASE
+        if settings.ENABLE_IMAGE_GENERATION:
+            prompt += self.AGENCY_PROMPT_IMAGE
+        prompt += self.AGENCY_PROMPT_FOOTER
+        return prompt
+
+    def _filter_history_for_router(self, chat_history: List[BaseMessage]) -> List[BaseMessage]:
+        """Filters chat history for the router LLM (text only)."""
+        filtered: List[BaseMessage] = []
+        for msg in chat_history:
+            content = msg.content
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text_parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                text_content = " ".join(text_parts).strip()
+                if text_content:
+                    filtered.append(type(msg)(content=text_content))
+                else:
+                    filtered.append(type(msg)(content="[User shared an image]"))
+            else:
+                filtered.append(msg)
+        return filtered
+
+    async def _prepare_user_message(self, user_input: str, image_urls: Optional[List[str]] = None) -> Any:
+        """Prepares the user message content, handling text and optional images."""
+        if not image_urls or not settings.LLM_SUPPORTS_VISION:
+            return user_input
+        
+        content: List[Dict[str, Any]] = [{"type": "text", "text": user_input}]
+        image_format = get_image_format_for_provider(settings.LLM_PROVIDER)
+        
+        if image_format == "base64":
+            async with httpx.AsyncClient() as client:
+                for img_url in image_urls:
+                    try:
+                        img_response = await client.get(img_url, timeout=10.0)
+                        img_response.raise_for_status()
+                        img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                        mime_type = img_response.headers.get("content-type", "image/png")
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
+                        })
+                    except Exception as e:
+                        logger.error(f"Failed to download/encode image {img_url}: {e}")
+                        content.append({"type": "image_url", "image_url": {"url": img_url}})
+        else:
+            for img_url in image_urls:
+                content.append({"type": "image_url", "image_url": {"url": img_url}})
+        
+        return content
+
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:
+        bot_name = character_name or "default"
+        tools: List[BaseTool] = [
+            SearchSummariesTool(user_id=user_id),
+            SearchEpisodesTool(user_id=user_id),
+            LookupFactsTool(user_id=user_id, bot_name=bot_name),
+            ExploreGraphTool(user_id=user_id, bot_name=bot_name),
+            DiscoverCommonGroundTool(user_id=user_id, bot_name=bot_name),
+            CharacterEvolutionTool(user_id=user_id, character_name=bot_name),
+            CheckPlanetContextTool(guild_id=guild_id),
+            GetUniverseOverviewTool(),
+        ]
+        if channel:
+            tools.extend([
+                SearchChannelMessagesTool(channel=channel),
+                SearchUserMessagesTool(channel=channel),
+                GetMessageContextTool(channel=channel),
+                GetRecentMessagesTool(channel=channel),
+            ])
+        if settings.ENABLE_IMAGE_GENERATION:
+            tools.append(GenerateImageTool(user_id=user_id, character_name=bot_name))
+        tools.append(CalculatorTool())
+        return tools
+
+    async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool], callback: Optional[Callable[[str], Awaitable[None]]]) -> ToolMessage:
+        tool_name = tool_call["name"]
+        tool_args = tool_call["args"]
+        tool_call_id = tool_call["id"]
+        
+        selected_tool = next((t for t in tools if t.name == tool_name), None)
+        
+        if selected_tool:
+            if callback:
+                await callback(f"🛠️ *Using {tool_name}...*")
+            try:
+                observation = await selected_tool.ainvoke(tool_args)
+            except Exception as e:
+                observation = f"Error executing tool: {e}"
+        else:
+            observation = f"Error: Tool {tool_name} not found."
+
+        return ToolMessage(
+            content=str(observation),
+            tool_call_id=tool_call_id,
+            name=tool_name
+        )
+
+    # --- Graph Nodes ---
+
+    async def router_node(self, state: CharacterAgentState):
+        """Decides which tools to call."""
+        callback = state['callback']
+        if callback:
+            await callback("🔍 *Checking my memory...*")
+
+        # Build router prompt
+        router_prompt = self.ROUTER_SYSTEM_PROMPT + self._get_agency_prompt()
+        messages: List[BaseMessage] = [SystemMessage(content=router_prompt)]
+        
+        if state['chat_history']:
+            messages.extend(self._filter_history_for_router(state['chat_history'][-4:]))
+        
+        messages.append(HumanMessage(content=state['user_input']))
+        
+        # Bind tools
+        router_with_tools = self.router_llm.bind_tools(state['tools'])
+        
+        try:
+            response = await router_with_tools.ainvoke(messages)
+            return {"router_response": response}
+        except Exception as e:
+            logger.error(f"Router LLM failed: {e}")
+            # Return empty AIMessage to proceed to responder without tools
+            return {"router_response": AIMessage(content="")}
+
+    async def tools_node(self, state: CharacterAgentState):
+        """Executes tools if router decided to use them."""
+        router_response = state['router_response']
+        if not router_response or not router_response.tool_calls:
+            return {"tool_messages": []}
+        
+        tasks = []
+        for tool_call in router_response.tool_calls:
+            tasks.append(self._execute_tool_wrapper(tool_call, state['tools'], state['callback']))
+        
+        tool_messages = await asyncio.gather(*tasks)
+        return {"tool_messages": tool_messages}
+
+    async def responder_node(self, state: CharacterAgentState):
+        """Generates final response using tool outputs."""
+        # Build main messages
+        messages: List[BaseMessage] = [SystemMessage(content=state['system_prompt'])]
+        if state['chat_history']:
+            messages.extend(state['chat_history'])
+        
+        # Prepare multimodal user message
+        user_content = await self._prepare_user_message(state['user_input'], state['image_urls'])
+        messages.append(HumanMessage(content=user_content))
+        
+        # Add router decision and tool outputs if any
+        if state['router_response'] and state['router_response'].tool_calls:
+            messages.append(state['router_response'])
+            messages.extend(state['tool_messages'])
+            
+            # Handle empty results guidance
+            empty_results = False
+            for m in state['tool_messages']:
+                content_str = str(m.content) if m.content else ""
+                if "no relevant" in content_str.lower() or \
+                   "not found" in content_str.lower() or \
+                   "no results" in content_str.lower() or \
+                   not content_str.strip():
+                    empty_results = True
+                    break
+            
+            if empty_results:
+                messages.append(SystemMessage(content="The tool search didn't find specific information, but that's okay. Respond naturally to the user based on what you do know. Don't mention that you couldn't find anything - just have a genuine conversation."))
+        
+        if state['image_urls']:
+            messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
+
+        try:
+            response = await self.llm.ainvoke(messages)
+            
+            # Handle tool chaining attempt (not supported in Tier 2)
+            if isinstance(response, AIMessage) and response.tool_calls and not response.content:
+                messages.append(SystemMessage(content="You have used your allowed tool. Please provide a response to the user now based on the information you have."))
+                response = await self.llm.ainvoke(messages)
+                
+            return {"final_response": str(response.content)}
+        except Exception as e:
+            logger.error(f"Responder LLM failed: {e}")
+            return {"final_response": "I'm having a bit of trouble processing that. Could you say it again?"}
+
+    def should_use_tools(self, state: CharacterAgentState) -> Literal["tools", "responder"]:
+        router_response = state['router_response']
+        if router_response and router_response.tool_calls:
+            return "tools"
+        return "responder"
+
+    @traceable(name="CharacterGraphAgent.run", run_type="chain")
+    async def run(
+        self, 
+        user_input: str, 
+        user_id: str, 
+        system_prompt: str, 
+        chat_history: Optional[List[BaseMessage]] = None,
+        callback: Optional[Callable[[str], Awaitable[None]]] = None,
+        guild_id: Optional[str] = None,
+        character_name: Optional[str] = None,
+        channel: Optional[Any] = None,
+        image_urls: Optional[List[str]] = None
+    ) -> str:
+        """Executes the Character Agent workflow."""
+        
+        # Initialize tools
+        tools = self._get_tools(user_id, guild_id, character_name, channel)
+        
+        # Build Graph
+        workflow = StateGraph(CharacterAgentState)
+        
+        workflow.add_node("router", self.router_node)
+        workflow.add_node("tools", self.tools_node)
+        workflow.add_node("responder", self.responder_node)
+        
+        workflow.set_entry_point("router")
+        
+        workflow.add_conditional_edges(
+            "router",
+            self.should_use_tools,
+            {
+                "tools": "tools",
+                "responder": "responder"
+            }
+        )
+        
+        workflow.add_edge("tools", "responder")
+        workflow.add_edge("responder", END)
+        
+        app = workflow.compile()
+        
+        # Run Graph
+        final_state = await app.ainvoke({
+            "user_input": user_input,
+            "user_id": user_id,
+            "system_prompt": system_prompt,
+            "chat_history": chat_history or [],
+            "image_urls": image_urls,
+            "tools": tools,
+            "callback": callback,
+            "router_response": None,
+            "tool_messages": [],
+            "final_response": None
+        })
+        
+        return final_state.get("final_response") or "..."

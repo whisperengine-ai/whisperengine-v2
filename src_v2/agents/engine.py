@@ -34,6 +34,7 @@ from src_v2.agents.classifier import ComplexityClassifier
 from src_v2.agents.reflective import ReflectiveAgent
 from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_agent import CharacterAgent
+from src_v2.agents.character_graph import CharacterGraphAgent
 from src_v2.agents.context_builder import ContextBuilder
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
@@ -67,6 +68,7 @@ class AgentEngine:
         self.reflective_agent: ReflectiveAgent = ReflectiveAgent()
         self.reflective_graph_agent: ReflectiveGraphAgent = ReflectiveGraphAgent()
         self.character_agent: CharacterAgent = CharacterAgent()
+        self.character_graph_agent: CharacterGraphAgent = CharacterGraphAgent()
         self.context_builder: ContextBuilder = ContextBuilder()
         
         # Dependency Injection or Default to Global Instances
@@ -258,16 +260,31 @@ class AgentEngine:
             # Skip CharacterAgent for image uploads - use Fast Mode instead (simpler, proven to work)
             elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW" and not image_urls:
                 channel = context_variables.get("channel") if context_variables else None
-                response = await self.character_agent.run(
-                    user_input=user_message,
-                    user_id=user_id,
-                    system_prompt=system_content,
-                    chat_history=chat_history,
-                    callback=callback,
-                    character_name=character.name,
-                    channel=channel,
-                    image_urls=image_urls
-                )
+                
+                if settings.ENABLE_LANGGRAPH_CHARACTER_AGENT:
+                    logger.info("Using LangGraph Character Agent")
+                    response = await self.character_graph_agent.run(
+                        user_input=user_message,
+                        user_id=user_id,
+                        system_prompt=system_content,
+                        chat_history=chat_history,
+                        callback=callback,
+                        character_name=character.name,
+                        channel=channel,
+                        image_urls=image_urls
+                    )
+                else:
+                    response = await self.character_agent.run(
+                        user_input=user_message,
+                        user_id=user_id,
+                        system_prompt=system_content,
+                        chat_history=chat_history,
+                        callback=callback,
+                        character_name=character.name,
+                        channel=channel,
+                        image_urls=image_urls
+                    )
+                
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {complexity_result})")
                 
@@ -561,17 +578,33 @@ class AgentEngine:
                 # CharacterAgent doesn't support streaming yet, yield full response
                 guild_id = context_variables.get("guild_id") if context_variables else None
                 channel = context_variables.get("channel") if context_variables else None
-                response = await self.character_agent.run(
-                    user_input=user_message,
-                    user_id=user_id,
-                    system_prompt=system_content,
-                    chat_history=chat_history,
-                    callback=callback,
-                    guild_id=guild_id,
-                    character_name=character.name,
-                    channel=channel,
-                    image_urls=image_urls
-                )
+                
+                if settings.ENABLE_LANGGRAPH_CHARACTER_AGENT:
+                    logger.info("Using LangGraph Character Agent (Stream)")
+                    response = await self.character_graph_agent.run(
+                        user_input=user_message,
+                        user_id=user_id,
+                        system_prompt=system_content,
+                        chat_history=chat_history,
+                        callback=callback,
+                        guild_id=guild_id,
+                        character_name=character.name,
+                        channel=channel,
+                        image_urls=image_urls
+                    )
+                else:
+                    response = await self.character_agent.run(
+                        user_input=user_message,
+                        user_id=user_id,
+                        system_prompt=system_content,
+                        chat_history=chat_history,
+                        callback=callback,
+                        guild_id=guild_id,
+                        character_name=character.name,
+                        channel=channel,
+                        image_urls=image_urls
+                    )
+                
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {complexity_result})")
                 
