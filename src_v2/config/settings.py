@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     ENABLE_LANGGRAPH_REFLECTIVE_AGENT: bool = False  # Enable new LangGraph-based reflective agent
     ENABLE_LANGGRAPH_CHARACTER_AGENT: bool = False  # Enable new LangGraph-based character agent
     ENABLE_LANGGRAPH_INSIGHT_AGENT: bool = False  # Enable new LangGraph-based insight agent
+    ENABLE_LANGGRAPH_DIARY_AGENT: bool = False  # Enable new LangGraph-based diary agent
+    ENABLE_LANGGRAPH_DREAM_AGENT: bool = False  # Enable new LangGraph-based dream agent
     ENABLE_CHARACTER_AGENCY: bool = True  # Phase A7: Tier 2 Tool Usage
     REFLECTIVE_LLM_PROVIDER: str = "openrouter"
     REFLECTIVE_LLM_MODEL_NAME: str = "anthropic/claude-3.5-sonnet"

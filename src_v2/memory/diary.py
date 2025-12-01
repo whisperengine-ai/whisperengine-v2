@@ -395,13 +395,26 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
             # Escape curly braces in character_context to prevent LangChain template interpretation
             safe_context = character_context.replace("{", "{{").replace("}", "}}")
             
-            result = await self.chain.ainvoke({
-                "character_name": self.bot_name.title(),
-                "character_context": safe_context,
-                "diary_material": material.to_prompt_text(),
-                "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
-                "conversation_count": len(material.summaries)
-            })
+            if settings.ENABLE_LANGGRAPH_DIARY_AGENT:
+                logger.info("Using LangGraph Diary Agent")
+                from src_v2.agents.diary_graph import diary_graph_agent
+                
+                # Extract user names from summaries for the agent
+                user_names = list(set(s.get("user_name", s.get("user_id", "someone")) for s in material.summaries))
+                
+                result = await diary_graph_agent.run(
+                    material=material,
+                    character_context=safe_context,
+                    user_names=user_names
+                )
+            else:
+                result = await self.chain.ainvoke({
+                    "character_name": self.bot_name.title(),
+                    "character_context": safe_context,
+                    "diary_material": material.to_prompt_text(),
+                    "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
+                    "conversation_count": len(material.summaries)
+                })
             
             if isinstance(result, DiaryEntry):
                 # Safety Review

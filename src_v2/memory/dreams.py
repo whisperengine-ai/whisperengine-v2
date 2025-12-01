@@ -459,11 +459,20 @@ Create a surreal dream echoing these experiences.""")
             # Character files contain {user_name}, {current_datetime} which aren't relevant for dreams
             safe_context = character_context.replace("{", "{{").replace("}", "}}")
             
-            result = await self.chain.ainvoke({
-                "character_name": self.bot_name.title(),
-                "character_context": safe_context,
-                "dream_material": material.to_prompt_text()
-            })
+            if settings.ENABLE_LANGGRAPH_DREAM_AGENT:
+                logger.info("Using LangGraph Dream Agent")
+                from src_v2.agents.dream_graph import dream_graph_agent
+                
+                result = await dream_graph_agent.run(
+                    material=material,
+                    character_context=safe_context
+                )
+            else:
+                result = await self.chain.ainvoke({
+                    "character_name": self.bot_name.title(),
+                    "character_context": safe_context,
+                    "dream_material": material.to_prompt_text()
+                })
             
             if isinstance(result, DreamContent):
                 # Safety Review
