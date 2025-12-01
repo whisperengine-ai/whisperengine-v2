@@ -35,6 +35,7 @@ from src_v2.agents.reflective import ReflectiveAgent
 from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_agent import CharacterAgent
 from src_v2.agents.character_graph import CharacterGraphAgent
+from src_v2.agents.master_graph import master_graph_agent
 from src_v2.agents.context_builder import ContextBuilder
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
@@ -138,6 +139,30 @@ class AgentEngine:
         # Handle empty message with images
         if not user_message.strip() and image_urls:
             user_message = "[User uploaded an image]"
+
+        # --- SUPERGRAPH PATH ---
+        if settings.ENABLE_SUPERGRAPH and user_id:
+            logger.info("Delegating to Master Supergraph")
+            response = await master_graph_agent.run(
+                user_input=user_message,
+                user_id=user_id,
+                character=character,
+                chat_history=chat_history,
+                context_variables=context_variables,
+                image_urls=image_urls
+            )
+            
+            total_time = time.time() - start_time
+            if return_metadata:
+                return ResponseResult(
+                    response=response,
+                    mode="supergraph",
+                    complexity="DYNAMIC",
+                    model_used="mixed",
+                    processing_time_ms=total_time * 1000
+                )
+            return response
+        # -----------------------
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()

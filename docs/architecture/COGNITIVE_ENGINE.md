@@ -1,5 +1,7 @@
 # Cognitive Engine Architecture
 
+**Note:** As of December 2025 (Phase E17), the Cognitive Engine is transitioning to a **Supergraph Architecture**. See [`AGENT_GRAPH_SYSTEM.md`](./AGENT_GRAPH_SYSTEM.md) for the new design. The documentation below describes the conceptual model and the legacy Python orchestration layer.
+
 The **Cognitive Engine** (`src_v2/agents/engine.py`) is the brain of WhisperEngine v2. It orchestrates the flow of information from user input to character response, managing context, memory retrieval, tool execution, and three-tier response generation.
 
 ## The Integration Layer for Multi-Modal Processing
