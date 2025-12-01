@@ -640,51 +640,86 @@ class MessageHandler:
                 
                 # Prepare callback for Reflective Mode
                 status_message: Optional[discord.Message] = None
-                status_header: str = "🧠 **Reflective Mode Activated**"
-                status_body: str = ""
+                status_lines: List[str] = []
                 status_lock = asyncio.Lock()
+                last_status_update = 0.0
+                status_debounce_interval = 0.8  # Minimum seconds between Discord edits
                 
                 async def reflective_callback(text: str):
-                    nonlocal status_message, status_header, status_body
+                    """
+                    Callback for reflective agent status updates.
+                    
+                    Supports prefixes for different update types:
+                    - "HEADER:..." - Update the header line
+                    - "TOOLS:..." - Tool execution starting
+                    - "RESULT:..." - Tool results (batched)
+                    - "THOUGHT:..." or no prefix - Agent reasoning
+                    
+                    Uses debouncing to avoid Discord rate limits.
+                    """
+                    nonlocal status_message, status_lines, last_status_update
+                    
+                    if settings.REFLECTIVE_STATUS_VERBOSITY == "none":
+                        return
+                    
                     async with status_lock:
-                        # Check for header update
-                        if text.startswith("HEADER:"):
-                            status_header = text.replace("HEADER:", "").strip()
-                            # If we have a message, update it immediately to reflect header change
-                            if status_message:
-                                full_content = f"{status_header}\n{status_body}"
-                                if len(full_content) > 1900:
-                                    full_content = full_content[:1900] + "\n... (truncated)"
-                                try:
-                                    await status_message.edit(content=full_content)
-                                except Exception as e:
-                                    logger.error(f"Failed to update status header: {e}")
-                            return
-
-                        # Clean up text slightly
                         clean_text = text.strip()
                         if not clean_text:
                             return
-                            
-                        # Format: Quote block for thoughts
-                        formatted_text = "\n".join([f"> {line}" for line in clean_text.split("\n")])
                         
-                        status_body += f"\n{formatted_text}"
+                        # Parse prefix to determine update type
+                        if clean_text.startswith("HEADER:"):
+                            # Header updates are shown immediately
+                            header = clean_text.replace("HEADER:", "").strip()
+                            status_lines = [f"**{header}**"] + status_lines[1:] if status_lines else [f"**{header}**"]
+                        elif clean_text.startswith("TOOLS:"):
+                            # Tool execution phase
+                            content = clean_text.replace("TOOLS:", "").strip()
+                            status_lines.append(content)
+                        elif clean_text.startswith("RESULT:"):
+                            # Tool results (already batched by agent)
+                            content = clean_text.replace("RESULT:", "").strip()
+                            status_lines.append(content)
+                        elif clean_text.startswith("💭"):
+                            # Thought from the agent
+                            if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+                                # Format as quote block
+                                formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
+                                status_lines.append(formatted)
+                            # In minimal mode, skip thoughts entirely
+                        else:
+                            # Default: treat as thought or status
+                            if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+                                formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
+                                status_lines.append(formatted)
                         
-                        # Construct full content
-                        full_content = f"{status_header}\n{status_body}"
+                        # Build full status message
+                        if not status_lines:
+                            return
                         
-                        # Truncate if too long for Discord (2000 chars)
+                        # Add header if not present
+                        if not status_lines[0].startswith("**"):
+                            status_lines.insert(0, "**🧠 Thinking...**")
+                        
+                        full_content = "\n".join(status_lines)
+                        
+                        # Truncate if too long
                         if len(full_content) > 1900:
-                            full_content = full_content[:1900] + "\n... (truncated)"
+                            full_content = full_content[:1900] + "\n... *(truncated)*"
+                        
+                        # Debounce: Only update Discord if enough time has passed
+                        now = time.time()
+                        if now - last_status_update < status_debounce_interval:
+                            return  # Skip this update, will catch up on next one
                         
                         try:
                             if status_message:
                                 await status_message.edit(content=full_content)
                             else:
                                 status_message = await message.channel.send(full_content)
-                        except Exception as e:
-                            logger.error(f"Failed to update reflective status: {e}")
+                            last_status_update = now
+                        except discord.HTTPException as e:
+                            logger.warning(f"Failed to update reflective status: {e}")
 
                 # Streaming Response Logic
                 full_response_text = ""

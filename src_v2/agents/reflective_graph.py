@@ -260,9 +260,9 @@ TOOL USAGE GUIDE:
 {special_notes}{intent_section}
 """
 
-    async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool], callback: Optional[Callable[[str], Awaitable[None]]]) -> ToolMessage:
+    async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool]) -> tuple[ToolMessage, str]:
         """
-        Executes a single tool and handles logging/callbacks.
+        Executes a single tool. Returns (ToolMessage, tool_name) for batched callbacks.
         """
         tool_name = tool_call["name"]
         tool_args = tool_call["args"]
@@ -282,18 +282,11 @@ TOOL USAGE GUIDE:
         else:
             observation = f"Error: Tool {tool_name} not found."
 
-        # Callback for observation
-        if callback:
-            obs_str = str(observation)
-            # Truncate to 200 chars for preview, but indicate if there's more
-            preview = (obs_str[:200] + "...") if len(obs_str) > 200 else obs_str
-            await callback(f"✅ *{tool_name}*: {preview}")
-
         return ToolMessage(
             content=str(observation),
             tool_call_id=tool_call_id,
             name=tool_name
-        )
+        ), tool_name
 
     # --- Graph Nodes ---
 
@@ -329,12 +322,35 @@ TOOL USAGE GUIDE:
         if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
             return {"messages": []}
 
+        # Fire "searching" callback BEFORE parallel execution
+        tool_names = [tc["name"] for tc in last_message.tool_calls]
+        if callback and settings.REFLECTIVE_STATUS_VERBOSITY != "none":
+            if len(tool_names) == 1:
+                await callback(f"TOOLS:🔍 Using {tool_names[0]}...")
+            else:
+                await callback(f"TOOLS:🔍 Using {len(tool_names)} tools: {', '.join(tool_names)}...")
+
+        # Execute all tools in parallel (no per-tool callbacks)
         tasks = []
         for tool_call in last_message.tool_calls:
-            # tool_call is a dict in newer langchain versions (ToolCall TypedDict)
-            tasks.append(self._execute_tool_wrapper(tool_call, tools, callback))
+            tasks.append(self._execute_tool_wrapper(tool_call, tools))
         
-        tool_messages = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        
+        # Unpack results
+        tool_messages = [r[0] for r in results]
+        executed_names = [r[1] for r in results]
+        
+        # Fire ONE batched callback after all tools complete
+        if callback and settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+            # Detailed mode: show each tool result
+            for msg, name in zip(tool_messages, executed_names):
+                obs_str = str(msg.content)
+                preview = (obs_str[:150] + "...") if len(obs_str) > 150 else obs_str
+                await callback(f"RESULT:✅ *{name}*: {preview}")
+        elif callback and settings.REFLECTIVE_STATUS_VERBOSITY == "minimal":
+            # Minimal mode: just show completion summary
+            await callback(f"RESULT:✅ Completed {len(executed_names)} tool(s)")
         
         return {"messages": tool_messages}
 
