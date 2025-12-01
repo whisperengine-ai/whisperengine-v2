@@ -51,8 +51,12 @@ EXAMPLES:
 5. Q: "pinky finger callus" (keyword search)
    A: MATCH (n)-[r:FACT]->(o:Entity) WHERE ((n:User AND n.id = $user_id) OR (n:Character AND n.name = $bot_name)) AND (o.name CONTAINS 'pinky' OR o.name CONTAINS 'callus') RETURN labels(n)[0] as owner, o.name, r.predicate
 
+6. Q: "Who is user with id 12345?"
+   A: MATCH (u:User {{id: '12345'}})-[r:FACT]->(o:Entity) RETURN o.name, r.predicate
+
 RULES:
-- ALWAYS use the parameter $user_id for the User node.
+- Use the parameter $user_id for the User node by default.
+- If the question specifies a specific User ID (e.g. "user with id 123"), use that ID string directly in the query (e.g. {{id: '123'}}).
 - ALWAYS use the parameter $bot_name for the Character node.
 - If the query is ambiguous about the target (User vs Character), search BOTH.
 - Return the relevant properties (usually o.name or r.predicate).

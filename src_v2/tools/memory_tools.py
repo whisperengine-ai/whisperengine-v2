@@ -383,8 +383,12 @@ class LookupFactsTool(BaseTool):
 
     async def _arun(self, query: str) -> str:
         try:
+            # Clean up Discord mentions in the query
+            # <@123456789> -> "user with id 123456789"
+            cleaned_query = re.sub(r'<@!?(\d+)>', r'user with id \1', query)
+            
             # Use the new smart query method
-            result = await knowledge_manager.query_graph(self.user_id, query, self.bot_name)
+            result = await knowledge_manager.query_graph(self.user_id, cleaned_query, self.bot_name)
             return f"Graph Query Result: {result}"
         except Exception as e:
             return f"Error looking up facts: {e}"
