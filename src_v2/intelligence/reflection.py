@@ -210,6 +210,11 @@ GOAL INFERENCE RULES:
                     if insight not in existing_insights:
                         existing_insights.append(insight)
                 
+                # Cap at 20 insights to prevent unbounded growth (trim oldest)
+                MAX_INSIGHTS = 20
+                if len(existing_insights) > MAX_INSIGHTS:
+                    existing_insights = existing_insights[-MAX_INSIGHTS:]
+                
                 # Update DB
                 await conn.execute("""
                     UPDATE v2_user_relationships

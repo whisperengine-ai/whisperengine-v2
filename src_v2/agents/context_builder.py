@@ -182,9 +182,13 @@ class ContextBuilder:
         context = evo_manager.build_evolution_context(trust_score, user_sentiment)
         
         # Append Insights and Preferences (which are still in relationship dict)
+        # Limit to most recent 7 insights to avoid bloating the prompt
         if relationship.get('insights'):
+            insights = relationship['insights']
+            # Take the last 7 (most recent) insights
+            recent_insights = insights[-7:] if len(insights) > 7 else insights
             context += "\n[USER INSIGHTS]\n"
-            for insight in relationship['insights']:
+            for insight in recent_insights:
                 context += f"- {insight}\n"
             context += "(These are deep psychological observations about the user. Use them to empathize and connect.)\n"
 
