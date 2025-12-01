@@ -10,6 +10,8 @@ WhisperEngine v2 maintains your conversation history and learns about you across
 
 This document explains how your messages, memories, and personal information are stored and segmented (or not segmented) across different conversation contexts.
 
+**For technical architecture details**, see [Cognitive Engine Architecture](./architecture/COGNITIVE_ENGINE.md) which explains how requests are routed through three tiers: Fast Mode, Character Agency, and Reflective Mode.
+
 ## What Gets Stored?
 
 When you interact with the bot, several types of data are collected:
@@ -633,6 +635,6 @@ Ensure compliance with data protection laws before deploying.
 
 ---
 
-**Last Updated**: November 23, 2025  
-**Version**: WhisperEngine v2  
+**Last Updated**: December 1, 2025  
+**Version**: WhisperEngine v2.2  
 **Privacy Model**: Unified Global Profile (No Context Segmentation)

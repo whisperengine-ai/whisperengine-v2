@@ -1,5 +1,9 @@
 # Common Ground: How Bots Discover and Reference Shared Interests
 
+**Status**: ✅ Implemented  
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 **Common Ground** is the mechanism that helps Elena (or any bot) discover and reference shared interests with the user to build rapport and personalize conversations. This document explains the complete architecture, invocation logic, and system prompt injection.
 
 ## Overview

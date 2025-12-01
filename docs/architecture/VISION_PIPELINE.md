@@ -1,5 +1,8 @@
 # Vision Pipeline - The Sight Modality (👁️)
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Overview
 
 The Vision Pipeline is the **Sight modality** in WhisperEngine v2's multi-modal perception architecture. It enables AI characters to **see** - perceiving and remembering images shared by users.

@@ -1,5 +1,8 @@
 # WhisperEngine 2.0: Agentic Memory Architecture
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Overview
 
 Memory is the **Identity and Continuity modality** (🧠) in WhisperEngine v2's multi-modal perception architecture. It's what makes characters **the same being across time**.

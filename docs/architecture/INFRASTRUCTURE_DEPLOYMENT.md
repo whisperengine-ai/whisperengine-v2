@@ -1,5 +1,8 @@
 # Infrastructure & Deployment
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 WhisperEngine v2 uses a containerized microservices architecture orchestrated by Docker Compose. This ensures isolation, scalability, and ease of deployment.
 
 ## Architectural Theory: The "Sidecar" & Isolation Patterns

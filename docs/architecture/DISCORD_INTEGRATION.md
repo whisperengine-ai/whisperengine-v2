@@ -1,5 +1,8 @@
 # Discord Integration - The Sensory Interface
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Multi-Modal Context: Discord as Sensory System
 
 Discord isn't just a "platform" - it's the **sensory interface** through which characters experience reality. Every message, reaction, voice channel, and image comes through Discord's events.

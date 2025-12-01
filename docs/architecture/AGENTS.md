@@ -1,6 +1,11 @@
 # WhisperEngine v2 - Agent Architecture
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 This document provides a comprehensive overview of all agents in the WhisperEngine cognitive system.
+
+**For entry point details**, see [Cognitive Engine Architecture](./COGNITIVE_ENGINE.md) for the main orchestrator (`AgentEngine`) and request routing logic.
 
 ## Overview
 

@@ -1,5 +1,9 @@
 # Bot Self-Queries: How Bots Answer Questions About Themselves
 
+**Status**: ✅ Implemented  
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 When you ask Elena "How has your family influenced your decision to be a marine biologist?", she correctly responds about **her own background**, not yours. This document explains the complete architecture and flow.
 
 ## The Core Problem

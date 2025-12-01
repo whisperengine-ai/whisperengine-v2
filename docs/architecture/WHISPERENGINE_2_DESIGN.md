@@ -1,5 +1,8 @@
 # WhisperEngine 2.0: "Back to Basics" Design Document
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## 1. Vision & Philosophy
 **"Complexity is the enemy of execution."**
 

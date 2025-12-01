@@ -1,5 +1,8 @@
 # Reflective Mode - Deep Dive & Sequence Diagrams
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Overview
 
 Reflective Mode (System 2 thinking) is WhisperEngine v2's deep reasoning engine for complex analytical questions. It implements a ReAct (Reasoning + Acting) loop that breaks down complex queries into multiple reasoning steps.

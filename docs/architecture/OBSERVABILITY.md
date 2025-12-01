@@ -1,5 +1,8 @@
 # Observability & Metrics
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 WhisperEngine v2 uses InfluxDB for time-series metrics and Grafana for visualization.
 
 ## Metrics Schema

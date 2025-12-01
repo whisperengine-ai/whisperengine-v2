@@ -1,5 +1,9 @@
 # Understanding the Stats Footer
 
+**Status**: ✅ Implemented  
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 Some responses include a stats footer at the bottom—a quick summary of what's happening behind the scenes. Here's what each part means!
 
 ## Example Footer

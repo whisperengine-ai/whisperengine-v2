@@ -1,8 +1,8 @@
 # Document RAG (Retrieval-Augmented Generation)
 
 **Status**: ✅ Implemented  
-**Version**: 2.1  
-**Last Updated**: November 27, 2025
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
 
 ## Overview
 
@@ -28,10 +28,10 @@ This allows users to share documents with the bot and refer back to them in late
 ### Key Components
 
 | Component | File | Purpose |
-|-----------|------|---------|
+|-----------|------|---------||
 | `DocumentProcessor` | `src_v2/knowledge/documents.py` | Downloads & extracts text from attachments |
 | `DocumentContext` | `src_v2/knowledge/document_context.py` | Clean abstraction for document handling |
-| `_process_attachments()` | `src_v2/discord/bot.py` | Routes images vs documents, enforces limits |
+| `_process_attachments()` | `src_v2/discord/handlers/message_handler.py` | Routes images vs documents, enforces limits |
 | `add_message()` | `src_v2/memory/manager.py` | Stores full content to Qdrant with metadata |
 | `ComplexityClassifier` | `src_v2/agents/classifier.py` | Boosts complexity when documents present |
 
@@ -62,7 +62,7 @@ User uploads file → Discord attachment detected
               Future: RAG retrieves full content via semantic search
 ```
 
-**Key Design**: We store the FULL document in Qdrant, but only send a 2KB preview to the LLM for immediate responses. This prevents context window overload while preserving all content for future retrieval.
+**Key Design**: We store the FULL document in Qdrant, but only send a 2,000 character preview to the LLM for immediate responses. This prevents context window overload while preserving all content for future retrieval.
 
 ## Storage Format
 
@@ -160,16 +160,20 @@ Documents automatically trigger higher complexity tiers via `ComplexityClassifie
 
 | Limit | Value | Location | Reason |
 |-------|-------|----------|--------|
-| Max file size | 25 MB | `_process_attachments()` | Discord attachment limit |
-| Max files per message | 10 | `_process_attachments()` | Prevent spam/abuse |
+| Max file size | 25 MB | `MessageHandler._process_attachments()` | Discord attachment limit |
+| Max files per message | 10 | `MessageHandler._process_attachments()` | Prevent spam/abuse |
 | LLM preview limit | 2,000 chars | `DocumentContext.PREVIEW_LIMIT` | Context window management |
 | Text extraction | **No limit** | `DocumentProcessor` | Full content stored for RAG |
 
-**Note**: The documentation previously mentioned a 20KB extraction limit - this was **removed**. Full document content is now stored in Qdrant for better retrieval. Only the LLM preview is truncated.
+**Note**: Full document content is stored in Qdrant for better retrieval. Only the LLM preview is truncated to 2,000 characters.
 
-Files exceeding limits:
-- **Oversized files (>25MB)**: User notified upfront, file skipped
-- **Too many files (>10)**: User notified upfront, extras skipped
+**User Notifications**: When limits are exceeded, the user is notified upfront:
+- **Too many files (>10)**: `⚠️ Too many files! I can only process the first 10 attachments.`
+- **Oversized files (>25MB)**: `⚠️ Skipping oversized files (> 25MB): filename.pdf`
+
+**File Processing**:
+- **Images**: Added to `image_urls` list, optionally triggers Vision analysis
+- **Documents**: Processed by `DocumentProcessor`, text extracted via LangChain loaders
 - **Binary files**: Silently skipped (handled by Vision if image)
 
 ## Code Locations
@@ -178,8 +182,8 @@ Files exceeding limits:
 |-----------|------|----------------|
 | Document processor | `src_v2/knowledge/documents.py` | `DocumentProcessor` class |
 | Document context | `src_v2/knowledge/document_context.py` | `DocumentContext` dataclass |
-| Attachment routing | `src_v2/discord/bot.py` | `_process_attachments()` |
-| Memory storage | `src_v2/discord/bot.py` | Line ~867 (`doc_context.format_for_memory()`) |
+| Attachment routing | `src_v2/discord/handlers/message_handler.py` | `MessageHandler._process_attachments()` |
+| Memory storage | `src_v2/discord/handlers/message_handler.py` | `doc_context.format_for_memory()` |
 | Vector storage | `src_v2/memory/manager.py` | `add_message()` → `_save_vector_memory()` |
 | Complexity boost | `src_v2/agents/classifier.py` | `classify()` + `history_has_document_context()` |
 | Context detection | `src_v2/knowledge/document_context.py` | `has_document_context()`, `history_has_document_context()` |
@@ -190,9 +194,9 @@ Files exceeding limits:
 ```
 User: [uploads report.pdf] Can you summarize this?
 
-Bot: [COMPLEX_MID triggered - document analysis]
-     📄 Reading report.pdf...
+Bot: 📄 Reading report.pdf...
      
+     [COMPLEX_MID triggered - document analysis]
      [LLM receives preview with hint about full content in memory]
      
      This quarterly report shows three key points:
@@ -206,9 +210,9 @@ Bot: [COMPLEX_MID triggered - document analysis]
 User: What did that report say about customer costs?
 
 Bot: [history_has_document_context = True]
-     [COMPLEX_LOW triggered - needs memory search]
+     [COMPLEX_LOW triggered - enables CharacterAgent with tools]
      
-     > 🛠️ *Using search_specific_memories...*
+     [CharacterAgent uses search_specific_memories tool]
      [Finds: "Customer acquisition cost decreased by 15%..."]
      
      The quarterly report mentioned that customer acquisition
@@ -219,13 +223,14 @@ Bot: [history_has_document_context = True]
 ```
 User: [uploads doc1.pdf, doc2.txt] Compare these two documents
 
-Bot: [COMPLEX_HIGH triggered - multi-document analysis]
-     📄 Reading doc1.pdf...
+Bot: 📄 Reading doc1.pdf...
      📄 Reading doc2.txt...
      
-     🧠 **Reflective Mode Activated**
+     [COMPLEX_MID/HIGH triggered - multi-document analysis]
+     [ReflectiveAgent: ReAct loop with up to 10-15 steps]
+     
      > 💭 Analyzing both documents...
-     > 🛠️ *Using search_specific_memories...*
+     > 🛠️ Using search_specific_memories...
      > ✅ Found document content...
      
      Comparing the two documents:
@@ -271,6 +276,7 @@ Bot: [Silent processing of referenced attachment]
 
 - [Vision System](./VISION.md) - Image analysis (separate from document RAG)
 - [Memory System](../architecture/DATA_MODELS.md) - Vector storage architecture
+- [Cognitive Engine](../architecture/COGNITIVE_ENGINE.md) - Three-tier processing (Fast/Agency/Reflective)
 - [Reflective Mode](./REFLECTIVE_MODE_CONTROLS.md) - Deep analysis mode triggered by documents
 
 ## Configuration
@@ -284,6 +290,25 @@ No specific settings for Document RAG. Related settings:
 
 ## Implementation Notes
 
+### DocumentProcessor Class
+
+The `DocumentProcessor` handles file download and text extraction:
+
+```python
+class DocumentProcessor:
+    def __init__(self, temp_dir: str = "temp_downloads"):
+        # Creates temp directory for downloads
+        
+    async def process_attachment(self, attachment_url: str, filename: str) -> str:
+        # Downloads file, extracts text, cleans up temp file
+        
+    async def process_local_file(self, file_path: Path) -> str:
+        # Uses LangChain loaders based on file extension:
+        # - .pdf → PyPDFLoader
+        # - .docx/.doc → Docx2txtLoader  
+        # - Other → TextLoader (for .txt, .md, .json, etc.)
+```
+
 ### DocumentContext Class
 
 The `DocumentContext` dataclass provides a clean abstraction:
@@ -296,12 +321,16 @@ class DocumentContext:
     preview_content: str          # First 2000 chars for LLM
     has_documents: bool           # Quick check flag
     
+    PREVIEW_LIMIT: int = 2000     # Configurable preview size
+    
     @classmethod
     def from_processed_files(cls, processed_files: List[str]) -> "DocumentContext":
         # Parses "--- File: name.pdf ---\nContent..." format
+        # Extracts filenames via regex
+        # Creates preview with "...[Content continues - X more chars]..." suffix
         
     def format_for_llm(self) -> str:
-        # Returns preview with memory hint
+        # Returns preview with memory hint for tool usage
         
     def format_for_memory(self, user_message: str) -> str:
         # Returns message + full content for storage
@@ -317,15 +346,41 @@ Two utility functions check for document context:
 ```python
 def has_document_context(message_content: str) -> bool:
     """Checks single message for document markers."""
-    markers = ["[Attached Files:", "[Attached File Content]:", "[Visual Memory]"]
+    markers = [
+        "[Attached Files:",
+        "[Attached File Content]:",
+        "[Visual Memory]"
+    ]
     return any(marker in message_content for marker in markers)
 
 def history_has_document_context(chat_history: list) -> bool:
     """Checks recent history for any document context."""
     for msg in chat_history:
-        if has_document_context(msg.content):
-            return True
+        if hasattr(msg, 'content') and isinstance(msg.content, str):
+            if has_document_context(msg.content):
+                return True
     return False
 ```
 
-These are used by the classifier to boost complexity for document follow-up questions.
+These are used by the `ComplexityClassifier` to boost complexity for document follow-up questions. When `history_has_document_context` returns `True`, short follow-up questions like "search for X" or "what about Y" are classified as `COMPLEX_LOW` or higher to enable tool usage.
+
+### Attachment Processing Flow
+
+The `MessageHandler._process_attachments()` method handles all attachments:
+
+1. **Limit Checks**: Max 10 files, max 25MB each
+2. **User Notification**: Warns upfront about skipped files
+3. **Image Handling**: Adds URL to `image_urls`, optionally triggers Vision analysis
+4. **Document Handling**: Sends "📄 Reading filename..." message, extracts text
+5. **Prefix Assignment**: `File:` for current message, `Referenced File:` for replies/forwards
+
+```python
+async def _process_attachments(
+    self,
+    attachments: List[discord.Attachment],
+    channel: Any,
+    user_id: str,
+    silent: bool = False,        # True for referenced/forwarded messages
+    trigger_vision: bool = False  # Whether to queue Vision analysis
+) -> Tuple[List[str], List[str]]:  # (image_urls, processed_texts)
+```

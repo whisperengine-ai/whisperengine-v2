@@ -1,8 +1,7 @@
 # Character as Agent - Design Analysis
 
-**Document Version:** 1.5  
-**Created:** November 25, 2025  
-**Last Updated:** November 26, 2025
+**Version**: 2.2  
+**Last Updated**: December 1, 2025  
 **Status:** ✅ Implemented (Phase A7 Complete)  
 **Type:** Architectural Decision Record (ADR)
 

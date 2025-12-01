@@ -1,6 +1,12 @@
 # Goals System: How Bots Pursue Conversation Objectives
 
+**Status**: ✅ Implemented  
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 The Goals system enables Elena (and other bots) to have **conversation objectives** they work toward naturally. These aren't explicit tasks but rather **relationship-building behaviors** that guide the bot's engagement.
+
+**For context injection details**, see [Cognitive Engine - Active Goals](../architecture/COGNITIVE_ENGINE.md#dynamic-context-injection).
 
 ## Overview
 

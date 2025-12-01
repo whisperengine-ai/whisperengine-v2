@@ -1,8 +1,7 @@
 # Feedback Loops & Learning Pipelines
 
-**Document Version:** 1.0  
-**Created:** November 27, 2025  
-**Status:** Active Architecture
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
 
 WhisperEngine v2 is designed not just as a static response engine, but as an adaptive system that learns and optimizes over time. This document details the **5 distinct feedback loops** that operate at different timescales, from milliseconds (during generation) to days (long-term evolution).
 

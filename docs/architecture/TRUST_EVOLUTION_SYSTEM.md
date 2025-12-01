@@ -1,5 +1,8 @@
 # Trust & Evolution System - The Emotion Modality (❤️)
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Multi-Modal Context
 
 Trust & Evolution is the **Emotion modality** in WhisperEngine v2's multi-modal perception architecture. It's the character's interoceptive sense - how they *feel* about relationships.

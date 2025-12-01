@@ -38,22 +38,30 @@ WhisperEngine's image generation capability (via Flux Pro 1.1) has proven to be 
 ### Architecture
 
 ```
-User Request → ComplexityClassifier (LLM) → detected_intents["image"] → Complexity promoted to COMPLEX_MID → Reflective Mode → generate_image tool → Flux Pro 1.1 API → Discord embed
+User Request → ComplexityClassifier (LLM) → detected_intents["image_*"] 
+  → Complexity promoted to COMPLEX_MID 
+  → Reflective Mode (ReAct loop with tools) 
+  → generate_image tool 
+  → Flux Pro 1.1 API 
+  → Discord embed
 ```
 
 **Key Components:**
-- `src_v2/agents/classifier.py` - Intent detection (voice, image, search)
+- `src_v2/agents/classifier.py` - Intent detection (voice, image_self, image_other, image_refine, search, memory, math, reminder)
+- `src_v2/agents/engine.py` - AgentEngine routes to appropriate tier (Fast/Agency/Reflective)
+- `src_v2/agents/reflective.py` - ReflectiveAgent executes ReAct loop with tools
 - `src_v2/tools/image_tools.py` - `GenerateImageTool` class
-- `src_v2/agents/reflective.py` - Routes to image generation tool
 - `src_v2/core/quota.py` - Daily quota per user (`DAILY_IMAGE_QUOTA`)
 - Trust gate: Requires minimum trust level for image generation access
+
+**For architecture deep-dive**, see [Cognitive Engine Architecture](../architecture/COGNITIVE_ENGINE.md).
 
 ### Flow
 
 1. User sends image generation request (explicit or implicit)
-2. `ComplexityClassifier` detects "image" intent and returns it
-3. `bot.py` promotes complexity to `COMPLEX_MID` if "image" intent detected (ensures Reflective Mode access to tools)
-4. `ReflectiveAgent` identifies need for `generate_image` tool
+2. `ComplexityClassifier` detects image intent (`image_self`, `image_other`, or `image_refine`) and returns it in `detected_intents` list
+3. AgentEngine (`src_v2/agents/engine.py`) detects image intent and promotes complexity to `COMPLEX_MID` (ensures Reflective Mode access to tools)
+4. ReflectiveAgent enters ReAct loop, identifies need for `generate_image` tool
 5. Tool constructs prompt from user request + character context
 6. Flux Pro 1.1 generates image (~10-15s)
 7. Image URL returned and embedded in Discord response

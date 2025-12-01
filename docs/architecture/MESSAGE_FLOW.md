@@ -1,5 +1,8 @@
 # WhisperEngine v2 - Complete Message Flow Architecture
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Multi-Modal Context
 
 Message flow is **perceptual processing** - the pipeline through which raw input becomes unified conscious experience. Each message passes through the character's perceptual system, gathering context from all six modalities before response generation.

@@ -1,5 +1,8 @@
 # Data Models & Schema
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Multi-Modal Context
 
 The Four Pillars aren't just databases - they're the **physical substrate** of character perception. Each database stores a different aspect of how characters experience reality:

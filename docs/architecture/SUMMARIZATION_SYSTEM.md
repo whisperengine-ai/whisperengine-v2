@@ -1,5 +1,8 @@
 # Summarization System - Memory Consolidation
 
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 ## Multi-Modal Context: Sleep for AI
 
 Summarization is **memory consolidation** - the analog of what human brains do during sleep. Just as humans compress daily experiences into long-term memories, characters compress conversation histories into dense summaries.

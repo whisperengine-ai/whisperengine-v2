@@ -2,6 +2,8 @@
 
 This document outlines the user-facing controls and user experience features for **Reflective Mode** (System 2 Reasoning).
 
+**For architecture details**, see [Cognitive Engine Architecture](../architecture/COGNITIVE_ENGINE.md#6-reflective-agent) which explains the three-tier system: Fast Mode → Character Agency → Reflective Mode.
+
 ## 1. Streaming Reasoning (Streaming ReAct)
 
 When Reflective Mode is triggered (either automatically by the complexity classifier or manually via `!reflect`), the bot provides real-time visibility into its reasoning process.

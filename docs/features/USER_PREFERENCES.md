@@ -1,6 +1,12 @@
 # User Preferences: How Users Configure Bot Behavior
 
+**Status**: ✅ Implemented  
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 User Preferences allow users to customize how Elena (and other bots) interact with them. Unlike facts (which describe the user), preferences are **configuration settings** that the bot must respect.
+
+**For injection details**, see [Cognitive Engine - User Feedback Patterns](../architecture/COGNITIVE_ENGINE.md#dynamic-context-injection).
 
 ## Overview
 

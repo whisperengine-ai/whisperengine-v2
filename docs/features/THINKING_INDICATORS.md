@@ -1,6 +1,12 @@
 # Understanding Thinking Indicators
 
+**Status**: ✅ Implemented  
+**Version**: 2.2  
+**Last Updated**: December 1, 2025
+
 When you chat with the bot, you might sometimes see status messages appear before the response. These show you what's happening behind the scenes!
+
+**For technical architecture**, see [Cognitive Engine Architecture](../architecture/COGNITIVE_ENGINE.md) which explains how the bot routes requests through Fast Mode, Character Agency, and Reflective Mode.
 
 ## What Do They Mean?
 
@@ -36,11 +42,14 @@ Each character has their own unique way of showing they're thinking or using too
 
 ### Two Types of Thinking
 
-**Deep/Complex Thinking (Reflective Mode):**
-When you ask something complex—like questions about your past conversations, philosophical topics, or requests that need the bot to search through memories and piece things together. Takes 5-30 seconds depending on complexity.
+**Deep/Complex Thinking (Reflective Mode - COMPLEX_MID/HIGH):**
+When you ask something complex—like questions about your past conversations, philosophical topics, or requests that need the bot to search through memories and piece things together. Takes 5-30 seconds depending on complexity. Involves ReAct reasoning loop with multiple tool calls.
 
-**Quick Tool Use:**
-When the bot uses one of its tools—like searching memories, looking up facts, or generating images. Usually takes just a few seconds.
+**Moderate Thinking (Character Agency - COMPLEX_LOW):**
+When the bot uses one tool to enhance its response—like searching memories, looking up facts, generating an image, or checking current channel context. Usually takes 2-4 seconds. Single tool call, no loops.
+
+**Quick Response (Fast Mode - SIMPLE):**
+No indicator shown. Bot responds directly for casual conversation, greetings, or simple questions without tool use.
 
 ---
 
