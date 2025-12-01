@@ -49,7 +49,11 @@ class DiaryMaterial(BaseModel):
     
     def is_sufficient(self) -> bool:
         """Check if we have enough material to generate a diary."""
-        # Need at least some summaries, but can be enriched by other sources
+        # If always generate is on, we don't need summaries
+        if settings.DIARY_ALWAYS_GENERATE:
+            return True
+            
+        # Otherwise need at least some summaries
         return len(self.summaries) >= 1
     
     def to_prompt_text(self) -> str:
@@ -65,6 +69,9 @@ class DiaryMaterial(BaseModel):
                 sections.append(f"Emotions: {emotions}")
                 sections.append(f"Topics: {topics}")
                 sections.append(f"Summary: {s.get('content', 'No summary')}\n")
+        else:
+            sections.append("## Conversations Today")
+            sections.append("No conversations occurred today. The day was quiet and solitary. Reflect on this silence, your internal state, and your observations of the world.")
         
         if self.observations:
             sections.append("\n## Things I Noticed Today")
@@ -360,7 +367,8 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
     async def generate_diary_from_material(
         self,
         material: DiaryMaterial,
-        character_context: str
+        character_context: str,
+        override: bool = False
     ) -> Tuple[Optional[DiaryEntry], List[Dict[str, Any]]]:
         """
         Generates a diary entry from gathered material (multi-source).
@@ -368,11 +376,12 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
         Args:
             material: DiaryMaterial with all sources
             character_context: Character's personality context
+            override: If True, ignore sufficiency check
             
         Returns:
             Tuple of (DiaryEntry, provenance_data) if successful
         """
-        if not material.is_sufficient():
+        if not override and not material.is_sufficient():
             logger.info(f"Insufficient diary material for {self.bot_name}")
             return None, []
         
@@ -436,7 +445,8 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
         self,
         summaries: List[Dict[str, Any]],
         character_context: str,
-        user_names: List[str]
+        user_names: List[str],
+        override: bool = False
     ) -> Tuple[Optional[DiaryEntry], List[Dict[str, Any]]]:
         """
         Generates a diary entry from the day's session summaries.
@@ -446,6 +456,7 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
             summaries: List of summary dicts with 'content', 'emotions', 'topics'
             character_context: Character's purpose, drives, and constitution (from core.yaml)
             user_names: List of display names the character interacted with today
+            override: If True, ignore sufficiency check
             
         Returns:
             Tuple of (DiaryEntry, provenance_data) if successful, (None, []) on failure
@@ -463,7 +474,7 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
         except Exception:
             pass  # Use summaries-only if gathering fails
         
-        return await self.generate_diary_from_material(material, character_context)
+        return await self.generate_diary_from_material(material, character_context, override=override)
 
     async def save_diary_entry(
         self,

@@ -48,7 +48,7 @@ def setup_env(bot_name: str):
     os.environ["INFLUXDB_URL"] = "http://localhost:8086"
     os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
-def main():
+async def main():
     if len(sys.argv) < 2:
         print("Usage: python trigger_dream_any.py <bot_name>")
         print(f"Available bots: {', '.join(BOT_PORTS.keys())}")
@@ -68,45 +68,26 @@ def main():
     from dotenv import load_dotenv
     load_dotenv(f'.env.{bot_name}', override=False)  # Don't override our localhost URLs
     
-    asyncio.run(run_dream(bot_name))
-
-async def run_dream(bot_name: str):
-    from src_v2.core.database import db_manager
-    from src_v2.workers.tasks.dream_tasks import run_agentic_dream_generation
+    # Now import after env is set
+    from src_v2.workers.task_queue import TaskQueue
     
-    print(f'Initializing database connections for {bot_name}...')
-    await db_manager.connect_all()
+    print(f"Connecting to Task Queue for {bot_name}...")
+    tq = TaskQueue()
+    await tq.connect()
     
-    # Dummy context (worker functions accept dict or WorkerContext)
-    ctx = {}
-    
-    print(f'Triggering agentic dream generation for {bot_name}...')
+    print(f"Enqueuing agentic dream generation for {bot_name}...")
     
     try:
-        result = await run_agentic_dream_generation(ctx, bot_name)
+        job_id = await tq.enqueue("run_agentic_dream_generation", character_name=bot_name, override=True)
+        print(f"\n✅ Job enqueued successfully! Job ID: {job_id}")
+        print("   Check the worker logs for progress and results.")
         
-        print()
-        print('--- Dream Generation Result ---')
-        print(f'Success: {result.get("success", False)}')
-        print(f'Dream ID: {result.get("dream_id", "N/A")}')
-        print(f'Mood: {result.get("mood", "N/A")}')
-        print(f'Themes: {result.get("themes", [])}')
-        print(f'Broadcast queued: {result.get("broadcast_queued", False)}')
-        
-        if result.get('success'):
-            print(f'\n✅ Dream generated for {bot_name}!')
-            print('   The bot will broadcast it to Discord within ~60 seconds (fallback queue)')
-            print('   Or immediately if HTTP callback succeeds.')
-        else:
-            print(f'\n❌ Dream generation failed: {result.get("error", "Unknown error")}')
+    except Exception as e:
+        print(f"\nError: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
-        # Cleanup connections
-        if db_manager.postgres_pool:
-            await db_manager.postgres_pool.close()
-        if db_manager.qdrant_client:
-            await db_manager.qdrant_client.close()
-        if db_manager.neo4j_driver:
-            await db_manager.neo4j_driver.close()
+        await tq.close()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

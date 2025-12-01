@@ -71,7 +71,7 @@ async def main():
     print(f"Enqueuing agentic diary generation for {bot_name}...")
     
     try:
-        job_id = await tq.enqueue("run_agentic_diary_generation", character_name=bot_name)
+        job_id = await tq.enqueue("run_agentic_diary_generation", character_name=bot_name, override=True)
         print(f"\n✅ Job enqueued successfully! Job ID: {job_id}")
         print("   Check the worker logs for progress and results.")
         

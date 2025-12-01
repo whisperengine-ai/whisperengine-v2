@@ -4,8 +4,9 @@ from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.core.behavior import get_character_timezone
-from src_v2.workers.tasks.diary_tasks import run_diary_generation, run_agentic_diary_generation
-from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_agentic_dream_generation
+# Note: Tasks are enqueued by name string, so we don't need to import the functions directly
+# from src_v2.workers.tasks.diary_tasks import run_diary_generation, run_agentic_diary_generation
+# from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_agentic_dream_generation
 
 try:
     from zoneinfo import ZoneInfo
@@ -97,7 +98,7 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"Found {len(character_names)} characters for diary generation: {character_names}")
         
         # Choose generation function based on settings
-        gen_func = run_agentic_diary_generation if settings.ENABLE_AGENTIC_NARRATIVES else run_diary_generation
+        job_name = "run_agentic_diary_generation" if settings.ENABLE_AGENTIC_NARRATIVES else "run_diary_generation"
         
         # Run diary generation for each character
         processed_count = 0
@@ -113,12 +114,13 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
                 # Continue anyway
             
             try:
-                # Run directly (sequential)
-                await gen_func(ctx, character_name=char_name)
+                # Enqueue job instead of running directly
+                # This decouples scheduling from execution
+                await ctx['redis'].enqueue_job(job_name, character_name=char_name)
                 processed_count += 1
-                logger.debug(f"Completed diary generation for {char_name}")
+                logger.debug(f"Enqueued diary generation for {char_name} (job: {job_name})")
             except Exception as e:
-                logger.error(f"Failed to generate diary for {char_name}: {e}")
+                logger.error(f"Failed to enqueue diary for {char_name}: {e}")
         
         logger.info(f"Nightly diary generation check complete: {processed_count} processed (mode: {mode})")
         
@@ -192,18 +194,18 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"Found {len(character_names)} characters for dream generation: {character_names}")
         
         # Choose generation function based on settings
-        gen_func = run_agentic_dream_generation if settings.ENABLE_AGENTIC_NARRATIVES else run_dream_generation
+        job_name = "run_agentic_dream_generation" if settings.ENABLE_AGENTIC_NARRATIVES else "run_dream_generation"
         
         # Run dream generation for each character
         processed_count = 0
         for char_name in character_names:
             try:
-                # Run directly (sequential)
-                await gen_func(ctx, character_name=char_name)
+                # Enqueue job instead of running directly
+                await ctx['redis'].enqueue_job(job_name, character_name=char_name)
                 processed_count += 1
-                logger.debug(f"Completed dream generation for {char_name}")
+                logger.debug(f"Enqueued dream generation for {char_name} (job: {job_name})")
             except Exception as e:
-                logger.error(f"Failed to generate dream for {char_name}: {e}")
+                logger.error(f"Failed to enqueue dream for {char_name}: {e}")
         
         logger.info(f"Nightly dream generation check complete: {processed_count} processed (mode: {mode})")
         

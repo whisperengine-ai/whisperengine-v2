@@ -96,6 +96,9 @@ class DreamMaterial(BaseModel):
                 content = m.get("content", m.get("summary", ""))[:200]
                 emotions = ", ".join(m.get("emotions", [])) or "mixed"
                 sections.append(f"- {content} (felt: {emotions})")
+        else:
+            sections.append("## Recent Conversations")
+            sections.append("No recent conversations. The world has been quiet.")
         
         if self.facts:
             sections.append("\n## Things I Know About People")
