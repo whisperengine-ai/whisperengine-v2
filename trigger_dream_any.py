@@ -35,6 +35,7 @@ def setup_env(bot_name: str):
     """Set up environment variables for the bot."""
     os.environ["DISCORD_BOT_NAME"] = bot_name
     os.environ["ENABLE_AGENTIC_NARRATIVES"] = "true"
+    os.environ["ENABLE_LANGGRAPH_DREAM_AGENT"] = "true"
     
     # Set the correct API port for HTTP callbacks
     bot_port = BOT_PORTS.get(bot_name, 8000)

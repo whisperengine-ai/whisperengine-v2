@@ -32,6 +32,7 @@ def setup_env(bot_name: str):
     """Set up environment variables for the bot."""
     os.environ["DISCORD_BOT_NAME"] = bot_name
     os.environ["ENABLE_AGENTIC_NARRATIVES"] = "true"
+    os.environ["ENABLE_LANGGRAPH_DIARY_AGENT"] = "true"
     
     # Override DB URLs for local execution
     os.environ["POSTGRES_URL"] = "postgresql://whisper:password@localhost:5432/whisperengine_v2"
@@ -61,43 +62,25 @@ async def main():
     load_dotenv(f'.env.{bot_name}', override=False)  # Don't override our localhost URLs
     
     # Now import after env is set
-    from src_v2.core.database import db_manager
-    from src_v2.workers.worker import run_agentic_diary_generation
+    from src_v2.workers.task_queue import TaskQueue
     
-    print(f"Initializing database connections for {bot_name}...")
-    await db_manager.connect_all()
+    print(f"Connecting to Task Queue for {bot_name}...")
+    tq = TaskQueue()
+    await tq.connect()
     
-    print(f"Triggering agentic diary generation for {bot_name}...")
-
-    # Dummy context
-    ctx = {}
+    print(f"Enqueuing agentic diary generation for {bot_name}...")
     
     try:
-        result = await run_agentic_diary_generation(ctx, bot_name)
-        print("\n--- Diary Generation Result ---")
-        print(f"Success: {result.get('success')}")
-        print(f"Diary ID: {result.get('point_id')}")
-        print(f"Mood: {result.get('mood')}")
-        print(f"Themes: {result.get('themes')}")
-        print(f"Broadcast queued: {result.get('broadcast_queued')}")
-        
-        if result.get('success'):
-            print(f"\n✅ Diary generated for {bot_name}!")
-            print(f"   The bot will broadcast it to Discord within ~60 seconds (fallback queue)")
-            print(f"   Or immediately if HTTP callback succeeds.")
-        else:
-            print(f"\n❌ Diary generation failed: {result.get('error')}")
+        job_id = await tq.enqueue("run_agentic_diary_generation", character_name=bot_name)
+        print(f"\n✅ Job enqueued successfully! Job ID: {job_id}")
+        print("   Check the worker logs for progress and results.")
         
     except Exception as e:
         print(f"\nError: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        # Cleanup
-        if db_manager.postgres_pool:
-            await db_manager.postgres_pool.close()
-        if db_manager.qdrant_client:
-            await db_manager.qdrant_client.close()
+        await tq.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
