@@ -22,17 +22,16 @@ def is_processing_window(target_hour: int, target_minute: int, timezone_str: str
         tz = ZoneInfo(timezone_str)
         local_now = datetime.now(tz)
         
-        # Create target time for today
-        target_time = local_now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-        
-        # If target time is in the future, we might be looking at yesterday's window?
-        # No, we only care if we are currently IN the window starting at target_time.
-        
-        # Calculate end of window
-        end_time = target_time + timedelta(hours=window_hours)
-        
-        # Check if we are in the window [target_time, end_time)
-        if target_time <= local_now < end_time:
+        # Check window for TODAY
+        target_today = local_now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        end_today = target_today + timedelta(hours=window_hours)
+        if target_today <= local_now < end_today:
+            return True
+            
+        # Check window for YESTERDAY (in case we are in the early morning spillover)
+        target_yesterday = target_today - timedelta(days=1)
+        end_yesterday = target_yesterday + timedelta(hours=window_hours)
+        if target_yesterday <= local_now < end_yesterday:
             return True
             
         return False
