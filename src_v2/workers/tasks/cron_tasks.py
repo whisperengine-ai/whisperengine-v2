@@ -116,9 +116,9 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 # Enqueue job instead of running directly
                 # This decouples scheduling from execution
-                await ctx['redis'].enqueue_job(job_name, character_name=char_name)
+                await ctx['redis'].enqueue_job(job_name, character_name=char_name, _queue_name="arq:cognition")
                 processed_count += 1
-                logger.debug(f"Enqueued diary generation for {char_name} (job: {job_name})")
+                logger.debug(f"Enqueued diary generation for {char_name} (job: {job_name}) to arq:cognition")
             except Exception as e:
                 logger.error(f"Failed to enqueue diary for {char_name}: {e}")
         
@@ -201,9 +201,9 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         for char_name in character_names:
             try:
                 # Enqueue job instead of running directly
-                await ctx['redis'].enqueue_job(job_name, character_name=char_name)
+                await ctx['redis'].enqueue_job(job_name, character_name=char_name, _queue_name="arq:cognition")
                 processed_count += 1
-                logger.debug(f"Enqueued dream generation for {char_name} (job: {job_name})")
+                logger.debug(f"Enqueued dream generation for {char_name} (job: {job_name}) to arq:cognition")
             except Exception as e:
                 logger.error(f"Failed to enqueue dream for {char_name}: {e}")
         
@@ -291,9 +291,9 @@ async def run_nightly_goal_strategist(ctx: Dict[str, Any]) -> Dict[str, Any]:
             
             try:
                 # Enqueue the job to run in parallel
-                await ctx["redis"].enqueue_job("run_goal_strategist", bot_name=char_name)
+                await ctx["redis"].enqueue_job("run_goal_strategist", bot_name=char_name, _queue_name="arq:cognition")
                 queued_count += 1
-                logger.debug(f"Queued goal strategist for {char_name}")
+                logger.debug(f"Queued goal strategist for {char_name} to arq:cognition")
             except Exception as e:
                 logger.error(f"Failed to enqueue goal strategist for {char_name}: {e}")
         

@@ -140,6 +140,11 @@ class WorkerSettings:
         ),
     ]
     
+    # Primary queue name - arq only listens to a single queue per worker instance
+    # Set to arq:cognition for deep reasoning tasks (diaries, dreams, reflection, strategy)
+    # To listen to multiple queues, use separate worker instances or routing logic
+    queue_name = "arq:cognition"
+    
     # Startup/shutdown hooks
     on_startup = startup
     on_shutdown = shutdown
@@ -158,5 +163,5 @@ if __name__ == "__main__":
     # Or use arq CLI: arq src_v2.workers.worker.WorkerSettings
     from arq.worker import run_worker
     
-    logger.info("Starting Worker...")
+    logger.info(f"Starting Worker with queue: {WorkerSettings.queue_name}")
     run_worker(WorkerSettings)  # type: ignore[arg-type]

@@ -26,80 +26,6 @@ def _redis_key(key: str) -> str:
     return f"{prefix}{key}"
 
 
-async def _try_http_callback(
-    content: str,
-    post_type: str,
-    character_name: str,
-    provenance: Optional[List[Dict[str, Any]]] = None
-) -> bool:
-    """
-    Try to post directly via HTTP callback to bot's internal API.
-    
-    This is faster than queuing because it doesn't wait for the bot's
-    poll loop. Falls back to queue if HTTP fails.
-    
-    Returns:
-        True if HTTP callback succeeded, False otherwise
-    """
-    try:
-        import httpx
-        
-        # 1. Try to discover the bot's endpoint from Redis
-        urls_to_try = []
-        
-        if db_manager.redis_client:
-            key = f"{settings.REDIS_KEY_PREFIX}discovery:endpoint:{character_name.lower()}"
-            discovered_url = await db_manager.redis_client.get(key)
-            if discovered_url:
-                # discovered_url is like "http://ryan:8001"
-                urls_to_try.append(f"{discovered_url}/api/internal/callback/broadcast")
-        
-        # 2. Fallback: Try standard Docker service name (assuming port 8000 if not discovered)
-        # This handles cases where discovery hasn't happened yet or Redis is down
-        bot_service = character_name.lower()
-        urls_to_try.append(f"http://{bot_service}:8000/api/internal/callback/broadcast")
-        
-        # 3. Fallback: Try localhost with configured API port (for local testing)
-        api_port = settings.API_PORT
-        urls_to_try.append(f"http://localhost:{api_port}/api/internal/callback/broadcast")
-        
-        payload = {
-            "content": content,
-            "post_type": post_type,
-            "character_name": character_name,
-            "provenance": provenance or []
-        }
-        
-        headers = {}
-        internal_api_key = getattr(settings, 'INTERNAL_API_KEY', None)
-        if internal_api_key:
-            headers["X-Internal-Key"] = internal_api_key.get_secret_value()
-        
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            for url in urls_to_try:
-                try:
-                    response = await client.post(url, json=payload, headers=headers)
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get("success"):
-                            logger.debug(f"HTTP callback succeeded for {post_type} to {url}")
-                            return True
-                except httpx.ConnectError:
-                    continue  # Try next URL
-                except Exception as e:
-                    logger.debug(f"HTTP callback to {url} failed: {e}")
-                    continue
-        
-        return False
-        
-    except ImportError:
-        logger.debug("httpx not available for HTTP callback")
-        return False
-    except Exception as e:
-        logger.debug(f"HTTP callback failed: {e}")
-        return False
-
-
 class PostType(str, Enum):
     DIARY = "diary"
     DREAM = "dream"
@@ -508,40 +434,24 @@ class BroadcastManager:
         content: str,
         post_type: PostType,
         character_name: str,
-        provenance: Optional[List[Dict[str, Any]]] = None,
-        try_http_first: bool = True
+        provenance: Optional[List[Dict[str, Any]]] = None
     ) -> bool:
         """
         Queue a broadcast for posting by the bot.
         Used by workers that don't have Discord access.
         
-        This method first tries an HTTP callback for faster delivery,
-        then falls back to Redis queue if HTTP fails.
+        Each bot has its own queue (broadcast:queue:{bot_name}) which it
+        polls via the background task. This avoids race conditions.
         
         Args:
             content: The text content to post
             post_type: Type of post (diary, dream, etc.)
             character_name: Name of the character posting
             provenance: Optional source data
-            try_http_first: If True, attempt HTTP callback before queuing
             
         Returns:
-            True if posted/queued successfully
+            True if queued successfully
         """
-        # Try HTTP callback first for faster delivery
-        if try_http_first:
-            http_success = await _try_http_callback(
-                content=content,
-                post_type=post_type.value,
-                character_name=character_name,
-                provenance=provenance
-            )
-            if http_success:
-                logger.info(f"Posted {post_type.value} via HTTP callback for {character_name}")
-                return True
-            logger.debug(f"HTTP callback failed, falling back to queue for {character_name}")
-        
-        # Fall back to Redis queue
         if not db_manager.redis_client:
             logger.warning("Redis not available for broadcast queue")
             return False
@@ -559,13 +469,14 @@ class BroadcastManager:
                 "queued_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Push to queue (list) - use prefixed key
+            # Push to bot-specific queue (no more shared queue race conditions)
+            bot_queue_key = _redis_key(f"broadcast:queue:{character_name.lower()}")
             await db_manager.redis_client.rpush(
-                _redis_key("broadcast:queue"),
+                bot_queue_key,
                 json.dumps(queue_item)
             )
             
-            logger.info(f"Queued {post_type.value} broadcast for {character_name}")
+            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key}")
             return True
             
         except Exception as e:
@@ -592,9 +503,8 @@ class BroadcastManager:
         """
         Process all queued broadcasts (called by bot with Discord access).
         
-        This is a FALLBACK mechanism. Workers should prefer calling HTTP
-        callbacks directly. This method catches any items that failed HTTP
-        delivery or were queued when the bot was down.
+        Each bot has its own queue (broadcast:queue:{bot_name}), so we only
+        see items meant for this bot. No more race conditions!
         
         Returns:
             Number of broadcasts posted
@@ -607,9 +517,8 @@ class BroadcastManager:
             return 0
         
         posted = 0
-        requeue_items = []  # Items for other bots
         my_bot_name = settings.DISCORD_BOT_NAME.lower() if settings.DISCORD_BOT_NAME else ""
-        queue_key = _redis_key("broadcast:queue")
+        queue_key = _redis_key(f"broadcast:queue:{my_bot_name}")
         
         try:
             import json
@@ -622,16 +531,8 @@ class BroadcastManager:
                 
                 try:
                     item = json.loads(item_json)
-                    item_bot_name = item.get("character_name", "").lower()
                     
-                    logger.debug(f"Processing queue item: bot={item_bot_name}, my_bot={my_bot_name}, type={item.get('post_type')}")
-                    
-                    # Only process broadcasts for THIS bot
-                    if item_bot_name != my_bot_name:
-                        # Not for us - requeue it
-                        logger.debug(f"Requeuing item for {item_bot_name} (I am {my_bot_name})")
-                        requeue_items.append(item_json)
-                        continue
+                    logger.debug(f"Processing queue item: type={item.get('post_type')}, id={item.get('id', 'unknown')}")
                     
                     result = await self.post_to_channel(
                         content=item["content"],
@@ -642,16 +543,12 @@ class BroadcastManager:
                     
                     if result:
                         posted += 1
-                        logger.info(f"Posted queued {item['post_type']} from {item['character_name']}")
+                        logger.info(f"Posted queued {item['post_type']} for {item['character_name']}")
                     else:
-                        logger.warning(f"post_to_channel returned None/empty for {item['post_type']} from {item['character_name']}")
+                        logger.warning(f"post_to_channel returned None/empty for {item['post_type']}")
                     
                 except Exception as e:
                     logger.warning(f"Failed to process queued broadcast: {e}")
-            
-            # Requeue items for other bots
-            for item_json in requeue_items:
-                await db_manager.redis_client.rpush(queue_key, item_json)
             
         except Exception as e:
             logger.error(f"Error processing broadcast queue: {e}")

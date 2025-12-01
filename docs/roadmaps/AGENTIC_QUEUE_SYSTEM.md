@@ -1,8 +1,39 @@
 # Agentic Queue System: The Stigmergic Nervous System
 
-**Status:** Proposed
+**Status:** ✅ Partially Implemented (Phase 1 Complete)
 **Target Phase:** E18
 **Dependencies:** Supergraph Architecture (E17)
+
+## Current Implementation (Dec 2024)
+
+The queue system is now operational with the following architecture:
+
+### Queue Names (arq-compatible)
+| Queue | Purpose | Listener |
+|-------|---------|----------|
+| `arq:cognition` | Deep reasoning tasks | Worker containers (3 replicas) |
+| `broadcast:queue:{bot_name}` | Discord broadcasts | Each bot polls its own queue |
+
+### Key Files
+- `src_v2/workers/worker.py` - Worker with `queue_name = "arq:cognition"`
+- `src_v2/workers/task_queue.py` - TaskQueue with `_queue_name` parameter
+- `src_v2/broadcast/manager.py` - Bot-specific broadcast queues
+
+### Usage
+```python
+# Enqueue a cognitive task
+await task_queue.enqueue(
+    "run_agentic_diary_generation",
+    character_name="elena",
+    _queue_name="arq:cognition"
+)
+
+# Broadcast queues are automatic - workers push, bots poll
+await broadcast_manager.queue_broadcast(content, PostType.DIARY, "elena")
+# -> Queues to whisper:broadcast:queue:elena
+```
+
+---
 
 ## 1. The Vision
 
@@ -41,63 +72,68 @@ def on_diary_trigger(event):
 
 We organize the collective intelligence into specialized queues (Topics).
 
-| Queue | Purpose | Examples |
-|-------|---------|----------|
-| `queue:sensory` | Fast, real-time analysis | Sentiment, Intent Detection, Fact Extraction |
-| `queue:cognition` | Deep reasoning, slow tasks | Dreams, Diaries, Reflection, Strategy |
-| `queue:social` | Inter-agent communication | Gossip, Observations, Trust Updates |
-| `queue:action` | Outbound effects | Image Gen, Voice Gen, Proactive Messages |
+| Queue | Purpose | Examples | Status |
+|-------|---------|----------|--------|
+| `arq:cognition` | Deep reasoning, slow tasks | Dreams, Diaries, Reflection, Strategy | ✅ Implemented |
+| `broadcast:queue:{bot}` | Per-bot Discord actions | Diary posts, Dream posts | ✅ Implemented |
+| `arq:sensory` | Fast, real-time analysis | Sentiment, Intent, Fact Extraction | 🔮 Future |
+| `arq:social` | Inter-agent communication | Gossip, Observations, Trust Updates | 🔮 Future |
+| `arq:action` | Outbound effects | Image Gen, Voice Gen, Proactive Messages | 🔮 Future |
 
 ### 2.2 The Worker Swarm
 
-Instead of a monolithic worker, we can deploy specialized workers that listen to specific queues.
+Currently using a single worker type with 3 replicas. Future: specialized workers.
 
 ```python
-# Pseudocode for Worker Configuration
-class SensoryWorker(Worker):
-    queues = ["queue:sensory"]
-    concurrency = 10  # Fast tasks, high concurrency
+# Current Implementation
+class WorkerSettings:
+    queue_name = "arq:cognition"  # Single queue per worker instance
+    # Note: arq only supports one queue_name per worker, not a list
 
-class CognitiveWorker(Worker):
-    queues = ["queue:cognition"]
-    concurrency = 2   # Heavy tasks, low concurrency
+# Future: Multiple specialized worker containers
+# - cognition-worker: queue_name = "arq:cognition"
+# - sensory-worker: queue_name = "arq:sensory"  
+# - action-worker: queue_name = "arq:action"
 ```
 
 ## 3. Implementation Plan
 
-### Phase 1: Decouple Scheduling (The "Heartbeat")
+### Phase 1: Decouple Scheduling (The "Heartbeat") ✅ COMPLETE
 Refactor the existing `cron_tasks.py` to stop executing logic and start posting events.
 
 ```python
 # src_v2/workers/tasks/cron_tasks.py
 
-async def run_nightly_diary_check():
-    # OLD: run_diary_generation()
-    # NEW:
-    await redis.enqueue_job("run_agentic_diary", queue="queue:cognition")
+async def run_nightly_diary_generation(ctx):
+    # Enqueue to arq:cognition for actual processing
+    await ctx['redis'].enqueue_job(
+        "run_agentic_diary_generation",
+        character_name=char_name,
+        _queue_name="arq:cognition"
+    )
 ```
 
-### Phase 2: Specialized Queues
-Update `TaskQueue` and `WorkerSettings` to support multiple named queues.
+### Phase 2: Bot-Specific Broadcast Queues ✅ COMPLETE
+Each bot has its own queue for Discord actions, eliminating race conditions.
 
 ```python
-# src_v2/workers/task_queue.py
-class TaskQueue:
-    async def enqueue(self, func_name, queue_name="default", **kwargs):
-        # ...
+# src_v2/broadcast/manager.py
+bot_queue_key = f"whisper:broadcast:queue:{character_name.lower()}"
+# Each bot polls only its own queue - no more requeuing items for other bots
 ```
 
-### Phase 3: Inter-Agent Triggers
+### Phase 3: Specialized Workers (Future)
+Deploy separate worker containers for different queue types.
+
+### Phase 4: Inter-Agent Triggers (Future)
 Update agents to post to the queue instead of returning passive strings.
 
 ```python
 # InsightAgent (running in Worker)
 if user_is_sad:
-    # OLD: return "User is sad"
-    # NEW:
     await task_queue.enqueue(
         "schedule_proactive_message", 
-        queue="queue:action", 
+        queue="arq:action", 
         delay="4h"
     )
 ```

@@ -87,6 +87,7 @@ class TaskQueue:
         task_name: str, 
         _defer_by: Optional[int] = None,
         _job_id: Optional[str] = None,
+        _queue_name: str = "arq:queue",
         **kwargs: Any
     ) -> Optional[str]:
         """
@@ -96,6 +97,7 @@ class TaskQueue:
             task_name: Name of the task function to execute
             _defer_by: Delay in seconds before execution
             _job_id: Optional unique job ID (for deduplication)
+            _queue_name: The queue to enqueue the job in (default: arq:queue)
             **kwargs: Arguments to pass to the task
             
         Returns:
@@ -109,15 +111,17 @@ class TaskQueue:
             return None
             
         try:
+            logger.debug(f"Calling enqueue_job: task={task_name}, defer_by={_defer_by}, queue={_queue_name}")
             job = await self._pool.enqueue_job(
                 task_name,
                 _defer_by=_defer_by,
                 _job_id=_job_id,
+                _queue_name=_queue_name,
                 **kwargs
             )
             
             if job:
-                logger.debug(f"Enqueued task {task_name} (job_id: {job.job_id})")
+                logger.debug(f"Enqueued task {task_name} (job_id: {job.job_id}) to {_queue_name}")
                 return job.job_id
             else:
                 logger.debug(f"Task {task_name} already queued (duplicate job_id)")

@@ -78,7 +78,7 @@ async def main():
     print(f"Enqueuing agentic dream generation for {bot_name}...")
     
     try:
-        job_id = await tq.enqueue("run_agentic_dream_generation", character_name=bot_name, override=True)
+        job_id = await tq.enqueue("run_agentic_dream_generation", character_name=bot_name, override=True, _queue_name="arq:cognition")
         print(f"\n✅ Job enqueued successfully! Job ID: {job_id}")
         print("   Check the worker logs for progress and results.")
         
