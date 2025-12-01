@@ -20,6 +20,7 @@ from src_v2.tools.memory_tools import (
 )
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.image_tools import GenerateImageTool
+from src_v2.tools.math_tools import CalculatorTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
 
 class CharacterAgent:
@@ -60,6 +61,7 @@ Available tools:
 - search_user_messages: Find what a specific person said recently
 - get_message_context: Get context around a specific message (when replying to old messages)
 - get_recent_messages: Get latest channel messages without filtering (for "catch me up")
+- calculator: Perform mathematical calculations
 """
 
     AGENCY_PROMPT_IMAGE = """- generate_image: Create images for the user
@@ -299,6 +301,9 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         # Conditionally add image generation tool (respects feature flag)
         if settings.ENABLE_IMAGE_GENERATION:
             tools.append(GenerateImageTool(user_id=user_id, character_name=bot_name))
+            
+        # Add Math Tool
+        tools.append(CalculatorTool())
         
         return tools
 
