@@ -643,7 +643,8 @@ class MessageHandler:
                 status_lines: List[str] = []
                 status_lock = asyncio.Lock()
                 last_status_update = 0.0
-                status_debounce_interval = 0.8  # Minimum seconds between Discord edits
+                status_debounce_interval = 1.0  # Minimum seconds between Discord edits
+                pending_update = False  # Track if we have unsent updates
                 
                 async def reflective_callback(text: str):
                     """
@@ -657,7 +658,7 @@ class MessageHandler:
                     
                     Uses debouncing to avoid Discord rate limits.
                     """
-                    nonlocal status_message, status_lines, last_status_update
+                    nonlocal status_message, status_lines, last_status_update, pending_update
                     
                     if settings.REFLECTIVE_STATUS_VERBOSITY == "none":
                         return
@@ -669,32 +670,29 @@ class MessageHandler:
                         
                         # Parse prefix to determine update type
                         if clean_text.startswith("HEADER:"):
-                            # Header updates are shown immediately
                             header = clean_text.replace("HEADER:", "").strip()
                             status_lines = [f"**{header}**"] + status_lines[1:] if status_lines else [f"**{header}**"]
+                            pending_update = True
                         elif clean_text.startswith("TOOLS:"):
-                            # Tool execution phase
                             content = clean_text.replace("TOOLS:", "").strip()
                             status_lines.append(content)
+                            pending_update = True
                         elif clean_text.startswith("RESULT:"):
-                            # Tool results (already batched by agent)
                             content = clean_text.replace("RESULT:", "").strip()
                             status_lines.append(content)
+                            pending_update = True
                         elif clean_text.startswith("💭"):
-                            # Thought from the agent
                             if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
-                                # Format as quote block
                                 formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
                                 status_lines.append(formatted)
-                            # In minimal mode, skip thoughts entirely
+                                pending_update = True
                         else:
-                            # Default: treat as thought or status
                             if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
                                 formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
                                 status_lines.append(formatted)
+                                pending_update = True
                         
-                        # Build full status message
-                        if not status_lines:
+                        if not pending_update or not status_lines:
                             return
                         
                         # Add header if not present
@@ -707,19 +705,22 @@ class MessageHandler:
                         if len(full_content) > 1900:
                             full_content = full_content[:1900] + "\n... *(truncated)*"
                         
-                        # Debounce: Only update Discord if enough time has passed
+                        # Debounce logic: Always send first message, then rate-limit subsequent updates
                         now = time.time()
-                        if now - last_status_update < status_debounce_interval:
-                            return  # Skip this update, will catch up on next one
+                        is_first_message = status_message is None
+                        time_since_last = now - last_status_update
                         
-                        try:
-                            if status_message:
-                                await status_message.edit(content=full_content)
-                            else:
-                                status_message = await message.channel.send(full_content)
-                            last_status_update = now
-                        except discord.HTTPException as e:
-                            logger.warning(f"Failed to update reflective status: {e}")
+                        # Send immediately if: first message OR enough time has passed
+                        if is_first_message or time_since_last >= status_debounce_interval:
+                            try:
+                                if status_message:
+                                    await status_message.edit(content=full_content)
+                                else:
+                                    status_message = await message.channel.send(full_content)
+                                last_status_update = now
+                                pending_update = False
+                            except discord.HTTPException as e:
+                                logger.warning(f"Failed to update reflective status: {e}")
 
                 # Streaming Response Logic
                 full_response_text = ""

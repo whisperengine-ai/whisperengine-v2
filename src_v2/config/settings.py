@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     
     # --- Reflective Mode Configuration ---
     ENABLE_REFLECTIVE_MODE: bool = False
-    REFLECTIVE_STATUS_VERBOSITY: Literal["none", "minimal", "detailed"] = "minimal"  # How much reasoning to show in Discord
+    REFLECTIVE_STATUS_VERBOSITY: Literal["none", "minimal", "detailed"] = "detailed"  # How much reasoning to show in Discord
     ENABLE_LANGGRAPH_REFLECTIVE_AGENT: bool = False  # Enable new LangGraph-based reflective agent
     ENABLE_LANGGRAPH_CHARACTER_AGENT: bool = False  # Enable new LangGraph-based character agent
     ENABLE_LANGGRAPH_INSIGHT_AGENT: bool = False  # Enable new LangGraph-based insight agent
