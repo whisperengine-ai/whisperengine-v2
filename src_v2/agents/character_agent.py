@@ -122,6 +122,8 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         
         # 3. Prepare user message (text or multimodal with images)
         user_message_content = await self._prepare_user_message(user_input, image_urls)
+        if image_urls:
+            logger.info(f"CharacterAgent: Prepared multimodal message with {len(image_urls)} image(s), content_type={type(user_message_content)}")
         messages.append(HumanMessage(content=user_message_content))
         
         try:
@@ -174,6 +176,10 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                     # Guide the model to respond naturally even without tool results
                     messages.append(SystemMessage(content="The tool search didn't find specific information, but that's okay. Respond naturally to the user based on what you do know. Don't mention that you couldn't find anything - just have a genuine conversation."))
                 
+                # If images were included, remind the model to look at them
+                if image_urls:
+                    messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
+                
                 final_response = await self.llm.ainvoke(messages)
                 logger.debug(f"CharacterAgent: Final LLM response after tools: content='{final_response.content[:200] if final_response.content else 'EMPTY'}' tool_calls={final_response.tool_calls}")
                 
@@ -190,9 +196,25 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             
             # No tool used - pass through main LLM for character voice
             # The router decided no tools needed, now get the quality response
+            # If images were included, remind the model to look at them
+            if image_urls:
+                messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
+            
             final_response = await self.llm.ainvoke(messages)
             if not final_response.content:
-                logger.warning(f"CharacterAgent: Main LLM returned empty content. response={final_response}")
+                # Log more details about the request to diagnose image issues
+                has_images = any(
+                    isinstance(m.content, list) and any(
+                        isinstance(c, dict) and c.get("type") in ("image_url", "image")
+                        for c in m.content
+                    )
+                    for m in messages if hasattr(m, 'content')
+                )
+                logger.warning(
+                    f"CharacterAgent: Main LLM returned empty content. "
+                    f"has_images={has_images}, model={settings.LLM_MODEL_NAME}, "
+                    f"response={final_response}"
+                )
             return str(final_response.content) or "I'm having a bit of trouble thinking clearly right now. Can you say that again?"
             
         except Exception as e:
@@ -293,7 +315,11 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             Either a string (text only) or a list of content blocks (multimodal)
         """
         if not image_urls or not settings.LLM_SUPPORTS_VISION:
+            if image_urls:
+                logger.warning(f"CharacterAgent: Images provided but LLM_SUPPORTS_VISION={settings.LLM_SUPPORTS_VISION}, skipping images")
             return user_input
+        
+        logger.info(f"CharacterAgent: Building multimodal content for {len(image_urls)} image(s), provider={settings.LLM_PROVIDER}")
         
         # Build multimodal content
         content: List[Dict[str, Any]] = [{"type": "text", "text": user_input}]
@@ -307,6 +333,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             async with httpx.AsyncClient() as client:
                 for img_url in image_urls:
                     try:
+                        logger.debug(f"CharacterAgent: Downloading image from {img_url[:100]}...")
                         img_response = await client.get(img_url, timeout=10.0)
                         img_response.raise_for_status()
                         
@@ -317,7 +344,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                             "type": "image_url",
                             "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
                         })
-                        logger.debug(f"CharacterAgent: Encoded image to base64 for {settings.LLM_PROVIDER}")
+                        logger.info(f"CharacterAgent: Encoded image to base64, size={len(img_b64)} chars, mime={mime_type}")
                     except Exception as e:
                         logger.error(f"CharacterAgent: Failed to download/encode image {img_url}: {e}")
                         # Fallback to URL anyway
@@ -332,6 +359,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                     "type": "image_url",
                     "image_url": {"url": img_url}
                 })
-            logger.debug(f"CharacterAgent: Using direct image URLs for {settings.LLM_PROVIDER}")
+            logger.info(f"CharacterAgent: Using direct image URLs for {settings.LLM_PROVIDER}")
         
+        logger.info(f"CharacterAgent: Final multimodal content has {len(content)} parts")
         return content

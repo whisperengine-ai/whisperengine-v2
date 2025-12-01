@@ -174,10 +174,14 @@ class EventHandler:
 
     async def on_reaction_add(self, reaction: discord.Reaction, user: Any) -> None:
         """Handle reaction additions (Feedback System)."""
-        if user.bot: return
+        # Ignore bot reactions (including this bot's autonomous reactions)
+        if user.bot:
+            logger.debug(f"Ignoring reaction from bot {user.id} on message {reaction.message.id}")
+            return
         
-        # Only track reactions on the bot's own messages
+        # Only track reactions on the bot's own messages (user feedback on bot responses)
         if reaction.message.author.id != self.bot.user.id:
+            logger.debug(f"Ignoring reaction on non-bot message (author: {reaction.message.author.id})")
             return
 
         try:

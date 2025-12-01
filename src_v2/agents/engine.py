@@ -158,10 +158,20 @@ class AgentEngine:
             complexity_result = "COMPLEX_MID"
             _complexity = "COMPLEX_MID"
 
-        # Promote complexity for image intents to ensure Reflective Agent handles them (with proper hints)
+        # Handle image-related complexity:
+        # - Image GENERATION intents → promote to COMPLEX_MID (needs tools)
+        # - Image UPLOADS (image_urls present) → cap at COMPLEX_LOW (CharacterAgent can view images)
         image_intents = ["image_self", "image_other", "image_refine"]
-        if any(intent in detected_intents for intent in image_intents) and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
-            logger.info(f"Promoting complexity to COMPLEX_MID due to image intent: {detected_intents}")
+        if image_urls:
+            # User uploaded an image - keep in CharacterAgent (COMPLEX_LOW) for viewing
+            # Don't promote to reflective mode which can't handle large base64 images well
+            if complexity_result in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                logger.info(f"Capping complexity to COMPLEX_LOW for image upload (was {complexity_result})")
+                complexity_result = "COMPLEX_LOW"
+                _complexity = "COMPLEX_LOW"
+        elif any(intent in detected_intents for intent in image_intents) and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            # User wants to generate an image - promote to COMPLEX_MID
+            logger.info(f"Promoting complexity to COMPLEX_MID due to image generation intent: {detected_intents}")
             complexity_result = "COMPLEX_MID"
             _complexity = "COMPLEX_MID"
 
@@ -231,7 +241,8 @@ class AgentEngine:
                 return response
             
             # 3b. Character Agency (Tier 2 - Single Tool Call)
-            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW":
+            # Skip CharacterAgent for image uploads - use Fast Mode instead (simpler, proven to work)
+            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW" and not image_urls:
                 channel = context_variables.get("channel") if context_variables else None
                 response = await self.character_agent.run(
                     user_input=user_message,
@@ -433,6 +444,20 @@ class AgentEngine:
             logger.info("Promoting complexity to COMPLEX_MID due to 'reminder' intent")
             complexity_result = "COMPLEX_MID"
 
+        # Handle image-related complexity:
+        # - Image UPLOADS (image_urls present) → cap at COMPLEX_LOW (CharacterAgent can view images)
+        # - Image GENERATION intents → promote to COMPLEX_MID (needs tools)
+        image_intents = ["image_self", "image_other", "image_refine"]
+        if image_urls:
+            # User uploaded an image - keep in CharacterAgent (COMPLEX_LOW) for viewing
+            if complexity_result in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                logger.info(f"Capping complexity to COMPLEX_LOW for image upload (was {complexity_result})")
+                complexity_result = "COMPLEX_LOW"
+        elif any(intent in detected_intents for intent in image_intents) and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            # User wants to generate an image - promote to COMPLEX_MID
+            logger.info(f"Promoting complexity to COMPLEX_MID due to image generation intent: {detected_intents}")
+            complexity_result = "COMPLEX_MID"
+
         # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
         if complexity_result == "MANIPULATION":
             logger.warning(f"Manipulation attempt rejected for user {user_id}")
@@ -507,7 +532,9 @@ class AgentEngine:
                 return
             
             # 3b. Character Agency (Tier 2 - Single Tool Call) for COMPLEX_LOW
-            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW":
+            # 3b. Character Agency Stream (Tier 2 - Single Tool Call)
+            # Skip CharacterAgent for image uploads - use Fast Mode instead (simpler, proven to work)
+            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW" and not image_urls:
                 # Update status header with character-specific indicator
                 if callback:
                     if character.thinking_indicators:

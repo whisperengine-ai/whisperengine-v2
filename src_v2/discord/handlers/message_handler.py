@@ -615,13 +615,21 @@ class MessageHandler:
                         should_trigger_voice = True
                         logger.info(f"Voice intent detected for user {user_id}")
 
-                    # Check for Image Intents - Upgrade complexity if needed to ensure tools are available
-                    # Now using granular intents: image_self, image_other, image_refine
+                    # Handle image complexity:
+                    # - If user UPLOADED an image (image_urls exists) → keep at COMPLEX_LOW for viewing
+                    # - If user wants to GENERATE an image (no upload, but image intent) → COMPLEX_MID for tools
                     image_intents = {"image_self", "image_other", "image_refine"}
-                    if image_intents.intersection(set(detected_intents)):
+                    if image_urls:
+                        # User uploaded an image - CharacterAgent can handle viewing
+                        # Cap at COMPLEX_LOW if classifier over-promoted
+                        if complexity in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                            logger.info(f"Capping complexity to COMPLEX_LOW for image upload (was {complexity})")
+                            complexity = "COMPLEX_LOW"
+                    elif image_intents.intersection(set(detected_intents)):
+                        # User wants to generate an image (no upload) - needs tools
                         if not complexity or complexity == "COMPLEX_LOW":
                             complexity = "COMPLEX_MID"
-                            logger.info(f"Upgraded complexity to COMPLEX_MID due to image intent for user {user_id}")
+                            logger.info(f"Upgraded complexity to COMPLEX_MID due to image generation intent for user {user_id}")
                         
                 except Exception as e:
                     logger.error(f"Complexity analysis failed: {e}")
