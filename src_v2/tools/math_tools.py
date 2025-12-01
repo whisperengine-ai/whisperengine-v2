@@ -90,4 +90,37 @@ class CalculatorTool(BaseTool):
                 return f"Error calculating '{query}': {str(e)}"
 
     async def _arun(self, query: str) -> str:
-        return self._run(query)
+        """Async implementation with LLM fallback for natural language queries."""
+        try:
+            # Try direct execution first (fastest)
+            return self._run(query)
+        except Exception:
+            # If direct execution failed, it might be natural language.
+            # Use a small LLM to translate it to code.
+            try:
+                from src_v2.agents.llm_factory import create_llm
+                from langchain_core.messages import SystemMessage, HumanMessage
+                
+                # Use utility mode (fast/cheap)
+                llm = create_llm(temperature=0.0, mode="utility")
+                
+                system_prompt = (
+                    "You are a mathematical expression translator. "
+                    "Convert the user's natural language math problem into a valid Python/SymPy expression. "
+                    "Use 'degrees()', 'radians()', 'sin()', 'cos()', 'tan()', 'atan()', 'sqrt()', 'solve()', 'integrate()', 'diff()'. "
+                    "For FOV: 2 * degrees(atan(sensor / (2 * focal))). "
+                    "Return ONLY the expression. No markdown, no explanation."
+                )
+                
+                response = await llm.ainvoke([
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=query)
+                ])
+                
+                expression = response.content.strip().replace("`", "").replace("python", "")
+                logger.info(f"Math Tool: Translated '{query}' to '{expression}'")
+                
+                return self._run(expression)
+                
+            except Exception as e:
+                return f"Error calculating '{query}': {str(e)}"
