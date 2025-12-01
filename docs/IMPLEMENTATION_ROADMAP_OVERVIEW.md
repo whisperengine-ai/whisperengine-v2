@@ -66,6 +66,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
 | 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | ✅ Complete |
 | 🟢 High | **E17** | **Supergraph Architecture** | **3-4 days** | LangGraph | ✅ Complete |
+| 🟢 High | **E18** | **Background Task Migration** | **2-3 days** | E17 | 📋 Planned |
 | 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | 📋 Planned |
 | 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 In Progress |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | 📋 Proposed |
@@ -1655,3 +1656,56 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 
 **Spec:** [FEEDBACK_LOOP_STABILITY.md](./roadmaps/FEEDBACK_LOOP_STABILITY.md)
 
+
+---
+
+### ✅ Phase E17: Supergraph Architecture (Complete)
+**Priority:** 🟢 High | **Time:** 3-4 days | **Complexity:** High
+**Status:** ✅ Complete
+**Dependencies:** LangGraph
+**Added:** December 2025
+
+**Problem:** The legacy `AgentEngine` used manual Python loops for orchestration, making it hard to visualize, debug, and extend. Complex behaviors like "Reflective Mode" were brittle.
+
+**Solution:** Replaced the core engine with a **LangGraph Supergraph**.
+- **Master Graph**: Orchestrates Context → Classification → Routing.
+- **Subgraphs**: Encapsulated workflows for Reflective, Character, and Fast paths.
+- **Observability**: Full tracing in LangSmith.
+
+**Key Components:**
+- `src_v2/agents/master_graph.py`: The new orchestrator.
+- `src_v2/agents/reflective_graph.py`: Complex reasoning with "Critic" loops.
+- `src_v2/agents/character_graph.py`: Standard character response flow.
+- `src_v2/agents/diary_graph.py`: Background diary generation.
+- `src_v2/agents/dream_graph.py`: Background dream generation.
+
+**Spec:** [AGENT_GRAPH_SYSTEM.md](./architecture/AGENT_GRAPH_SYSTEM.md)
+
+---
+
+### 📋 Phase E18: Background Task Migration
+**Priority:** 🟢 High | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Planned
+**Dependencies:** E17 (Supergraph)
+**Added:** December 2025
+
+**Problem:** While core chat and creative tasks (Diary/Dream) are now on LangGraph, several background tasks still use legacy single-shot LLM chains. These lack self-correction capabilities.
+
+**Solution:** Migrate remaining critical background tasks to LangGraph to enable "Critic" and "Validator" nodes.
+
+**Candidates:**
+
+| Task | Current State | Proposed Graph | Benefit |
+|------|---------------|----------------|---------|
+| **Summarization** | `SummaryManager` (Single-shot) | `Generator` → `Critic` → `Refiner` | Ensure summaries capture emotional nuance (score > 3) before saving. |
+| **Knowledge Extraction** | `FactExtractor` (Single-shot) | `Extractor` → `Validator` → `Deduplicator` | Prevent hallucinations by checking against existing Neo4j graph. |
+
+**Implementation Plan:**
+1. Create `src_v2/agents/summary_graph.py`
+2. Create `src_v2/agents/knowledge_graph.py`
+3. Update `summary_tasks.py` and `knowledge_tasks.py` to use the new graphs behind feature flags.
+4. Verify with regression tests.
+
+**Files:**
+- `src_v2/workers/tasks/summary_tasks.py`
+- `src_v2/workers/tasks/knowledge_tasks.py`

@@ -3,11 +3,12 @@ import operator
 from typing import List, Optional, Dict, Any, TypedDict, Literal, cast
 from loguru import logger
 from langsmith import traceable
-from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 
 from src_v2.config.settings import settings
 from src_v2.core.character import Character
+from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.classifier import ComplexityClassifier
 from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_graph import CharacterGraphAgent
@@ -47,6 +48,7 @@ class MasterGraphAgent:
         self.classifier = ComplexityClassifier()
         self.reflective_agent = ReflectiveGraphAgent()
         self.character_agent = CharacterGraphAgent()
+        self.fast_llm = create_llm(mode="main") # Use main model for fast path, but without tools
         
         # Build Graph
         workflow = StateGraph(SuperGraphState)
@@ -174,8 +176,30 @@ class MasterGraphAgent:
 
     async def fast_responder_node(self, state: SuperGraphState):
         """Simple LLM call for fast responses."""
-        _ = state
-        return {"final_response": "Fast response placeholder"}
+        system_prompt = state.get("system_prompt", "")
+        chat_history = state.get("chat_history", [])
+        user_input = state.get("user_input", "")
+        image_urls = state.get("image_urls")
+
+        # Construct messages
+        messages = [SystemMessage(content=system_prompt)]
+        messages.extend(chat_history)
+        
+        if image_urls:
+             # Handle images if present (though usually handled by CharacterAgent, fast path might get them if complexity is low)
+             content = [{"type": "text", "text": user_input}]
+             for url in image_urls:
+                 content.append({"type": "image_url", "image_url": {"url": url}})
+             messages.append(HumanMessage(content=content))
+        else:
+            messages.append(HumanMessage(content=user_input))
+
+        try:
+            response = await self.fast_llm.ainvoke(messages)
+            return {"final_response": response.content}
+        except Exception as e:
+            logger.error(f"Fast responder failed: {e}")
+            return {"final_response": "I'm having a bit of trouble thinking clearly right now."}
 
     @traceable(name="MasterGraphAgent.run", run_type="chain")
     async def run(self, **kwargs):

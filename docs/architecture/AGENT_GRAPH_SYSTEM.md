@@ -117,3 +117,25 @@ All graph executions are traced in **LangSmith**.
 *   **Project**: `whisperengine-v2` (default)
 *   **Traces**: Look for `MasterGraphAgent`, `ReflectiveGraphAgent`, etc.
 *   **Visualization**: You can see the exact path taken through the graph, including tool outputs and Critic interventions.
+
+## Future Migration Candidates
+
+The following background tasks are currently implemented as single-shot LLM chains but are candidates for future migration to LangGraph to improve quality and robustness.
+
+### 1. Summary Agent (`summary_tasks.py`)
+*   **Current**: Single-shot LLM call via `SummaryManager`.
+*   **Graph Potential**: **High**.
+*   **Proposed Graph**: `Generator` → `Critic` → `Refiner`.
+*   **Benefit**: The Critic can evaluate if the summary captures emotional nuance and key facts (Meaningfulness Score > 3) before saving. It can reject "lazy" summaries.
+
+### 2. Knowledge Agent (`knowledge_tasks.py`)
+*   **Current**: Single-shot extraction via `FactExtractor`.
+*   **Graph Potential**: **Medium**.
+*   **Proposed Graph**: `Extractor` → `Validator` → `Deduplicator`.
+*   **Benefit**: The Validator can check against the existing Knowledge Graph to prevent contradictions or hallucinations (e.g., ensuring "I have a cat" doesn't overwrite "I have a dog" unless explicitly stated).
+
+### 3. Goal Agent (`analysis_tasks.py`)
+*   **Current**: Single-shot evaluation via `GoalAnalyzer`.
+*   **Graph Potential**: **Low**.
+*   **Benefit**: Only needed if goal criteria become extremely complex or multi-step.
+
