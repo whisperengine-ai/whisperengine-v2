@@ -32,6 +32,7 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.router import CognitiveRouter
 from src_v2.agents.classifier import ComplexityClassifier
 from src_v2.agents.reflective import ReflectiveAgent
+from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_agent import CharacterAgent
 from src_v2.agents.context_builder import ContextBuilder
 from src_v2.evolution.trust import trust_manager
@@ -64,6 +65,7 @@ class AgentEngine:
         self.router: CognitiveRouter = CognitiveRouter()
         self.classifier: ComplexityClassifier = ComplexityClassifier()
         self.reflective_agent: ReflectiveAgent = ReflectiveAgent()
+        self.reflective_graph_agent: ReflectiveGraphAgent = ReflectiveGraphAgent()
         self.character_agent: CharacterAgent = CharacterAgent()
         self.context_builder: ContextBuilder = ContextBuilder()
         
@@ -820,18 +822,34 @@ class AgentEngine:
         guild_id = context_variables.get("guild_id")
         channel = context_variables.get("channel")
         detected_intents = context_variables.get("detected_intents", [])
-        response_text, trace = await self.reflective_agent.run(
-            user_message, 
-            user_id, 
-            system_content, 
-            chat_history=chat_history,
-            callback=callback,
-            image_urls=image_urls,
-            max_steps_override=max_steps_override,
-            guild_id=guild_id,
-            channel=channel,
-            detected_intents=detected_intents
-        )
+        
+        if settings.ENABLE_LANGGRAPH_REFLECTIVE_AGENT:
+            logger.info("Using LangGraph Reflective Agent")
+            response_text, trace = await self.reflective_graph_agent.run(
+                user_message, 
+                user_id, 
+                system_content, 
+                chat_history=chat_history,
+                callback=callback,
+                image_urls=image_urls,
+                max_steps_override=max_steps_override,
+                guild_id=guild_id,
+                channel=channel,
+                detected_intents=detected_intents
+            )
+        else:
+            response_text, trace = await self.reflective_agent.run(
+                user_message, 
+                user_id, 
+                system_content, 
+                chat_history=chat_history,
+                callback=callback,
+                image_urls=image_urls,
+                max_steps_override=max_steps_override,
+                guild_id=guild_id,
+                channel=channel,
+                detected_intents=detected_intents
+            )
         
         # Voice Synthesis: Use Main LLM to rewrite the response
         # This ensures character consistency even when using a different reasoning model
