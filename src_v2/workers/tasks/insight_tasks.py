@@ -1,6 +1,8 @@
 from typing import Dict, Any, Optional
 from loguru import logger
 from src_v2.agents.insight_agent import insight_agent
+from src_v2.agents.insight_graph import insight_graph_agent
+from src_v2.config.settings import settings
 
 async def run_insight_analysis(
     ctx: Dict[str, Any],
@@ -27,12 +29,21 @@ async def run_insight_analysis(
     logger.info(f"Processing insight analysis for user {user_id} (character: {character_name}, trigger: {trigger})")
     
     try:
-        success, summary = await insight_agent.analyze(
-            user_id=user_id,
-            character_name=character_name,
-            trigger=trigger,
-            recent_context=recent_context
-        )
+        if settings.ENABLE_LANGGRAPH_INSIGHT_AGENT:
+            logger.info("Using LangGraph Insight Agent")
+            success, summary = await insight_graph_agent.analyze(
+                user_id=user_id,
+                character_name=character_name,
+                trigger=trigger,
+                recent_context=recent_context
+            )
+        else:
+            success, summary = await insight_agent.analyze(
+                user_id=user_id,
+                character_name=character_name,
+                trigger=trigger,
+                recent_context=recent_context
+            )
         
         return {
             "success": success,
