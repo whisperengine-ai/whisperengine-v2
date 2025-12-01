@@ -18,7 +18,7 @@ from src_v2.config.settings import settings
 class SearchMyThoughtsInput(BaseModel):
     thought_type: Literal["diary", "dream", "observation", "gossip", "epiphany", "any"] = Field(
         default="any",
-        description="Type of thought to search: 'diary' (my journal entries), 'dream' (my dreams), 'observation' (things I've noticed), 'gossip' (what I've heard from others), 'epiphany' (my realizations about people), or 'any' (all types)"
+        description="Type of thought to search. IMPORTANT: Use 'any' if the user asks for multiple types (e.g. 'diaries and dreams') or general thoughts."
     )
     query: str = Field(
         default="",
@@ -40,6 +40,7 @@ USE THIS WHEN the user asks about:
 - "What's on your mind?"
 - "What did you write in your journal?"
 - "What have you realized about me?"
+- "Tell me about your diaries and dreams" (use thought_type='any')
 
 Types available:
 - 'diary': My personal journal entries (daily reflections)
@@ -47,7 +48,7 @@ Types available:
 - 'observation': Things I've noticed about people and patterns
 - 'gossip': Interesting things I've heard from my bot friends
 - 'epiphany': Realizations and insights I've had about people
-- 'any': Search across all types
+- 'any': Search across all types (use this for "diaries and dreams")
 
 This gives users a "peek behind the curtain" into my inner life."""
     args_schema: Type[BaseModel] = SearchMyThoughtsInput
@@ -118,27 +119,20 @@ This gives users a "peek behind the curtain" into my inner life."""
                 else:
                     return f"I don't have any {thought_type} entries yet. Check back later!"
             
-            # Sort by type for nice grouping
-            type_emoji = {
-                "diary": "📔",
-                "dream": "🌙",
-                "observation": "👁️",
-                "gossip": "💬",
-                "epiphany": "💡"
-            }
-            
             results = []
             for r in all_results[:limit]:
-                emoji = type_emoji.get(r["type"], "💭")
                 # Add mood/themes for diary entries if available
                 extra = ""
                 if r.get("mood"):
                     extra = f" (mood: {r['mood']})"
                 if r.get("themes"):
                     extra += f" themes: {', '.join(r['themes'][:3])}"
-                results.append(f"{emoji} **{r['type'].title()}**{extra}:\n{r['content']}")
+                
+                # Format as a recalled memory rather than a database record
+                # This helps the bot feel like it's remembering, not reading
+                results.append(f"[Internal Memory - {r['type'].title()}]\n{r['content']}\n(Context: {extra})")
             
-            intro = f"Here's what I found in my {thought_type if thought_type != 'any' else 'thoughts'}:\n\n"
+            intro = f"Recalling my internal {thought_type if thought_type != 'any' else 'thoughts'}...\n\n"
             return intro + "\n\n---\n\n".join(results)
             
         except Exception as e:

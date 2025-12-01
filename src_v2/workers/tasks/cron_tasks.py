@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
@@ -13,19 +13,33 @@ except ImportError:
     from backports.zoneinfo import ZoneInfo  # Python < 3.9
 
 
-def is_target_hour_in_timezone(target_hour: int, timezone_str: str) -> bool:
+def is_processing_window(target_hour: int, target_minute: int, timezone_str: str, window_hours: int = 4) -> bool:
     """
-    Check if the current hour in the given timezone matches the target hour.
-    This allows cron jobs to run hourly but only process characters when it's
-    the right local time for them.
+    Check if the current time is within the processing window (target time + window).
+    This allows catching up on missed jobs if the worker was down.
     """
     try:
         tz = ZoneInfo(timezone_str)
         local_now = datetime.now(tz)
-        return local_now.hour == target_hour
+        
+        # Create target time for today
+        target_time = local_now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        
+        # If target time is in the future, we might be looking at yesterday's window?
+        # No, we only care if we are currently IN the window starting at target_time.
+        
+        # Calculate end of window
+        end_time = target_time + timedelta(hours=window_hours)
+        
+        # Check if we are in the window [target_time, end_time)
+        if target_time <= local_now < end_time:
+            return True
+            
+        return False
     except Exception as e:
         logger.warning(f"Invalid timezone '{timezone_str}': {e}, using UTC")
-        return datetime.utcnow().hour == target_hour
+        utc_now = datetime.utcnow()
+        return utc_now.hour == target_hour and utc_now.minute == target_minute
 
 
 async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
@@ -45,7 +59,8 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     mode = "agentic" if settings.ENABLE_AGENTIC_NARRATIVES else "simple"
     target_hour = settings.DIARY_GENERATION_LOCAL_HOUR
-    logger.info(f"Checking for characters with local time {target_hour}:00 for diary generation (mode: {mode})")
+    target_minute = settings.DIARY_GENERATION_LOCAL_MINUTE
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for diary generation (mode: {mode})")
     
     try:
         from pathlib import Path
@@ -70,14 +85,14 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         character_names = []
         for char_name in all_characters:
             char_tz = get_character_timezone(char_name)
-            if is_target_hour_in_timezone(target_hour, char_tz):
+            if is_processing_window(target_hour, target_minute, char_tz):
                 character_names.append(char_name)
-                logger.debug(f"Character {char_name} ({char_tz}): it's {target_hour}:00 local, will generate diary")
+                logger.debug(f"Character {char_name} ({char_tz}): in diary window {target_hour}:{target_minute:02d}, will generate if needed")
             else:
-                logger.debug(f"Character {char_name} ({char_tz}): not {target_hour}:00 local, skipping")
+                logger.debug(f"Character {char_name} ({char_tz}): not in diary window {target_hour}:{target_minute:02d}, skipping")
         
         if not character_names:
-            logger.info(f"No characters have local time {target_hour}:00 right now")
+            logger.info(f"No characters in diary window {target_hour}:{target_minute:02d} right now")
             return {"success": True, "processed": 0, "reason": "no_matching_timezone"}
         
         logger.info(f"Found {len(character_names)} characters for diary generation: {character_names}")
@@ -85,57 +100,33 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         # Choose generation function based on settings
         gen_func = run_agentic_diary_generation if settings.ENABLE_AGENTIC_NARRATIVES else run_diary_generation
         
-        # Generate diary for each character
-        results = []
+        # Run diary generation for each character
+        processed_count = 0
         for char_name in character_names:
             # Check if character is active (has memory collection)
-            # This prevents errors for characters that exist on disk but aren't running/initialized
             collection_name = f"whisperengine_memory_{char_name}"
             try:
                 if db_manager.qdrant_client and not await db_manager.qdrant_client.collection_exists(collection_name):
                     logger.info(f"Skipping diary for {char_name}: Memory collection {collection_name} not found (inactive?)")
-                    results.append({
-                        "character": char_name,
-                        "success": True,
-                        "skipped": True,
-                        "reason": "inactive_no_memory"
-                    })
                     continue
             except Exception as e:
                 logger.warning(f"Failed to check collection existence for {char_name}: {e}")
-                # Continue anyway, let the generation function handle it or fail
+                # Continue anyway
             
             try:
-                result = await gen_func(ctx, character_name=char_name)
-                results.append({
-                    "character": char_name,
-                    "success": result.get("success", False),
-                    "skipped": result.get("skipped", False),
-                    "reason": result.get("reason"),
-                    "mode": result.get("mode", mode)
-                })
+                # Run directly (sequential)
+                await gen_func(ctx, character_name=char_name)
+                processed_count += 1
+                logger.debug(f"Completed diary generation for {char_name}")
             except Exception as e:
-                logger.error(f"Diary generation failed for {char_name}: {e}")
-                results.append({
-                    "character": char_name,
-                    "success": False,
-                    "error": str(e)
-                })
+                logger.error(f"Failed to generate diary for {char_name}: {e}")
         
-        successful = sum(1 for r in results if r.get("success") and not r.get("skipped"))
-        skipped = sum(1 for r in results if r.get("skipped"))
-        failed = sum(1 for r in results if not r.get("success"))
-        
-        logger.info(f"Nightly diary generation complete: {successful} generated, {skipped} skipped, {failed} failed (mode: {mode})")
+        logger.info(f"Nightly diary generation check complete: {processed_count} processed (mode: {mode})")
         
         return {
             "success": True,
-            "processed": len(character_names),
-            "generated": successful,
-            "skipped": skipped,
-            "failed": failed,
-            "mode": mode,
-            "results": results
+            "processed": processed_count,
+            "mode": mode
         }
         
     except Exception as e:
@@ -163,7 +154,8 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     mode = "agentic" if settings.ENABLE_AGENTIC_NARRATIVES else "simple"
     target_hour = settings.DREAM_GENERATION_LOCAL_HOUR
-    logger.info(f"Checking for characters with local time {target_hour}:00 for dream generation (mode: {mode})")
+    target_minute = settings.DREAM_GENERATION_LOCAL_MINUTE
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for dream generation (mode: {mode})")
     
     try:
         from pathlib import Path
@@ -188,14 +180,14 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         character_names = []
         for char_name in all_characters:
             char_tz = get_character_timezone(char_name)
-            if is_target_hour_in_timezone(target_hour, char_tz):
+            if is_processing_window(target_hour, target_minute, char_tz):
                 character_names.append(char_name)
-                logger.debug(f"Character {char_name} ({char_tz}): it's {target_hour}:00 local, will generate dream")
+                logger.debug(f"Character {char_name} ({char_tz}): in dream window {target_hour}:{target_minute:02d}, will generate if needed")
             else:
-                logger.debug(f"Character {char_name} ({char_tz}): not {target_hour}:00 local, skipping")
+                logger.debug(f"Character {char_name} ({char_tz}): not in dream window {target_hour}:{target_minute:02d}, skipping")
         
         if not character_names:
-            logger.info(f"No characters have local time {target_hour}:00 right now")
+            logger.info(f"No characters in dream window {target_hour}:{target_minute:02d} right now")
             return {"success": True, "processed": 0, "reason": "no_matching_timezone"}
         
         logger.info(f"Found {len(character_names)} characters for dream generation: {character_names}")
@@ -203,40 +195,23 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         # Choose generation function based on settings
         gen_func = run_agentic_dream_generation if settings.ENABLE_AGENTIC_NARRATIVES else run_dream_generation
         
-        # Generate dream for each character
-        results = []
+        # Run dream generation for each character
+        processed_count = 0
         for char_name in character_names:
             try:
-                result = await gen_func(ctx, character_name=char_name)
-                results.append({
-                    "character": char_name,
-                    "success": result.get("success", False),
-                    "skipped": result.get("skipped", False),
-                    "reason": result.get("reason"),
-                    "mode": result.get("mode", mode)
-                })
+                # Run directly (sequential)
+                await gen_func(ctx, character_name=char_name)
+                processed_count += 1
+                logger.debug(f"Completed dream generation for {char_name}")
             except Exception as e:
-                logger.error(f"Dream generation failed for {char_name}: {e}")
-                results.append({
-                    "character": char_name,
-                    "success": False,
-                    "error": str(e)
-                })
+                logger.error(f"Failed to generate dream for {char_name}: {e}")
         
-        successful = sum(1 for r in results if r.get("success") and not r.get("skipped"))
-        skipped = sum(1 for r in results if r.get("skipped"))
-        failed = sum(1 for r in results if not r.get("success"))
-        
-        logger.info(f"Nightly dream generation complete: {successful} generated, {skipped} skipped, {failed} failed (mode: {mode})")
+        logger.info(f"Nightly dream generation check complete: {processed_count} processed (mode: {mode})")
         
         return {
             "success": True,
-            "processed": len(character_names),
-            "generated": successful,
-            "skipped": skipped,
-            "failed": failed,
-            "mode": mode,
-            "results": results
+            "processed": processed_count,
+            "mode": mode
         }
         
     except Exception as e:
@@ -262,11 +237,11 @@ async def run_nightly_goal_strategist(ctx: Dict[str, Any]) -> Dict[str, Any]:
         return {"success": False, "reason": "disabled"}
     
     target_hour = settings.GOAL_STRATEGIST_LOCAL_HOUR
-    logger.info(f"Checking for characters with local time {target_hour}:00 for goal strategist")
+    target_minute = 0  # Default to on the hour
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for goal strategist")
     
     try:
         from pathlib import Path
-        from src_v2.workers.strategist import goal_strategist
         
         # Scan characters directory for available characters
         characters_dir = Path("characters")
@@ -288,65 +263,45 @@ async def run_nightly_goal_strategist(ctx: Dict[str, Any]) -> Dict[str, Any]:
         character_names = []
         for char_name in all_characters:
             char_tz = get_character_timezone(char_name)
-            if is_target_hour_in_timezone(target_hour, char_tz):
+            if is_processing_window(target_hour, target_minute, char_tz):
                 character_names.append(char_name)
-                logger.debug(f"Character {char_name} ({char_tz}): it's {target_hour}:00 local, will run strategist")
+                logger.debug(f"Character {char_name} ({char_tz}): in goal strategist window {target_hour}:{target_minute:02d}, will run if needed")
             else:
-                logger.debug(f"Character {char_name} ({char_tz}): not {target_hour}:00 local, skipping")
+                logger.debug(f"Character {char_name} ({char_tz}): not in goal strategist window {target_hour}:{target_minute:02d}, skipping")
         
         if not character_names:
-            logger.info(f"No characters have local time {target_hour}:00 right now")
+            logger.info(f"No characters in goal strategist window {target_hour}:{target_minute:02d} right now")
             return {"success": True, "processed": 0, "reason": "no_matching_timezone"}
         
         logger.info(f"Found {len(character_names)} characters for goal strategist: {character_names}")
         
-        # Run goal strategist for each character
-        results = []
+        # Enqueue goal strategist for each character
+        queued_count = 0
         for char_name in character_names:
             # Check if character is active (has memory collection)
             collection_name = f"whisperengine_memory_{char_name}"
             try:
                 if db_manager.qdrant_client and not await db_manager.qdrant_client.collection_exists(collection_name):
                     logger.info(f"Skipping goal strategist for {char_name}: Memory collection {collection_name} not found (inactive?)")
-                    results.append({
-                        "character": char_name,
-                        "success": True,
-                        "skipped": True,
-                        "reason": "inactive_no_memory"
-                    })
                     continue
             except Exception as e:
                 logger.warning(f"Failed to check collection existence for {char_name}: {e}")
                 # Continue anyway
             
             try:
-                await goal_strategist.run_nightly_analysis(char_name)
-                results.append({
-                    "character": char_name,
-                    "success": True,
-                    "skipped": False
-                })
+                # Enqueue the job to run in parallel
+                await ctx["redis"].enqueue_job("run_goal_strategist", bot_name=char_name)
+                queued_count += 1
+                logger.debug(f"Queued goal strategist for {char_name}")
             except Exception as e:
-                logger.error(f"Goal strategist failed for {char_name}: {e}")
-                results.append({
-                    "character": char_name,
-                    "success": False,
-                    "error": str(e)
-                })
+                logger.error(f"Failed to enqueue goal strategist for {char_name}: {e}")
         
-        successful = sum(1 for r in results if r.get("success") and not r.get("skipped"))
-        skipped = sum(1 for r in results if r.get("skipped"))
-        failed = sum(1 for r in results if not r.get("success"))
-        
-        logger.info(f"Nightly goal strategist complete: {successful} processed, {skipped} skipped, {failed} failed")
+        logger.info(f"Nightly goal strategist check complete: {queued_count} jobs queued")
         
         return {
             "success": True,
             "processed": len(character_names),
-            "successful": successful,
-            "skipped": skipped,
-            "failed": failed,
-            "results": results
+            "queued": queued_count
         }
         
     except Exception as e:

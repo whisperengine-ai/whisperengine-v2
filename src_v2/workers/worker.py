@@ -114,28 +114,28 @@ class WorkerSettings:
     ]
     
     # Cron jobs (scheduled tasks)
-    # These run hourly and check each character's timezone to determine if
+    # These run periodically and check each character's timezone to determine if
     # it's the right local time for that character's scheduled task.
     cron_jobs = [
-        # Check hourly for characters where it's diary time (default: 10 PM local)
+        # Check every 30 minutes for characters where it's diary time (default: 8:30 PM local)
         cron(
             run_nightly_diary_generation,
             hour=None,  # Run every hour
-            minute={0},
+            minute={0, 30},  # Check on the hour and half-hour
             run_at_startup=False  # Don't run immediately on worker start
         ),
-        # Check hourly for characters where it's dream time (default: 7 AM local)
+        # Check every 30 minutes for characters where it's dream time (default: 6:30 AM local)
         cron(
             run_nightly_dream_generation,
             hour=None,  # Run every hour
-            minute={0},
+            minute={0, 30},  # Check on the hour and half-hour
             run_at_startup=False
         ),
-        # Check hourly for characters where it's goal strategist time (default: 11 PM local)
+        # Check every 30 minutes for characters where it's goal strategist time (default: 11:00 PM local)
         cron(
             run_nightly_goal_strategist,
             hour=None,  # Run every hour
-            minute={0},
+            minute={0, 30},  # Check on the hour and half-hour
             run_at_startup=False
         ),
     ]
