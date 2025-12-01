@@ -203,6 +203,18 @@ class AgentEngine:
         system_content = await self._build_system_context(character, user_message, user_id, context_variables)
         logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
+        # 2.5 Template Variable Substitution (applies to ALL agent paths)
+        # Replace {user_name}, {current_datetime}, and any other context variables
+        if context_variables:
+            for key, value in context_variables.items():
+                if isinstance(value, str):
+                    system_content = system_content.replace(f"{{{key}}}", value)
+        
+        # Fallback: If {current_datetime} is still present, replace it
+        if "{current_datetime}" in system_content:
+            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+            system_content = system_content.replace("{current_datetime}", now_str)
+
         # 3. Branching Logic: Reflective Mode
         if complexity_result and user_id:
             # 3a. Reflective Mode (Full ReAct Loop)
@@ -284,22 +296,9 @@ class AgentEngine:
 
         # NOTE: Channel context is already injected by _build_system_context() 
         # Do NOT add it here again to avoid duplicate context
-
-        # 5. Create Prompt Template
-        # We manually replace variables in system_content to avoid LangChain templating issues
-        # with complex content (like JSON or code blocks in knowledge/memories).
         
-        # Manual Replacement of Template Variables
-        if context_variables:
-            for key, value in context_variables.items():
-                if isinstance(value, str):
-                    # Replace {key} with value
-                    system_content = system_content.replace(f"{{{key}}}", value)
-        
-        # Fallback: If {current_datetime} is still present (e.g. not in context_vars), replace it
-        if "{current_datetime}" in system_content:
-            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
-            system_content = system_content.replace("{current_datetime}", now_str)
+        # NOTE: Template variable substitution ({user_name}, {current_datetime}) is done earlier
+        # in step 2.5, before agent branching. No need to repeat here.
 
         # Use SystemMessage directly to prevent further templating attempts by LangChain
         prompt = ChatPromptTemplate.from_messages([
@@ -308,10 +307,10 @@ class AgentEngine:
             MessagesPlaceholder(variable_name="user_input_message")
         ])
 
-        # 6. Create Chain
+        # 5. Create Chain
         chain = prompt | self.llm
 
-        # 7. Execute
+        # 6. Execute
         try:
             # Prepare input content (Text or Multimodal)
             user_input_message = await self._prepare_input_content(user_message, image_urls)
@@ -486,6 +485,18 @@ class AgentEngine:
         system_content = await self._build_system_context(character, user_message, user_id, context_variables)
         logger.debug(f"Context building took {time.time() - context_start:.2f}s")
 
+        # 2.5 Template Variable Substitution (applies to ALL agent paths)
+        # Replace {user_name}, {current_datetime}, and any other context variables
+        if context_variables:
+            for key, value in context_variables.items():
+                if isinstance(value, str):
+                    system_content = system_content.replace(f"{{{key}}}", value)
+        
+        # Fallback: If {current_datetime} is still present, replace it
+        if "{current_datetime}" in system_content:
+            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+            system_content = system_content.replace("{current_datetime}", now_str)
+
         # 3. Branching Logic: Complex Modes
         if complexity_result and user_id:
             # 3a. Reflective Mode (Full ReAct Loop) for COMPLEX_MID/HIGH
@@ -595,22 +606,9 @@ class AgentEngine:
 
         # NOTE: Channel context is already injected by _build_system_context() 
         # Do NOT add it here again to avoid duplicate context
-
-        # 5. Create Prompt Template
-        # We manually replace variables in system_content to avoid LangChain templating issues
-        # with complex content (like JSON or code blocks in knowledge/memories).
         
-        # Manual Replacement of Template Variables
-        if context_variables:
-            for key, value in context_variables.items():
-                if isinstance(value, str):
-                    # Replace {key} with value
-                    system_content = system_content.replace(f"{{{key}}}", value)
-        
-        # Fallback: If {current_datetime} is still present (e.g. not in context_vars), replace it
-        if "{current_datetime}" in system_content:
-            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
-            system_content = system_content.replace("{current_datetime}", now_str)
+        # NOTE: Template variable substitution ({user_name}, {current_datetime}) is done earlier
+        # in step 2.5, before agent branching. No need to repeat here.
 
         # Use SystemMessage directly to prevent further templating attempts by LangChain
         prompt = ChatPromptTemplate.from_messages([
@@ -619,10 +617,10 @@ class AgentEngine:
             MessagesPlaceholder(variable_name="user_input_message")
         ])
 
-        # 6. Create Chain
+        # 5. Create Chain
         chain = prompt | self.llm
 
-        # 7. Execute Stream
+        # 6. Execute Stream
         try:
             # Prepare input content (Text or Multimodal)
             user_input_message = await self._prepare_input_content(user_message, image_urls)

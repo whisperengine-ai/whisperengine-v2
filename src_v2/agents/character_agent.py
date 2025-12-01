@@ -78,6 +78,20 @@ IMPORTANT: If the user asks about the universe, planets, servers, channels, or r
 If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
 """
 
+    # Minimal prompt for router LLM - just tool selection, no character personality
+    ROUTER_SYSTEM_PROMPT = """You are a tool router for an AI companion. Your ONLY job is to decide which tools (if any) to call based on the user's message.
+
+RULES:
+1. If the user is just saying "hi" or casual chat, you MAY call lookup_user_facts to personalize (find their name).
+2. If the user asks about past conversations or memories, call the appropriate search tool.
+3. If the user asks about the universe, planets, servers, or channels, use check_planet_context or get_universe_overview.
+4. If the user wants an image generated, call generate_image.
+5. If the user needs a calculation, call calculator.
+6. You can call multiple tools if needed.
+7. If no tools are needed, just respond with an empty message (no content).
+
+Do NOT generate a conversational response. Just decide on tools or respond empty."""
+
     def __init__(self):
         # Router LLM for tool selection (fast/cheap) - only decides which tools to call
         self.router_llm = create_llm(temperature=0.3, mode="router")
@@ -109,41 +123,54 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         Executes a single-step tool lookup if needed, then generates response.
         
         Uses two-LLM approach:
-        - Router LLM (fast/cheap): Decides which tools to call
-        - Main LLM (quality): Final character voice response
+        - Router LLM (fast/cheap): Decides which tools to call (minimal prompt)
+        - Main LLM (quality): Final character voice response (full character prompt)
         """
         # 1. Initialize Tools (Subset of full tools)
         tools = self._get_tools(user_id, guild_id, character_name, channel)
         router_with_tools = self.router_llm.bind_tools(tools)
         
-        # 2. Construct Messages with agency guidance (dynamically built based on feature flags)
-        enhanced_prompt = system_prompt + self._get_agency_prompt()
-        messages: List[BaseMessage] = [SystemMessage(content=enhanced_prompt)]
+        # 2. Build ROUTER messages (minimal prompt for tool selection only)
+        # The router doesn't need the full character prompt - just tool awareness
+        router_prompt = self.ROUTER_SYSTEM_PROMPT + self._get_agency_prompt()
+        router_messages: List[BaseMessage] = [SystemMessage(content=router_prompt)]
+        
+        # Add filtered chat history (text-only, last 4 messages for context)
+        # Router doesn't need images - just conversational context for pronoun resolution
         if chat_history:
-            messages.extend(chat_history)
+            router_history = self._filter_history_for_router(chat_history[-4:])
+            router_messages.extend(router_history)
         
         # 3. Prepare user message (text or multimodal with images)
+        # Note: For router, we only send text (router doesn't need to see images)
+        router_messages.append(HumanMessage(content=user_input))
+        
+        # Prepare full multimodal content for main LLM (used later)
         user_message_content = await self._prepare_user_message(user_input, image_urls)
         if image_urls:
             logger.info(f"CharacterAgent: Prepared multimodal message with {len(image_urls)} image(s), content_type={type(user_message_content)}")
-        messages.append(HumanMessage(content=user_message_content))
         
         try:
-            # 3. First LLM Call (Router) - Decide to use tool or not
+            # 4. First LLM Call (Router) - Decide to use tool or not
             if callback:
                 await callback("🔍 *Checking my memory...*")
                 
-            response = await router_with_tools.ainvoke(messages)
+            response = await router_with_tools.ainvoke(router_messages)
             
             # Debug logging
             logger.debug(f"CharacterAgent Router Response: content='{response.content}' tool_calls={response.tool_calls}")
             
-            # 4. Handle Tool Calls (if any)
+            # 5. Handle Tool Calls (if any)
             # Check if response has tool_calls attribute (AIMessage)
             if isinstance(response, AIMessage) and response.tool_calls:
-                # Only append router response if it used tools. 
-                # If it just chatted, we discard it so the Main LLM can generate the character voice.
-                messages.append(response)
+                # Build the MAIN LLM messages with full character prompt
+                # (Router used minimal prompt, now we need full character voice)
+                # NOTE: We don't add agency prompt - main LLM has no tools bound, just processes results
+                main_messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
+                if chat_history:
+                    main_messages.extend(chat_history)
+                main_messages.append(HumanMessage(content=user_message_content))
+                main_messages.append(response)  # Include tool call decision
 
                 # Execute tools in parallel
                 tool_tasks = []
@@ -158,7 +185,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                             await callback(f"🛠️ *Using {tool_name}...*")
                         
                         # Create coroutine for tool execution
-                        tool_tasks.append(self._execute_tool(selected_tool, tool_call, messages))
+                        tool_tasks.append(self._execute_tool(selected_tool, tool_call, main_messages))
                     else:
                         logger.warning(f"CharacterAgent: Tool {tool_name} not found in available tools.")
                 
@@ -166,9 +193,9 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 if tool_tasks:
                     await asyncio.gather(*tool_tasks)
                 
-                # 5. Final Response after tool outputs
+                # 6. Final Response after tool outputs
                 # Add guidance for handling empty/unhelpful tool results
-                tool_results = [m for m in messages if isinstance(m, ToolMessage)]
+                tool_results = [m for m in main_messages if isinstance(m, ToolMessage)]
                 empty_results = any(
                     "no relevant" in (m.content or "").lower() or 
                     "not found" in (m.content or "").lower() or
@@ -179,33 +206,39 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 
                 if empty_results:
                     # Guide the model to respond naturally even without tool results
-                    messages.append(SystemMessage(content="The tool search didn't find specific information, but that's okay. Respond naturally to the user based on what you do know. Don't mention that you couldn't find anything - just have a genuine conversation."))
+                    main_messages.append(SystemMessage(content="The tool search didn't find specific information, but that's okay. Respond naturally to the user based on what you do know. Don't mention that you couldn't find anything - just have a genuine conversation."))
                 
                 # If images were included, remind the model to look at them
                 if image_urls:
-                    messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
+                    main_messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
                 
-                final_response = await self.llm.ainvoke(messages)
+                final_response = await self.llm.ainvoke(main_messages)
                 logger.debug(f"CharacterAgent: Final LLM response after tools: content='{final_response.content[:200] if final_response.content else 'EMPTY'}' tool_calls={final_response.tool_calls}")
                 
                 # Handle case where model tries to chain tools (returns another tool call instead of text)
                 if isinstance(final_response, AIMessage) and final_response.tool_calls and not final_response.content:
                     logger.warning("CharacterAgent: Model attempted to chain tools (not supported). Forcing text response.")
                     # We can't execute more tools. Just ask for a response.
-                    messages.append(SystemMessage(content="You have used your allowed tool. Please provide a response to the user now based on the information you have."))
-                    final_response = await self.llm.ainvoke(messages)
+                    main_messages.append(SystemMessage(content="You have used your allowed tool. Please provide a response to the user now based on the information you have."))
+                    final_response = await self.llm.ainvoke(main_messages)
 
                 if not final_response.content:
-                    logger.warning(f"CharacterAgent: Final response after tools is empty. Messages: {len(messages)}, last tool results: {[m for m in messages if isinstance(m, ToolMessage)]}")
+                    logger.warning(f"CharacterAgent: Final response after tools is empty. Messages: {len(main_messages)}, last tool results: {[m for m in main_messages if isinstance(m, ToolMessage)]}")
                 return str(final_response.content) or "I'm having a bit of trouble processing that. Could you say it again?"
             
             # No tool used - pass through main LLM for character voice
-            # The router decided no tools needed, now get the quality response
+            # The router decided no tools needed, now get the quality response with full character prompt
+            # NOTE: We don't add agency prompt here since main LLM has no tools bound
+            main_messages: List[BaseMessage] = [SystemMessage(content=system_prompt)]
+            if chat_history:
+                main_messages.extend(chat_history)
+            main_messages.append(HumanMessage(content=user_message_content))
+            
             # If images were included, remind the model to look at them
             if image_urls:
-                messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
+                main_messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
             
-            final_response = await self.llm.ainvoke(messages)
+            final_response = await self.llm.ainvoke(main_messages)
             if not final_response.content:
                 # Log more details about the request to diagnose image issues
                 has_images = any(
@@ -213,7 +246,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                         isinstance(c, dict) and c.get("type") in ("image_url", "image")
                         for c in m.content
                     )
-                    for m in messages if hasattr(m, 'content')
+                    for m in main_messages if hasattr(m, 'content')
                 )
                 logger.warning(
                     f"CharacterAgent: Main LLM returned empty content. "
@@ -253,6 +286,47 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 name=tool_name,
                 content="The tool encountered an error and couldn't complete the request."
             ))
+
+    def _filter_history_for_router(self, chat_history: List[BaseMessage]) -> List[BaseMessage]:
+        """Filters chat history for the router LLM.
+        
+        Removes images and extracts only text content to reduce token usage.
+        The router doesn't need vision - it just needs conversational context
+        for pronoun resolution ("do that again", "search for what I mentioned").
+        
+        Args:
+            chat_history: List of messages (may contain multimodal content)
+            
+        Returns:
+            List of text-only messages suitable for router
+        """
+        filtered: List[BaseMessage] = []
+        
+        for msg in chat_history:
+            content = msg.content
+            
+            # Handle multimodal content (list of content blocks)
+            if isinstance(content, list):
+                # Extract just text parts, skip images
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text_parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                
+                text_content = " ".join(text_parts).strip()
+                if text_content:
+                    # Preserve message type (Human/AI/System)
+                    filtered.append(type(msg)(content=text_content))
+                else:
+                    # Image-only message - add placeholder
+                    filtered.append(type(msg)(content="[User shared an image]"))
+            else:
+                # Already text-only, keep as-is
+                filtered.append(msg)
+        
+        return filtered
 
     def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:
         """Returns the subset of tools available to CharacterAgent.
