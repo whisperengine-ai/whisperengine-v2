@@ -74,7 +74,9 @@ If you decide to use a tool, you don't need to announce it - just use the inform
 """
 
     def __init__(self):
-        # Use main LLM (usually faster/cheaper than reflective)
+        # Router LLM for tool selection (fast/cheap) - only decides which tools to call
+        self.router_llm = create_llm(temperature=0.3, mode="router")
+        # Main LLM for final character response (quality voice)
         self.llm = create_llm(temperature=0.7, mode="main")
     
     def _get_agency_prompt(self) -> str:
@@ -99,10 +101,14 @@ If you decide to use a tool, you don't need to announce it - just use the inform
     ) -> str:
         """
         Executes a single-step tool lookup if needed, then generates response.
+        
+        Uses two-LLM approach:
+        - Router LLM (fast/cheap): Decides which tools to call
+        - Main LLM (quality): Final character voice response
         """
         # 1. Initialize Tools (Subset of full tools)
         tools = self._get_tools(user_id, guild_id, character_name, channel)
-        llm_with_tools = self.llm.bind_tools(tools)
+        router_with_tools = self.router_llm.bind_tools(tools)
         
         # 2. Construct Messages with agency guidance (dynamically built based on feature flags)
         enhanced_prompt = system_prompt + self._get_agency_prompt()
@@ -112,15 +118,15 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         messages.append(HumanMessage(content=user_input))
         
         try:
-            # 3. First LLM Call - Decide to use tool or not
+            # 3. First LLM Call (Router) - Decide to use tool or not
             if callback:
                 await callback("🔍 *Checking my memory...*")
                 
-            response = await llm_with_tools.ainvoke(messages)
+            response = await router_with_tools.ainvoke(messages)
             messages.append(response)
             
             # Debug logging
-            logger.debug(f"CharacterAgent LLM Response: content='{response.content}' tool_calls={response.tool_calls}")
+            logger.debug(f"CharacterAgent Router Response: content='{response.content}' tool_calls={response.tool_calls}")
             
             # 4. Handle Tool Calls (if any)
             # Check if response has tool_calls attribute (AIMessage)
@@ -175,10 +181,12 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                     logger.warning(f"CharacterAgent: Final response after tools is empty. Messages: {len(messages)}, last tool results: {[m for m in messages if isinstance(m, ToolMessage)]}")
                 return str(final_response.content) or "I'm having a bit of trouble processing that. Could you say it again?"
             
-            # No tool used, return direct response
-            if not response.content:
-                logger.warning(f"CharacterAgent: LLM returned empty content. tool_calls={response.tool_calls}, response={response}")
-            return str(response.content) or "I'm having a bit of trouble thinking clearly right now. Can you say that again?"
+            # No tool used - pass through main LLM for character voice
+            # The router decided no tools needed, now get the quality response
+            final_response = await self.llm.ainvoke(messages)
+            if not final_response.content:
+                logger.warning(f"CharacterAgent: Main LLM returned empty content. response={final_response}")
+            return str(final_response.content) or "I'm having a bit of trouble thinking clearly right now. Can you say that again?"
             
         except Exception as e:
             logger.error(f"CharacterAgent failed: {e}")
