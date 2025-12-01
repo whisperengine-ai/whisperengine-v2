@@ -478,8 +478,25 @@ Take your time - this is batch mode, so quality matters more than speed.
             while steps < self.max_steps:
                 steps += 1
                 
-                # Invoke LLM
-                response = await llm_with_tools.ainvoke(messages)
+                # Invoke LLM with retry for transient errors
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        response = await llm_with_tools.ainvoke(messages)
+                        break
+                    except Exception as e:
+                        error_str = str(e)
+                        if "500" in error_str or "502" in error_str or "503" in error_str:
+                            if attempt < max_retries - 1:
+                                import asyncio
+                                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                                logger.warning(f"DreamWeaver LLM call failed (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s: {e}")
+                                await asyncio.sleep(wait_time)
+                            else:
+                                raise
+                        else:
+                            raise
+                
                 messages.append(response)
                 
                 # Log thinking
