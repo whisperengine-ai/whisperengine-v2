@@ -1,5 +1,6 @@
 import asyncio
 import operator
+import datetime
 from typing import List, Optional, Dict, Any, TypedDict, Literal, cast
 from loguru import logger
 from langsmith import traceable
@@ -12,12 +13,10 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.classifier import ComplexityClassifier
 from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_graph import CharacterGraphAgent
+from src_v2.agents.context_builder import ContextBuilder
 
 # Managers for Context Node
 from src_v2.memory.manager import memory_manager
-from src_v2.knowledge.manager import knowledge_manager
-from src_v2.evolution.trust import trust_manager
-from src_v2.evolution.goals import goal_manager
 
 # Define State
 class SuperGraphState(TypedDict):
@@ -48,6 +47,7 @@ class MasterGraphAgent:
         self.classifier = ComplexityClassifier()
         self.reflective_agent = ReflectiveGraphAgent()
         self.character_agent = CharacterGraphAgent()
+        self.context_builder = ContextBuilder()
         self.fast_llm = create_llm(mode="main") # Use main model for fast path, but without tools
         
         # Build Graph
@@ -87,22 +87,18 @@ class MasterGraphAgent:
         """Parallel fetch of all necessary context."""
         user_id = state["user_id"]
         user_input = state["user_input"]
-        character_name = state["character"].name
         
         # Parallel gather
-        memories, facts, trust, goals = await asyncio.gather(
-            memory_manager.search_memories(user_input, user_id, limit=5),
-            knowledge_manager.query_graph(user_id, user_input, character_name),
-            trust_manager.get_relationship_level(user_id, character_name),
-            goal_manager.get_active_goals(user_id, character_name)
-        )
+        # Note: ContextBuilder handles Trust, Goals, and Knowledge internally.
+        # We only fetch Vector Memories here as they are query-specific and not handled by ContextBuilder.
+        memories = await memory_manager.search_memories(user_input, user_id, limit=5)
         
         return {
             "context": {
                 "memories": memories,
-                "facts": facts,
-                "trust": trust,
-                "goals": goals
+                "facts": [], # Handled by ContextBuilder
+                "trust": None, # Handled by ContextBuilder
+                "goals": [] # Handled by ContextBuilder
             }
         }
 
@@ -118,9 +114,46 @@ class MasterGraphAgent:
 
     async def prompt_builder_node(self, state: SuperGraphState):
         """Constructs the system prompt using gathered context."""
-        # Placeholder: In reality, we'd use state['context'] to build the prompt
-        _ = state 
-        return {"system_prompt": "System prompt placeholder"} 
+        character = state["character"]
+        user_input = state["user_input"]
+        user_id = state["user_id"]
+        context_variables = state.get("context_variables", {})
+        
+        # 1. Build base system context (Identity, Trust, Goals, Knowledge, Diary, Dreams)
+        system_content = await self.context_builder.build_system_context(
+            character=character,
+            user_message=user_input,
+            user_id=user_id,
+            context_variables=context_variables
+        )
+        
+        # 2. Inject Vector Memories (fetched in context_node)
+        memories = state.get("context", {}).get("memories", [])
+        if memories:
+            memory_context = ""
+            for mem in memories:
+                # Format: [Time] Content (Score)
+                rel_time = mem.get("relative_time", "unknown time")
+                content = mem.get("content", "")
+                memory_context += f"- [{rel_time}] {content}\n"
+            
+            if memory_context:
+                system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{memory_context}\n"
+                system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+
+        # 3. Template Variable Substitution
+        # Replace {user_name}, {current_datetime}, and any other context variables
+        if context_variables:
+            for key, value in context_variables.items():
+                if isinstance(value, str):
+                    system_content = system_content.replace(f"{{{key}}}", value)
+        
+        # Fallback: If {current_datetime} is still present, replace it
+        if "{current_datetime}" in system_content:
+            now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+            system_content = system_content.replace("{current_datetime}", now_str)
+
+        return {"system_prompt": system_content} 
 
     def router_logic(self, state: SuperGraphState) -> Literal["reflective", "character", "fast"]:
         """Decides which agent to use based on complexity."""
@@ -204,9 +237,10 @@ class MasterGraphAgent:
     @traceable(name="MasterGraphAgent.run", run_type="chain")
     async def run(self, **kwargs):
         """Entry point for the Supergraph."""
+        logger.info("Executing MasterGraphAgent.run")
         # Explicitly cast to dict to satisfy type checker, though TypedDict is a dict at runtime
         input_state = cast(SuperGraphState, kwargs)
-        result = await self.graph.ainvoke(input_state)
+        result = await self.graph.ainvoke(input_state, config={"run_name": "MasterGraphExecution"})
         return result["final_response"]
 
 # Singleton

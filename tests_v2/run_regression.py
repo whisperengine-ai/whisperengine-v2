@@ -144,7 +144,7 @@ def run_tests(
 
     
         # Base pytest command
-        cmd = ["pytest", "tests_v2/regression/", "-v"]
+        cmd = [sys.executable, "-m", "pytest", "tests_v2/regression/", "-v"]
         
         if no_cov:
             cmd.append("--no-cov")
@@ -152,13 +152,16 @@ def run_tests(
         if verbose:
             cmd.append("-s")
         
+        # Build filter expression
+        filters = []
+        
         # Filter by bot
         if bot:
             if bot not in BOTS:
                 print(f"Unknown bot: {bot}")
                 print(f"Available: {BOTS}")
                 return 1
-            cmd.extend(["-k", bot])
+            filters.append(bot)
         
         # Filter by category
         if category:
@@ -166,11 +169,15 @@ def run_tests(
                 print(f"Unknown category: {category}")
                 print(f"Available: {list(TEST_CATEGORIES.keys())}")
                 return 1
-            cmd.extend(["-k", TEST_CATEGORIES[category]])
+            filters.append(TEST_CATEGORIES[category])
         
         # Smoke test - just health and basic chat
         if smoke:
-            cmd.extend(["-k", "TestHealthAndDiagnostics or test_simple_greeting"])
+            filters.append("(TestHealthAndDiagnostics or test_simple_greeting)")
+            
+        # Apply filters
+        if filters:
+            cmd.extend(["-k", " and ".join(filters)])
         
         # Generate HTML report
         if report:
