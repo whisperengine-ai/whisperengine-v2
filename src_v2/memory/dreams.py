@@ -581,7 +581,7 @@ Create a surreal dream echoing these experiences.""")
             # Escape curly braces in character_context to prevent LangChain template interpretation
             safe_context = character_context.replace("{", "{{").replace("}", "}}")
             
-            result = await self.chain.ainvoke({
+            result = await self.user_chain.ainvoke({
                 "character_name": self.bot_name.title() if self.bot_name else "Character",
                 "character_context": safe_context,
                 "user_name": user_name,
