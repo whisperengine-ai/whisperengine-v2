@@ -204,7 +204,8 @@ class TaskQueue:
         user_id: str,
         character_name: str,
         session_id: str,
-        messages: list
+        messages: list,
+        user_name: Optional[str] = None
     ) -> Optional[str]:
         """
         Enqueue a session summarization task.
@@ -214,6 +215,7 @@ class TaskQueue:
             character_name: Bot character name
             session_id: Conversation session ID
             messages: List of message dicts with 'role' and 'content' keys
+            user_name: User's display name (for diary provenance)
         """
         job_id = f"summarize_{session_id}"
         
@@ -223,7 +225,8 @@ class TaskQueue:
             user_id=user_id,
             character_name=character_name,
             session_id=session_id,
-            messages=messages
+            messages=messages,
+            user_name=user_name
         )
     
     async def enqueue_reflection(

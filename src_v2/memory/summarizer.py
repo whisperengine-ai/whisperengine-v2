@@ -61,9 +61,12 @@ RULES:
             logger.error(f"Failed to generate summary: {e}")
             return None
 
-    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult):
+    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult, user_name: Optional[str] = None):
         """
         Saves the summary to Postgres and Qdrant.
+        
+        Args:
+            user_name: User's display name (for diary provenance)
         """
         if not db_manager.postgres_pool:
             return
@@ -105,7 +108,8 @@ RULES:
                 content=result.summary,
                 meaningfulness_score=result.meaningfulness_score,
                 emotions=result.emotions,
-                topics=result.topics
+                topics=result.topics,
+                user_name=user_name
             )
             
             if embedding_id:

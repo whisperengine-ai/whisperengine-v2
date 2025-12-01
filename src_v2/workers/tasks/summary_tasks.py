@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from loguru import logger
 
 async def run_summarization(
@@ -6,7 +6,8 @@ async def run_summarization(
     user_id: str,
     character_name: str,
     session_id: str,
-    messages: List[Dict[str, Any]]
+    messages: List[Dict[str, Any]],
+    user_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Generate a session summary and save to database.
@@ -17,6 +18,7 @@ async def run_summarization(
         character_name: Bot character name
         session_id: Conversation session ID
         messages: List of message dicts with 'role' and 'content' keys
+        user_name: User's display name (for diary provenance)
         
     Returns:
         Dict with success status and summary content
@@ -32,7 +34,7 @@ async def run_summarization(
         result = await summarizer.generate_summary(messages)
         
         if result and result.meaningfulness_score >= 3:
-            await summarizer.save_summary(session_id, user_id, result)
+            await summarizer.save_summary(session_id, user_id, result, user_name=user_name)
             logger.info(f"Summary saved for session {session_id} (score: {result.meaningfulness_score})")
             return {
                 "success": True,

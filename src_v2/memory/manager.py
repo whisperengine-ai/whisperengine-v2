@@ -211,9 +211,12 @@ class MemoryManager:
             logger.error(f"Failed to save vector memory: {e}")
             raise e
 
-    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], topics: Optional[List[str]] = None, collection_name: Optional[str] = None) -> Optional[str]:
+    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], topics: Optional[List[str]] = None, user_name: Optional[str] = None, collection_name: Optional[str] = None) -> Optional[str]:
         """
         Embeds and saves a summary to Qdrant.
+        
+        Args:
+            user_name: User's display name (for diary provenance)
         """
         if not db_manager.qdrant_client:
             return None
@@ -232,6 +235,7 @@ class MemoryManager:
                     "type": "summary",
                     "session_id": str(session_id),
                     "user_id": str(user_id),
+                    "user_name": user_name or "someone",  # For diary provenance display
                     "content": content,
                     "meaningfulness_score": meaningfulness_score,
                     "emotions": emotions,

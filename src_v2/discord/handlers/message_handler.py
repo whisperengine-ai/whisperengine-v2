@@ -550,7 +550,7 @@ class MessageHandler:
 
                 # 2.5 Check for Summarization
                 if session_id:
-                    self.bot.loop.create_task(self._check_and_summarize(session_id, user_id))
+                    self.bot.loop.create_task(self._check_and_summarize(session_id, user_id, message.author.display_name))
 
                 # 3. Generate response
                 # Get character's timezone for context-aware datetime
@@ -1356,9 +1356,14 @@ Recent channel context:
         except Exception as e:
             logger.error(f"Error in lurk handler: {e}")
 
-    async def _check_and_summarize(self, session_id: str, user_id: str):
+    async def _check_and_summarize(self, session_id: str, user_id: str, user_name: str):
         """
         Checks if summarization is needed and enqueues it to background worker.
+        
+        Args:
+            session_id: Session ID
+            user_id: Discord user ID
+            user_name: User's display name (for diary provenance)
         """
         try:
             # 1. Get session start time
@@ -1385,7 +1390,8 @@ Recent channel context:
                         user_id=user_id,
                         character_name=self.bot.character_name,
                         session_id=session_id,
-                        messages=msg_dicts
+                        messages=msg_dicts,
+                        user_name=user_name  # For diary provenance display
                     )
                 except Exception as e:
                     logger.error(f"Failed to enqueue summarization: {e}")

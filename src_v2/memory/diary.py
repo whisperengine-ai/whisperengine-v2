@@ -381,7 +381,7 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
         # Add provenance for each source
         for s in material.summaries[:10]:
             collector.add_conversation(
-                who=s.get("user_id", "someone"),
+                who=s.get("user_name", s.get("user_id", "someone")),  # Prefer display name
                 topic=", ".join(s.get("topics", ["chat"])),
                 where="chat",
                 when="today",
