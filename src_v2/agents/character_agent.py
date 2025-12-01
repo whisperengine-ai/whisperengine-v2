@@ -132,7 +132,6 @@ If you decide to use a tool, you don't need to announce it - just use the inform
                 await callback("🔍 *Checking my memory...*")
                 
             response = await router_with_tools.ainvoke(messages)
-            messages.append(response)
             
             # Debug logging
             logger.debug(f"CharacterAgent Router Response: content='{response.content}' tool_calls={response.tool_calls}")
@@ -140,6 +139,10 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             # 4. Handle Tool Calls (if any)
             # Check if response has tool_calls attribute (AIMessage)
             if isinstance(response, AIMessage) and response.tool_calls:
+                # Only append router response if it used tools. 
+                # If it just chatted, we discard it so the Main LLM can generate the character voice.
+                messages.append(response)
+
                 # Execute tools in parallel
                 tool_tasks = []
                 for tool_call in response.tool_calls:
