@@ -65,7 +65,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
 | 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
 | 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | ✅ Complete |
-| 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | 📋 **Next Up** |
+| 🟢 High | **E17** | **Supergraph Architecture** | **3-4 days** | LangGraph | 📋 **Next Up** |
+| 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | 📋 Planned |
 | 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 In Progress |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | 📋 Proposed |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
@@ -82,6 +83,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 **Dependency Chain:**
 ```
+LangGraph Refactor ──► E17 (Supergraph)
+
 S1 (Content Safety) ──┬──► S3 (LLM Sensitivity)
                       └──► E8 (Bot Broadcast) ──► E6 (Bot-to-Bot Chat)
                                 ▲
