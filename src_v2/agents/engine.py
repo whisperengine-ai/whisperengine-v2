@@ -204,8 +204,6 @@ class AgentEngine:
                 elif complexity_result == "COMPLEX_HIGH":
                     max_steps = 15
                 
-                enable_verification = (complexity_result == "COMPLEX_HIGH")
-                
                 # Pass detected intents to reflective mode for tool guidance
                 if context_variables is None:
                     context_variables = {}
@@ -214,8 +212,7 @@ class AgentEngine:
                 response = await self._run_reflective_mode(
                     character, user_message, user_id, system_content, 
                     chat_history, context_variables, image_urls, callback,
-                    max_steps_override=max_steps,
-                    enable_verification=enable_verification
+                    max_steps_override=max_steps
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Reflective Mode - {complexity_result})")
@@ -243,7 +240,8 @@ class AgentEngine:
                     chat_history=chat_history,
                     callback=callback,
                     character_name=character.name,
-                    channel=channel
+                    channel=channel,
+                    image_urls=image_urls
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {complexity_result})")
@@ -479,25 +477,16 @@ class AgentEngine:
 
                 # Determine max steps based on complexity level
                 max_steps = 10 # Default
-                should_verify = False
-                
                 if complexity_result == "COMPLEX_MID":
                     max_steps = 10
                 elif complexity_result == "COMPLEX_HIGH":
                     max_steps = 15
-                    # Only enable verification for OpenAI-native models
-                    # Anthropic/Claude via OpenRouter has strict message format that breaks with critic step
-                    reflective_provider = settings.REFLECTIVE_LLM_PROVIDER or settings.LLM_PROVIDER
-                    reflective_model = settings.REFLECTIVE_LLM_MODEL_NAME or settings.LLM_MODEL_NAME
-                    is_anthropic = "anthropic" in reflective_model.lower() or "claude" in reflective_model.lower()
-                    should_verify = not is_anthropic  # Only verify for non-Anthropic models
 
                 # Reflective mode doesn't support true streaming yet, so we yield the full response
                 response = await self._run_reflective_mode(
                     character, user_message, user_id, system_content, 
                     chat_history, context_variables, image_urls, callback,
-                    max_steps_override=max_steps,
-                    enable_verification=should_verify
+                    max_steps_override=max_steps
                 )
                 logger.info(f"Total response time: {time.time() - start_time:.2f}s (Reflective Mode - {complexity_result})")
                 
@@ -540,7 +529,8 @@ class AgentEngine:
                     callback=callback,
                     guild_id=guild_id,
                     character_name=character.name,
-                    channel=channel
+                    channel=channel,
+                    image_urls=image_urls
                 )
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {complexity_result})")
@@ -780,8 +770,7 @@ class AgentEngine:
         context_variables: Dict[str, Any], 
         image_urls: Optional[List[str]], 
         callback: Optional[Callable[[str], Awaitable[None]]],
-        max_steps_override: Optional[int] = None,
-        enable_verification: bool = False
+        max_steps_override: Optional[int] = None
     ) -> str:
         """Runs the reflective reasoning mode for complex queries.
         
@@ -795,12 +784,11 @@ class AgentEngine:
             image_urls: Optional list of image URLs
             callback: Optional callback for streaming responses
             max_steps_override: Optional override for max reasoning steps
-            enable_verification: Whether to enable self-correction/critic step
             
         Returns:
             Generated response text
         """
-        logger.info(f"Engaging Reflective Mode (Max Steps: {max_steps_override or 'Default'}, Verification: {enable_verification})")
+        logger.info(f"Engaging Reflective Mode (Max Steps: {max_steps_override or 'Default'})")
         response_text: str
         trace: List[BaseMessage]
         
@@ -816,7 +804,6 @@ class AgentEngine:
             image_urls=image_urls,
             max_steps_override=max_steps_override,
             guild_id=guild_id,
-            enable_verification=enable_verification,
             channel=channel,
             detected_intents=detected_intents
         )

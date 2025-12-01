@@ -757,16 +757,16 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
             peaceful_moods = {"peaceful", "content", "serene", "calm", "satisfied"}
             
             if any(m in mood_lower for m in dark_moods):
-                header = "**A Difficult Day** 🌧️"
+                header = "🌧️ A DIFFICULT DAY"
                 opener = "*Today was hard.*\n\n"
             elif any(m in mood_lower for m in joyful_moods):
-                header = "**A Wonderful Day** ☀️"
+                header = "☀️ A WONDERFUL DAY"
                 opener = "*What a day!*\n\n"
             elif any(m in mood_lower for m in peaceful_moods):
-                header = "**Diary Entry** 📝"
+                header = "📝 DIARY ENTRY"
                 opener = "*A quiet day to reflect.*\n\n"
             else:
-                header = "**Diary Entry** 📝"
+                header = "📝 DIARY ENTRY"
                 opener = ""
             
             formatted = f"{header} — {date_str}, {time_str}\n\n{opener}{result.content.strip()}"

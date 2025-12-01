@@ -794,13 +794,13 @@ Create a surreal dream echoing these experiences.""")
         mood_lower = dream.mood.lower() if dream.mood else ""
         
         if any(m in mood_lower for m in dark_moods):
-            header = "**Nightmare** 🌑"
+            header = "🌑 NIGHTMARE"
         elif any(m in mood_lower for m in ecstatic_moods):
-            header = "**A Beautiful Dream** ✨"
+            header = "✨ A BEAUTIFUL DREAM"
         elif any(m in mood_lower for m in peaceful_moods):
-            header = "**Dream Journal** 🌙"
+            header = "🌙 DREAM JOURNAL"
         else:
-            header = "**Dream Journal** 🌙"
+            header = "🌙 DREAM JOURNAL"
         
         # Opening lines based on mood
         openers = {

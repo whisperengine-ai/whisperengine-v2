@@ -1,12 +1,15 @@
 import asyncio
-from typing import List, Optional, Callable, Awaitable, Any
+import base64
+from typing import List, Optional, Callable, Awaitable, Any, Dict
 from loguru import logger
 from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from langchain_core.tools import BaseTool
+import httpx
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.settings import settings
+from src_v2.config.constants import get_image_format_for_provider
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
@@ -97,7 +100,8 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
         guild_id: Optional[str] = None,
         character_name: Optional[str] = None,
-        channel: Optional[Any] = None
+        channel: Optional[Any] = None,
+        image_urls: Optional[List[str]] = None
     ) -> str:
         """
         Executes a single-step tool lookup if needed, then generates response.
@@ -115,7 +119,10 @@ If you decide to use a tool, you don't need to announce it - just use the inform
         messages: List[BaseMessage] = [SystemMessage(content=enhanced_prompt)]
         if chat_history:
             messages.extend(chat_history)
-        messages.append(HumanMessage(content=user_input))
+        
+        # 3. Prepare user message (text or multimodal with images)
+        user_message_content = await self._prepare_user_message(user_input, image_urls)
+        messages.append(HumanMessage(content=user_message_content))
         
         try:
             # 3. First LLM Call (Router) - Decide to use tool or not
@@ -269,3 +276,62 @@ If you decide to use a tool, you don't need to announce it - just use the inform
             tools.append(GenerateImageTool(user_id=user_id, character_name=bot_name))
         
         return tools
+
+    async def _prepare_user_message(
+        self, 
+        user_input: str, 
+        image_urls: Optional[List[str]] = None
+    ) -> Any:
+        """
+        Prepares the user message content, handling text and optional images.
+        
+        Args:
+            user_input: The user's text message
+            image_urls: Optional list of image URLs to include
+            
+        Returns:
+            Either a string (text only) or a list of content blocks (multimodal)
+        """
+        if not image_urls or not settings.LLM_SUPPORTS_VISION:
+            return user_input
+        
+        # Build multimodal content
+        content: List[Dict[str, Any]] = [{"type": "text", "text": user_input}]
+        
+        # Check if provider requires base64 encoding or supports direct URLs
+        # Use main LLM provider since CharacterAgent uses the main LLM for final response
+        image_format = get_image_format_for_provider(settings.LLM_PROVIDER)
+        
+        if image_format == "base64":
+            # Download and encode images for providers that require base64
+            async with httpx.AsyncClient() as client:
+                for img_url in image_urls:
+                    try:
+                        img_response = await client.get(img_url, timeout=10.0)
+                        img_response.raise_for_status()
+                        
+                        img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                        mime_type = img_response.headers.get("content-type", "image/png")
+                        
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
+                        })
+                        logger.debug(f"CharacterAgent: Encoded image to base64 for {settings.LLM_PROVIDER}")
+                    except Exception as e:
+                        logger.error(f"CharacterAgent: Failed to download/encode image {img_url}: {e}")
+                        # Fallback to URL anyway
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {"url": img_url}
+                        })
+        else:
+            # Use URLs directly for providers that support it
+            for img_url in image_urls:
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": img_url}
+                })
+            logger.debug(f"CharacterAgent: Using direct image URLs for {settings.LLM_PROVIDER}")
+        
+        return content

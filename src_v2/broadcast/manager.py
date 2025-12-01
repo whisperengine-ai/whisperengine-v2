@@ -337,15 +337,10 @@ class BroadcastManager:
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None
     ) -> str:
-        """Format the broadcast message with appropriate prefix and provenance footer."""
-        prefix = POST_PREFIXES.get(post_type, "💬")
-        
-        # Build main content with header
-        if content.startswith("**"):
-            # Insert character name after the prefix emoji
-            main_content = f"{prefix} {character_name.title()} — {content[2:]}"
-        else:
-            main_content = f"{prefix} **{character_name.title()}**\n{content}"
+        """Format the broadcast message with character name and provenance footer."""
+        # Content already has full header: "🌙 DREAM JOURNAL — December 02, 2024..."
+        # Just prepend character name
+        main_content = f"**{character_name.title()}**\n{content}"
         
         # Add provenance footer if available
         footer = self._format_provenance_footer(provenance)

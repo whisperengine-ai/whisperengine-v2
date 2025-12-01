@@ -46,15 +46,17 @@ class BotConfig:
 
 # All bot configurations (synced with actual .env.* files as of Nov 30, 2025)
 BOT_CONFIGS = [
-    BotConfig("elena", 8000, "anthropic/claude-haiku-4.5", "openai/gpt-4o"),
-    BotConfig("ryan", 8001, "anthropic/claude-haiku-4.5", "openai/gpt-4o-mini"),
-    BotConfig("dotty", 8002, "anthropic/claude-haiku-4.5", "openai/gpt-4o-mini"),
-    BotConfig("aria", 8003, "openai/gpt-4o-mini", "openai/gpt-4o-mini"),
-    BotConfig("dream", 8004, "anthropic/claude-haiku-4.5", "openai/gpt-4o"),
-    BotConfig("jake", 8005, "openai/gpt-4o-mini", "openai/gpt-4o-mini"),
-    BotConfig("sophia", 8006, "anthropic/claude-haiku-4.5", "openai/gpt-4o-mini"),
-    BotConfig("marcus", 8007, "anthropic/claude-haiku-4.5", "openai/gpt-4o"),
+    BotConfig("elena", 8000, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
+    BotConfig("ryan", 8001, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
+    BotConfig("dotty", 8002, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
+    BotConfig("aria", 8003, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
+    BotConfig("dream", 8004, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
+    BotConfig("jake", 8005, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
+    BotConfig("sophia", 8006, "anthropic/claude-sonnet-4.5", "anthropic/claude-haiku-4.5"),
+    BotConfig("marcus", 8007, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
     BotConfig("nottaylor", 8008, "anthropic/claude-haiku-4.5", "openai/gpt-4o", is_production=True),
+    BotConfig("gabriel", 8009, "mistralai/mistral-medium-3.1", "openai/gpt-4o"),
+    BotConfig("aetheris", 8011, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
 ]
 
 # Test user prefix to avoid polluting real user data

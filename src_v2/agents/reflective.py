@@ -88,7 +88,6 @@ class ReflectiveAgent:
         image_urls: Optional[List[str]] = None,
         max_steps_override: Optional[int] = None,
         guild_id: Optional[str] = None,
-        enable_verification: bool = False,
         channel: Optional[Any] = None,
         detected_intents: Optional[List[str]] = None
     ) -> Tuple[str, List[BaseMessage]]:
@@ -199,7 +198,6 @@ class ReflectiveAgent:
 
         empty_response_retries = 0
         max_empty_retries = 3  # Max nudge attempts before giving up
-        has_verified = False
 
         while steps < current_max_steps:
             steps += 1
@@ -336,50 +334,8 @@ class ReflectiveAgent:
                     
                     return "I'm not sure how to answer that.", messages
                 
-                # --- SELF-CORRECTION LOGIC ---
-                if enable_verification and not has_verified:
-                    logger.info("Triggering Self-Correction/Critic Step")
-                    if callback:
-                        await callback("🤔 Reviewing answer for accuracy...")
-                    
-                    has_verified = True
-                    
-                    critic_prompt = (
-                        "CRITIC STEP: Review your last response above. "
-                        "Does it fully answer the user's request based on the tool outputs? "
-                        "Are there any hallucinations? "
-                        "If it is correct, respond with exactly: 'VERIFIED'. "
-                        "If it needs work, respond with: 'CORRECTION NEEDED: <explanation>' "
-                        "and then use tools or provide a corrected answer."
-                    )
-                    messages.append(HumanMessage(content=critic_prompt))
-                    continue
-
-                if enable_verification and "VERIFIED" in str(content):
-                    # The PREVIOUS message was the actual answer.
-                    # History: [..., ProposedAnswer, CriticPrompt, "VERIFIED"]
-                    if len(messages) >= 3:
-                        final_answer_msg = messages[-3]
-                        logger.info(f"Reflective Mode verified in {steps} steps.")
-                        return str(final_answer_msg.content), messages
-                
-                # Strip any leaked critic/correction markers before returning
-                final_content = str(content)
-                if "CORRECTION NEEDED:" in final_content:
-                    # Extract the actual content after the correction marker
-                    # Sometimes the LLM echoes our prompt format
-                    parts = final_content.split("CORRECTION NEEDED:", 1)
-                    if len(parts) > 1:
-                        # Take everything after the marker and strip leading newlines
-                        final_content = parts[1].strip()
-                        # If there's a clear answer after explanation, try to get it
-                        if "\n\n" in final_content:
-                            # Likely format: "explanation\n\nActual answer here"
-                            final_content = final_content.split("\n\n", 1)[-1].strip()
-                        logger.warning("Stripped leaked CORRECTION NEEDED marker from response")
-                
                 logger.info(f"Reflective Mode finished in {steps} steps using {tools_used} tools.")
-                return final_content, messages
+                return str(content), messages
         
         return "I apologize, I reached my reasoning limit and couldn't finish.", messages
 
