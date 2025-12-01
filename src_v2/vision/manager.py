@@ -10,7 +10,8 @@ from src_v2.memory.manager import memory_manager
 
 class VisionManager:
     def __init__(self):
-        self.llm = create_llm(temperature=0.5) # Use a slightly lower temp for accurate descriptions
+        # Use reflective LLM for image analysis (utility task, needs vision capability)
+        self.llm = create_llm(temperature=0.5, mode="reflective")
 
     async def _fetch_image_as_base64(self, image_url: str) -> Optional[str]:
         """

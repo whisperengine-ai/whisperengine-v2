@@ -14,7 +14,8 @@ class StyleAnalysisResult(BaseModel):
 
 class StyleAnalyzer:
     def __init__(self):
-        base_llm = create_llm(temperature=0.0)
+        # Use utility LLM for style analysis (evaluation task)
+        base_llm = create_llm(temperature=0.0, mode="utility")
         
         parser = JsonOutputParser(pydantic_object=StyleAnalysisResult)
         

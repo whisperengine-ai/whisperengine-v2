@@ -28,7 +28,8 @@ class GoalStrategist:
     """
     
     def __init__(self):
-        self.llm = create_llm(temperature=0.7)  # Higher temp for creative goal generation
+        # Use reflective LLM for strategy generation (utility task, not character response)
+        self.llm = create_llm(temperature=0.7, mode="reflective")
         self.parser = JsonOutputParser()
         
         # 1. Strategy Prompt (for existing goals)

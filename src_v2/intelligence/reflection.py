@@ -26,7 +26,8 @@ class ReflectionResult(BaseModel):
 
 class ReflectionEngine:
     def __init__(self):
-        self.base_llm = create_llm(temperature=0.4)
+        # Use utility LLM for reflection analysis (background utility task)
+        self.base_llm = create_llm(temperature=0.4, mode="utility")
         self.parser = JsonOutputParser(pydantic_object=ReflectionResult)
         
         # Prompt template with character identity placeholder

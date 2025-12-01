@@ -20,7 +20,8 @@ class ProactiveAgent:
     Generates context-aware opening messages to initiate conversation with the user.
     """
     def __init__(self) -> None:
-        self.llm: BaseChatModel = create_llm(temperature=0.8) # Higher temp for creativity
+        # Use main LLM for proactive openers (speaks AS the character)
+        self.llm: BaseChatModel = create_llm(temperature=0.8, mode="main")
 
     @traceable(name="ProactiveAgent.generate_opener", run_type="chain")
     async def generate_opener(

@@ -212,7 +212,8 @@ class GoalManager:
 
 class GoalAnalyzer:
     def __init__(self):
-        self.llm = create_llm(temperature=0.0) # Deterministic
+        # Use utility LLM for goal analysis (evaluation task)
+        self.llm = create_llm(temperature=0.0, mode="utility")
         self.parser = JsonOutputParser()
         
         self.prompt = ChatPromptTemplate.from_template("""

@@ -18,7 +18,8 @@ from src_v2.universe.privacy import privacy_manager
 class KnowledgeManager:
     def __init__(self):
         self.extractor = FactExtractor()
-        self.llm = create_llm(temperature=0.0)
+        # Use reflective LLM for Cypher generation (utility task, not character response)
+        self.llm = create_llm(temperature=0.0, mode="reflective")
         
         self.cypher_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Neo4j Cypher developer.
