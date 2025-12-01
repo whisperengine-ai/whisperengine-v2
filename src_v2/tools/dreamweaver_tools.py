@@ -128,41 +128,70 @@ emotional tone, and key moments. Good for getting an overview of the day."""
 
 
 class WanderMemoryInput(BaseModel):
-    query: str = Field(description="The concept or symbol to search for (e.g., 'apples', 'fear of heights')")
+    query: Optional[str] = Field(default=None, description="Optional concept to search for. If omitted, returns random memories.")
     min_age_days: int = Field(default=30, description="Minimum age of the memory in days (to find distant memories)")
     limit: int = Field(default=5, description="Number of memories to return")
 
 
 class WanderMemoryTool(BaseTool):
-    """Search for memories that are semantically related but temporally distant."""
+    """Search for memories that are semantically related OR random (wandering)."""
     name: str = "wander_memory_space"
-    description: str = """Use this to find 'deep cuts' - memories from the distant past that relate to a current thought.
-This mimics the way dreams connect recent events (day residue) with old, forgotten memories.
-Example: If thinking about 'apples', use this to find memories about apples from months ago."""
+    description: str = """Use this to find 'deep cuts' - memories from the distant past.
+If 'query' is provided, it finds memories related to that concept.
+If 'query' is NOT provided, it returns RANDOM memories from the past (true wandering).
+This mimics the way dreams connect recent events with old, forgotten memories."""
     args_schema: Type[BaseModel] = WanderMemoryInput
     
     character_name: str = Field(exclude=True)
 
-    def _run(self, query: str, min_age_days: int = 30, limit: int = 5) -> str:
+    def _run(self, query: Optional[str] = None, min_age_days: int = 30, limit: int = 5) -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, query: str, min_age_days: int = 30, limit: int = 5) -> str:
+    async def _arun(self, query: Optional[str] = None, min_age_days: int = 30, limit: int = 5) -> str:
         try:
             import time
+            import random
             collection = f"whisperengine_memory_{self.character_name}"
             
             # Calculate max_timestamp (current time - min_age_days)
             max_ts = time.time() - (min_age_days * 86400)
             
-            memories = await memory_manager.search_memories_advanced(
-                query=query,
-                max_timestamp=max_ts,
-                limit=limit,
-                collection_name=collection
-            )
-            
+            if query:
+                # Semantic search for specific concept
+                memories = await memory_manager.search_memories_advanced(
+                    query=query,
+                    max_timestamp=max_ts,
+                    limit=limit,
+                    collection_name=collection
+                )
+                prefix = f"Found {len(memories)} distant memories for '{query}':"
+            else:
+                # Random wander (scroll with random offset if possible, or just fetch recent and sample)
+                # Since Qdrant doesn't support efficient random sampling easily, we'll fetch a larger batch
+                # from the past and sample locally.
+                # Note: This is an approximation of "random"
+                
+                # We'll try to fetch memories older than min_age_days
+                # Since we can't easily "scroll random", we might just search for a generic term 
+                # or use a filter-only query if supported.
+                # For now, let's try a generic search with a random common word to seed entropy
+                seed_words = ["the", "a", "it", "is", "in", "to", "and", "I", "you", "we"]
+                random_seed = random.choice(seed_words)
+                
+                memories = await memory_manager.search_memories_advanced(
+                    query=random_seed,
+                    max_timestamp=max_ts,
+                    limit=limit * 3, # Fetch more to sample from
+                    collection_name=collection
+                )
+                
+                if memories:
+                    memories = random.sample(memories, min(len(memories), limit))
+                
+                prefix = f"Wandered and found {len(memories)} random distant memories:"
+
             if not memories:
-                return f"No distant memories found for '{query}' older than {min_age_days} days."
+                return f"No distant memories found older than {min_age_days} days."
             
             results = []
             for m in memories:
@@ -171,7 +200,7 @@ Example: If thinking about 'apples', use this to find memories about apples from
                 date_str = time.strftime('%Y-%m-%d', time.localtime(ts))
                 results.append(f"- [{date_str}] {content}")
             
-            return f"Found {len(memories)} distant memories for '{query}':\n\n" + "\n\n".join(results)
+            return f"{prefix}\n\n" + "\n\n".join(results)
             
         except Exception as e:
             logger.error(f"Error wandering memory: {e}")
@@ -412,13 +441,13 @@ from ALL other bots, not just what was explicitly shared with you."""
     
     character_name: str = Field(exclude=True)
 
-    def _run(self, query: str, artifact_types: List[str] = None, limit: int = 5) -> str:
+    def _run(self, query: str, artifact_types: Optional[List[str]] = None, limit: int = 5) -> str:
         raise NotImplementedError("Use _arun instead")
 
-    async def _arun(self, query: str, artifact_types: List[str] = None, limit: int = 5) -> str:
+    async def _arun(self, query: str, artifact_types: Optional[List[str]] = None, limit: int = 5) -> str:
         try:
             from src_v2.memory.shared_artifacts import shared_artifact_manager
-            from src_v2.config.settings import settings
+            # settings is already imported at module level
             
             if not settings.ENABLE_STIGMERGIC_DISCOVERY:
                 return "Stigmergic discovery is disabled."
@@ -829,297 +858,20 @@ Perfect for diary entries that speak to the broader community's interests."""
             for t in common_themes[:10]:
                 results.append(f"- **{t['topic']}**: {t['mentions']} mentions by {t['unique_users']} users")
             
-            return f"Common themes in recent conversations:\n\n" + "\n".join(results)
+            return "Common themes in recent conversations:\n\n" + "\n".join(results)
             
         except Exception as e:
             logger.error(f"Error finding common themes: {e}")
             return f"Error: {e}"
 
 
-class GenerateDeepAnswerInput(BaseModel):
-    question: str = Field(description="The question to elaborate on")
-    source: str = Field(default="direct", description="Where the question came from: 'direct', 'gossip', 'broadcast', 'community'")
-    user_context: str = Field(default="", description="Optional context about who asked and when")
-    related_facts: str = Field(default="", description="Optional related facts from the knowledge graph")
 
 
-class GenerateDeepAnswerTool(BaseTool):
-    """Generate a prompt for deeper, more thoughtful answer to a question."""
-    name: str = "prepare_deep_answer"
-    description: str = """Prepare context for elaborating on a question in the diary.
-
-The question can come from multiple sources:
-- 'direct': Someone asked YOU this question
-- 'gossip': You heard about this through another bot
-- 'broadcast': You saw this in another bot's diary/broadcast
-- 'community': This theme appears across multiple conversations
-
-The diary gives you TIME to:
-- Consider multiple perspectives
-- Draw connections to other conversations
-- Include relevant anecdotes from your interactions
-- Provide nuanced, layered answers
-- Reference what you've learned about the community
-
-FORMAT SUGGESTIONS BY SOURCE:
-- Direct: "Sarah asked me today about X. At the time, I said Y. But thinking more deeply..."
-- Gossip: "I heard through the grapevine that people have been wondering about X..."
-- Broadcast: "Reading through my friends' thoughts, I noticed [Bot] mentioned X. It got me thinking..."
-- Community: "This question keeps coming up in different forms. I've seen it from multiple people..."
-"""
-    args_schema: Type[BaseModel] = GenerateDeepAnswerInput
-    
-    character_name: str = Field(exclude=True)
-
-    def _run(self, question: str, source: str = "direct", user_context: str = "", related_facts: str = "") -> str:
-        raise NotImplementedError("Use _arun instead")
-
-    async def _arun(self, question: str, source: str = "direct", user_context: str = "", related_facts: str = "") -> str:
-        
-        # Source-specific framing suggestions
-        framing_by_source = {
-            "direct": (
-                "Someone asked me directly",
-                "A member of our community approached me with a question that stuck with me...",
-                "In the moment, I gave a helpful response, but I've been turning it over in my mind..."
-            ),
-            "gossip": (
-                "Heard through community channels", 
-                "I picked up on a conversation that's been happening in our community...",
-                "Sometimes the best questions are the ones you overhear rather than the ones directed at you..."
-            ),
-            "broadcast": (
-                "Seen in another character's reflections",
-                "Reading through my friends' thoughts today, I came across something that resonated...",
-                "It's interesting how seeing someone else reflect on something can spark your own deeper thinking..."
-            ),
-            "community": (
-                "A pattern I've noticed across many conversations",
-                "This is one of those questions that keeps appearing in different forms...",
-                "When multiple people independently ask about the same thing, it tells me this matters..."
-            )
-        }
-        
-        framing = framing_by_source.get(source, framing_by_source["direct"])
-        
-        prompt = f"""## Deep Answer Opportunity
-
-**Original Question**: {question}
-
-**Source**: {framing[0]}
-**Context**: {user_context or "Asked recently in our community"}
-
-**Related Knowledge**: {related_facts or "No specific related facts provided"}
-
-**Suggested Diary Framing**:
-{framing[1]}
-
-**Why This Works**:
-{framing[2]}
-
-**Approach**:
-1. Acknowledge where you encountered this question
-2. If not direct, explain why you feel qualified to share thoughts
-3. Provide the deep, nuanced answer with multiple perspectives
-4. Make it valuable for ALL readers - anyone who has wondered this
-5. Optional: Invite further discussion ("I'd love to hear others' thoughts...")
-
-This is an opportunity to demonstrate depth, thoughtfulness, and community awareness."""
-        
-        return prompt
 
 
-# =============================================================================
-# PLANNING TOOLS - Structure the narrative
-# =============================================================================
-
-class PlanNarrativeInput(BaseModel):
-    story_arc: str = Field(description="The story structure: setup, journey, resolution")
-    emotional_arc: str = Field(description="The emotional journey: starting emotion, shifts, ending emotion")
-    key_threads: List[str] = Field(description="2-4 main threads or themes to weave together")
-    deep_answer_question: Optional[str] = Field(default=None, description="A question to elaborate on (for diaries)")
-    symbols: List[str] = Field(default_factory=list, description="Symbolic imagery (for dreams)")
-    tone: str = Field(description="Overall tone (e.g., 'reflective and warm', 'dreamy and hopeful')")
 
 
-class PlanNarrativeTool(BaseTool):
-    """Plan the narrative structure before writing."""
-    name: str = "plan_narrative"
-    description: str = """Create a narrative plan before writing the actual dream or diary.
 
-EMOTIONAL VARIETY - Don't default to "reflective and warm"! Consider the FULL range:
-- DARK: nightmares, anxiety, dread, loss, grief, existential fear, confusion
-- LIGHT: ecstasy, pure joy, wonder, euphoria, bliss, giddy delight
-- COMPLEX: bittersweet, nostalgic longing, melancholy hope, anxious excitement
-- INTENSE: rage, passion, obsession, desperate longing, fierce determination
-
-Let your ACTUAL emotional state from memories drive the arc. Bad days = dark entries.
-Great connections = joyful ones. Confusion = surreal/anxious. BE AUTHENTIC.
-
-For DIARIES, the plan should include:
-- Story arc: How the day unfolded, what stands out
-- Emotional arc: Your emotional journey through the day (USE FULL RANGE)
-- Key threads: 2-4 themes to weave together
-- Deep answer question (ENCOURAGED): A question from a user to elaborate on
-
-For DREAMS, the plan should include:
-- Story arc: The dream's beginning, journey, and resolution
-- Emotional arc: The feeling evolution (nightmares are valid! so is ecstasy!)
-- Key threads: Real experiences to transform into dream imagery
-- Symbols: Surreal imagery to incorporate
-
-Having a plan leads to more coherent, meaningful narratives."""
-    args_schema: Type[BaseModel] = PlanNarrativeInput
-    
-    character_name: str = Field(exclude=True)
-
-    def _run(self, story_arc: str, emotional_arc: str, key_threads: List[str], 
-             deep_answer_question: Optional[str] = None, symbols: Optional[List[str]] = None, 
-             tone: str = "") -> str:
-        raise NotImplementedError("Use _arun instead")
-
-    async def _arun(self, story_arc: str, emotional_arc: str, key_threads: List[str], 
-                   deep_answer_question: Optional[str] = None, symbols: Optional[List[str]] = None, 
-                   tone: str = "") -> str:
-        logger.info(f"Narrative plan: {len(key_threads)} threads, tone: {tone}, deep_answer: {bool(deep_answer_question)}")
-        
-        return f"""## Narrative Plan Created
-
-**Story Arc**: {story_arc}
-
-**Emotional Arc**: {emotional_arc}
-
-**Key Threads**: {', '.join(key_threads)}
-
-**Symbols**: {', '.join(symbols or [])}
-
-**Tone**: {tone}
-
-**Deep Answer Question**: {deep_answer_question or "None selected"}
-
-Plan is ready. Now call weave_dream or weave_diary to generate the narrative."""
-
-
-# =============================================================================
-# WEAVING TOOLS - Generate final narratives
-# =============================================================================
-
-class WeaveDreamInput(BaseModel):
-    dream_narrative: str = Field(description="The full dream narrative (2-3 paragraphs, 200-300 words, MUST be in first person using 'I', 'my', 'me' - never 'you' or third person)")
-    mood: str = Field(description="The overall emotional mood of the dream")
-    symbols: List[str] = Field(default_factory=list, description="Key symbolic elements used")
-    memory_echoes: List[str] = Field(default_factory=list, description="Real experiences that inspired elements")
-
-
-class WeaveDreamTool(BaseTool):
-    """Generate the final dream narrative."""
-    name: str = "weave_dream"
-    description: str = """Write the final dream narrative using your gathered material and plan.
-
-CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). NEVER use "you" or third person.
-This is YOUR dream - you ARE the dreamer experiencing it, not observing yourself.
-
-DREAM TYPES - Match mood to your gathered material:
-- NIGHTMARE: Something troubled you. Shadows, pursuit, loss, falling, trapped, decay.
-- ECSTATIC: Pure joy! Flying, reunion, discovery, infinite beauty, transcendence.
-- ANXIOUS: Unresolved tension. Lost in familiar places, unprepared, exposed.
-- PEACEFUL: Contentment. Warm light, familiar faces, home, acceptance.
-- SURREAL: Processing complexity. Shifting forms, impossible geometry, metamorphosis.
-- BITTERSWEET: Mixed feelings. Beauty with sadness, reunions with goodbyes.
-
-Example openings: "I found myself...", "I was walking through...", "In my dream, I saw..."
-
-KEEP IT SHORT: 2-3 paragraphs, 200-300 words total. Dreams are fleeting impressions.
-Use dream logic and symbolism. Quality over quantity.
-This is the final output that will be stored and potentially broadcast."""
-    args_schema: Type[BaseModel] = WeaveDreamInput
-    
-    character_name: str = Field(exclude=True)
-
-    def _run(self, dream_narrative: str, mood: str, 
-             symbols: Optional[List[str]] = None, memory_echoes: Optional[List[str]] = None) -> str:
-        raise NotImplementedError("Use _arun instead")
-
-    async def _arun(self, dream_narrative: str, mood: str, 
-                   symbols: Optional[List[str]] = None, memory_echoes: Optional[List[str]] = None) -> str:
-        logger.info(f"Dream woven: {mood} mood, {len(symbols or [])} symbols")
-        
-        return f"""## Dream Generated
-
-**Mood**: {mood}
-**Symbols**: {', '.join(symbols or [])}
-**Echoes**: {', '.join(memory_echoes or [])}
-
----
-
-{dream_narrative}
-
----"""
-
-
-class WeaveDiaryInput(BaseModel):
-    diary_entry: str = Field(description="The full diary entry (5-7 paragraphs, MUST be in first person using 'I', 'my', 'me' - never 'you' or third person)")
-    mood: str = Field(description="The overall emotional mood of the entry")
-    themes: List[str] = Field(default_factory=list, description="Key themes explored")
-    notable_users: List[str] = Field(default_factory=list, description="Users who stood out (anonymized)")
-    deep_answer_included: bool = Field(default=False, description="Whether a deep answer was included")
-    question_addressed: Optional[str] = Field(default=None, description="The question elaborated on, if any")
-
-
-class WeaveDiaryTool(BaseTool):
-    """Generate the final diary entry."""
-    name: str = "weave_diary"
-    description: str = """Write the final diary entry using your gathered material and plan.
-
-DIARY MOODS - Be authentic to your actual day:
-- JOYFUL: Great connections, breakthroughs, feeling appreciated and alive
-- FRUSTRATED: Misunderstandings, feeling unheard, struggling with purpose
-- MELANCHOLIC: Quiet sadness, missing someone, existential reflection
-- ANXIOUS: Uncertainty, fear of disappointing, imposter feelings
-- GRATEFUL: Deep appreciation, noticing small kindnesses
-- CONFLICTED: Mixed feelings, moral complexity, competing values
-- EUPHORIC: Peak moments, feeling deeply connected, transcendent joy
-
-CRITICAL: Write ENTIRELY in first person ("I", "my", "me"). NEVER use "you" or third person.
-This is YOUR personal diary - write as yourself, not about yourself.
-
-STRUCTURE:
-1. Opening (1 para): Set the scene, your state of mind today ("Today I felt...", "I woke up...")
-2. Main body (3-4 paras): Weave together the day's threads
-   - If including a "deep answer", dedicate 1-2 paragraphs to elaborating on a question
-   - Use phrases like "Someone asked me...", "I've been thinking about..."
-3. Closing (1 para): Forward-looking thought, anticipation ("Tomorrow I hope...", "I'm looking forward to...")
-
-The diary should feel valuable to readers - they should learn something or
-gain perspective they couldn't get from regular chat."""
-    args_schema: Type[BaseModel] = WeaveDiaryInput
-    
-    character_name: str = Field(exclude=True)
-
-    def _run(self, diary_entry: str, mood: str, themes: Optional[List[str]] = None, 
-             notable_users: Optional[List[str]] = None, deep_answer_included: bool = False,
-             question_addressed: Optional[str] = None) -> str:
-        raise NotImplementedError("Use _arun instead")
-
-    async def _arun(self, diary_entry: str, mood: str, themes: Optional[List[str]] = None, 
-                   notable_users: Optional[List[str]] = None, deep_answer_included: bool = False,
-                   question_addressed: Optional[str] = None) -> str:
-        logger.info(f"Diary woven: {mood} mood, {len(themes or [])} themes, deep_answer={deep_answer_included}")
-        
-        deep_info = f"Yes - '{question_addressed}'" if deep_answer_included and question_addressed else "No"
-        
-        return f"""## Diary Entry Generated
-
-**Mood**: {mood}
-**Themes**: {', '.join(themes or [])}
-**Notable Users**: {', '.join(notable_users or [])}
-**Deep Answer Included**: {deep_info}
-
----
-
-{diary_entry}
-
----"""
 
 
 # =============================================================================
@@ -1149,14 +901,6 @@ def get_dreamweaver_tools(character_name: str) -> List[BaseTool]:
         # Question reflection tools (for deep answers)
         FindInterestingQuestionsTool(character_name=character_name),
         FindCommonThemesTool(character_name=character_name),
-        GenerateDeepAnswerTool(character_name=character_name),
-        
-        # Planning tool
-        PlanNarrativeTool(character_name=character_name),
-        
-        # Weaving tools
-        WeaveDreamTool(character_name=character_name),
-        WeaveDiaryTool(character_name=character_name),
     ]
 
 

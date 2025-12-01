@@ -139,7 +139,8 @@ Weave these into a dream."""
     async def run(
         self, 
         material: DreamMaterial, 
-        character_context: str
+        character_context: str,
+        max_steps: int = 3
     ) -> DreamContent:
         """Run the dream generation graph."""
         initial_state = {
@@ -147,7 +148,7 @@ Weave these into a dream."""
             "character_context": character_context,
             "messages": [],
             "steps": 0,
-            "max_steps": 3,
+            "max_steps": max_steps,
             "critique": None,
             "draft": None
         }

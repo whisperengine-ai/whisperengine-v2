@@ -149,7 +149,8 @@ Write your diary entry now."""
         self, 
         material: DiaryMaterial, 
         character_context: str, 
-        user_names: List[str]
+        user_names: List[str],
+        max_steps: int = 3
     ) -> DiaryEntry:
         """Run the diary generation graph."""
         initial_state = {
@@ -158,7 +159,7 @@ Write your diary entry now."""
             "user_names": user_names,
             "messages": [],
             "steps": 0,
-            "max_steps": 3, # Allow up to 3 revisions
+            "max_steps": max_steps, # Allow configurable revisions
             "critique": None,
             "draft": None
         }
