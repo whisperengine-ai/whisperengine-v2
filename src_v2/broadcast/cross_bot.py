@@ -84,6 +84,11 @@ class CrossBotManager:
         self._channel_cooldowns: Dict[str, datetime] = {}  # channel_id -> last_interaction_time
         self._recent_bot_messages: Dict[str, datetime] = {}  # "channel_id:bot_name" -> last_message_time (burst detection)
     
+    @property
+    def known_bots(self) -> Dict[str, int]:
+        """Return a copy of known bots."""
+        return self._known_bots.copy()
+
     def set_bot(self, bot: discord.Client) -> None:
         """Set the Discord bot instance."""
         self._bot = bot

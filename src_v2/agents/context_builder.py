@@ -86,6 +86,10 @@ class ContextBuilder:
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
             system_content += knowledge_context
 
+            # 2.7.4 Inject Known Bots Context
+            known_bots_context = await self._get_known_bots_context(character.name)
+            system_content += known_bots_context
+
             # 2.7.5 Inject Stigmergic Discovery (Phase E13)
             if settings.ENABLE_STIGMERGIC_DISCOVERY:
                 from src_v2.memory.shared_artifacts import shared_artifact_manager
@@ -322,3 +326,43 @@ class ContextBuilder:
             "• PG-13 only, no explicit content\n"
             "• Never collect personal info (phone/address/name)\n"
         )
+
+    async def _get_known_bots_context(self, current_bot_name: str) -> str:
+        """Returns context about other known bots in the system."""
+        try:
+            from src_v2.broadcast.cross_bot import cross_bot_manager
+            from src_v2.core.behavior import load_behavior_profile
+            import os
+
+            # Ensure we have the latest list of bots
+            if not cross_bot_manager.known_bots:
+                await cross_bot_manager.load_known_bots()
+            
+            known_bots = cross_bot_manager.known_bots
+            
+            context = "\n\n[KNOWN ASSOCIATES (Other AI Entities)]\n"
+            context += "You are aware of the following other AI entities in this digital space:\n"
+            
+            found_others = False
+            for bot_name in known_bots.keys():
+                if bot_name.lower() == current_bot_name.lower():
+                    continue
+                    
+                # Load their purpose from core.yaml
+                char_dir = os.path.join("characters", bot_name)
+                profile = load_behavior_profile(char_dir)
+                
+                description = "An AI entity."
+                if profile:
+                    description = profile.purpose
+                
+                context += f"- {bot_name}: {description}\n"
+                found_others = True
+                    
+            if found_others:
+                context += "(You can interact with them if they are mentioned or present.)\n"
+                return context
+            return ""
+        except Exception as e:
+            logger.warning(f"Failed to load known bots context: {e}")
+            return ""
