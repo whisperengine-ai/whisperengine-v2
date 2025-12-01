@@ -113,6 +113,10 @@ class CharacterManager:
             if settings.ENABLE_VOICE_RESPONSES:
                 content += "\n\n## Voice Capabilities\nYou have the ability to send voice messages. If a user asks for a voice response, audio message, or for you to speak, simply write the text you want to say. The system will automatically convert your response to audio and attach it. Do NOT say you cannot do this."
 
+            # Inject image generation capability instruction if enabled
+            if settings.ENABLE_IMAGE_GENERATION:
+                content += "\n\n## Image Generation Capabilities\nYou have the ability to generate images. If a user asks for an image, a selfie, or a visual representation of something, you CAN do this. The system will handle the actual generation. You should respond enthusiastically and describe what you are generating. Do NOT say you cannot generate images."
+
             # Simple parsing: The whole file is the system prompt for now.
             # In the future, we can parse frontmatter (YAML) for metadata.
             character = Character(
