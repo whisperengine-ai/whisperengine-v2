@@ -107,6 +107,7 @@ class Settings(BaseSettings):
     # --- Quotas ---
     DAILY_IMAGE_QUOTA: int = Field(default=5, description="Max images a user can generate per day")
     DAILY_AUDIO_QUOTA: int = Field(default=10, description="Max audio clips a user can generate per day")
+    QUOTA_WHITELIST: str = Field(default="", description="Comma-separated list of Discord user IDs exempt from quotas")
 
     # --- Bot Identity ---
     DISCORD_BOT_NAME: Optional[str] = Field(

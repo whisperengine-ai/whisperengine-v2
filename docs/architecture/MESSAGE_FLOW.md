@@ -253,26 +253,27 @@ response = await llm.ainvoke(messages)
 **Feature Flag**: `ENABLE_VOICE_RESPONSES`
 ```python
 if settings.ENABLE_VOICE_RESPONSES and "voice" in detected_intents:
-    voice_file = await voice_response_manager.generate_voice_response(
+    # Synchronous generation (awaits TTS API)
+    # Returns True if successful, stores file in ArtifactRegistry
+    await voice_response_manager.generate_voice_response(
         text=response_text,
         character=character,
         user_id=user_id
     )
-    # Attaches MP3 file to Discord message
 ```
 **Process** (`src_v2/voice/response.py`):
 1. Check user quota (`DAILY_AUDIO_QUOTA`)
-2. Generate TTS via ElevenLabs
-3. Attach as Discord file
+2. Generate TTS via ElevenLabs (awaited)
+3. Store in `ArtifactRegistry`
 
 **Trigger**: LLM intent detection (replaces old regex/keyword matching)
 
 #### 5.2 Image Attachment (Intent-Based)
 **Feature Flag**: `ENABLE_IMAGE_GENERATION`
 ```python
-if "image" in detected_intents:
-    # Complexity already promoted to COMPLEX_MID for tool access
-    # Image generated via ReflectiveAgent tools
+# Images are generated during Phase 4 (Agent Tool Execution)
+# They are stored in ArtifactRegistry
+# Here we extract them for attachment to the final message
 response_text, image_files = await extract_pending_images(response_text, user_id)
 ```
 

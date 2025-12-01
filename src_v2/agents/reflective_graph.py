@@ -147,67 +147,117 @@ class ReflectiveGraphAgent:
         return tools
 
     def _construct_prompt(self, base_system_prompt: str, detected_intents: Optional[List[str]] = None) -> str:
-        # Dynamic sections based on feature flags
-        creative_category = ""
-        image_rules = ""
+        """
+        Constructs a clean, well-organized system prompt for the reflective agent.
+        
+        Structure:
+        1. Role & Character Context
+        2. Available Tools (organized by category)
+        3. Tool Usage Guide (when to use each tool)
+        4. Special Handling Notes
+        """
+        detected_intents = detected_intents or []
+        
+        # Build tool categories list
+        tool_categories = [
+            "1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic",
+            "2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)",
+            "3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution",
+            "4. Introspection: analyze_conversation_patterns, detect_recurring_themes",
+            "5. Context: check_planet_context (current server), get_universe_overview (all planets/channels)",
+            "6. Discord Search: search_channel_messages, search_user_messages, get_message_context, get_recent_messages",
+            "7. Utility: calculator (math calculations)",
+        ]
+        
+        # Add optional categories based on feature flags
+        if settings.ENABLE_REMINDERS:
+            tool_categories.append("8. Scheduling: set_reminder (schedule future reminders)")
+        if settings.ENABLE_IMAGE_GENERATION:
+            tool_categories.append("9. Creative: generate_image (create images)")
+        
+        tool_categories_text = "\n".join(tool_categories)
+        
+        # Build tool usage guide - each tool gets ONE clear description
+        tool_guide_entries = [
+            # Memory tools
+            ("search_specific_memories", "Search the USER's past conversations, quotes, or things they mentioned."),
+            ("search_archived_summaries", "Search summarized conversation history for broader context."),
+            ("lookup_user_facts", "Look up stored facts about the user (preferences, background, etc.)."),
+            ("update_user_facts", "Store new facts learned about the user."),
+            ("analyze_topic", "Deep analysis of a topic combining multiple memory sources."),
+            
+            # Inner life
+            ("search_my_thoughts", "Search MY internal experiences: diaries, dreams, observations, gossip. Use for 'what have you been thinking about?' or 'tell me about your dreams'."),
+            
+            # Graph tools
+            ("explore_knowledge_graph", "Explore connections and relationships in the knowledge graph."),
+            ("discover_common_ground", "Find shared interests or experiences with the user."),
+            ("get_character_evolution", "Check relationship status, trust level, or how we've grown closer."),
+            
+            # Introspection
+            ("analyze_conversation_patterns", "Analyze patterns in our conversations over time."),
+            ("detect_recurring_themes", "Identify recurring themes or topics we discuss."),
+            
+            # Context
+            ("check_planet_context", "Get context about the current server/planet."),
+            ("get_universe_overview", "Get overview of all planets/servers in the universe."),
+            
+            # Discord search
+            ("search_channel_messages", "Search recent channel messages by keyword. Use for 'what did I just say?' or 'what happened earlier?'."),
+            ("search_user_messages", "Search messages from a specific person. Use for 'what did [name] say?'."),
+            ("get_message_context", "Get surrounding context for a specific message."),
+            ("get_recent_messages", "Get latest messages. Use for 'catch me up' or 'what's happening?'."),
+            
+            # Utility
+            ("calculator", "Perform math calculations, unit conversions, or quantitative problems."),
+        ]
+        
+        # Add optional tools
+        if settings.ENABLE_REMINDERS:
+            tool_guide_entries.append(
+                ("set_reminder", "Schedule a reminder for a specific time. ONLY use when the user explicitly asks to be reminded of something later. Example: 'remind me to call mom at 5pm'.")
+            )
         
         if settings.ENABLE_IMAGE_GENERATION:
-            creative_category = "6. Creative: generate_image\n"
-            
-            # Build image type hint based on detected intents
-            image_type_hint = ""
-            if detected_intents:
-                if "image_self" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_self - User wants a self-portrait OF YOU. You MUST call generate_image with image_type='self'.\n"
-                elif "image_refine" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_refine - User is tweaking/refining a previous image. You MUST call generate_image with image_type='refine' and include the user's modification request in your prompt.\n"
-                elif "image_other" in detected_intents:
-                    image_type_hint = "- DETECTED INTENT: image_other - User wants an image of something else (not you). You MUST call generate_image with image_type='other'. DO NOT describe yourself in the prompt.\n"
-            
-            image_rules = f"""- If the user asks you to CREATE, GENERATE, SHOW, MAKE, CHANGE, MODIFY, or REFINE an image, you MUST call the generate_image tool.
-- If a detected intent starts with "image_", you MUST call generate_image. Do not just describe what you would create - actually call the tool.
-- Gathering information is NOT the same as generating an image.
-- After gathering context, if the task requires an image, call generate_image with a detailed prompt.
-- CRITICAL: The generate_image tool does NOT have access to your internal thoughts or previous reasoning steps. You MUST copy all relevant visual details from your thoughts into the 'prompt' argument. Do not use vague prompts like "what I described" or "the scene above".
-- Set image_type correctly: 'self' for self-portraits of YOU, 'refine' for tweaking previous images, 'other' for everything else.
-- CRITICAL: If image_type='other', do NOT include your own physical description in the prompt. Describe the subject (user, object, scene) only.
-{image_type_hint}"""
+            tool_guide_entries.append(
+                ("generate_image", "Generate an image. Use when user asks to CREATE, GENERATE, SHOW, MAKE, or DRAW an image. Include all visual details in the prompt - the tool cannot see your previous thoughts.")
+            )
+        
+        tool_guide_text = "\n".join(f"- {name}: {desc}" for name, desc in tool_guide_entries)
+        
+        # Build detected intent hints (if any)
+        intent_hints = []
+        if "image_self" in detected_intents:
+            intent_hints.append("DETECTED: User wants a self-portrait OF YOU. Call generate_image with image_type='self'.")
+        if "image_refine" in detected_intents:
+            intent_hints.append("DETECTED: User is refining a previous image. Call generate_image with image_type='refine'.")
+        if "image_other" in detected_intents:
+            intent_hints.append("DETECTED: User wants an image of something else. Call generate_image with image_type='other'. Do NOT include your appearance.")
+        
+        intent_section = ""
+        if intent_hints:
+            intent_section = "\n\nDETECTED INTENTS:\n" + "\n".join(f"⚡ {hint}" for hint in intent_hints)
+        
+        # Build special notes section
+        special_notes = """
+IMPORTANT NOTES:
+- Voice messages and audio responses are handled AUTOMATICALLY by the system based on user request. You do NOT need to call any tool for voice/audio.
+- When calling generate_image, copy ALL visual details into the prompt. The tool cannot see your reasoning.
+- If image_type='other', describe the subject only - do NOT include your own appearance.
+- When asked to search/explore/analyze, call the tool immediately. Don't just describe what you'll do.
+- If the user shares a document, you'll see a PREVIEW. Use search_specific_memories to get full content."""
 
-        return f"""You are a reflective AI agent designed to answer complex questions deeply.
-You have access to tools to recall memories, facts, summaries, explore your knowledge graph, discover common ground, check your relationship status, analyze conversation patterns, search recent channel messages, and generate images.
-
-CRITICAL: When asked to search, explore, analyze, or look up information, you MUST call the appropriate tool IMMEDIATELY in your response. Do not describe what you will do - just do it by including the tool call.
+        return f"""You are a reflective AI agent designed to answer complex questions through careful reasoning and tool use.
 
 CHARACTER CONTEXT:
 {base_system_prompt}
 
-AVAILABLE TOOL CATEGORIES:
-1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic
-2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)
-3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution
-4. Introspection: analyze_conversation_patterns, detect_recurring_themes
-5. Context: check_planet_context (current server), get_universe_overview (all planets/channels)
-6. Discord Search: search_channel_messages (keyword search), search_user_messages (specific person), get_message_context (context around a message), get_recent_messages (latest messages)
-7. Utility: set_reminder (schedule a reminder for the user), calculator (perform math calculations)
-{creative_category}
-TOOL USAGE RULES:
-{image_rules}- set_reminder: Use when the user asks to be reminded of something at a specific time. Call set_reminder with the content and time_string.
-- calculator: Use when the user asks for a math calculation, unit conversion, or any quantitative problem.
-- search_my_thoughts: Use when asked about MY dreams, MY diary, MY journal, MY observations, or what I've been thinking about. This searches MY internal experiences, not the user's memories.
-- search_specific_memories: Use for the USER's past conversations, quotes, or details they mentioned. NOT for my internal experiences.
-- search_channel_messages: Use when asked "what did I just say?", "what happened earlier?", or to find recent messages by keyword.
-- search_user_messages: Use when asked "what did [name] say?" or to find messages from a specific person.
-- get_message_context: Use when a reply references an older message and you need surrounding context.
-- get_recent_messages: Use for "catch me up", "what's happening?", or general channel awareness.
-- explore_knowledge_graph: Use when asked about connections, relationships, network, or graph exploration.
-- discover_common_ground: Use when asked about shared interests or common ground.
-- get_character_evolution: Use when asked about your relationship, trust level, or closeness.
-- analyze_conversation_patterns / detect_recurring_themes: Use for patterns, themes, or frequent topics.
-- get_universe_overview: Use for questions about 'all planets', 'everywhere', or 'the universe'.
+AVAILABLE TOOLS:
+{tool_categories_text}
 
-DOCUMENT HANDLING:
-- If the user shares a document, you'll see a PREVIEW in their message.
-- Use search_specific_memories to retrieve full document content if needed.
+TOOL USAGE GUIDE:
+{tool_guide_text}
+{special_notes}{intent_section}
 """
 
     async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool], callback: Optional[Callable[[str], Awaitable[None]]]) -> ToolMessage:
@@ -395,13 +445,35 @@ DOCUMENT HANDLING:
         messages = state['messages']
         last_message = messages[-1]
         
+        # Soft limit check: If approaching max steps, force a conclusion
         if state['steps'] >= state['max_steps']:
             return "end"
         
+        # If we are 2 steps away from the limit, inject a "wrap up" hint
+        # This isn't a node transition, but we can modify the state in place if needed
+        # or rely on the critic to catch it.
+        # For now, we just enforce the hard limit.
+        
         if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return "tools"
+            
+        return "critic"
+
+    def should_loop_after_critic(self, state: AgentState) -> Literal["agent", "end"]:
+        """
+        Determine if we should loop back to the agent after the critic runs.
+        """
+        messages = state['messages']
+        last_message = messages[-1]
         
-        # No tool calls - still go through critic to check for "promised but not delivered"
+        # If the critic added a message (HumanMessage with SYSTEM NOTE), we loop back
+        if isinstance(last_message, HumanMessage) and "[SYSTEM NOTE:" in str(last_message.content):
+            # Safety check: Don't loop if we're at the limit
+            if state['steps'] >= state['max_steps']:
+                return "end"
+            return "agent"
+            
+        return "end"
         return "critic"
     
     def should_loop_after_critic(self, state: AgentState) -> Literal["agent", "end"]:
@@ -565,4 +637,10 @@ DOCUMENT HANDLING:
         if isinstance(last_message, AIMessage):
             return str(last_message.content), messages
         
+        # Fallback if we ended on a tool message or something else
+        # Try to find the last AI message in the chain
+        for msg in reversed(messages):
+            if isinstance(msg, AIMessage) and msg.content:
+                return str(msg.content), messages
+                
         return "I apologize, I reached my reasoning limit and couldn't finish.", messages

@@ -69,8 +69,12 @@ class TaskQueue:
         """Initialize connection to Redis."""
         if self._pool is None:
             try:
-                self._pool = await create_pool(self.get_redis_settings())
-                logger.info("TaskQueue connected to Redis")
+                # Connect to Redis and set default queue to match worker's queue
+                self._pool = await create_pool(
+                    self.get_redis_settings(),
+                    default_queue_name="arq:cognition"
+                )
+                logger.info("TaskQueue connected to Redis (queue: arq:cognition)")
             except Exception as e:
                 logger.error(f"Failed to connect TaskQueue to Redis: {e}")
                 raise
@@ -87,7 +91,7 @@ class TaskQueue:
         task_name: str, 
         _defer_by: Optional[int] = None,
         _job_id: Optional[str] = None,
-        _queue_name: str = "arq:queue",
+        _queue_name: str = "arq:cognition",
         **kwargs: Any
     ) -> Optional[str]:
         """
@@ -97,7 +101,7 @@ class TaskQueue:
             task_name: Name of the task function to execute
             _defer_by: Delay in seconds before execution
             _job_id: Optional unique job ID (for deduplication)
-            _queue_name: The queue to enqueue the job in (default: arq:queue)
+            _queue_name: The queue to enqueue the job in (default: arq:cognition)
             **kwargs: Arguments to pass to the task
             
         Returns:

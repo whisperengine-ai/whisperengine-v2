@@ -30,8 +30,6 @@ class GenerateImageInput(BaseModel):
         enum=["portrait", "landscape", "square", "widescreen"]
     )
 
-from src_v2.workers.task_queue import task_queue
-
 class GenerateImageTool(BaseTool):
     name: str = "generate_image"
     description: str = ""  # Will be set dynamically in __init__
@@ -178,20 +176,41 @@ class GenerateImageTool(BaseTool):
                 # image_type == "other": Use prompt as-is for user/scenery/objects
                 logger.info("Other subject mode: Using prompt as-is (no character injection)")
             
-            logger.info(f"Queueing image generation with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
+            logger.info(f"Generating image with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
             
-            # 4. Queue Task
-            await task_queue.enqueue(
-                "run_image_generation",
-                user_id=self.user_id,
+            # 4. Generate Image Directly
+            image_result = await image_service.generate_image(
                 prompt=enhanced_prompt,
                 width=width,
                 height=height,
-                seed=seed_to_use,
-                character_name=self.character_name
+                seed=seed_to_use
             )
             
-            return f"I've started working on that image for you! It will appear shortly."
+            if not image_result:
+                return "Failed to generate image. Please try again."
+                
+            # 5. Save Session
+            await image_session.save_session(
+                self.user_id, 
+                enhanced_prompt,
+                image_result.seed,
+                {"width": width, "height": height}
+            )
+            
+            # 6. Store in Artifact Registry
+            await artifact_registry.add_image(
+                user_id=self.user_id,
+                data=image_result.image_bytes,
+                filename=image_result.filename,
+                prompt=enhanced_prompt,
+                seed=image_result.seed,
+                url=image_result.url
+            )
+            
+            # 7. Increment Quota
+            await quota_manager.increment_usage(self.user_id, 'image')
+            
+            return f"I've created that image for you! It's attached below."
                 
         except Exception as e:
             logger.error(f"Error in GenerateImageTool: {e}")

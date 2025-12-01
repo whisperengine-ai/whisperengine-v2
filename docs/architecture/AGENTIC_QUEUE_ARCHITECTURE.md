@@ -60,9 +60,8 @@ We organize the collective intelligence into specialized queues (Topics). This a
 ### D. `queue:action` (Outbound)
 *   **Purpose**: Things that result in a tangible effect on the world.
 *   **Tasks**:
-    *   `generate_image`: Stable Diffusion / Flux generation.
-    *   `generate_voice`: ElevenLabs TTS.
     *   `schedule_proactive_msg`: "Send a message to User X in 4 hours."
+    *   *(Note: Media generation (Voice/Image) was moved back to synchronous processing in v2.4 to ensure reliability and simplify artifact handling.)*
 
 ---
 

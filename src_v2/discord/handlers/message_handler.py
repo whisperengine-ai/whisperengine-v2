@@ -769,32 +769,28 @@ class MessageHandler:
                     if footer_text:
                         final_text = f"{response}\n\n{footer_text}"
                     
-                    # Extract any generated images/artifacts from the response
-                    # NOTE: extract_pending_images now wraps the unified artifact registry
-                    # Since media generation is now async, this will mostly be empty unless
-                    # artifacts were ready very quickly or from previous interactions
-                    cleaned_text, image_files = await extract_pending_images(final_text, user_id)
-                    
                     # Generate Voice Response if triggered (Phase A10)
+                    # Do this BEFORE extracting artifacts so the audio file is included
                     if should_trigger_voice:
                         try:
                             # Use the clean response text (without footer)
-                            # Voice manager now queues the task asynchronously
-                            # The result will be delivered as a separate message later
                             await voice_response_manager.generate_voice_response(response, character, user_id)
                             
                             # Add intro text if configured (to the main message, indicating voice is coming)
                             if character.voice_config and character.voice_config.intro_template:
                                 intro = character.voice_config.intro_template.format(name=character.name)
-                                # Optional: Add a small indicator that voice is processing
-                                # cleaned_text = f"{intro}\n\n{cleaned_text}\n*(Voice message processing...)*"
-                                cleaned_text = f"{intro}\n\n{cleaned_text}"
+                                final_text = f"{intro}\n\n{final_text}"
                                 
                         except QuotaExceededError as e:
                             logger.info(f"Voice quota exceeded for user {user_id}")
-                            cleaned_text += f"\n\n⚠️ **Voice generation failed:** Daily audio quota exceeded ({e.usage}/{e.limit})."
+                            final_text += f"\n\n⚠️ **Voice generation failed:** Daily audio quota exceeded ({e.usage}/{e.limit})."
                         except Exception as e:
-                            logger.error(f"Failed to queue voice response: {e}")
+                            logger.error(f"Failed to generate voice response: {e}")
+
+                    # Extract any generated images/artifacts from the response
+                    # NOTE: extract_pending_images now wraps the unified artifact registry
+                    # This will now pick up the voice file we just generated
+                    cleaned_text, image_files = await extract_pending_images(final_text, user_id)
 
                     # Split response into chunks if it's too long
                     message_chunks = chunk_message(cleaned_text)

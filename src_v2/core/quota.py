@@ -1,7 +1,17 @@
 from datetime import date
+from typing import Set
 from loguru import logger
 from src_v2.core.database import db_manager, retry_db_operation
 from src_v2.config.settings import settings
+
+
+def _parse_whitelist() -> Set[str]:
+    """Parse comma-separated whitelist into a set of user IDs."""
+    raw = str(settings.QUOTA_WHITELIST or "")
+    if not raw.strip():
+        return set()
+    return {uid.strip() for uid in raw.split(",") if uid.strip()}
+
 
 class QuotaExceededError(Exception):
     """Raised when a user exceeds their daily quota."""
@@ -11,13 +21,28 @@ class QuotaExceededError(Exception):
         self.usage = usage
         super().__init__(f"Daily {quota_type} quota exceeded ({usage}/{limit})")
 
+
 class QuotaManager:
+    def __init__(self):
+        self._whitelist: Set[str] = _parse_whitelist()
+        if self._whitelist:
+            logger.info(f"Quota whitelist loaded: {len(self._whitelist)} users exempt")
+    
+    def is_whitelisted(self, user_id: str) -> bool:
+        """Check if a user is exempt from quotas."""
+        return str(user_id) in self._whitelist
+
     @retry_db_operation()
     async def check_quota(self, user_id: str, quota_type: str) -> bool:
         """
         Check if user has quota remaining for the given type ('image' or 'audio').
         Returns True if quota is available, False otherwise.
+        Whitelisted users always return True.
         """
+        # Whitelist bypass
+        if self.is_whitelisted(user_id):
+            return True
+        
         if not db_manager.postgres_pool:
             logger.warning("Postgres not available, allowing quota check by default")
             return True

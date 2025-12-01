@@ -8,8 +8,6 @@ from src_v2.config.settings import settings
 from src_v2.core.quota import quota_manager, QuotaExceededError
 from src_v2.artifacts.registry import artifact_registry
 
-from src_v2.workers.task_queue import task_queue
-
 class VoiceResponseManager:
     """Orchestrates voice response generation and file handling."""
     
@@ -50,20 +48,33 @@ class VoiceResponseManager:
             text = text[:settings.VOICE_RESPONSE_MAX_LENGTH]
         
         try:
-            # Queue Task
-            await task_queue.enqueue(
-                "run_voice_generation",
+            # Generate Audio Directly (Synchronous to Bot Process)
+            logger.info(f"Generating voice response for {user_id} (Voice ID: {voice_id})")
+            audio_bytes = await tts_manager.generate_speech(text, voice_id=voice_id)
+            
+            if not audio_bytes:
+                logger.error("Voice generation returned None")
+                return False
+                
+            # Store in Artifact Registry
+            filename = f"{character.name.lower()}_voice_{os.urandom(4).hex()}.mp3"
+            
+            await artifact_registry.add_audio(
                 user_id=user_id,
+                data=audio_bytes,
+                filename=filename,
                 text=text,
-                voice_id=voice_id,
-                character_name=character.name
+                voice_id=voice_id
             )
             
-            logger.info(f"Queued voice generation task for user {user_id}")
+            # Increment Quota
+            await quota_manager.increment_usage(user_id, 'audio')
+            
+            logger.info(f"Voice generated and stored for user {user_id}")
             return True
             
         except Exception as e:
-            logger.error(f"Error queuing voice response: {e}")
+            logger.error(f"Error generating voice response: {e}")
             return False
 
 # Global instance
