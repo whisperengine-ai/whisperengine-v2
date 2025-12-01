@@ -290,23 +290,72 @@ DOCUMENT HANDLING:
 
     async def critic(self, state: AgentState):
         """
-        Critic Node: Inspects tool outputs and injects guidance if failures are detected.
+        Critic Node: Inspects tool outputs and agent responses for issues.
+        
+        Detects:
+        1. Tool failures (errors, empty results) → suggests alternatives
+        2. "Promised but not delivered" → agent describes generating/creating but didn't call tool
+        
         This provides 'autonomy' by allowing the agent to self-correct without hardcoded loops.
         """
         messages = state['messages']
-        # Get the last few messages that are ToolMessages
+        hints = []
+        
+        # Get the last AIMessage (agent's response)
+        last_ai_message = None
+        for msg in reversed(messages):
+            if isinstance(msg, AIMessage):
+                last_ai_message = msg
+                break
+        
+        # --- Check 1: "Promised but not delivered" detection ---
+        # If the agent TEXT mentions generating/creating an image but didn't call the tool
+        if last_ai_message and last_ai_message.content and not last_ai_message.tool_calls:
+            content_lower = str(last_ai_message.content).lower()
+            
+            # Image generation promise patterns
+            image_promise_patterns = [
+                "let me generate", "i'll generate", "i will generate",
+                "let me create", "i'll create", "i will create an image",
+                "generating an image", "creating an image",
+                "here's the image", "here is the image",
+                "[generates image", "[creating image",
+                "let me draw", "i'll draw", "i will draw",
+                "let me visualize", "i'll visualize",
+            ]
+            
+            has_image_promise = any(pattern in content_lower for pattern in image_promise_patterns)
+            
+            if has_image_promise and settings.ENABLE_IMAGE_GENERATION:
+                hints.append(
+                    "You described generating/creating an image but did NOT call the generate_image tool. "
+                    "You MUST actually call generate_image with a detailed prompt to create the image. "
+                    "Do not just describe what you would create - call the tool NOW."
+                )
+                logger.warning("Critic: Detected 'promised but not delivered' image generation")
+            
+            # Voice/audio promise patterns
+            audio_promise_patterns = [
+                "let me say that", "i'll speak", "sending audio",
+                "here's the voice", "recording a message",
+            ]
+            
+            has_audio_promise = any(pattern in content_lower for pattern in audio_promise_patterns)
+            
+            if has_audio_promise and settings.ENABLE_VOICE_RESPONSES:
+                hints.append(
+                    "You described sending audio but voice generation is triggered by user request, not tool calls. "
+                    "If the user asked for audio, just respond naturally - voice will be synthesized automatically."
+                )
+        
+        # --- Check 2: Tool failure detection (original logic) ---
         tool_messages = []
         for msg in reversed(messages):
             if isinstance(msg, ToolMessage):
                 tool_messages.append(msg)
-            else:
-                break
+            elif isinstance(msg, AIMessage):
+                break  # Stop at the previous AI message
         
-        if not tool_messages:
-            return {"messages": []}
-            
-        # Analyze for failures
-        hints = []
         for msg in tool_messages:
             content = str(msg.content).lower()
             # Check for common failure patterns
@@ -320,6 +369,8 @@ DOCUMENT HANDLING:
                     hints.append("Fact lookup failed. Try 'search_specific_memories' to find where this might have been discussed, or 'search_summaries'.")
                 elif tool_name == "search_summaries":
                     hints.append("Summary search failed. Try 'search_episodes' for raw conversation logs if you need specific details.")
+                elif tool_name == "generate_image":
+                    hints.append("Image generation failed. Check if the prompt is appropriate and try again with a simpler description.")
                 else:
                     hints.append(f"Tool '{tool_name}' returned no results. Consider trying a different tool or strategy.")
         
@@ -332,7 +383,15 @@ DOCUMENT HANDLING:
             
         return {"messages": []}
 
-    def should_continue(self, state: AgentState) -> Literal["tools", "end"]:
+    def should_continue(self, state: AgentState) -> Literal["tools", "critic", "end"]:
+        """
+        Determine next step after agent response.
+        
+        Flow:
+        - If tool_calls → "tools" → execute → critic → agent
+        - If no tool_calls → "critic" → check for "promised but not delivered" → maybe back to agent
+        - If max steps → "end"
+        """
         messages = state['messages']
         last_message = messages[-1]
         
@@ -341,6 +400,25 @@ DOCUMENT HANDLING:
         
         if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return "tools"
+        
+        # No tool calls - still go through critic to check for "promised but not delivered"
+        return "critic"
+    
+    def should_loop_after_critic(self, state: AgentState) -> Literal["agent", "end"]:
+        """
+        After critic runs, decide if we need to loop back to agent.
+        If critic added a hint message, loop back. Otherwise, end.
+        """
+        messages = state['messages']
+        
+        # Check if the last message is a [SYSTEM NOTE:...] hint from critic
+        if messages:
+            last_message = messages[-1]
+            if isinstance(last_message, HumanMessage):
+                content = str(last_message.content)
+                if content.startswith("[SYSTEM NOTE:"):
+                    logger.debug("Critic injected hint, looping back to agent")
+                    return "agent"
         
         return "end"
 
@@ -450,12 +528,22 @@ DOCUMENT HANDLING:
             self.should_continue,
             {
                 "tools": "tools",
+                "critic": "critic",  # No tool calls → critic checks for "promised but not delivered"
                 "end": END
             }
         )
-        # Edge: Tools -> Critic -> Agent
+        # Edge: Tools -> Critic (after tool execution)
         workflow.add_edge("tools", "critic")
-        workflow.add_edge("critic", "agent")
+        
+        # Edge: Critic -> conditionally back to Agent or END
+        workflow.add_conditional_edges(
+            "critic",
+            self.should_loop_after_critic,
+            {
+                "agent": "agent",  # Critic detected issue → loop back
+                "end": END         # No issues → finish
+            }
+        )
         
         app = workflow.compile()
         

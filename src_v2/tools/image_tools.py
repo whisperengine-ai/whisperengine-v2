@@ -4,7 +4,8 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
 from loguru import logger
 
-from src_v2.image_gen.service import image_service, pending_images
+from src_v2.image_gen.service import image_service
+from src_v2.artifacts.registry import artifact_registry
 from src_v2.image_gen.session import (
     image_session, 
     parse_refinement_instructions,
@@ -28,6 +29,8 @@ class GenerateImageInput(BaseModel):
         default="portrait",
         enum=["portrait", "landscape", "square", "widescreen"]
     )
+
+from src_v2.workers.task_queue import task_queue
 
 class GenerateImageTool(BaseTool):
     name: str = "generate_image"
@@ -175,29 +178,20 @@ class GenerateImageTool(BaseTool):
                 # image_type == "other": Use prompt as-is for user/scenery/objects
                 logger.info("Other subject mode: Using prompt as-is (no character injection)")
             
-            logger.info(f"Generating image with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
+            logger.info(f"Queueing image generation with prompt: {enhanced_prompt[:100]}... (Size: {width}x{height}, Seed: {seed_to_use or 'random'})")
             
-            # 4. Call Service
-            image_result = await image_service.generate_image(enhanced_prompt, width=width, height=height, seed=seed_to_use)
+            # 4. Queue Task
+            await task_queue.enqueue(
+                "run_image_generation",
+                user_id=self.user_id,
+                prompt=enhanced_prompt,
+                width=width,
+                height=height,
+                seed=seed_to_use,
+                character_name=self.character_name
+            )
             
-            if image_result:
-                # Save prompt and seed for future refinement
-                await image_session.save_session(
-                    self.user_id, 
-                    enhanced_prompt,
-                    image_result.seed,
-                    {"width": width, "height": height}
-                )
-                
-                # Register the image for later retrieval by the Discord bot
-                await pending_images.add(self.user_id, image_result)
-                
-                # Increment Quota
-                await quota_manager.increment_usage(self.user_id, 'image')
-                
-                return f"Image generated successfully ({aspect_ratio})."
-            else:
-                return "Failed to generate image. Please try again later."
+            return f"I've started working on that image for you! It will appear shortly."
                 
         except Exception as e:
             logger.error(f"Error in GenerateImageTool: {e}")

@@ -292,6 +292,57 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
 
         try:
             response = await self.llm.ainvoke(messages)
+            response_content = str(response.content) if response.content else ""
+            
+            # --- Check for "promised but not delivered" ---
+            # If the responder LLM says it will generate an image but didn't route to image tool
+            if settings.ENABLE_IMAGE_GENERATION:
+                content_lower = response_content.lower()
+                image_promise_patterns = [
+                    "let me generate", "i'll generate", "i will generate",
+                    "let me create", "i'll create", "i will create an image",
+                    "generating an image", "creating an image",
+                    "here's the image", "here is the image",
+                    "[generates image", "[creating image",
+                    "let me draw", "i'll draw", "i will draw",
+                ]
+                
+                # Check if image tool was actually called
+                image_tool_used = False
+                if state['router_response'] and state['router_response'].tool_calls:
+                    for tc in state['router_response'].tool_calls:
+                        if tc.get("name") == "generate_image":
+                            image_tool_used = True
+                            break
+                
+                has_image_promise = any(pattern in content_lower for pattern in image_promise_patterns)
+                
+                if has_image_promise and not image_tool_used:
+                    logger.warning("CharacterGraphAgent: Detected 'promised but not delivered' image generation, re-routing")
+                    # Re-invoke router with explicit image instruction
+                    messages.append(AIMessage(content=response_content))
+                    messages.append(SystemMessage(
+                        content="You mentioned generating an image but did NOT use the generate_image tool. "
+                               "You MUST call generate_image now to actually create the image. "
+                               "Call the tool immediately."
+                    ))
+                    
+                    # Force another router call
+                    router_with_tools = self.router_llm.bind_tools(state['tools'])
+                    retry_response = await router_with_tools.ainvoke(messages)
+                    
+                    if retry_response.tool_calls:
+                        # Execute the tool
+                        for tool_call in retry_response.tool_calls:
+                            if tool_call.get("name") == "generate_image":
+                                tool_result = await self._execute_tool_wrapper(
+                                    tool_call, state['tools'], state['callback']
+                                )
+                                # Now generate final response with tool result
+                                messages.append(retry_response)
+                                messages.append(tool_result)
+                                final_response = await self.llm.ainvoke(messages)
+                                return {"final_response": str(final_response.content)}
             
             # Handle tool chaining attempt (not supported in Tier 2)
             if isinstance(response, AIMessage) and response.tool_calls and not response.content:

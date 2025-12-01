@@ -10,34 +10,20 @@ BFL_IMAGE_URL_PATTERN = re.compile(
     r'https://bfldelivery\S+\.blob\.core\.windows\.net/results/\S+\.(jpeg|jpg|png)'
 )
 
+from src_v2.artifacts.discord_utils import extract_pending_artifacts
+
 async def extract_pending_images(text: str, user_id: str) -> Tuple[str, List[discord.File]]:
     """
-    Retrieve any pending images for the user from Redis.
-    Also strips out any BFL URLs that the LLM might have included.
+    Extracts pending images (and other artifacts) for a user and returns cleaned text + files.
     
-    Args:
-        text: The response text
-        user_id: The user ID to check for pending images
-        
-    Returns:
-        Tuple of (cleaned_text, list_of_discord_files)
+    NOTE: This function name is kept for backward compatibility, but it now retrieves
+    ALL pending artifacts (images, audio, documents) from the unified registry.
     """
-    files: List[discord.File] = []
+    # Get all pending artifacts (images, audio, etc.)
+    files = await extract_pending_artifacts(user_id)
     
-    # Retrieve all pending images for this user from Redis
-    results = await pending_images.pop_all(user_id)
-    
-    for result in results:
-        files.append(result.to_discord_file())
-        logger.info(f"Retrieved pending image for user {user_id} for Discord upload")
-    
-    # Strip out any BFL URLs that the LLM might have included
-    cleaned_text = BFL_IMAGE_URL_PATTERN.sub("", text)
-    
-    # Clean up any double spaces or newlines left behind
-    cleaned_text = re.sub(r'\n\s*\n\s*\n', '\n\n', cleaned_text)
-    
-    return cleaned_text.strip(), files
+    # Return original text (no cleaning needed as we don't embed markers anymore) and files
+    return text, files
 
 def chunk_message(text: str, max_length: int = 2000) -> List[str]:
     """

@@ -78,7 +78,8 @@ class BroadcastManager:
         post_type: PostType,
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None,
-        reply_to: Optional[discord.Message] = None
+        reply_to: Optional[discord.Message] = None,
+        files: Optional[List[discord.File]] = None
     ) -> List[discord.Message]:
         """
         Posts content to the bot broadcast channel(s).
@@ -89,6 +90,7 @@ class BroadcastManager:
             character_name: Name of the character posting
             provenance: Optional list of source data for grounding
             reply_to: Optional message to reply to (only works if in same channel)
+            files: Optional list of files to attach
             
         Returns:
             List of sent messages
@@ -150,10 +152,13 @@ class BroadcastManager:
                 # Send message(s)
                 first_message = None
                 for i, chunk in enumerate(message_chunks):
+                    # Only attach files to the LAST chunk to ensure they appear at the bottom
+                    chunk_files = files if (i == len(message_chunks) - 1) else None
+                    
                     if i == 0 and reply_to and reply_to.channel.id == channel_id:
-                        message = await reply_to.reply(chunk)
+                        message = await reply_to.reply(chunk, files=chunk_files)
                     else:
-                        message = await channel.send(chunk)
+                        message = await channel.send(chunk, files=chunk_files)
                     
                     if i == 0:
                         first_message = message
@@ -434,7 +439,8 @@ class BroadcastManager:
         content: str,
         post_type: PostType,
         character_name: str,
-        provenance: Optional[List[Dict[str, Any]]] = None
+        provenance: Optional[List[Dict[str, Any]]] = None,
+        artifact_user_id: Optional[str] = None
     ) -> bool:
         """
         Queue a broadcast for posting by the bot.
@@ -448,6 +454,7 @@ class BroadcastManager:
             post_type: Type of post (diary, dream, etc.)
             character_name: Name of the character posting
             provenance: Optional source data
+            artifact_user_id: If provided, bot will fetch pending artifacts for this user and attach them
             
         Returns:
             True if queued successfully
@@ -466,7 +473,8 @@ class BroadcastManager:
                 "post_type": post_type.value,
                 "character_name": character_name,
                 "provenance": provenance or [],
-                "queued_at": datetime.now(timezone.utc).isoformat()
+                "queued_at": datetime.now(timezone.utc).isoformat(),
+                "artifact_user_id": artifact_user_id
             }
             
             # Push to bot-specific queue (no more shared queue race conditions)
@@ -476,7 +484,7 @@ class BroadcastManager:
                 json.dumps(queue_item)
             )
             
-            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key}")
+            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key} (artifacts: {artifact_user_id})")
             return True
             
         except Exception as e:
@@ -534,11 +542,20 @@ class BroadcastManager:
                     
                     logger.debug(f"Processing queue item: type={item.get('post_type')}, id={item.get('id', 'unknown')}")
                     
+                    # Fetch artifacts if specified
+                    files = []
+                    if item.get("artifact_user_id"):
+                        from src_v2.artifacts.discord_utils import extract_pending_artifacts
+                        files = await extract_pending_artifacts(item["artifact_user_id"])
+                        if files:
+                            logger.info(f"Attached {len(files)} artifacts to broadcast for {item['character_name']}")
+                    
                     result = await self.post_to_channel(
                         content=item["content"],
                         post_type=PostType(item["post_type"]),
                         character_name=item["character_name"],
-                        provenance=item.get("provenance")
+                        provenance=item.get("provenance"),
+                        files=files
                     )
                     
                     if result:

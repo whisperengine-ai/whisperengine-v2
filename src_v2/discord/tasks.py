@@ -64,8 +64,8 @@ class BotTasks:
             except Exception as e:
                 logger.debug(f"Broadcast queue check failed: {e}")
             
-            # Check every 60 seconds (reduced frequency since HTTP callbacks are primary)
-            await asyncio.sleep(60)
+            # Check every 5 seconds to ensure interactive media is delivered quickly
+            await asyncio.sleep(5)
 
     async def refresh_endpoint_registration_loop(self) -> None:
         """Background task to refresh internal API endpoint registration in Redis."""

@@ -6,18 +6,21 @@ from src_v2.core.character import Character
 from src_v2.voice.tts import tts_manager
 from src_v2.config.settings import settings
 from src_v2.core.quota import quota_manager, QuotaExceededError
+from src_v2.artifacts.registry import artifact_registry
+
+from src_v2.workers.task_queue import task_queue
 
 class VoiceResponseManager:
     """Orchestrates voice response generation and file handling."""
     
-    async def generate_voice_response(self, text: str, character: Character, user_id: Optional[str] = None) -> Optional[Tuple[str, str]]:
+    async def generate_voice_response(self, text: str, character: Character, user_id: Optional[str] = None) -> bool:
         """
-        Generates a voice response for the given text and character.
-        Returns a tuple of (file_path, filename) or None if generation fails.
+        Queues a voice response generation task.
+        Returns True if queued successfully, False otherwise.
         Raises QuotaExceededError if quota is exceeded.
         """
         if not settings.ENABLE_VOICE_RESPONSES:
-            return None
+            return False
             
         # Check Quota
         if user_id:
@@ -39,7 +42,7 @@ class VoiceResponseManager:
             
         if not voice_id:
             logger.warning(f"Voice response requested for {character.name} but no voice_id found (checked character config and global settings).")
-            return None
+            return False
             
         # Truncate text if too long
         if len(text) > settings.VOICE_RESPONSE_MAX_LENGTH:
@@ -47,29 +50,21 @@ class VoiceResponseManager:
             text = text[:settings.VOICE_RESPONSE_MAX_LENGTH]
         
         try:
-            audio_bytes = await tts_manager.generate_speech(text, voice_id=voice_id)
-            if not audio_bytes:
-                return None
-                
-            # Create a temporary file
-            temp_dir = tempfile.gettempdir()
-            filename = f"{character.name.lower()}_voice_{os.urandom(4).hex()}.mp3"
-            file_path = os.path.join(temp_dir, filename)
+            # Queue Task
+            await task_queue.enqueue(
+                "run_voice_generation",
+                user_id=user_id,
+                text=text,
+                voice_id=voice_id,
+                character_name=character.name
+            )
             
-            with open(file_path, "wb") as f:
-                f.write(audio_bytes)
-                
-            logger.info(f"Generated voice response file: {file_path}")
-            
-            # Increment Quota
-            if user_id:
-                await quota_manager.increment_usage(user_id, 'audio')
-                
-            return file_path, filename
+            logger.info(f"Queued voice generation task for user {user_id}")
+            return True
             
         except Exception as e:
-            logger.error(f"Error generating voice response: {e}")
-            return None
+            logger.error(f"Error queuing voice response: {e}")
+            return False
 
 # Global instance
 voice_response_manager = VoiceResponseManager()

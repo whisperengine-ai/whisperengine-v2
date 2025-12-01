@@ -170,9 +170,10 @@ class ComplexityClassifier:
             intent_section += '\n- "voice": User explicitly asks for a voice response, audio message, to "speak", "say this", or "send audio".'
             
         if settings.ENABLE_IMAGE_GENERATION:
-            intent_section += '''\n- "image_self": User wants an image OF the AI character ("show me what you look like", "draw yourself", "selfie"). Subject = AI.
-- "image_other": User wants an image of something else ("draw me", "what do I look like", scenery, objects). Subject = NOT the AI.
+            intent_section += '''\n- "image_self": User wants an image OF the AI character ("show me what you look like", "draw yourself", "selfie", "what do you look like", "your appearance"). Subject = AI.
+- "image_other": User wants an image of something else ("draw me", "what do I look like", "show me a...", "visualize this", "picture of", "what does X look like"). Subject = NOT the AI.
 - "image_refine": User is modifying a PREVIOUS image ("make it darker", "more hispanic", "change the hair", replying to an image with tweaks).
+Visual request triggers: "show me", "visualize", "picture of", "what does X look like", "generate an image", "create a picture", "draw", "illustrate", "render", "depict".
 Priority: image_refine > image_self/image_other. If replying to an image with modification words, use image_refine.'''
             
         if settings.ENABLE_REMINDERS:
@@ -190,8 +191,11 @@ NOTE: Only detect these for genuinely significant emotional expressions or life 
         if settings.ENABLE_IMAGE_GENERATION:
             image_gen_example = """   - "Create an image of..." (image generation tool)
    - "Show me what you see" (image generation tool)
-   - "Draw yourself" (image_self intent)
-   - "Draw me" or "What do I look like?" (image_other intent)
+   - "Show me what X looks like" (image_other intent - visual request)
+   - "Visualize this for me" (image_other intent)
+   - "What does X look like?" (image_other intent if asking for visual)
+   - "Draw yourself" / "What do you look like?" (image_self intent)
+   - "Draw me" / "Picture of me" (image_other intent)
    - "Make it darker" after an image was generated (image_refine intent)"""
 
         system_prompt = f"""Analyze the user input given the recent conversation context. 
