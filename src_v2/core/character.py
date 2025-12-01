@@ -117,6 +117,12 @@ class CharacterManager:
             if settings.ENABLE_IMAGE_GENERATION:
                 content += "\n\n## Image Generation Capabilities\nYou have the ability to generate images. If a user asks for an image, a selfie, or a visual representation of something, you CAN do this. The system will handle the actual generation. You should respond enthusiastically and describe what you are generating. Do NOT say you cannot generate images."
 
+            # Inject Global Formatting Rules (Phase E16)
+            content += "\n\n## Global Formatting Rules\n"
+            content += "- NEVER include timestamps (e.g., '[2 mins ago]', '[just now]') at the start of your response.\n"
+            content += "- The system automatically adds timestamps to the chat history for your context. You do not need to generate them.\n"
+            content += "- Respond directly to the user's message as if you are in a real-time conversation.\n"
+
             # Simple parsing: The whole file is the system prompt for now.
             # In the future, we can parse frontmatter (YAML) for metadata.
             character = Character(
