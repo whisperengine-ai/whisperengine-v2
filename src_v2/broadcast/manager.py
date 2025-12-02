@@ -79,7 +79,8 @@ class BroadcastManager:
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None,
         reply_to: Optional[discord.Message] = None,
-        files: Optional[List[discord.File]] = None
+        files: Optional[List[discord.File]] = None,
+        target_channel_id: Optional[str] = None
     ) -> List[discord.Message]:
         """
         Posts content to the bot broadcast channel(s).
@@ -91,15 +92,22 @@ class BroadcastManager:
             provenance: Optional list of source data for grounding
             reply_to: Optional message to reply to (only works if in same channel)
             files: Optional list of files to attach
+            target_channel_id: Optional specific channel to post to (overrides global broadcast channels)
             
         Returns:
             List of sent messages
         """
-        if not settings.ENABLE_BOT_BROADCAST:
+        if not settings.ENABLE_BOT_BROADCAST and not target_channel_id:
             logger.debug("Bot broadcast is disabled")
             return []
         
-        channel_ids = settings.bot_broadcast_channel_ids_list
+        # Determine target channels
+        channel_ids = []
+        if target_channel_id:
+            channel_ids = [target_channel_id]
+        else:
+            channel_ids = settings.bot_broadcast_channel_ids_list
+            
         if not channel_ids:
             logger.debug("No broadcast channel IDs configured")
             return []
@@ -108,8 +116,8 @@ class BroadcastManager:
             logger.warning("Bot instance not set for broadcast manager")
             return []
         
-        # Check rate limit
-        if not await self._can_post(character_name):
+        # Check rate limit (skip for targeted posts as they are managed by orchestrator)
+        if not target_channel_id and not await self._can_post(character_name):
             logger.debug(f"Rate limit active for {character_name}")
             return []
         
@@ -440,7 +448,8 @@ class BroadcastManager:
         post_type: PostType,
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None,
-        artifact_user_id: Optional[str] = None
+        artifact_user_id: Optional[str] = None,
+        target_channel_id: Optional[str] = None
     ) -> bool:
         """
         Queue a broadcast for posting by the bot.
@@ -455,6 +464,7 @@ class BroadcastManager:
             character_name: Name of the character posting
             provenance: Optional source data
             artifact_user_id: If provided, bot will fetch pending artifacts for this user and attach them
+            target_channel_id: Optional specific channel to post to (overrides global broadcast channels)
             
         Returns:
             True if queued successfully
@@ -474,7 +484,8 @@ class BroadcastManager:
                 "character_name": character_name,
                 "provenance": provenance or [],
                 "queued_at": datetime.now(timezone.utc).isoformat(),
-                "artifact_user_id": artifact_user_id
+                "artifact_user_id": artifact_user_id,
+                "target_channel_id": target_channel_id
             }
             
             # Push to bot-specific queue (no more shared queue race conditions)
@@ -484,7 +495,7 @@ class BroadcastManager:
                 json.dumps(queue_item)
             )
             
-            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key} (artifacts: {artifact_user_id})")
+            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key} (artifacts: {artifact_user_id}, target: {target_channel_id})")
             return True
             
         except Exception as e:
@@ -555,7 +566,8 @@ class BroadcastManager:
                         post_type=PostType(item["post_type"]),
                         character_name=item["character_name"],
                         provenance=item.get("provenance"),
-                        files=files
+                        files=files,
+                        target_channel_id=item.get("target_channel_id")
                     )
                     
                     if result:

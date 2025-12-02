@@ -6,6 +6,7 @@ from typing import Optional
 from src_v2.config.settings import settings
 from src_v2.agents.engine import AgentEngine
 from src_v2.discord.scheduler import ProactiveScheduler
+from src_v2.discord.orchestrator import ActivityOrchestrator
 from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
 from src_v2.discord.handlers.event_handler import EventHandler
 from src_v2.discord.handlers.message_handler import MessageHandler
@@ -34,6 +35,7 @@ class WhisperBot(commands.Bot):
         
         self.agent_engine = AgentEngine()
         self.scheduler = ProactiveScheduler(self)
+        self.orchestrator = ActivityOrchestrator(self)
         self.lurk_detector: Optional[LurkDetector] = None
         
         # Validate Bot Identity
@@ -48,6 +50,9 @@ class WhisperBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """Async setup hook called before the bot starts."""
+        # Start Activity Orchestrator
+        self.orchestrator.start()
+
         # Initialize Lurk Detector
         if settings.ENABLE_CHANNEL_LURKING:
             self.lurk_detector = get_lurk_detector(self.character_name)
@@ -114,6 +119,13 @@ class WhisperBot(commands.Bot):
                 await self.scheduler.stop()
             except Exception as e:
                 logger.debug(f"Error stopping scheduler: {e}")
+        
+        # Stop orchestrator if running
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            try:
+                await self.orchestrator.stop()
+            except Exception as e:
+                logger.debug(f"Error stopping orchestrator: {e}")
         
         # Call parent close
         await super().close()

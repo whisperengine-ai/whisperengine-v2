@@ -26,6 +26,7 @@ from src_v2.utils.validation import ValidationError, validator, smart_truncate
 from src_v2.discord.utils.message_utils import chunk_message, is_image, extract_pending_images
 from src_v2.core.behavior import get_character_timezone
 from influxdb_client.client.write.point import Point
+from src_v2.intelligence.activity import server_monitor
 
 class MessageHandler:
     def __init__(self, bot):
@@ -52,6 +53,9 @@ class MessageHandler:
         # Universe Presence & Observation
         if message.guild:
             try:
+                # Record activity for autonomous scaling (Phase E15)
+                asyncio.create_task(server_monitor.record_message(str(message.guild.id)))
+
                 from src_v2.universe.manager import universe_manager
                 # task_queue is already imported globally
                 

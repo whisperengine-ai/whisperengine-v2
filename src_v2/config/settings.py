@@ -252,6 +252,10 @@ class Settings(BaseSettings):
     CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
     CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
 
+    # --- Autonomous Server Activity (Phase E15) ---
+    ENABLE_AUTONOMOUS_POSTING: bool = False  # Allow bot to post autonomously in quiet channels
+    ENABLE_AUTONOMOUS_REACTIONS: bool = True  # Allow bot to react to messages (Phase 1)
+
     # --- Scheduled Reminders (Phase E5) ---
     ENABLE_REMINDERS: bool = True  # Enable reminder system
 

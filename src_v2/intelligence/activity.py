@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from loguru import logger
 from src_v2.core.database import db_manager
 
+
 class ActivityModeler:
     """
     Analyzes user activity patterns to determine the best time to engage.
@@ -97,4 +98,58 @@ class ActivityModeler:
         is_good: bool = score >= threshold
         return is_good, score
 
+class ServerActivityMonitor:
+    """
+    Tracks server activity levels (messages per minute) to detect quiet periods.
+    Used by ActivityOrchestrator to scale bot autonomy.
+    """
+    def __init__(self, window_minutes: int = 30):
+        self.window_minutes = window_minutes
+        # We'll use Redis to store message timestamps for a sliding window
+        # Key: whisper:activity:guild:{guild_id}:timestamps
+        
+    async def record_message(self, guild_id: str) -> None:
+        """Record a message event for the guild."""
+        if not db_manager.redis_client:
+            return
+            
+        try:
+            key = f"whisper:activity:guild:{guild_id}:timestamps"
+            now = datetime.now(timezone.utc).timestamp()
+            
+            # Add timestamp to sorted set
+            await db_manager.redis_client.zadd(key, {str(now): now})
+            
+            # Trim old entries (older than window)
+            cutoff = now - (self.window_minutes * 60)
+            await db_manager.redis_client.zremrangebyscore(key, min="-inf", max=cutoff)
+            
+            # Set expiry on the key so it cleans up if unused
+            await db_manager.redis_client.expire(key, self.window_minutes * 60 + 60)
+            
+        except Exception as e:
+            logger.warning(f"Failed to record activity: {e}")
+
+    async def get_activity_level(self, guild_id: str) -> float:
+        """
+        Get messages per minute over the configured window.
+        """
+        if not db_manager.redis_client:
+            return 0.0
+            
+        try:
+            key = f"whisper:activity:guild:{guild_id}:timestamps"
+            
+            # Count items in set
+            count = await db_manager.redis_client.zcard(key)
+            
+            # Calculate rate
+            rate = count / self.window_minutes
+            return rate
+            
+        except Exception as e:
+            logger.warning(f"Failed to get activity level: {e}")
+            return 0.0
+
 activity_modeler = ActivityModeler()
+server_monitor = ServerActivityMonitor()

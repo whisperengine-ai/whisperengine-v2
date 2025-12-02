@@ -8,7 +8,6 @@ from src_v2.core.goals import goal_manager, Goal
 from src_v2.core.behavior import load_behavior_profile
 from src_v2.core.character import CharacterManager
 from src_v2.agents.llm_factory import create_llm
-from src_v2.discord.bot import bot  # We might need to send message via bot, or return it
 # Note: In a worker context, we can't use the discord.Client directly if it's not running in the same process.
 # The worker should probably just generate the content and put it in a "broadcast" queue or similar.
 # But for now, let's assume the worker generates it and we have a mechanism to send it.
@@ -72,11 +71,11 @@ class PostingAgent:
         self.selector = GoalDrivenTopicSelector()
         self.char_manager = CharacterManager()
 
-    async def generate_and_schedule_post(self, character_name: str) -> bool:
+    async def generate_and_schedule_post(self, character_name: str, target_channel_id: Optional[str] = None) -> bool:
         """
         Generates a post and schedules it via BroadcastManager.
         """
-        logger.info(f"PostingAgent: Generating post for {character_name}")
+        logger.info(f"PostingAgent: Generating post for {character_name} (target: {target_channel_id})")
         
         # 1. Select Topic
         selection = self.selector.select_topic(character_name)
@@ -151,7 +150,8 @@ Write ONLY the message content.
             await broadcast_manager.queue_broadcast(
                 content=content,
                 post_type=PostType.MUSING, 
-                character_name=character_name
+                character_name=character_name,
+                target_channel_id=target_channel_id
             )
             return True
             

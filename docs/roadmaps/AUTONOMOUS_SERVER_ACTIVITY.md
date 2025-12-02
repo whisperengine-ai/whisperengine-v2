@@ -1,9 +1,9 @@
 # Autonomous Server Activity System
 
-**Document Version:** 1.1  
+**Document Version:** 1.2  
 **Created:** November 30, 2025  
-**Updated:** November 30, 2025  
-**Status:** 🔄 In Progress (Phase 1 Complete)  
+**Updated:** December 1, 2025  
+**Status:** 🔄 In Progress (Phase 1 & 2 Complete)  
 **Type:** Epic / Feature Roadmap  
 **Priority:** 🟢 High (Server Engagement)
 
@@ -32,10 +32,10 @@ Current State:
 - ✅ Cross-bot chat exists for multi-bot conversations (ENABLE_CROSS_BOT_CHAT)
 - ✅ Goals system exists in `goals.yaml` for each character
 - ✅ Character drives defined in `core.yaml`
-- 📋 Web search tool proposed (WEB_SEARCH_TOOL.md)
-- ❌ No autonomous posting to public channels
-- ❌ No emoji reactions to other users' messages
-- ❌ No bot-initiated conversations visible to newcomers
+- ✅ Web search tool implemented (WEB_SEARCH_TOOL.md)
+- ✅ Autonomous posting to public channels (Phase 2)
+- ✅ Emoji reactions to other users' messages (Phase 1)
+- ❌ No bot-initiated conversations visible to newcomers (Phase 3)
 - ❌ Server feels dead when no humans are active
 
 **Result:** New users join, see no activity, and leave.
