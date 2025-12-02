@@ -160,9 +160,9 @@ class Settings(BaseSettings):
     LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
     LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
 
-    # --- Autonomous Activity (Phase E12) ---
+    # --- Autonomous Activity (Phase E12/E15) ---
     ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for all autonomous activity
-    ENABLE_AUTONOMOUS_REACTIONS: bool = False  # React to messages with emojis
+    ENABLE_AUTONOMOUS_REACTIONS: bool = True  # React to messages with emojis (requires AUTONOMOUS_ACTIVITY)
     REACTION_CHANNEL_HOURLY_MAX: int = 10  # Max reactions per channel per hour
     REACTION_SAME_USER_COOLDOWN_SECONDS: int = 300  # Min seconds between reactions to same user
     REACTION_DAILY_MAX: int = 100  # Global daily limit for reactions
@@ -257,7 +257,7 @@ class Settings(BaseSettings):
 
     # --- Autonomous Server Activity (Phase E15) ---
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Allow bot to post autonomously in quiet channels
-    ENABLE_AUTONOMOUS_REACTIONS: bool = True  # Allow bot to react to messages (Phase 1)
+    # Note: ENABLE_AUTONOMOUS_REACTIONS is defined above in Phase E12/E15 section
     ENABLE_BOT_CONVERSATIONS: bool = False  # Allow bots to start conversations with each other (Phase 3)
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations (None = auto-detect)

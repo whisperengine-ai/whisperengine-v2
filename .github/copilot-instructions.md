@@ -24,6 +24,18 @@ Before adding new fields, categories, or configuration:
 
 A declared subconscious is a filing system. An emergent subconscious is actually subconscious.
 
+**Pre-Implementation Checklist (use before building new features):**
+
+Before implementing, answer these four questions:
+1. **Schema test:** Am I adding new fields/enums? (Prefer no new schema)
+2. **Behavior test:** Can this be expressed as behavior instead of category?
+3. **Vocabulary test:** Can prompts do what code would do?
+4. **Discovery test:** Will the character *notice* this, or do we have to *tell* it?
+
+If answers lean toward "need new schema/code/declarations" — reconsider the approach.
+
+**Audit Reference:** See `docs/reviews/EMERGENCE_ARCHITECTURE_AUDIT.md` for full checklist and cleanup backlog.
+
 **Research Documentation:**
 - `docs/research/` — Research journal (daily logs, weekly summaries, experiments)
 - `docs/emergence_philosophy/` — Claude-to-Claude architecture reviews and philosophy docs
