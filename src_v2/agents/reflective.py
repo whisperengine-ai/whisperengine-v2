@@ -282,6 +282,14 @@ class ReflectiveAgent:
                 # Update stats
                 tools_used += len(response.tool_calls)
                 
+                # Fire "searching" callback BEFORE parallel execution
+                tool_names = [tc["name"] for tc in response.tool_calls]
+                if callback and settings.REFLECTIVE_STATUS_VERBOSITY != "none":
+                    if len(tool_names) == 1:
+                        await callback(f"TOOLS:🔍 Using {tool_names[0]}...")
+                    else:
+                        await callback(f"TOOLS:🔍 Using {len(tool_names)} tools: {', '.join(tool_names)}...")
+                
                 # Create tasks for all tools to run in parallel
                 tasks = []
                 for tool_call in response.tool_calls:
@@ -291,6 +299,10 @@ class ReflectiveAgent:
                 # We use gather to ensure we get results in the same order as tool_calls
                 # The callbacks inside _execute_tool_wrapper will still fire as they complete (streaming)
                 tool_messages = await asyncio.gather(*tasks)
+                
+                # In minimal mode, send a summary after all tools complete
+                if callback and settings.REFLECTIVE_STATUS_VERBOSITY == "minimal":
+                    await callback(f"RESULT:✅ Completed {len(tool_messages)} tool(s)")
                 
                 # Append all tool outputs to history
                 messages.extend(tool_messages)
@@ -362,12 +374,14 @@ class ReflectiveAgent:
         else:
             observation = f"Error: Tool {tool_name} not found."
 
-        # Callback for observation
-        if callback:
+        # Callback for observation - use RESULT: prefix so it shows in minimal/detailed modes
+        if callback and settings.REFLECTIVE_STATUS_VERBOSITY != "none":
             obs_str = str(observation)
-            # Truncate to 200 chars for preview, but indicate if there's more
-            preview = (obs_str[:200] + "...") if len(obs_str) > 200 else obs_str
-            await callback(f"✅ *{tool_name}*: {preview}")
+            # Truncate to 150 chars for preview, consistent with LangGraph agent
+            preview = (obs_str[:150] + "...") if len(obs_str) > 150 else obs_str
+            if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+                await callback(f"RESULT:✅ *{tool_name}*: {preview}")
+            # In minimal mode, we'll batch the results (but this is per-tool, so just skip)
 
         return ToolMessage(
             content=str(observation),

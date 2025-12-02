@@ -83,14 +83,14 @@ class Settings(BaseSettings):
     # --- Reflective Mode Configuration ---
     ENABLE_REFLECTIVE_MODE: bool = False
     REFLECTIVE_STATUS_VERBOSITY: Literal["none", "minimal", "detailed"] = "detailed"  # How much reasoning to show in Discord
-    ENABLE_LANGGRAPH_REFLECTIVE_AGENT: bool = False  # Enable new LangGraph-based reflective agent
-    ENABLE_LANGGRAPH_CHARACTER_AGENT: bool = False  # Enable new LangGraph-based character agent
+    ENABLE_LANGGRAPH_REFLECTIVE_AGENT: bool = False  # DEPRECATED: Supergraph always uses LangGraph agents
+    ENABLE_LANGGRAPH_CHARACTER_AGENT: bool = False  # DEPRECATED: Supergraph always uses LangGraph agents
     ENABLE_LANGGRAPH_INSIGHT_AGENT: bool = False  # Enable new LangGraph-based insight agent
     ENABLE_LANGGRAPH_DIARY_AGENT: bool = False  # Enable new LangGraph-based diary agent
     ENABLE_LANGGRAPH_DREAM_AGENT: bool = False  # Enable new LangGraph-based dream agent
     ENABLE_LANGGRAPH_REFLECTION_AGENT: bool = False  # Enable new LangGraph-based reflection agent
     ENABLE_LANGGRAPH_STRATEGIST_AGENT: bool = False  # Enable new LangGraph-based goal strategist agent
-    ENABLE_SUPERGRAPH: bool = False  # Enable Master Supergraph architecture
+    ENABLE_SUPERGRAPH: bool = True  # DEPRECATED: Supergraph is now always enabled
     ENABLE_CHARACTER_AGENCY: bool = True  # Phase A7: Tier 2 Tool Usage
     REFLECTIVE_LLM_PROVIDER: str = "openrouter"
     REFLECTIVE_LLM_MODEL_NAME: str = "anthropic/claude-3.5-sonnet"

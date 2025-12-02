@@ -643,6 +643,10 @@ class MessageHandler:
                 # Track timing for stats footer
                 start_time = time.time()
                 
+                # Use reply for guild channels (not DMs) to maintain conversation threading
+                # Defined early so it's available in reflective_callback
+                use_reply = not is_dm
+                
                 # Prepare callback for Reflective Mode
                 status_message: Optional[discord.Message] = None
                 status_lines: List[str] = []
@@ -721,7 +725,11 @@ class MessageHandler:
                                 if status_message:
                                     await status_message.edit(content=full_content)
                                 else:
-                                    status_message = await message.channel.send(full_content)
+                                    # Use reply in guild channels to maintain threading
+                                    if use_reply:
+                                        status_message = await message.reply(full_content, mention_author=False)
+                                    else:
+                                        status_message = await message.channel.send(full_content)
                                 last_status_update = now
                                 pending_update = False
                             except discord.HTTPException as e:
@@ -732,9 +740,6 @@ class MessageHandler:
                 active_message: Optional[discord.Message] = None
                 last_update_time = 0
                 update_interval = 0.7  # Seconds between edits to avoid rate limits
-                
-                # Use reply for guild channels (not DMs) to maintain conversation threading
-                use_reply = not is_dm
                 
                 # Start typing indicator only when generation begins
                 # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)

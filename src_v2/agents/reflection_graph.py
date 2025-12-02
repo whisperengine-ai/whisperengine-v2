@@ -85,7 +85,7 @@ class QuerySummariesTool(BaseTool):
             
             async with db_manager.postgres_pool.acquire() as conn:
                 rows = await conn.fetch("""
-                    SELECT s.content, s.meaningfulness_score, s.emotions, s.topics, sess.start_time
+                    SELECT s.content, s.meaningfulness_score, sess.start_time
                     FROM v2_summaries s
                     JOIN v2_conversation_sessions sess ON s.session_id = sess.id
                     WHERE sess.user_id = $1 AND sess.character_name = $2
@@ -99,10 +99,6 @@ class QuerySummariesTool(BaseTool):
                 result = []
                 for row in rows:
                     result.append(f"[{row['start_time'].strftime('%Y-%m-%d')}] (Score: {row['meaningfulness_score']}) {row['content']}")
-                    if row['emotions']:
-                        result.append(f"  Emotions: {row['emotions']}")
-                    if row['topics']:
-                        result.append(f"  Topics: {row['topics']}")
                 
                 return "\n".join(result)
                 

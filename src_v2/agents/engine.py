@@ -140,8 +140,8 @@ class AgentEngine:
         if not user_message.strip() and image_urls:
             user_message = "[User uploaded an image]"
 
-        # --- SUPERGRAPH PATH ---
-        if settings.ENABLE_SUPERGRAPH and user_id:
+        # --- SUPERGRAPH PATH (Primary) ---
+        if user_id:
             logger.info("Delegating to Master Supergraph")
             response = await master_graph_agent.run(
                 user_input=user_message,
@@ -162,7 +162,10 @@ class AgentEngine:
                     processing_time_ms=total_time * 1000
                 )
             return response
-        # -----------------------
+        # ---------------------------------
+
+        # Fallback for no user_id (API calls without user context)
+        logger.warning("No user_id provided, using fast path")
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
@@ -436,6 +439,9 @@ class AgentEngine:
         Generates a streaming response for the given character and user message.
         Yields chunks of text as they are generated.
         
+        Uses the Master Supergraph for all processing. Callbacks are passed through
+        to subgraphs for status updates (reasoning steps, tool usage, etc.).
+        
         Args:
             force_reflective: If True, forces reflective (ReAct) mode regardless of complexity.
             force_fast: If True, forces fast mode (single-pass LLM, no tools) regardless of complexity.
@@ -462,6 +468,35 @@ class AgentEngine:
         if not user_message.strip() and image_urls:
             user_message = "[User uploaded an image]"
 
+        # --- SUPERGRAPH PATH (Primary) ---
+        if user_id:
+            logger.info("Delegating to Master Supergraph (Stream)")
+            
+            # Send initial thinking indicator via callback
+            if callback and character.thinking_indicators:
+                icon = character.thinking_indicators.reflective_mode.get("icon", "🧠")
+                text = character.thinking_indicators.reflective_mode.get("text", "Thinking...")
+                await callback(f"HEADER:{icon} **{text}**")
+            
+            async for chunk in master_graph_agent.run_stream(
+                user_input=user_message,
+                user_id=user_id,
+                character=character,
+                chat_history=chat_history,
+                context_variables=context_variables,
+                image_urls=image_urls,
+                callback=callback
+            ):
+                yield chunk
+            
+            total_time = time.time() - start_time
+            logger.info(f"Total response time: {total_time:.2f}s (Supergraph Stream)")
+            return
+        # ---------------------------------
+
+        # Fallback for no user_id (shouldn't happen in practice)
+        logger.warning("No user_id provided, falling back to legacy path")
+        
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
         complexity_result = preclassified_complexity

@@ -307,9 +307,14 @@ TOOL USAGE GUIDE:
             logger.error(f"LLM invocation failed: {e}")
             return {"messages": [AIMessage(content="I encountered an error while thinking.")], "steps": state['steps'] + 1}
 
-        # Stream thought if callback exists and it's not a tool call
-        if isinstance(response, AIMessage) and response.content and callback and response.tool_calls:
-            await callback(f"💭 {response.content}")
+        # Stream thought if callback exists and the model is reasoning (has content)
+        # Show reasoning when: 1) there's content AND 2) either it's calling tools (explaining why) 
+        # or it's in the middle of multi-step reasoning (not the final answer)
+        if isinstance(response, AIMessage) and response.content and callback:
+            # Only show reasoning if it's calling tools (explaining the tool choice)
+            # or if verbosity is detailed (show all thoughts)
+            if response.tool_calls or settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+                await callback(f"💭 {response.content}")
 
         return {"messages": [response], "steps": state['steps'] + 1}
 

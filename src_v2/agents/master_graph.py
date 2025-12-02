@@ -1,7 +1,7 @@
 import asyncio
 import operator
 import datetime
-from typing import List, Optional, Dict, Any, TypedDict, Literal, cast
+from typing import List, Optional, Dict, Any, TypedDict, Literal, cast, Callable, Awaitable
 from loguru import logger
 from langsmith import traceable
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
@@ -27,6 +27,7 @@ class SuperGraphState(TypedDict):
     chat_history: List[BaseMessage]
     context_variables: Dict[str, Any]
     image_urls: Optional[List[str]]
+    callback: Optional[Callable[[str], Awaitable[None]]]  # Status callback for reasoning steps
     
     # Internal Processing
     classification: Optional[Dict[str, Any]] # {complexity: str, intents: List[str]}
@@ -184,6 +185,8 @@ class MasterGraphAgent:
         """Wraps the ReflectiveGraphAgent."""
         classification = state.get("classification")
         intents = classification["intents"] if classification else []
+        callback = state.get("callback")
+        context_variables = state.get("context_variables", {})
         
         response, _ = await self.reflective_agent.run(
             user_input=state["user_input"],
@@ -191,19 +194,28 @@ class MasterGraphAgent:
             system_prompt=state["system_prompt"] or "", 
             chat_history=state["chat_history"],
             image_urls=state["image_urls"],
-            detected_intents=intents
+            detected_intents=intents,
+            callback=callback,
+            guild_id=context_variables.get("guild_id"),
+            channel=context_variables.get("channel")
         )
         return {"final_response": response}
 
     async def character_subgraph_node(self, state: SuperGraphState):
         """Wraps the CharacterGraphAgent."""
+        callback = state.get("callback")
+        context_variables = state.get("context_variables", {})
+        
         response = await self.character_agent.run(
             user_input=state["user_input"],
             user_id=state["user_id"],
             system_prompt=state["system_prompt"] or "",
             chat_history=state["chat_history"],
             character_name=state["character"].name,
-            image_urls=state["image_urls"]
+            image_urls=state["image_urls"],
+            callback=callback,
+            guild_id=context_variables.get("guild_id"),
+            channel=context_variables.get("channel")
         )
         return {"final_response": response}
 
@@ -242,6 +254,19 @@ class MasterGraphAgent:
         input_state = cast(SuperGraphState, kwargs)
         result = await self.graph.ainvoke(input_state, config={"run_name": "MasterGraphExecution"})
         return result["final_response"]
+
+    async def run_stream(self, **kwargs):
+        """
+        Streaming entry point for the Supergraph.
+        Yields the final response as a single chunk after processing.
+        Callbacks are handled internally by the subgraphs for status updates.
+        """
+        logger.info("Executing MasterGraphAgent.run_stream")
+        input_state = cast(SuperGraphState, kwargs)
+        result = await self.graph.ainvoke(input_state, config={"run_name": "MasterGraphExecution"})
+        response = result.get("final_response", "")
+        if response:
+            yield response
 
 # Singleton
 master_graph_agent = MasterGraphAgent()
