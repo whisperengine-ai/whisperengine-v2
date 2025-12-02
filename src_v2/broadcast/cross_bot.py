@@ -38,6 +38,7 @@ class ConversationChain:
     participants: Set[str] = field(default_factory=set)  # Bot names in this chain
     message_count: int = 0
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_message_id: Optional[str] = None
     last_bot: Optional[str] = None  # Last bot who spoke
     
@@ -47,14 +48,15 @@ class ConversationChain:
         self.message_count += 1
         self.last_message_id = message_id
         self.last_bot = bot_name
+        self.last_activity_at = datetime.now(timezone.utc)  # Update activity time
     
     def should_continue(self, max_chain: int) -> bool:
         """Check if this chain should continue."""
         return self.message_count < max_chain
     
-    def is_expired(self, minutes: int = 5) -> bool:
+    def is_expired(self, minutes: int = 10) -> bool:
         """Check if chain is expired (no activity for N minutes)."""
-        return datetime.now(timezone.utc) - self.started_at > timedelta(minutes=minutes)
+        return datetime.now(timezone.utc) - self.last_activity_at > timedelta(minutes=minutes)
 
 
 @dataclass
@@ -263,10 +265,12 @@ class CrossBotManager:
         
         # Must be a known bot (not random bots)
         if not self.is_known_bot(message.author.id):
+            logger.info(f"Unknown bot {message.author.name} (ID: {message.author.id}) - ignoring")
             return None
         
         channel_id = str(message.channel.id)
         mentioning_bot = self.get_bot_name(message.author.id)
+        logger.info(f"[CrossBot] Received message from known bot: {mentioning_bot}")
         
         # Check if this is a direct reply to one of our messages FIRST
         # (needed for burst detection logic)
@@ -295,8 +299,14 @@ class CrossBotManager:
                 escaped_name = re.escape(our_name)
                 has_name_mention = bool(re.search(rf"\b{escaped_name}\b", message.content.lower()))
         
+        logger.info(
+            f"[CrossBot] Detection: from={mentioning_bot}, @mention={has_at_mention}, "
+            f"name_mention={has_name_mention}, is_reply={is_direct_reply}"
+        )
+        
         # Must have some form of mention
         if not has_at_mention and not has_name_mention:
+            logger.info(f"[CrossBot] No mention from {mentioning_bot} - content: {message.content[:100]}")
             return None
         
         chain = self._get_or_create_chain(channel_id)
@@ -333,12 +343,13 @@ class CrossBotManager:
         
         # Check chain limit
         if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
-            logger.debug(f"Cross-bot chain limit reached in channel {channel_id} (count: {chain.message_count})")
+            logger.info(f"[CrossBot] Chain limit reached in channel {channel_id} (count: {chain.message_count})")
             return None
         
         # Don't respond if we were the last bot in the chain
-        if chain.last_bot == self._bot_name:
-            logger.debug("We were the last bot to speak, skipping")
+        # BUT: if this is a direct reply to our message, the other bot just spoke - so we CAN respond
+        if chain.last_bot == self._bot_name and not is_direct_reply and not has_at_mention:
+            logger.info(f"[CrossBot] We were last bot in chain, skipping (last_bot={chain.last_bot})")
             return None
         
         return CrossBotMention(

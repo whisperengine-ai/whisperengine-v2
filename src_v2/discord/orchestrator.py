@@ -96,6 +96,10 @@ class ActivityOrchestrator:
             logger.debug(f"[Orchestrator] Dead quiet roll={roll:.2f}")
             if roll < 0.3 and settings.ENABLE_BOT_CONVERSATIONS:
                 # 30% chance to start a bot-to-bot conversation
+                # Add random delay (0-60 sec) to prevent all bots triggering at once
+                delay = random.uniform(0, 60)
+                logger.debug(f"[Orchestrator] Conversation delay: {delay:.1f}s")
+                await asyncio.sleep(delay)
                 await self.trigger_conversation(guild)
             elif roll < 0.7 and settings.ENABLE_AUTONOMOUS_POSTING:
                 # 40% chance to post (if conversation wasn't triggered)
