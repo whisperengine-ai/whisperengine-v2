@@ -28,13 +28,23 @@ async def run_summarization(
     try:
         # Lazy import to avoid circular dependencies
         from src_v2.memory.summarizer import SummaryManager
+        from src_v2.agents.summary_graph import summary_graph_agent
         
-        # Pass character_name to ensure we use the correct memory collection
-        summarizer = SummaryManager(bot_name=character_name)
-        result = await summarizer.generate_summary(messages)
+        # Format conversation text
+        conversation_text = ""
+        for msg in messages:
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            conversation_text += f"{role}: {content}\n"
+            
+        # Use Graph Agent for generation (includes critique loop)
+        result = await summary_graph_agent.run(conversation_text)
         
         if result and result.meaningfulness_score >= 3:
+            # Use SummaryManager for saving (it handles DB logic)
+            summarizer = SummaryManager(bot_name=character_name)
             await summarizer.save_summary(session_id, user_id, result, user_name=user_name)
+            
             logger.info(f"Summary saved for session {session_id} (score: {result.meaningfulness_score})")
             return {
                 "success": True,

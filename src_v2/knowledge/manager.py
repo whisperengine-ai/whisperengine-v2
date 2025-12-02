@@ -401,7 +401,18 @@ PRIVACY RESTRICTION ENABLED:
         if not facts:
             return
 
-        logger.info(f"Extracted {len(facts)} facts for user {user_id} (source: {bot_name})")
+        await self.save_facts(user_id, facts, bot_name)
+
+    @retry_db_operation(max_retries=3)
+    @require_db("neo4j")
+    async def save_facts(self, user_id: str, facts: List[Fact], bot_name: str = "unknown"):
+        """
+        Saves a list of facts to Neo4j.
+        """
+        if not facts:
+            return
+
+        logger.info(f"Saving {len(facts)} facts for user {user_id} (source: {bot_name})")
 
         # 2. Store in Neo4j
         async with db_manager.neo4j_driver.session() as session:

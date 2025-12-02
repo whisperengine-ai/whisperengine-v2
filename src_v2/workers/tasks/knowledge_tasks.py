@@ -26,15 +26,32 @@ async def run_knowledge_extraction(
     
     try:
         from src_v2.knowledge.manager import knowledge_manager
+        from src_v2.agents.knowledge_graph import knowledge_graph_agent
+        from src_v2.config.settings import settings
         
-        # This internally checks ENABLE_RUNTIME_FACT_EXTRACTION
-        await knowledge_manager.process_user_message(user_id, message, character_name)
+        if not settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+            return {"success": True, "skipped": True, "reason": "disabled"}
         
-        return {
-            "success": True,
-            "user_id": user_id,
-            "message_length": len(message)
-        }
+        # Use Graph Agent for extraction (includes validation loop)
+        facts = await knowledge_graph_agent.run(message)
+        
+        if facts:
+            # Save validated facts
+            await knowledge_manager.save_facts(user_id, facts, character_name)
+            
+            return {
+                "success": True,
+                "user_id": user_id,
+                "facts_extracted": len(facts),
+                "message_length": len(message)
+            }
+        else:
+            return {
+                "success": True,
+                "user_id": user_id,
+                "facts_extracted": 0,
+                "message_length": len(message)
+            }
         
     except Exception as e:
         logger.error(f"Knowledge extraction failed for user {user_id}: {e}")
