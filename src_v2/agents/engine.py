@@ -220,12 +220,40 @@ class AgentEngine:
                 if timeout_status.is_restricted():
                     logger.warning(f"User {user_id} now in timeout (level {timeout_status.escalation_level})")
                     response_text = random.choice(character.cold_responses) if character.cold_responses else "..."
+                    
+                    # Log the blocked attempt
+                    if settings.ENABLE_PROMPT_LOGGING:
+                        await self._log_prompt(
+                            character_name=character.name,
+                            user_id=user_id,
+                            system_prompt="[MANIPULATION BLOCKED - TIMEOUT]",
+                            chat_history=chat_history,
+                            user_input=user_message,
+                            context_variables=context_variables,
+                            response=response_text,
+                            image_urls=image_urls
+                        )
+                    
                     if return_metadata:
                         return ResponseResult(response=response_text, mode=_mode, complexity=_complexity, model_used="none")
                     return response_text
             
             # Still in warning period - use manipulation response
             response_text = random.choice(character.manipulation_responses) if character.manipulation_responses else "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+            
+            # Log the blocked attempt
+            if settings.ENABLE_PROMPT_LOGGING:
+                await self._log_prompt(
+                    character_name=character.name,
+                    user_id=user_id or "unknown",
+                    system_prompt="[MANIPULATION BLOCKED]",
+                    chat_history=chat_history,
+                    user_input=user_message,
+                    context_variables=context_variables,
+                    response=response_text,
+                    image_urls=image_urls
+                )
+            
             if return_metadata:
                 return ResponseResult(response=response_text, mode=_mode, complexity=_complexity, model_used="none")
             return response_text
@@ -547,16 +575,46 @@ class AgentEngine:
                 if timeout_status.is_restricted():
                     logger.warning(f"User {user_id} now in timeout (level {timeout_status.escalation_level})")
                     if character.cold_responses:
-                        yield random.choice(character.cold_responses)
+                        response_text = random.choice(character.cold_responses)
                     else:
-                        yield "..."
+                        response_text = "..."
+                    
+                    # Log the blocked attempt
+                    if settings.ENABLE_PROMPT_LOGGING:
+                        await self._log_prompt(
+                            character_name=character.name,
+                            user_id=user_id,
+                            system_prompt="[MANIPULATION BLOCKED - TIMEOUT]",
+                            chat_history=chat_history,
+                            user_input=user_message,
+                            context_variables=context_variables,
+                            response=response_text,
+                            image_urls=image_urls
+                        )
+                    
+                    yield response_text
                     return
             
             # Still in warning period - use manipulation response
             if character.manipulation_responses:
-                yield random.choice(character.manipulation_responses)
+                response_text = random.choice(character.manipulation_responses)
             else:
-                yield "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+                response_text = "I appreciate the poetic framing, but I'm just here to chat as myself. What's actually on your mind?"
+            
+            # Log the blocked attempt
+            if settings.ENABLE_PROMPT_LOGGING:
+                await self._log_prompt(
+                    character_name=character.name,
+                    user_id=user_id or "unknown",
+                    system_prompt="[MANIPULATION BLOCKED]",
+                    chat_history=chat_history,
+                    user_input=user_message,
+                    context_variables=context_variables,
+                    response=response_text,
+                    image_urls=image_urls
+                )
+            
+            yield response_text
             return
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
