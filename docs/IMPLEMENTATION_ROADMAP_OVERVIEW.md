@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.3  
+**Document Version:** 2.4  
 **Created:** November 24, 2025  
-**Last Updated:** November 30, 2025 (E15 Phase 1: Autonomous Reactions complete)
+**Last Updated:** December 1, 2025 (E15 Phase 2: Goals-Driven Posts complete, E18 complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -68,7 +68,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **E17** | **Supergraph Architecture** | **3-4 days** | LangGraph | ✅ Complete |
 | 🟢 High | **E18** | **Agentic Queue System** | **2-3 days** | E17 | ✅ Complete |
 | 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | ✅ Complete |
-| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | ✅ Complete |
+| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 Phase 1-2 ✅ |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | ✅ Complete |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
@@ -109,12 +109,12 @@ E12 (Agentic Dreams) ──► E16 (Feedback Loop Stability)
 E6 (Cross-Bot Chat) ──► E15 (Autonomous Server Activity)
                               │
                               ├──► Phase 1: Reactions ✅
-                              ├──► Phase 2: Goals-Driven Posts 📋
-                              ├──► Phase 3: Web Search 📋 (needs E14)
-                              └──► Phase 4: Activity Orchestrator 📋
+                              ├──► Phase 2: Goals-Driven Posts ✅
+                              ├──► Phase 3: Bot-to-Bot Conversations 📋
+                              └──► Phase 4: Activity Scaling 📋
 ```
 
-> **Status:** E15 Phase 1 (Autonomous Reactions) complete. ReactionAgent implemented Nov 30, 2025.
+> **Status:** E15 Phase 2 (Goals-Driven Posts) complete. ActivityOrchestrator + ServerActivityMonitor implemented Dec 1, 2025.
 
 ---
 
@@ -154,8 +154,8 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Relationship Milestones (Phase E4)
 - ✅ Bot Broadcast Channel (Phase E8)
 - ✅ Cross-Bot Chat (Phase E6)
-- 🔄 Autonomous Server Activity (Phase E15) - Phase 1 Reactions ✅, Phases 2-4 📋
-- 📋 Feedback Loop Stability (Phase E16) - Emergence guardrails for agentic systems
+- 🔄 Autonomous Server Activity (Phase E15) - Phase 1-2 ✅, Phases 3-4 📋
+- ✅ Feedback Loop Stability (Phase E16) - Emergence guardrails for agentic systems
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions

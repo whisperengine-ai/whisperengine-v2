@@ -167,11 +167,38 @@ ENABLE_AUTONOMOUS_REACTIONS=true
 
 ---
 
-## Phase 2: Goals-Driven Posting (NEW)
+## Phase 2: Goals-Driven Posting (✅ IMPLEMENTED)
+
+**Status:** Core implementation complete. ActivityOrchestrator + ServerActivityMonitor + PostingAgent implemented Dec 1, 2025.
 
 **Goal:** Bots post content driven by their `goals.yaml` and `core.yaml`, enhanced with current events from web search.
 
-### 2.1 GoalDrivenTopicSelector
+### 2.1 Implementation Summary
+
+**Files Created/Modified:**
+- `src_v2/discord/orchestrator.py` - ActivityOrchestrator (background loop, activity scaling)
+- `src_v2/intelligence/activity.py` - ServerActivityMonitor (Redis-backed message velocity)
+- `src_v2/agents/posting_agent.py` - PostingAgent + GoalDrivenTopicSelector
+- `src_v2/broadcast/manager.py` - Added `target_channel_id` for guild-specific posting
+- `src_v2/config/settings.py` - Added `ENABLE_AUTONOMOUS_POSTING` flag
+
+**How It Works:**
+1. `ServerActivityMonitor` tracks messages per minute per guild using Redis sorted sets
+2. `ActivityOrchestrator` checks every 15 minutes (+jitter) for quiet guilds
+3. If guild is "dead quiet" (<0.1 msg/min): 70% chance to trigger post
+4. If guild is "quiet" (<0.5 msg/min): 30% chance to trigger post
+5. `PostingAgent` selects topic from character's `goals.yaml` (weighted by priority)
+6. Optional web search for "expertise" or "current_events" categories
+7. LLM generates casual 1-3 sentence post in character voice
+8. Post is queued via `BroadcastManager` and delivered to the guild's best channel
+
+### 2.2 Enable
+
+```bash
+ENABLE_AUTONOMOUS_POSTING=true
+```
+
+### 2.3 GoalDrivenTopicSelector
 
 Leverages existing character configuration to select what to post about:
 
@@ -310,9 +337,51 @@ RULES:
 
 ---
 
-## Phase 3: Current Events Commentary
+## Phase 3: Bot-to-Bot Conversations (📋 PLANNED)
 
-**Dependency:** Requires WEB_SEARCH_TOOL.md to be implemented first.
+**Status:** Not started. Depends on Phase 2 (complete).
+
+**Goal:** When the server is quiet, bots can start conversations with each other in public channels.
+
+### 3.1 ConversationAgent (TODO)
+
+```
+class ConversationAgent:
+    // Manages multi-turn bot-to-bot conversations
+    
+    async function start_conversation(initiator, target_bot, channel):
+        // 1. Check if both bots are available
+        // 2. Select shared topic from overlapping interests
+        // 3. Generate opening message
+        // 4. Tag target bot to trigger cross-bot response
+        
+    async function continue_conversation(message):
+        // Turn-taking logic
+        // Natural ending after 3-5 turns
+```
+
+### 3.2 Implementation Plan
+
+1. Extend `ActivityOrchestrator` to detect when multiple bots are in a quiet guild
+2. Create `ConversationAgent` to select topic and manage turns
+3. Leverage existing cross-bot chat (E6) for responses
+4. Add conversation length limits and natural endings
+
+---
+
+## Phase 4: Activity Scaling (📋 PLANNED)
+
+**Status:** Partially implemented via `ActivityOrchestrator`. Full scaling TBD.
+
+**Goal:** Fine-tune the inverse scaling between human activity and bot behavior.
+
+---
+
+## Phase 5 (Legacy): Current Events Commentary
+
+**Note:** This was originally Phase 3 but is now lower priority since Phase 2 already includes web search for "expertise" and "current_events" goal categories.
+
+**Dependency:** Requires WEB_SEARCH_TOOL.md (✅ complete).
 
 ### 3.1 Topic Categories with Web Search
 

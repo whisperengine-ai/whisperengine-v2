@@ -398,8 +398,8 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - ✅ Background insight agent (reasoning traces, epiphanies, pattern learning)
 
 **Next phases** (from IMPLEMENTATION_ROADMAP_OVERVIEW.md):
-1. Grafana dashboards (InfluxDB visualization)
-2. Image generation (DALL-E 3 / Stable Diffusion)
+1. E15 Phase 3: Bot-to-Bot Conversations
+2. E15 Phase 4: Full Activity Scaling
 3. Video processing (clip analysis)
 4. Web dashboard (admin UI)
 
@@ -417,6 +417,6 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 ---
 
-**Version**: 2.4 (Nov 30, 2025 - Research journal & emergence philosophy)  
+**Version**: 2.5 (Dec 1, 2025 - E15 Phase 2 complete, E18 complete)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`
