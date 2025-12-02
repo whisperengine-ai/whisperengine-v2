@@ -248,6 +248,7 @@ class Settings(BaseSettings):
 
     # --- Cross-Bot Chat (Phase E6) ---
     ENABLE_CROSS_BOT_CHAT: bool = True  # Allow bots to respond to each other
+    ENABLE_CROSS_BOT_MEMORY: bool = False  # Allow bots to remember past conversations with each other (Phase E6.1)
     CROSS_BOT_MAX_CHAIN: int = 3  # Max replies in a bot-to-bot chain before stopping
     CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
     CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)

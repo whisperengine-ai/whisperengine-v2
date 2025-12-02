@@ -1181,6 +1181,30 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 except Exception as e:
                     logger.debug(f"Failed to get channel history for cross-bot: {e}")
                 
+                # Retrieve past conversations with this bot if enabled
+                formatted_memories = ""
+                if settings.ENABLE_CROSS_BOT_MEMORY:
+                    try:
+                        # Use the bot's Discord ID as the user_id for memory search
+                        cross_bot_user_id = str(message.author.id)
+                        cross_bot_memories = await memory_manager.search_memories(
+                            query=message.content,
+                            user_id=cross_bot_user_id,
+                            limit=5
+                        )
+                        
+                        if cross_bot_memories:
+                            # Format memories for context
+                            def format_mem(m):
+                                rel = m.get('relative_time', 'unknown time')
+                                content = m.get('content', '')
+                                return f"- {content} ({rel})"
+                            
+                            formatted_memories = "\n".join([format_mem(m) for m in cross_bot_memories])
+                            logger.debug(f"Retrieved {len(cross_bot_memories)} memories for cross-bot chat with {other_bot_name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to retrieve cross-bot memories: {e}")
+
                 # Build a special system prompt addition for cross-bot interaction
                 cross_bot_context = f"""
 [CROSS-BOT CONVERSATION]
@@ -1191,6 +1215,10 @@ This is a playful interaction between characters. Keep your response:
 - Natural and conversational
 - Avoid being repetitive or forcing the conversation
 {original_context}
+
+[PAST INTERACTIONS WITH {other_bot_name.upper()}]
+{formatted_memories if formatted_memories else "No previous conversations recalled."}
+
 {other_bot_name.title()} said: "{message.content}"
 
 Recent channel context:
