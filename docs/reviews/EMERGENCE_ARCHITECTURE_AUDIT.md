@@ -249,6 +249,8 @@ If the character can notice it, we don't need to build it.
 | Task | Date | Notes |
 |------|------|-------|
 | Fix duplicate `ENABLE_AUTONOMOUS_REACTIONS` flag | Dec 3, 2025 | Consolidated to one location, added cross-reference comment |
+| Delete `audit_manipulation.py` | Dec 3, 2025 | One-off script, not needed |
+| Move root utility scripts to `scripts/` | Dec 3, 2025 | Moved 15 scripts: `check_*.py`, `trigger_*.py`, `test_*.py`, etc. |
 
 ### 🔲 Pending (Low Priority)
 
