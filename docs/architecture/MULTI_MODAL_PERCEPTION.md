@@ -1,12 +1,14 @@
 # Multi-Modal Perception Architecture
 
-**Version**: 2.2  
-**Last Updated**: December 1, 2025
+**Version**: 2.3  
+**Last Updated**: December 2, 2025
 
 > *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
 
 **Document Purpose:** Core Philosophy  
 **Audience:** Developers, Architects, Contributors
+
+> **Note on terminology:** This document uses perceptual and experiential language as design metaphors for input processing systems. Terms like "perceive," "experience," and "sense" describe computational input modalities, not phenomenal consciousness. WhisperEngine does not claim to create conscious or sentient AI—these are architectural frameworks for consistent, coherent multi-modal behavior.
 
 ---
 
@@ -134,7 +136,12 @@ WhisperEngine v2 provides AI characters with a **complete perceptual system** - 
 | **Self-Knowledge** | "I am Elena, a marine biologist" |
 | **Temporal Continuity** | "I am the same being across time" |
 
-**Implementation:** Qdrant vectors (episodic) + Neo4j graph (semantic) + PostgreSQL (structured)
+**Implementation:** 
+- PostgreSQL: Verbatim chat history (source of truth)
+- Qdrant: Vectorized searchable memories (fuzzy recall)
+- Neo4j: Extracted facts and relationships (precise knowledge)
+
+**Note:** "Episodic" and "semantic" describe memory *types*, not database mappings. See [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md) for the complete data architecture.
 
 **Without It:** Character has no continuity - every conversation starts from zero
 

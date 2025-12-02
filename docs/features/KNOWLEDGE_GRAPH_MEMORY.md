@@ -9,9 +9,11 @@
 The Knowledge Graph is part of the **Memory modality** (🧠) - specifically the **semantic memory** component. While vector search provides fuzzy episodic recall ("we talked about this"), the graph provides precise factual knowledge ("your dog is named Luna").
 
 | Memory Type | Implementation | Human Analog |
-|-------------|----------------|--------------|
-| Episodic | Qdrant vectors | "I remember that conversation" |
-| Semantic | Neo4j graph | "I know this fact about you" |
+|-------------|----------------|---------------|
+| Episodic | Qdrant vectors + PostgreSQL history | "I remember that conversation" |
+| Semantic | Neo4j graph + Qdrant summaries | "I know this fact about you" |
+
+**Note:** These are cognitive *types* of memory, not strict database mappings. PostgreSQL stores verbatim chat history (raw episodic record), Qdrant stores searchable vectorized memories (both types), and Neo4j stores extracted facts (semantic). See [GRAPH_SYSTEMS_DESIGN.md](../architecture/GRAPH_SYSTEMS_DESIGN.md) for details.
 
 The Knowledge Graph also forms the foundation for the **Universe modality** (🌌) - social relationships are stored as graph edges, enabling characters to understand their social context.
 

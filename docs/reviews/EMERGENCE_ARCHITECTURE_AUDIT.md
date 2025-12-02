@@ -1,9 +1,9 @@
-# Emergence Architecture Audit
+# Emergent Behavior Architecture Audit
 
 **Date:** December 3, 2025  
 **Auditor:** Claude (via Copilot) + Human Review  
-**Purpose:** Identify over-engineering that may interfere with emergent behavior  
-**Philosophy:** Less code, more emergence. Prefer behavior over taxonomy.
+**Purpose:** Identify over-engineering that may interfere with emergent behavior patterns  
+**Philosophy:** Less code, more emergent behavior. Prefer behavior over taxonomy.
 
 ---
 

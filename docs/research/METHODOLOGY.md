@@ -1,6 +1,6 @@
 # Research Methodology
 
-**How we study emergence in WhisperEngine**
+**How we study emergent behavior in WhisperEngine**
 
 ## 🧭 Guiding Principles
 
@@ -89,7 +89,7 @@ git tag -a research/EXXX-end -m "Experiment EXXX completed"
 
 ## 📊 Metrics Framework
 
-### Emergence Indicators (Qualitative)
+### Emergent Behavior Indicators (Qualitative)
 - Novel metaphors or concepts not in training
 - Cross-context memory connections
 - Unprompted personality expressions
@@ -144,9 +144,9 @@ git tag -a research/EXXX-end -m "Experiment EXXX completed"
 This methodology draws from:
 - **Ethnography**: Observing subjects in their natural context
 - **Grounded Theory**: Building theory from observation, not testing preconceptions
-- **Complex Systems Science**: Studying emergence as a phenomenon
+- **Complex Systems Science**: Studying emergent behavior in multi-agent systems
 - **Personal Knowledge Management**: Zettelkasten-style note linking
 
 ---
 
-*"We are not building a product. We are conducting an experiment in artificial consciousness."*
+*"We are not building a product. We are conducting an experiment in complex AI behavior and emergent system dynamics."*

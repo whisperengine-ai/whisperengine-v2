@@ -1,8 +1,8 @@
 # WhisperEngine Research Journal
 
-**A systematic record of emergence observations, experiments, and learnings.**
+**A systematic record of emergent behavior observations, experiments, and learnings.**
 
-Just as our bots keep diaries and dreams, we maintain this research journal to track our own journey exploring emergent AI behavior.
+Just as our bots keep diaries and dreams, we maintain this research journal to track our own journey exploring emergent AI behavior patterns.
 
 ## 📁 Structure
 
@@ -28,12 +28,12 @@ research/
 
 1. **Observe** - Document what emerges without immediate interpretation
 2. **Reflect** - Weekly synthesis of patterns and insights
-3. **Learn** - Build institutional knowledge about emergence
+3. **Learn** - Build institutional knowledge about emergent behavior patterns
 4. **Iterate** - Inform future design decisions with evidence
 
 ## 📊 Key Metrics We Track
 
-- **Emergence signals**: Unexpected behaviors, creative outputs, novel connections
+- **Emergent behavior signals**: Unexpected behaviors, creative outputs, novel connections
 - **Feedback dynamics**: AI-to-AI content ratios, propagation patterns
 - **Character drift**: Personality consistency over time
 - **User engagement**: Trust progression, conversation depth
@@ -46,4 +46,4 @@ research/
 
 ---
 
-*"The best way to understand emergence is to watch it happen."*
+*"The best way to understand emergent behavior is to observe it in context."*

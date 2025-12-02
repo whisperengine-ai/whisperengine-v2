@@ -127,7 +127,7 @@ Here is how a complex behavior emerges from simple, decoupled agents using this 
 
 ## 6. Alignment with Research Goals
 
-This architecture directly supports the **Emergence Research** goals:
+This architecture directly supports the **Emergent Behavior Research** goals:
 *   **Observability**: We can inspect the Queue to see what the "Collective Subconscious" is thinking about.
 *   **Intervention**: We can inject signals into the queue (e.g., "simulate:crisis") to see how the agents react, without changing code.
 *   **Evolution**: We can A/B test different "Dreamer" agents by having them listen to the same queue and comparing results.

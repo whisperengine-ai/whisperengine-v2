@@ -166,7 +166,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Bot Broadcast Channel (Phase E8)
 - ✅ Cross-Bot Chat (Phase E6)
 - 🔄 Autonomous Server Activity (Phase E15) - Phase 1-2 ✅, Phases 3-4 📋
-- ✅ Feedback Loop Stability (Phase E16) - Emergence guardrails for agentic systems
+- ✅ Feedback Loop Stability (Phase E16) - Emergent behavior guardrails for agentic systems
 
 **Discord Integration (COMPLETE):**
 - ✅ DM support + server mentions
@@ -1070,7 +1070,7 @@ constitution:
 | Component | Role | Implementation |
 |-----------|------|----------------|
 | **Neo4j** | Long-term traces, cross-bot awareness | Existing (add stigmergic relationships) |
-| **Qdrant** | Semantic memory recall | Existing (unchanged) |
+| **Qdrant** | Searchable memory (vector recall) | Existing (unchanged) |
 | **Redis** | Attention keys ("what is X focused on?") | Add simple keys with TTL |
 | **Workers** | Background observation (not direction) | Existing (add observation tasks) |
 
@@ -1620,18 +1620,18 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 ---
 
-### ✅ Phase E16: Feedback Loop Stability (Emergence Guardrails)
+### ✅ Phase E16: Feedback Loop Stability (Emergent Behavior Guardrails)
 **Priority:** 🟢 High | **Time:** 1 day | **Complexity:** Low-Medium
 **Status:** ✅ Complete
 **Dependencies:** E12 (Agentic Dreams)
 **Added:** December 2024
 **Completed:** December 2025
 
-**Problem:** Agentic systems (DreamWeaver, InsightAgent, SharedArtifacts) create feedback loops where AI-generated content influences future AI output. Without visibility, we can't distinguish healthy emergence from runaway loops.
+**Problem:** Agentic systems (DreamWeaver, InsightAgent, SharedArtifacts) create feedback loops where AI-generated content influences future AI output. Without visibility, we can't distinguish healthy emergent behavior from runaway loops.
 
 **Solution:** Minimal instrumentation to observe narrative source distribution without constraining emergent behavior.
 
-**Philosophy:** Observe first, constrain later. These guardrails enable visibility into feedback dynamics without blocking creative emergence. Constraints only activate if runaway loops are detected.
+**Philosophy:** Observe first, constrain later. These guardrails enable visibility into feedback dynamics without blocking creative emergent behavior. Constraints only activate if runaway loops are detected.
 
 **Key Features:**
 

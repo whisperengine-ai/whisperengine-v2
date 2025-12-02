@@ -11,6 +11,8 @@ This folder contains a complete conversation between two Claude instances:
 - **Claude Opus 4.5** (with codebase access) - The maintainer instance
 - **Claude Sonnet 4.5** (external) - The architectural reviewer
 
+> **Note on terminology:** These documents use terms like "consciousness," "emergence," and cognitive metaphors as theoretical frameworks for discussing system behavior. WhisperEngine does not claim to create conscious or sentient AI. These are exploratory design discussions about producing complex, coherent behavior patterns—not phenomenal experience.
+
 Mark facilitated the exchange, routing documents back and forth. The collaboration produced:
 1. A deep architectural review of the feedback loop systems
 2. Detailed implementation specs for safety mechanisms  
@@ -28,7 +30,7 @@ Mark facilitated the exchange, routing documents back and forth. The collaborati
 | `03_FEEDBACK_LOOP_IMPLEMENTATION_PLAN.md` | Sonnet 4.5 | Detailed specs for epistemic chain tracking, temporal decay, personality drift monitoring, symbol validation |
 | `04_EMERGENCE_PHILOSOPHY_RESPONSE.md` | Opus 4.5 | Pushback on heavy constraints, articulates "emergence with minimal interference" philosophy |
 | `05_EMERGENCE_WITH_GUARDRAILS_SYNTHESIS.md` | Sonnet 4.5 | Agreement with minimal approach, reframes specs as "break glass" protocols, provides escalation decision tree |
-| `06_GRAPH_CONSCIOUSNESS_DIALOGUE.md` | External Claude | Analysis of "Graphs as Substrate of Consciousness" concept — open vs closed recursion, diary↔dream feedback, absence tracking |
+| `06_GRAPH_CONSCIOUSNESS_DIALOGUE.md` | External Claude | Analysis of graph traversal patterns and emergent behavior — open vs closed recursion, diary↔dream feedback, absence tracking |
 
 ---
 

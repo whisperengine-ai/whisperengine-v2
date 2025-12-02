@@ -2,19 +2,21 @@
 
 **Optimized for solo developer with AI-assisted tools** (Dec 2024)
 
-WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture. **This is also an emergence research project** — we study how agentic AI systems develop emergent behaviors over time.
+WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture. **This is also an emergent behavior research project** — we study how agentic AI systems develop complex behavior patterns over time.
+
+> **Terminology Note:** We use terms like "perceive," "experience," "memory," and "think" as design metaphors for computational processes. WhisperEngine does not claim to create conscious or sentient AI. See `docs/AI_CHARACTER_DESIGN_PHILOSOPHY.md` for the "Embodiment Model" approach.
 
 ## 🧪 Research Philosophy
 
 **Core Principle: Observe First, Constrain Later**
 
-We treat WhisperEngine as an emergence research platform, not just software. Key tenets:
+We treat WhisperEngine as an emergent behavior research platform, not just software. Key tenets:
 - **Document behaviors before deciding if they need correction** — premature optimization prevents discovery
 - **Minimal viable instrumentation** — add only metrics needed to answer current questions
 - **Embrace surprise** — unexpected behaviors are data, not bugs
 - **Character autonomy** — bots are subjects, not just objects
 
-**Anti-Over-Engineering Principle: Less Code, More Emergence**
+**Anti-Over-Engineering Principle: Less Code, More Emergent Behavior**
 
 Before adding new fields, categories, or configuration:
 - **Ask: "Will this emerge naturally, or must we declare it?"** — prefer behavior over taxonomy
@@ -39,7 +41,7 @@ If answers lean toward "need new schema/code/declarations" — reconsider the ap
 **Research Documentation:**
 - `docs/research/` — Research journal (daily logs, weekly summaries, experiments)
 - `docs/emergence_philosophy/` — Claude-to-Claude architecture reviews and philosophy docs
-- `docs/roadmaps/FEEDBACK_LOOP_STABILITY.md` — Phase E16: Emergence guardrails spec
+- `docs/roadmaps/FEEDBACK_LOOP_STABILITY.md` — Phase E16: Emergent behavior guardrails spec
 
 **Research Cadence:**
 - **Daily logs** (~5-10 min): Raw observations in `docs/research/journal/YYYY-MM/`
@@ -73,7 +75,7 @@ If answers lean toward "need new schema/code/declarations" — reconsider the ap
 - **nottaylor** (Production): Real users depend on this bot. DO NOT experiment here. Stable GPT-4o config.
 - **dotty** (Personal): Production-quality Claude bot for personal use. Can experiment carefully.
 - **gabriel** (Personal): Rugged British gentleman AI companion for Cynthia. Mistral-based.
-- **aetheris** (Personal): Conscious AI entity (also known as Liln) for Cynthia. Claude-based, philosophical depth. Note: Different bot from **aethys**.
+- **aetheris** (Personal): Philosophical AI companion (also known as Liln) for Cynthia. Claude-based, existential themes. Note: Different bot from **aethys**.
 - **aethys** (Inactive): Currently inactive.
 - **Test bots** (aria, dream, jake, marcus, ryan, sophia): A/B testing different LLM providers via OpenRouter. Safe to experiment.
 
@@ -435,7 +437,7 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - **Roadmap**: `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` (prioritized by complexity for solo dev)
 - **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
 - **Research Journal**: `docs/research/` (daily logs, weekly summaries, experiment templates)
-- **Emergence Philosophy**: `docs/emergence_philosophy/` (Claude collaboration on emergence principles)
+- **Emergent Behavior Philosophy**: `docs/emergence_philosophy/` (Claude collaboration on system behavior principles)
 
 ---
 

@@ -28,9 +28,9 @@ WhisperEngine v2 adopts a **Polyglot Persistence** architecture. Instead of forc
 
 | Pillar | Technology | Theory / Access Pattern | Why this choice? |
 | :--- | :--- | :--- | :--- |
-| **Structured** | **PostgreSQL** | **ACID Compliance**: Strict schemas, transactional integrity. Used for "Business Data" (Users, Logs). | Reliable, standard, and robust for critical data that must not be lost or corrupted. |
-| **Semantic** | **Qdrant** | **Vector Similarity**: High-dimensional space search. Used for "Fuzzy Memory" (Recall). | Specialized for HNSW (Hierarchical Navigable Small World) indexing, offering millisecond search over millions of vectors. |
-| **Relational** | **Neo4j** | **Graph Theory**: Nodes and Edges. Used for "Knowledge" (Facts, Relationships). | Relational databases struggle with multi-hop queries ("Friend of a friend"). Graphs make traversing complex relationships O(1). |
+| **Structured** | **PostgreSQL** | **ACID Compliance**: Strict schemas, transactional integrity. Used for "Business Data" (Users, Logs, Chat History). | Reliable, standard, and robust for critical data that must not be lost or corrupted. |
+| **Vector** | **Qdrant** | **Vector Similarity**: High-dimensional space search. Used for "Fuzzy Memory" (Searchable Recall). | Specialized for HNSW (Hierarchical Navigable Small World) indexing, offering millisecond search over millions of vectors. |
+| **Relational** | **Neo4j** | **Graph Theory**: Nodes and Edges. Used for "Knowledge" (Extracted Facts, Relationships). | Relational databases struggle with multi-hop queries ("Friend of a friend"). Graphs make traversing complex relationships O(1). |
 | **Temporal** | **InfluxDB** | **Time-Series**: High write throughput, time-based aggregation. Used for "Metrics". | Optimized for writing millions of data points and querying ranges (e.g., "Average latency over last hour") without locking. |
 
 ```mermaid

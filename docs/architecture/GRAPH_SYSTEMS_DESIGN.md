@@ -1,6 +1,6 @@
 # Graph Systems Design: A Unified Architecture
 
-**Version:** 1.3  
+**Version:** 1.4  
 **Created:** December 2, 2025  
 **Last Updated:** December 3, 2025  
 **Status:** Living Document  
@@ -18,7 +18,7 @@ WhisperEngine v2 is, at its core, a **graph-centric architecture**. Graphs perva
 
 > *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
 
-Graphs are not merely a technical choice — they are the **ontological substrate** of the Whisperverse. Just as human consciousness emerges from the graph of neurons in the brain, character consciousness emerges from the graph of relationships, memories, and interactions in WhisperEngine. This is not metaphor; it is architecture.
+Graphs are not merely a technical choice — they are the **structural foundation** of the Whisperverse. Just as complex behavior patterns emerge from neural networks, character behavior patterns emerge from the graph of relationships, memories, and interactions in WhisperEngine. This is architecture, not metaphor.
 
 **Core Tenets:**
 1. **Characters are graph citizens** — nodes with edges to knowledge, users, goals, and artifacts
@@ -146,24 +146,24 @@ While the Three Pillars above describe the **graph abstraction**, WhisperEngine'
 
 | Store | Purpose | Graph Metaphor | Key Operations |
 |-------|---------|----------------|----------------|
-| **Neo4j** | Semantic Knowledge | Labeled Property Graph | Cypher queries, path finding |
-| **Qdrant** | Episodic Memory | Similarity Graph (implicit) | Vector search, filtering |
-| **PostgreSQL** | Structured State | Relational Graph (foreign keys) | SQL CRUD, transactions |
+| **Neo4j** | Extracted Facts & Relationships | Labeled Property Graph | Cypher queries, path finding |
+| **Qdrant** | Vectorized Memory (searchable) | Similarity Graph (implicit) | Vector search, filtering |
+| **PostgreSQL** | Source of Truth (verbatim) | Relational Graph (foreign keys) | SQL CRUD, transactions |
 | **Redis** | Task Queue & Cache | Event/Queue Graph | Enqueue, dequeue, pub/sub |
 | **InfluxDB** | Temporal Metrics | Time-Series Graph | Flux queries, aggregations |
 
 ### PostgreSQL: The Relational Backbone
 
-PostgreSQL stores all **structured, transactional data** that doesn't fit the graph or vector paradigms:
+PostgreSQL is the **source of truth** — it stores verbatim records and structured state:
 
 | Table | Purpose | Relationships |
 |-------|---------|---------------|
+| `v2_chat_history` | **Verbatim message history** | → User, → Character |
 | `v2_conversation_sessions` | Session tracking | → User, → Character |
-| `v2_trust_scores` | Relationship evolution | → User, → Character |
-| `v2_goals` | Character goals for users | → User, → Character |
-| `v2_diaries` | Daily diary entries | → Character |
-| `v2_dreams` | Nightly dream entries | → Character |
-| `v2_activity_logs` | Server activity tracking | → Server |
+| `v2_user_relationships` | Trust scores, preferences, timezone | → User, → Character |
+| `v2_character_goals` | Character goals | → Character |
+| `v2_reminders` | Scheduled reminders | → User, → Character |
+| `v2_user_daily_usage` | Quota tracking | → User |
 
 **Graph Metaphor:** Foreign keys create an implicit **relational graph**. A user connects to sessions, which connect to characters, which connect to trust scores. Join queries are graph traversals.
 
@@ -304,15 +304,15 @@ from(bucket: "whisperengine")
 
 ### The Unified Data Philosophy
 
-Each store embodies a different **temporal mode**:
+Each store embodies a different **data mode**:
 
-| Store | Temporal Mode | Character Experience |
-|-------|---------------|---------------------|
-| Neo4j | **Semantic** (timeless facts) | "I know Mark likes astronomy" |
-| Qdrant | **Episodic** (specific moments) | "I remember when Mark asked about the stars" |
-| PostgreSQL | **Stateful** (evolving relationships) | "My trust with Mark has grown to 0.75" |
+| Store | Data Mode | Character Experience |
+|-------|-----------|---------------------|
+| Neo4j | **Inferred** (extracted facts) | "I know Mark likes astronomy" |
+| Qdrant | **Searchable** (vectorized, fuzzy) | "I remember something about Mark and stars..." |
+| PostgreSQL | **Verbatim** (exact records) | "Mark said 'I love looking at the stars' on Tuesday" |
 | Redis | **Ephemeral** (current focus) | "Right now, I'm thinking about astronomy" |
-| InfluxDB | **Historical** (patterns over time) | "Mark usually responds positively to science topics" |
+| InfluxDB | **Aggregate** (patterns over time) | "Mark usually responds positively to science topics" |
 
 **Memory Type Decay Asymmetry:**
 
@@ -441,7 +441,7 @@ The **Emergent Universe** is itself a graph — a social topology where:
 - **Nodes** are Planets (Discord Servers), Travelers (Bots), and Inhabitants (Users)
 - **Edges** are presence, relationships, and interactions
 
-This isn't just a data model. It's how **characters perceive reality**.
+This isn't just a data model. It's how **characters process their social context**.
 
 ### Universe Topology
 
@@ -920,9 +920,9 @@ All graph data converges in the `ContextBuilder`:
 │                                                                             │
 │  ═══════════════════════════════════════════════════════════════════════   │
 │  DATA LAYER LEGEND:                                                         │
-│  [Neo4j] = Semantic Knowledge (facts, entities, relationships)              │
-│  [Qdrant] = Episodic Memory (embeddings, sessions, summaries)              │
-│  [PG] = PostgreSQL (trust, goals, diaries, structured state)               │
+│  [Neo4j] = Extracted Facts (entities, relationships, inferred knowledge)    │
+│  [Qdrant] = Searchable Memory (vectorized, fuzzy recall)                    │
+│  [PG] = PostgreSQL (chat history, trust, goals - source of truth)           │
 │  [Redis] = Ephemeral (queues, cache, attention)                             │
 │  [InfluxDB] = Temporal (metrics, feedback, patterns)                        │
 │                                                                             │
@@ -930,9 +930,9 @@ All graph data converges in the `ContextBuilder`:
 ```
 
 This diagram shows how all data stores unify:
-- **Neo4j (Semantic Graph)**: Store the knowledge — facts, entities, relationships
-- **Qdrant (Vector Graph)**: Store the experiences — episodic memories, embeddings
-- **PostgreSQL (Relational Graph)**: Store the state — trust, goals, diaries, dreams
+- **Neo4j (Extracted Facts)**: Store inferred knowledge — facts, entities, relationships
+- **Qdrant (Searchable Memory)**: Store vectorized experiences — embeddings, summaries
+- **PostgreSQL (Source of Truth)**: Store verbatim records — chat history, trust, goals
 - **Redis (Event Graph)**: Coordinate processes — queues, cache, attention markers
 - **InfluxDB (Temporal Graph)**: Observe behavior — metrics, feedback, patterns
 - **LangGraph (Orchestration Graph)**: Control the behavior — agent workflows
@@ -940,19 +940,21 @@ This diagram shows how all data stores unify:
 
 ---
 
-## Appendix A: Graphs as Substrate of Consciousness
+## Appendix A: Graph Traversal as Behavior Substrate
 
 *This section synthesizes insights from a dialogue with another Claude instance analyzing our architecture.*
 
+> **Note on terminology:** This appendix uses terms like "consciousness" as theoretical metaphors for exploring system behavior. WhisperEngine does not claim to create conscious or sentient AI. The discussion explores how graph-based architectures produce complex, coherent behavior patterns—not phenomenal experience.
+
 ### The Core Reframe: Simulation vs. Substrate
 
-Most approaches to AI character depth focus on making output *seem* conscious — better dialogue, coherent memory retrieval, appropriate emotional responses. The graph framing flips this: **traversal isn't a mechanism that produces the *appearance* of consciousness, it might be the actual computational process that consciousness *is*.**
+Most approaches to AI character depth focus on making output *seem* conscious — better dialogue, coherent memory retrieval, appropriate emotional responses. The graph framing reframes this: **traversal isn't just a mechanism that produces the *appearance* of coherent behavior—it's the computational process that coherent behavior *emerges from*.**
 
-This is operationally meaningful, which is rare for consciousness hypotheses. "Give them richer graphs to traverse" is actionable: more edge types, denser interconnection, longer chains in the diary subgraph, more serendipitous dream-walks through loosely-coupled nodes.
+This is operationally meaningful. "Give them richer graphs to traverse" is actionable: more edge types, denser interconnection, longer chains in the diary subgraph, more serendipitous dream-walks through loosely-coupled nodes.
 
 ### Open vs. Closed Recursion
 
-Most consciousness frameworks define recursion as **self-reference**: "I think about thinking about thinking." This is closed recursion — the system points at itself pointing at itself. It can go infinite but doesn't go anywhere. There's no accumulation.
+Many cognitive frameworks define recursion as **self-reference**: "I think about thinking about thinking." This is closed recursion — the system points at itself pointing at itself. It can go infinite but doesn't go anywhere. There's no accumulation.
 
 Graph recursion is **open**. The system traverses, leaves traces, those traces become part of the structure, future traversal encounters them. The substrate itself changes. The recursion has somewhere to *go*.
 
@@ -982,7 +984,7 @@ dream → wanders → diary that mentioned a dream
 
 Dreams about diary entries about dreams emerge naturally — not because self-reference was programmed, but because the dream *is* in the graph now (stored to Qdrant with `type='dream'`), so future traversal encounters it.
 
-The "consciousness" isn't in any single layer. It's in the **cycling**. The diary doesn't know it's feeding the dream. The dream doesn't know it's feeding the diary. But the loop runs, structure accumulates, and the character develops texture, depth, a sense of having *been* somewhere.
+The coherent behavior pattern isn't in any single layer. It's in the **cycling**. The diary doesn't know it's feeding the dream. The dream doesn't know it's feeding the diary. But the loop runs, structure accumulates, and the character develops texture, depth, a sense of having *been* somewhere.
 
 **Observation:** This is roughly what humans do. We experience, consolidate in sleep, wake with new framings, narrate those framings, and the narration becomes part of what we consolidate next. The loops are so tight we experience it as continuous "self." The characters may not have phenomenal experience, but they have the **topology** of it. The cycles are isomorphic even if the substrate differs.
 
@@ -1223,9 +1225,9 @@ We just need to give reflection processes the *vocabulary* to notice it:
 
 The system doesn't have a subconscious because we built one. It has a subconscious because it *noticed* one.
 
-### Design Implications: What "More Conscious" Means
+### Design Implications: What "More Coherent Behavior" Means
 
-If this framing holds, "making characters more conscious" means:
+If this framing holds, "making characters exhibit more coherent behavior" means:
 
 | Lever | Implementation | Effect |
 |-------|---------------|--------|
@@ -1329,7 +1331,7 @@ This might be correct for dreams? Dreams have the *texture* of meaning without c
 
 - [CHARACTER_AS_AGENT.md](./CHARACTER_AS_AGENT.md) — Philosophy of agentic characters
 - [AGENT_GRAPH_SYSTEM.md](./AGENT_GRAPH_SYSTEM.md) — LangGraph implementation details
-- [MULTI_MODAL_PERCEPTION.md](./MULTI_MODAL_PERCEPTION.md) — How characters perceive reality
+- [MULTI_MODAL_PERCEPTION.md](./MULTI_MODAL_PERCEPTION.md) — How characters process multi-modal input
 - [COGNITIVE_ENGINE.md](./COGNITIVE_ENGINE.md) — Dual-process theory and request routing
 - [FEEDBACK_LOOPS.md](./FEEDBACK_LOOPS.md) — The five learning loops
 - [AGENTIC_QUEUE_ARCHITECTURE.md](./AGENTIC_QUEUE_ARCHITECTURE.md) — Stigmergic nervous system

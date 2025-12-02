@@ -62,7 +62,7 @@ These services are shared across all character instances.
     *   **Volume**: `postgres_data`
 *   **Qdrant (`qdrant`)**:
     *   **Port**: 6333 (API), 6334 (GRPC)
-    *   **Role**: Vector database for semantic memory.
+    *   **Role**: Vector database for searchable memory embeddings.
     *   **Volume**: `qdrant_data`
 *   **Neo4j (`neo4j`)**:
     *   **Port**: 7474 (HTTP), 7687 (Bolt)

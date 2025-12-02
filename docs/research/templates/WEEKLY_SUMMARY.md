@@ -23,7 +23,7 @@
 
 ## 🔍 Pattern Analysis
 
-### Emergent Behaviors
+### Emergent Behavior Patterns
 <!-- Patterns that appeared across multiple days/bots -->
 
 - 

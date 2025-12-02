@@ -38,6 +38,15 @@ We distinguish between two types of long-term memory:
 *   **Factual Memory**: General facts and knowledge ("User owns a dog named Rex").
     *   *Implementation*: **Neo4j Knowledge Graph** with structured entity relationships.
 
+**Important Note on Storage vs. Memory Type:**
+
+The cognitive science terms (episodic/semantic) describe *types* of memory, not *locations*:
+- **PostgreSQL** stores verbatim chat history — the raw episodic record of what was said
+- **Qdrant** stores vectorized memories — searchable by similarity (can include both episodic moments and semantic summaries)
+- **Neo4j** stores extracted facts — inferred semantic knowledge
+
+See [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md) for the complete data architecture.
+
 ### Design Choice: Hybrid Memory Architecture
 Traditional chatbots use either:
 1.  **Pure Vector Search**: Fast but imprecise. Can't distinguish "User likes pizza" from "User mentioned pizza."

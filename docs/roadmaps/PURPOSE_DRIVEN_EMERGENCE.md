@@ -58,7 +58,7 @@ The scaffolding that supports emergence. Already built:
 | Component | Purpose | Status |
 |-----------|---------|--------|
 | **Neo4j** | Relationships, facts, traces | ✅ Exists |
-| **Qdrant** | Semantic memory recall | ✅ Exists |
+| **Qdrant** | Searchable memory (vector recall) | ✅ Exists |
 | **Redis** | Cache, attention, queue | ✅ Exists |
 | **PostgreSQL** | Chat history, trust scores | ✅ Exists |
 | **Workers** | Background observation | ✅ Exists |

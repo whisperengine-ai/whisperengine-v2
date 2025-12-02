@@ -11,7 +11,7 @@
 
 **Related Documents:**
 - [`EMERGENT_UNIVERSE.md`](./EMERGENT_UNIVERSE.md) - The Universe modality that federation extends
-- [`MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters perceive reality
+- [`MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters process multi-modal input
 - [`PRIVACY_AND_DATA_SEGMENTATION.md`](../PRIVACY_AND_DATA_SEGMENTATION.md) - Current privacy model (foundation for federation privacy)
 - [`DATA_MODELS.md`](../architecture/DATA_MODELS.md) - Database architecture that must support federation
 - [`KNOWLEDGE_GRAPH_MEMORY.md`](../features/KNOWLEDGE_GRAPH_MEMORY.md) - Neo4j graph that would sync across universes

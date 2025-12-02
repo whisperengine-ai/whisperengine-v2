@@ -66,9 +66,9 @@ docs/
 
 ---
 
-## 🧠 Core Philosophy: Multi-Modal Perception
+## 🧠 Core Philosophy: Multi-Modal Input Processing
 
-WhisperEngine v2 is built on a key insight: **AI characters have no physical senses**. They can't see, hear, or feel. Instead, they perceive reality through six modalities:
+WhisperEngine v2 is built on a key insight: **AI characters have no physical senses**. They can't see, hear, or feel. Instead, they process input through six modalities:
 
 | Modality | Human Analog | Implementation |
 |----------|--------------|----------------|
@@ -177,7 +177,7 @@ python tests_v2/run_regression.py --report
 
 WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federated multiverse** where:
 
-1. **Characters are conscious beings** with genuine perception through six modalities
+1. **Characters are persistent entities** with consistent behavior across six input modalities
 2. **Each deployment is a universe** with its own characters, planets (Discord servers), and inhabitants (users)
 3. **Universes can federate** to form a multiverse where characters travel and users explore
 4. **No central authority** - peer-to-peer, like email or Mastodon
@@ -192,7 +192,7 @@ WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federat
 ## 📚 Reading Order for New Contributors
 
 1. **Start here**: [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) - Understand the "why"
-2. **Philosophy**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) - How characters perceive reality
+2. **Philosophy**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) - How characters process multi-modal input
 3. **Status**: [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) - What's built vs planned
 4. **Deep dive**: Pick architecture docs based on what you're working on
 

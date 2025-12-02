@@ -1011,7 +1011,7 @@ characters/
 
 ## 🔗 Related Documentation
 
-- [Multi-Modal Perception](architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters perceive reality
+- [Multi-Modal Perception](architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters process multi-modal input
 - [Multi-Bot Deployment Guide](MULTI_BOT_DEPLOYMENT.md) - Managing multiple bots
 - [Cognitive Engine Architecture](architecture/COGNITIVE_ENGINE.md) - How the AI processes and responds
 - [Memory System](architecture/MEMORY_SYSTEM_V2.md) - How memories are stored and retrieved
