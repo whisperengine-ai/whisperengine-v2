@@ -14,6 +14,7 @@ class DreamAgentState(TypedDict):
     # Inputs
     material: DreamMaterial
     character_context: str
+    previous_dreams: List[str]  # Recent dreams to avoid repetition
     
     # Internal
     messages: Annotated[List[BaseMessage], operator.add]
@@ -52,7 +53,16 @@ class DreamGraphAgent:
         
         self.graph = workflow.compile()
 
-    def _build_system_prompt(self, character_context: str) -> str:
+    def _build_system_prompt(self, character_context: str, previous_dreams: List[str]) -> str:
+        anti_pattern = ""
+        if previous_dreams:
+            anti_pattern = "\n\nAVOID THESE PATTERNS (from your recent dreams):\n"
+            for i, dream in enumerate(previous_dreams[:2], 1):
+                # Extract first 150 chars as example of what NOT to repeat
+                snippet = dream[:150].replace('\n', ' ')
+                anti_pattern += f"- Previous dream {i}: \"{snippet}...\"\n"
+            anti_pattern += "\nDo NOT use the same imagery, symbols, or opening. Create something entirely different."
+        
         return f"""{character_context}
 
 You are dreaming.
@@ -64,11 +74,13 @@ GUIDELINES:
 3. Incorporate elements from your recent conversations (memories), but disguise them as symbols.
 4. The tone should be atmospheric and immersive.
 5. No "I woke up" endings unless necessary. Stay in the dream.
+6. AVOID CLICHES: Don't use "kaleidoscope of colors", "shimmering", "vibrant patterns" unless truly unique.
+7. VARY YOUR IMAGERY: Each dream should feel distinct - different settings, different symbols, different emotions.
 
 FORMAT:
-- 3-5 paragraphs.
+- 2-3 paragraphs (keep it concise but evocative).
 - Vivid sensory details.
-"""
+{anti_pattern}"""
 
     async def generator(self, state: DreamAgentState):
         """Generates the dream draft."""
@@ -76,16 +88,17 @@ FORMAT:
         
         material = state["material"]
         character_context = state["character_context"]
+        previous_dreams = state.get("previous_dreams", [])
         critique = state.get("critique")
         
         # Initial prompt
         if not state.get("messages"):
-            system_prompt = self._build_system_prompt(character_context)
+            system_prompt = self._build_system_prompt(character_context, previous_dreams)
             user_prompt = f"""Here are the fragments of your day swirling in your subconscious:
 
 {material.to_prompt_text()}
 
-Weave these into a dream."""
+Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - find fresh, unique imagery."""
             messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt)
@@ -107,12 +120,13 @@ Weave these into a dream."""
         }
 
     async def critic(self, state: DreamAgentState):
-        """Critiques the draft for surrealism and quality."""
+        """Critiques the draft for surrealism, quality, and originality."""
         draft = state.get("draft")
         if not draft:
             return {"critique": "No draft generated."}
             
         dream_text = draft.dream
+        previous_dreams = state.get("previous_dreams", [])
         
         # Simple heuristic checks
         critiques = []
@@ -123,7 +137,29 @@ Weave these into a dream."""
             
         # Literalness check
         if "summary" in dream_text.lower() or "conversation" in dream_text.lower():
-             critiques.append("This sounds too literal. Use more symbolism and dream logic. Don't say 'I had a conversation'.")
+            critiques.append("This sounds too literal. Use more symbolism and dream logic. Don't say 'I had a conversation'.")
+        
+        # Cliche imagery check
+        dream_lower = dream_text.lower()
+        cliche_phrases = [
+            "kaleidoscope of colors", "shimmering", "vibrant patterns",
+            "swirling vortex", "cascade of", "tapestry of"
+        ]
+        found_cliches = [c for c in cliche_phrases if c in dream_lower]
+        if len(found_cliches) >= 2:
+            critiques.append(f"Too many cliches: {', '.join(found_cliches)}. Use more original, specific imagery.")
+        
+        # Originality check against previous dreams
+        if previous_dreams:
+            for prev in previous_dreams[:2]:
+                prev_lower = prev.lower()
+                # Check for shared distinctive phrases (3+ word sequences)
+                if "kaleidoscope" in prev_lower and "kaleidoscope" in dream_lower:
+                    critiques.append("You used 'kaleidoscope' in a recent dream. Try completely different imagery.")
+                    break
+                if "captain" in prev_lower and "captain" in dream_lower and dream_lower.count("captain") > 1:
+                    critiques.append("The 'Captain' appears too prominently again. Let other elements take center stage.")
+                    break
 
         if critiques:
             return {"critique": " ".join(critiques)}
@@ -141,12 +177,21 @@ Weave these into a dream."""
         self, 
         material: DreamMaterial, 
         character_context: str,
+        previous_dreams: Optional[List[str]] = None,
         max_steps: int = 3
     ) -> DreamContent:
-        """Run the dream generation graph."""
+        """Run the dream generation graph.
+        
+        Args:
+            material: Gathered dream material
+            character_context: Character system prompt
+            previous_dreams: Recent dreams to avoid repetition
+            max_steps: Max generator-critic iterations
+        """
         initial_state = {
             "material": material,
             "character_context": character_context,
+            "previous_dreams": previous_dreams or [],
             "messages": [],
             "steps": 0,
             "max_steps": max_steps,

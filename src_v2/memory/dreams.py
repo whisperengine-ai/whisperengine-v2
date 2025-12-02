@@ -70,6 +70,29 @@ class DreamMaterial(BaseModel):
     recent_diary_themes: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
+    def richness_score(self) -> int:
+        """
+        Calculate a richness score based on available material.
+        
+        Scoring:
+        - Memories: 3 points each (primary dream fuel)
+        - Observations: 2 points each (experiential)
+        - Gossip: 2 points each (social/narrative)
+        - Facts: 1 point each (knowledge)
+        - Diary themes: 1 point each (can create feedback loops)
+        - Goals: 0 points (static)
+        
+        Returns:
+            Integer score representing material richness
+        """
+        return (
+            len(self.memories) * 3 +
+            len(self.observations) * 2 +
+            len(self.gossip) * 2 +
+            len(self.facts) * 1 +
+            len(self.recent_diary_themes) * 1
+        )
+    
     def is_sufficient(self) -> bool:
         """Check if we have enough material to generate a dream.
         
@@ -86,6 +109,21 @@ class DreamMaterial(BaseModel):
             len(self.gossip)
         )
         return total_items >= 3
+    
+    def is_rich_enough(self, min_score: Optional[int] = None) -> bool:
+        """
+        Check if we have enough VARIETY of material to avoid hollow dreams.
+        
+        Args:
+            min_score: Minimum richness score required (uses settings.DREAM_MIN_RICHNESS if None)
+                       - 4 = ~2 memories, or 1 memory + observations
+                       
+        Returns:
+            True if material is rich enough for a quality dream
+        """
+        from src_v2.config.settings import settings
+        threshold = min_score if min_score is not None else getattr(settings, 'DREAM_MIN_RICHNESS', 4)
+        return self.richness_score() >= threshold
     
     def to_prompt_text(self) -> str:
         """Format all material for the dream generation prompt."""
@@ -445,6 +483,18 @@ Create a surreal dream echoing these experiences.""")
             logger.info(f"Insufficient dream material for {self.bot_name}")
             return None, []
         
+        # Check richness - skip hollow dreams even if ALWAYS_GENERATE is on
+        richness = material.richness_score()
+        if not material.is_rich_enough():
+            logger.info(
+                f"Skipping dream for {self.bot_name}: richness score {richness} < 4. "
+                f"Material: {len(material.memories)} memories, {len(material.observations)} observations, "
+                f"{len(material.gossip)} gossip, {len(material.facts)} facts"
+            )
+            return None, []
+        
+        logger.info(f"Generating dream with richness score {richness}")
+        
         collector = ProvenanceCollector("dream", self.bot_name)
         
         # Add provenance for each source
@@ -467,9 +517,18 @@ Create a surreal dream echoing these experiences.""")
                 logger.info("Using LangGraph Dream Agent")
                 from src_v2.agents.dream_graph import dream_graph_agent
                 
+                # Fetch previous dreams for anti-pattern injection
+                previous_dreams = []
+                try:
+                    recent_dreams = await self.get_recent_dreams(limit=3)
+                    previous_dreams = [d.get("content", "") for d in recent_dreams if d.get("content")]
+                except Exception as e:
+                    logger.debug(f"Could not fetch previous dreams for anti-pattern: {e}")
+                
                 result = await dream_graph_agent.run(
                     material=material,
-                    character_context=safe_context
+                    character_context=safe_context,
+                    previous_dreams=previous_dreams
                 )
             else:
                 result = await self.chain.ainvoke({
@@ -690,6 +749,47 @@ Create a surreal dream echoing these experiences.""")
         except Exception as e:
             logger.error(f"Failed to save dream: {e}")
             return None
+
+    async def get_recent_dreams(self, limit: int = 3) -> List[Dict[str, Any]]:
+        """
+        Gets the most recent dreams (any user, for anti-pattern injection).
+        
+        Args:
+            limit: Number of dreams to return
+            
+        Returns:
+            List of dream payload dicts, most recent first
+        """
+        if not db_manager.qdrant_client:
+            return []
+        
+        try:
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="dream")),
+                        FieldCondition(key="bot_name", match=MatchValue(value=self.bot_name))
+                    ]
+                ),
+                limit=limit + 2,  # Get a few extra to sort
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            dreams = []
+            for point in results[0]:
+                if point.payload:
+                    dreams.append(point.payload)
+            
+            # Sort by timestamp descending
+            dreams.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            
+            return dreams[:limit]
+            
+        except Exception as e:
+            logger.error(f"Failed to get recent dreams: {e}")
+            return []
 
     async def get_last_dream_for_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """

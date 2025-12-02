@@ -201,6 +201,7 @@ class Settings(BaseSettings):
     ENABLE_CHARACTER_DIARY: bool = True  # Generate nightly diary entries for characters
     DIARY_MIN_SESSIONS: int = 2  # Minimum sessions required to generate a diary entry
     DIARY_ALWAYS_GENERATE: bool = True  # Generate diary even without user interactions (reflective entries)
+    DIARY_MIN_RICHNESS: int = 5  # Minimum richness score to generate (prevents hollow entries)
     DIARY_GENERATION_LOCAL_HOUR: int = 20  # Local hour (in character's timezone) when diary is generated (8 PM)
     DIARY_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when diary is generated
     
@@ -212,6 +213,7 @@ class Settings(BaseSettings):
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream
     DREAM_COOLDOWN_DAYS: int = 7  # Minimum days between dreams for the same user
     DREAM_ALWAYS_GENERATE: bool = True  # Generate nightly dream even without user interactions
+    DREAM_MIN_RICHNESS: int = 4  # Minimum richness score to generate (prevents hollow dreams)
     DREAM_GENERATION_LOCAL_HOUR: int = 6  # Local hour (in character's timezone) when dreams are generated (6 AM)
     DREAM_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when dreams are generated
     

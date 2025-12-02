@@ -48,6 +48,29 @@ class DiaryMaterial(BaseModel):
     epiphanies: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
+    def richness_score(self) -> int:
+        """
+        Calculate a richness score based on available material.
+        
+        Scoring:
+        - Summaries: 3 points each (primary content)
+        - Observations: 2 points each (bot's own experiences)
+        - Gossip: 2 points each (social context)
+        - Epiphanies: 2 points each (insights)
+        - New facts: 1 point each (learned info)
+        - Goals: 0 points (static, always available)
+        
+        Returns:
+            Integer score representing material richness
+        """
+        return (
+            len(self.summaries) * 3 +
+            len(self.observations) * 2 +
+            len(self.gossip) * 2 +
+            len(self.epiphanies) * 2 +
+            len(self.new_facts) * 1
+        )
+    
     def is_sufficient(self) -> bool:
         """Check if we have enough material to generate a diary."""
         # If always generate is on, we don't need summaries
@@ -56,6 +79,20 @@ class DiaryMaterial(BaseModel):
             
         # Otherwise need at least some summaries
         return len(self.summaries) >= 1
+    
+    def is_rich_enough(self, min_score: Optional[int] = None) -> bool:
+        """
+        Check if we have enough VARIETY of material to avoid hollow entries.
+        
+        Args:
+            min_score: Minimum richness score required (uses settings.DIARY_MIN_RICHNESS if None)
+                       - 5 = ~2 conversations, or 1 conversation + some observations
+                       
+        Returns:
+            True if material is rich enough for a quality entry
+        """
+        threshold = min_score if min_score is not None else settings.DIARY_MIN_RICHNESS
+        return self.richness_score() >= threshold
     
     def to_prompt_text(self) -> str:
         """Format all material for the diary generation prompt."""
@@ -386,6 +423,18 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
             logger.info(f"Insufficient diary material for {self.bot_name}")
             return None, []
         
+        # Check richness - skip hollow entries even if ALWAYS_GENERATE is on
+        richness = material.richness_score()
+        if not override and not material.is_rich_enough():
+            logger.info(
+                f"Skipping diary for {self.bot_name}: richness score {richness} < 5. "
+                f"Material: {len(material.summaries)} summaries, {len(material.observations)} observations, "
+                f"{len(material.gossip)} gossip, {len(material.epiphanies)} epiphanies"
+            )
+            return None, []
+        
+        logger.info(f"Generating diary with richness score {richness}")
+        
         collector = ProvenanceCollector("diary", self.bot_name)
         
         # Add provenance for each source
@@ -412,10 +461,19 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
                 # Extract user names from summaries for the agent
                 user_names = list(set(s.get("user_name", s.get("user_id", "someone")) for s in material.summaries))
                 
+                # Fetch previous diary entries for anti-pattern injection
+                previous_entries = []
+                try:
+                    recent_diaries = await self.get_recent_diary(days=3)
+                    previous_entries = [d.get("content", "") for d in recent_diaries if d.get("content")]
+                except Exception as e:
+                    logger.debug(f"Could not fetch previous diaries for anti-pattern: {e}")
+                
                 result = await diary_graph_agent.run(
                     material=material,
                     character_context=safe_context,
-                    user_names=user_names
+                    user_names=user_names,
+                    previous_entries=previous_entries
                 )
             else:
                 result = await self.chain.ainvoke({
