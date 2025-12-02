@@ -41,6 +41,7 @@ class DiaryGraphAgent:
         workflow.add_node("critic", self.critic)
         
         workflow.set_entry_point("generator")
+        workflow.add_edge("generator", "critic")  # generator always goes to critic
         workflow.add_conditional_edges(
             "critic",
             self.should_continue,

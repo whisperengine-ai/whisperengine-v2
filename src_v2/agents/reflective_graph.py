@@ -477,23 +477,6 @@ TOOL USAGE GUIDE:
 
     def should_loop_after_critic(self, state: AgentState) -> Literal["agent", "end"]:
         """
-        Determine if we should loop back to the agent after the critic runs.
-        """
-        messages = state['messages']
-        last_message = messages[-1]
-        
-        # If the critic added a message (HumanMessage with SYSTEM NOTE), we loop back
-        if isinstance(last_message, HumanMessage) and "[SYSTEM NOTE:" in str(last_message.content):
-            # Safety check: Don't loop if we're at the limit
-            if state['steps'] >= state['max_steps']:
-                return "end"
-            return "agent"
-            
-        return "end"
-        return "critic"
-    
-    def should_loop_after_critic(self, state: AgentState) -> Literal["agent", "end"]:
-        """
         After critic runs, decide if we need to loop back to agent.
         If critic added a hint message, loop back. Otherwise, end.
         """
@@ -505,6 +488,9 @@ TOOL USAGE GUIDE:
             if isinstance(last_message, HumanMessage):
                 content = str(last_message.content)
                 if content.startswith("[SYSTEM NOTE:"):
+                    # Safety check: Don't loop if we're at the limit
+                    if state['steps'] >= state['max_steps']:
+                        return "end"
                     logger.debug("Critic injected hint, looping back to agent")
                     return "agent"
         
