@@ -23,6 +23,12 @@ class TaskQueue:
         await task_queue.enqueue("summarize_session", _defer_by=60, user_id="123")
     """
     
+    # Queue Names
+    QUEUE_COGNITION = "arq:cognition"  # Deep reasoning, slow tasks (Dreams, Diaries)
+    QUEUE_ACTION = "arq:action"        # Outbound effects (Image Gen, Voice Gen, Posts)
+    QUEUE_SENSORY = "arq:sensory"      # Fast analysis (Sentiment, Intent, Facts)
+    QUEUE_SOCIAL = "arq:social"        # Inter-agent communication (Gossip)
+    
     _instance: Optional["TaskQueue"] = None
     _pool: Optional[ArqRedis] = None
     
@@ -72,9 +78,9 @@ class TaskQueue:
                 # Connect to Redis and set default queue to match worker's queue
                 self._pool = await create_pool(
                     self.get_redis_settings(),
-                    default_queue_name="arq:cognition"
+                    default_queue_name=self.QUEUE_COGNITION
                 )
-                logger.info("TaskQueue connected to Redis (queue: arq:cognition)")
+                logger.info(f"TaskQueue connected to Redis (default: {self.QUEUE_COGNITION})")
             except Exception as e:
                 logger.error(f"Failed to connect TaskQueue to Redis: {e}")
                 raise
@@ -91,7 +97,7 @@ class TaskQueue:
         task_name: str, 
         _defer_by: Optional[int] = None,
         _job_id: Optional[str] = None,
-        _queue_name: str = "arq:cognition",
+        _queue_name: str = QUEUE_COGNITION,
         **kwargs: Any
     ) -> Optional[str]:
         """

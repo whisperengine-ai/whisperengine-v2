@@ -103,67 +103,79 @@ case "$1" in
         ;;
     
     stop)
-        if [ -z "$2" ]; then
+        TARGET="$2"
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+
+        if [ -z "$TARGET" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
             echo "Usage: ./bot.sh stop [bot|all]"
             echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
-        if [ "$2" = "all" ]; then
+        if [ "$TARGET" = "all" ]; then
             echo -e "${YELLOW}Stopping all bots...${NC}"
             docker compose --profile all stop
         else
-            echo -e "${YELLOW}Stopping $2...${NC}"
-            docker compose stop "$2"
+            echo -e "${YELLOW}Stopping $TARGET...${NC}"
+            docker compose stop $TARGET
         fi
         echo -e "${GREEN}✓ Stopped${NC}"
         ;;
 
     start)
-        if [ -z "$2" ]; then
+        TARGET="$2"
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+
+        if [ -z "$TARGET" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
             echo "Usage: ./bot.sh start [bot|all]"
             echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
-        if [ "$2" = "all" ]; then
+        if [ "$TARGET" = "all" ]; then
             echo -e "${YELLOW}Starting all bots...${NC}"
             # Neo4j workaround: Force recreate to prevent restart loops
             docker compose stop neo4j >/dev/null 2>&1 || true
             docker compose rm -f neo4j >/dev/null 2>&1 || true
             docker compose --profile all up -d --no-build
         else
-            echo -e "${YELLOW}Starting $2...${NC}"
-            docker compose up -d --no-build "$2"
+            echo -e "${YELLOW}Starting $TARGET...${NC}"
+            docker compose up -d --no-build $TARGET
         fi
         echo -e "${GREEN}✓ Started${NC}"
         ;;
     
     restart)
-        if [ -z "$2" ]; then
+        TARGET="$2"
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+
+        if [ -z "$TARGET" ]; then
             echo -e "${RED}Error: Specify bot name or 'all'${NC}"
             echo "Usage: ./bot.sh restart [bot|all]"
             echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
             exit 1
         fi
 
-        if [ "$2" = "all" ]; then
+        if [ "$TARGET" = "all" ]; then
             echo -e "${YELLOW}Restarting all bots...${NC}"
             docker compose --profile all restart
         else
-            echo -e "${YELLOW}Restarting $2...${NC}"
-            docker compose restart "$2"
+            echo -e "${YELLOW}Restarting $TARGET...${NC}"
+            docker compose restart $TARGET
         fi
         echo -e "${GREEN}✓ Restarted${NC}"
         ;;
     
     logs)
-        if [ "$2" = "all" ] || [ -z "$2" ]; then
+        TARGET="$2"
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+
+        if [ "$TARGET" = "all" ] || [ -z "$TARGET" ]; then
             docker compose --profile all logs -f
         else
-            docker compose logs -f "$2"
+            docker compose logs -f $TARGET
         fi
         ;;
     

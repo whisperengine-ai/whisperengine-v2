@@ -156,7 +156,7 @@ class WorkerSettings:
     # Primary queue name - arq only listens to a single queue per worker instance
     # Set to arq:cognition for deep reasoning tasks (diaries, dreams, reflection, strategy)
     # To listen to multiple queues, use separate worker instances or routing logic
-    queue_name = "arq:cognition"
+    queue_name = os.getenv("ARQ_QUEUE_NAME", "arq:cognition")
     
     # Startup/shutdown hooks
     on_startup = startup
