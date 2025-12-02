@@ -264,7 +264,7 @@ class ConversationAgent:
             # Pick randomly from top topics for variety
             top_topics = topics[:3]
             selected_topic = random.choice(top_topics)
-            topic_str = selected_topic.topic
+            topic_str = selected_topic.description
         else:
             # Generic conversation starters - randomly selected at runtime
             generic_topics = [
