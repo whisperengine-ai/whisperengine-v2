@@ -772,13 +772,38 @@ class MessageHandler:
                             if len(full_response_text) < 1950 and full_response_text.strip():
                                 try:
                                     if not active_message:
+                                        # Check if we have a status message to take over
+                                        should_append = False
+                                        prefix = ""
+                                        if status_message:
+                                            # Check if appending fits in one message
+                                            current_status = "\n".join(status_lines)
+                                            combined_len = len(current_status) + len(full_response_text) + 4 # +4 for \n\n
+                                            if combined_len < 1950: # Leave some buffer
+                                                should_append = True
+                                                prefix = current_status + "\n\n"
+                                        
+                                        if should_append:
+                                            active_message = status_message
+                                            await active_message.edit(content=f"{prefix}{full_response_text}")
                                         # First message: use reply in guild channels
-                                        if use_reply:
+                                        elif use_reply:
                                             active_message = await message.reply(full_response_text, mention_author=False)
                                         else:
                                             active_message = await message.channel.send(full_response_text)
                                     else:
-                                        await active_message.edit(content=full_response_text)
+                                        # We already have an active message
+                                        if active_message == status_message:
+                                            # We are appending to status message
+                                            current_status = "\n".join(status_lines)
+                                            combined_text = f"{current_status}\n\n{full_response_text}"
+                                            if len(combined_text) < 1950:
+                                                await active_message.edit(content=combined_text)
+                                            else:
+                                                # Overflowed! Stop updating this message to avoid error.
+                                                pass
+                                        else:
+                                            await active_message.edit(content=full_response_text)
                                 except Exception as e:
                                     logger.warning(f"Failed to stream update: {e}")
                             last_update_time = now
@@ -849,8 +874,23 @@ class MessageHandler:
                     if active_message:
                         # We already have a streaming message
                         # Just edit the text (files can't be attached to edited messages in discord.py)
-                        await active_message.edit(content=message_chunks[0])
-                        sent_messages.append(active_message)
+                        
+                        if active_message == status_message:
+                             current_status = "\n".join(status_lines)
+                             combined_text = f"{current_status}\n\n{message_chunks[0]}"
+                             if len(combined_text) < 2000:
+                                 await active_message.edit(content=combined_text)
+                                 sent_messages.append(active_message)
+                             else:
+                                 # Fallback: Send as new message if it doesn't fit with status
+                                 if use_reply:
+                                     sent_msg = await message.reply(message_chunks[0], mention_author=False)
+                                 else:
+                                     sent_msg = await message.channel.send(message_chunks[0])
+                                 sent_messages.append(sent_msg)
+                        else:
+                             await active_message.edit(content=message_chunks[0])
+                             sent_messages.append(active_message)
                         
                         # Send remaining chunks
                         for chunk in message_chunks[1:]:
