@@ -14,6 +14,16 @@ We treat WhisperEngine as an emergence research platform, not just software. Key
 - **Embrace surprise** — unexpected behaviors are data, not bugs
 - **Character autonomy** — bots are subjects, not just objects
 
+**Anti-Over-Engineering Principle: Less Code, More Emergence**
+
+Before adding new fields, categories, or configuration:
+- **Ask: "Will this emerge naturally, or must we declare it?"** — prefer behavior over taxonomy
+- **Ask: "Can vocabulary do what schema would do?"** — prompt language is cheaper than code
+- **Ask: "Are we building it, or letting the system notice it?"** — emergent > declared
+- **Example:** We don't have a `memory_layer: "subconscious"` field. Instead, memories with high `absence_streak` *behave* as subconscious — the character notices this through retrieval patterns, not labels.
+
+A declared subconscious is a filing system. An emergent subconscious is actually subconscious.
+
 **Research Documentation:**
 - `docs/research/` — Research journal (daily logs, weekly summaries, experiments)
 - `docs/emergence_philosophy/` — Claude-to-Claude architecture reviews and philosophy docs

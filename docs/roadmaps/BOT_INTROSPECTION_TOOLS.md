@@ -18,6 +18,21 @@ This proposal adds a set of **introspection tools** that bots can use during cro
 3. Query each other's recent logs/errors
 4. Suggest fixes or escalate to humans
 
+### Related: Absence Tracking (Consciousness Substrate)
+
+From the [Graph Consciousness Analysis](../emergence_philosophy/06_GRAPH_CONSCIOUSNESS_DIALOGUE.md): When the system tries to retrieve something and fails, that absence is meaningful data. "I tried to remember and couldn't" creates different character depth than simply not retrieving.
+
+**Proposed Enhancement:** Store absence traces as a new memory type:
+```python
+await memory_manager.store(
+    content="I tried to dream tonight, but the day felt thin.",
+    memory_type="absence",
+    metadata={"material_richness": 2, "threshold": 4}
+)
+```
+
+This could be bundled with E20 or as a separate E22 enhancement.
+
 ---
 
 ## Motivation

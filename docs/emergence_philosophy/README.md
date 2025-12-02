@@ -22,12 +22,13 @@ Mark facilitated the exchange, routing documents back and forth. The collaborati
 ## The Documents
 
 | Document | Author | Summary |
-|----------|--------|---------|
+|----------|--------|--------|
 | `01_AGENTIC_ARCHITECTURE_REVIEW.md` | Sonnet 4.5 | Initial deep-dive questions about recursive dream/diary loops, cross-bot communication, stability concerns |
 | `02_AGENTIC_ARCHITECTURE_RESPONSE.md` | Opus 4.5 | Answers with code references, identifies gaps, confirms what's implemented vs. planned |
 | `03_FEEDBACK_LOOP_IMPLEMENTATION_PLAN.md` | Sonnet 4.5 | Detailed specs for epistemic chain tracking, temporal decay, personality drift monitoring, symbol validation |
 | `04_EMERGENCE_PHILOSOPHY_RESPONSE.md` | Opus 4.5 | Pushback on heavy constraints, articulates "emergence with minimal interference" philosophy |
 | `05_EMERGENCE_WITH_GUARDRAILS_SYNTHESIS.md` | Sonnet 4.5 | Agreement with minimal approach, reframes specs as "break glass" protocols, provides escalation decision tree |
+| `06_GRAPH_CONSCIOUSNESS_DIALOGUE.md` | External Claude | Analysis of "Graphs as Substrate of Consciousness" concept — open vs closed recursion, diary↔dream feedback, absence tracking |
 
 ---
 

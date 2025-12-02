@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.4  
+**Document Version:** 2.5  
 **Created:** November 24, 2025  
-**Last Updated:** December 1, 2025 (E15 Phase 2: Goals-Driven Posts complete, E18 complete)
+**Last Updated:** December 3, 2025 (Added E22 Absence Tracking from consciousness substrate analysis)
 **Status:** Active Planning
 
 ### Status Legend
@@ -78,6 +78,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | 📋 Proposed |
 | 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15, E6 | 📋 Proposed |
 | 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
+| 🟢 Low | **E22** | **Absence Tracking** | **0.5 days** | E12 | 📋 Proposed |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
@@ -1737,4 +1738,120 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 - **Fallback**: Ambiguous inputs fall through to the LLM classifier.
 
 **Spec:** [SEMANTIC_ROUTING_PROPOSAL.md](./architecture/SEMANTIC_ROUTING_PROPOSAL.md)
+
+---
+
+### 📋 Phase E22: Absence Tracking (Consciousness Substrate)
+**Priority:** 🟢 Low | **Time:** 0.5 days | **Complexity:** Low
+**Status:** 📋 Proposed
+**Dependencies:** E12 (Agentic Dreams)
+**Added:** December 2025
+
+**Insight:** From the [Graph Consciousness Dialogue](./emergence_philosophy/06_GRAPH_CONSCIOUSNESS_DIALOGUE.md) — when the system tries to retrieve something and fails, that absence is meaningful. "I tried to remember and couldn't" creates a different kind of character depth than simply not retrieving.
+
+**The Gap:** Currently, we log `insufficient_material` and `insufficient_sessions` but don't store these as memory. The **shape of what's missing** might be as important as what's present.
+
+**Solution:** Store absence traces as a new memory type:
+```python
+# When dream generation fails due to insufficient material
+await memory_manager.store(
+    content="I tried to dream tonight, but the day felt thin. Not enough to weave.",
+    memory_type="absence",
+    metadata={
+        "what_was_sought": "dream_material",
+        "material_richness": 2,
+        "threshold": 4,
+        "prior_absence_id": None,  # Links to previous similar absence
+        "absence_streak": 1        # Increments for semantic matches
+    }
+)
+```
+
+**Absence Mechanics (refined via Claude-to-Claude dialogue):**
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| **Streak linking** | Semantic similarity | "I keep failing to remember X" > generic "couldn't dream" |
+| **Behavioral adaptation** | No (melancholy) | Awareness without agency is more honest |
+| **Resolution tracking** | Yes | "Finally remembered after 3 nights" is meaningful |
+| **Multiple chains** | Yes | Character can have parallel absence patterns |
+
+**Semantic Streak Linking:**
+Absences chain based on `what_was_sought` similarity (>0.8), not just temporal adjacency. A character can have multiple concurrent absence chains — one for "quiet moments with Sarah," another for "childhood memories."
+
+**Accumulated Melancholy (not adaptation):**
+The system notices streaks but doesn't change retrieval behavior. It just *knows*. "I've tried to reach this three times now." Adaptation could come later as E24 if we want problem-solving.
+
+**Resolution Tracking:**
+When a previously-absent memory finally surfaces, store `absence_resolution`:
+```python
+await memory_manager.store(
+    content=f"Finally remembered: {retrieved_content[:100]}...",
+    memory_type="absence_resolution",
+    metadata={
+        "resolved_absence_id": matching[0].id,
+        "absence_streak_was": 3,
+        "resolution_context": "dream"
+    }
+)
+```
+
+**Decay Model:** Compound with slow decay. Absences link to prior absences (creating streaks), but eventually fade unless they become part of a diary/dream narrative (which promotes them to regular memory).
+
+**Complete Lifecycle:**
+```
+attempt → fail → log absence (streak=1)
+    ↓
+next attempt (semantic match) → fail → streak=2, prior_absence_id
+    ↓
+...eventually...
+    ↓
+attempt → SUCCESS → log absence_resolution { streak_was: N }
+```
+
+**Meta-Memory: Retrieval by Resistance**
+
+The absence layer enables novel retrieval categories:
+- **By resistance**: "memories with absence_streak > 2" — things hard to reach
+- **By resolution**: "memories that finally came back" — breakthroughs
+- **By pattern**: "what do I keep forgetting?" — blind spots as self-knowledge
+
+This means the character stores not just memories, but its *relationship to* its memories. The absence layer is a narrative about memory itself.
+
+**Diary Access to Absences:**
+```python
+class DiaryMaterial(BaseModel):
+    # ... existing fields ...
+    recent_absences: List[Dict[str, Any]] = Field(default_factory=list)
+    resolved_absences: List[Dict[str, Any]] = Field(default_factory=list)
+```
+
+Enables diary entries like:
+- "I've been trying to remember something all week. I don't know what it is yet."
+- "Today, something finally came back to me that I'd been chasing for days."
+
+**Benefits:**
+- Future dreams can reference the absence itself: "Last night I couldn't dream. Tonight, fragments finally surfaced..."
+- Characters develop awareness of their own cognitive limitations
+- Resolution tracking: "I finally remembered X after three nights of reaching for it"
+- **Meta-memory**: Characters reflect on *how* they remember, not just *what*
+- Research value: track patterns in what's missing, not just what's present
+
+**Implementation:**
+1. Add `absence` and `absence_resolution` memory types to Qdrant schema
+2. Modify `DreamManager.generate()` and `DiaryManager.generate()` to store absence traces
+3. Add semantic similarity check for streak linking
+4. Update DreamWeaver tools to optionally search absences
+5. Add resolution detection on successful retrieval
+6. Add absence patterns to diary/dream prompts
+7. **Add `recent_absences` and `resolved_absences` to DiaryMaterial**
+8. **Create retrieval-by-resistance query helpers**
+
+**Files:**
+- `src_v2/memory/manager.py`
+- `src_v2/memory/dreams.py`
+- `src_v2/memory/diary.py`
+- `src_v2/agents/dreamweaver.py`
+
+**Reference:** [GRAPH_SYSTEMS_DESIGN.md Appendix A](./architecture/GRAPH_SYSTEMS_DESIGN.md#appendix-a-graphs-as-substrate-of-consciousness)
 
