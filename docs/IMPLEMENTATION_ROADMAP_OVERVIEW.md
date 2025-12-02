@@ -75,6 +75,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
+| 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | 📋 Proposed |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
@@ -98,6 +99,12 @@ S4 (Timezone) ──► E7 (User Timezone)
 
 Insight Agent ──┬──► E12 (Agentic Dreams)
                └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
+
+Neo4j + LangGraph ──► E19 (Graph Walker Agent)
+                           │
+                           ├──► Enhanced Dreams (graph-discovered themes)
+                           ├──► Enhanced Diary (relationship patterns)
+                           └──► Enhanced Context (graph-aware retrieval)
 
 E12 (Agentic Dreams) ──► E16 (Feedback Loop Stability)
                               │
