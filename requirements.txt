@@ -34,6 +34,7 @@ langchain-community>=0.3.0,<0.4.0
 langchain-openai>=0.3.0,<0.4.0
 langgraph>=0.0.10
 openai>=1.82.0
+ddgs>=9.9.0
 
 # Document Processing
 docx2txt>=0.8

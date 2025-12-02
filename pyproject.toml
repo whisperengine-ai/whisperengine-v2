@@ -51,9 +51,11 @@ dependencies = [
     # AI & Orchestration - pinned to 0.3.x for stability
     "langchain>=0.3.0,<0.4.0",  # Updated Nov 2025
     "langchain-community>=0.3.0,<0.4.0",  # Updated Nov 2025
-    "langchain-openai>=0.3.0,<0.4.0",  # Updated Nov 2025
-    "openai>=1.82.0",  # Updated Nov 2025
-
+        "langchain-openai>=0.3.0,<0.4.0",
+    "langgraph>=0.0.10",
+    "openai>=1.82.0",
+    "ddgs>=9.9.0",
+    
     # Document Processing
     "docx2txt>=0.8",  # Word Documents
     "pypdf>=5.0.0",  # Updated Nov 2025
