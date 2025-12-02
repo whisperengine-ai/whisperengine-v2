@@ -251,13 +251,15 @@ class Settings(BaseSettings):
     # --- Cross-Bot Chat (Phase E6) ---
     ENABLE_CROSS_BOT_CHAT: bool = True  # Allow bots to respond to each other
     ENABLE_CROSS_BOT_MEMORY: bool = False  # Allow bots to remember past conversations with each other (Phase E6.1)
-    CROSS_BOT_MAX_CHAIN: int = 3  # Max replies in a bot-to-bot chain before stopping
+    CROSS_BOT_MAX_CHAIN: int = 5  # Max replies in a bot-to-bot chain before stopping (was 3)
     CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
     CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
 
     # --- Autonomous Server Activity (Phase E15) ---
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Allow bot to post autonomously in quiet channels
     ENABLE_AUTONOMOUS_REACTIONS: bool = True  # Allow bot to react to messages (Phase 1)
+    ENABLE_BOT_CONVERSATIONS: bool = False  # Allow bots to start conversations with each other (Phase 3)
+    BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
 
     # --- Scheduled Reminders (Phase E5) ---
     ENABLE_REMINDERS: bool = True  # Enable reminder system

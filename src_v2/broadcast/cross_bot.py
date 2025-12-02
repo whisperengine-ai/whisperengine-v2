@@ -207,6 +207,13 @@ class CrossBotManager:
         cooldown = timedelta(minutes=settings.CROSS_BOT_COOLDOWN_MINUTES)
         return datetime.now(timezone.utc) - last_time < cooldown
     
+    def has_active_conversation(self, channel_id: str) -> bool:
+        """Check if there's an active (non-expired) conversation chain in this channel."""
+        chain = self._active_chains.get(channel_id)
+        if not chain:
+            return False
+        return not chain.is_expired() and chain.message_count > 0
+    
     def _set_cooldown(self, channel_id: str) -> None:
         """Set cooldown for a channel."""
         self._channel_cooldowns[channel_id] = datetime.now(timezone.utc)

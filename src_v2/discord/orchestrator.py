@@ -1,6 +1,6 @@
 import asyncio
 import random
-from typing import Optional
+from typing import Optional, List
 from loguru import logger
 import discord
 from discord.ext import commands
@@ -8,6 +8,8 @@ from discord.ext import commands
 from src_v2.config.settings import settings
 from src_v2.intelligence.activity import server_monitor
 from src_v2.agents.posting_agent import PostingAgent
+from src_v2.agents.conversation_agent import conversation_agent
+from src_v2.broadcast.cross_bot import cross_bot_manager
 
 class ActivityOrchestrator:
     """
@@ -61,7 +63,8 @@ class ActivityOrchestrator:
 
     async def check_and_act(self) -> None:
         """Check activity levels and trigger actions if needed."""
-        if not settings.ENABLE_AUTONOMOUS_POSTING:
+        # Skip if neither posting nor conversations are enabled
+        if not settings.ENABLE_AUTONOMOUS_POSTING and not settings.ENABLE_BOT_CONVERSATIONS:
             return
 
         # We iterate over guilds the bot is in
@@ -81,16 +84,25 @@ class ActivityOrchestrator:
         is_dead_quiet = rate < 0.1
         is_quiet = rate < 0.5
         
-        logger.debug(f"Guild {guild.name} activity rate: {rate:.3f} msg/min. DeadQuiet={is_dead_quiet}")
+        logger.info(
+            f"[Orchestrator] Guild={guild.name} rate={rate:.3f} msg/min "
+            f"quiet={is_dead_quiet} conversations={settings.ENABLE_BOT_CONVERSATIONS}"
+        )
 
         # 3. Decide Action
         if is_dead_quiet:
-            # High chance to post to spark conversation
-            if random.random() < 0.7:  # 70% chance if dead quiet
+            # High chance to post or start conversation
+            roll = random.random()
+            logger.debug(f"[Orchestrator] Dead quiet roll={roll:.2f}")
+            if roll < 0.3 and settings.ENABLE_BOT_CONVERSATIONS:
+                # 30% chance to start a bot-to-bot conversation
+                await self.trigger_conversation(guild)
+            elif roll < 0.7 and settings.ENABLE_AUTONOMOUS_POSTING:
+                # 40% chance to post (if conversation wasn't triggered)
                 await self.trigger_post(guild)
         elif is_quiet:
             # Low chance to post
-            if random.random() < 0.3:  # 30% chance if just quiet
+            if random.random() < 0.3 and settings.ENABLE_AUTONOMOUS_POSTING:
                 await self.trigger_post(guild)
         else:
             # Active - do nothing, let ReactionAgent handle reactions (which runs on_message)
@@ -118,6 +130,85 @@ class ActivityOrchestrator:
         
         if success:
             logger.info(f"Successfully scheduled autonomous post for {character_name}")
+
+    async def trigger_conversation(self, guild: discord.Guild) -> None:
+        """Trigger a bot-to-bot conversation in a quiet guild."""
+        character_name = settings.DISCORD_BOT_NAME
+        if not character_name:
+            return
+
+        # Find a suitable channel
+        target_channel = self._get_target_channel(guild)
+        if not target_channel:
+            logger.warning(f"No suitable channel found in {guild.name} for bot conversation")
+            return
+
+        # Check cooldown for this channel (use cross_bot_manager)
+        if cross_bot_manager.is_on_cooldown(str(target_channel.id)):
+            logger.info(f"Channel {target_channel.name} is on cooldown for cross-bot chat")
+            return
+        
+        # Check if there's already an active conversation in this channel
+        if cross_bot_manager.has_active_conversation(str(target_channel.id)):
+            logger.info(f"Channel {target_channel.name} already has active bot conversation - skipping")
+            return
+
+        # Get list of known bots in this guild
+        available_bots = self._get_available_bots_in_guild(guild)
+        if len(available_bots) < 2:
+            logger.debug(f"Not enough bots in {guild.name} for conversation (found {len(available_bots)})")
+            # Fall back to posting instead
+            if settings.ENABLE_AUTONOMOUS_POSTING:
+                await self.trigger_post(guild)
+            return
+
+        # Select a conversation partner and topic
+        pair = await conversation_agent.select_conversation_pair(available_bots, character_name)
+        if not pair:
+            logger.debug(f"No suitable conversation pair found for {character_name}")
+            # Fall back to posting
+            if settings.ENABLE_AUTONOMOUS_POSTING:
+                await self.trigger_post(guild)
+            return
+
+        target_bot, topic = pair
+
+        # Generate the opening message
+        opener = await conversation_agent.generate_opener(character_name, target_bot, topic)
+        if not opener:
+            logger.warning(f"Failed to generate conversation opener for {character_name} -> {target_bot}")
+            return
+
+        # Send the opener to the channel
+        try:
+            sent_message = await target_channel.send(opener.content)
+            
+            # Record this as the start of a conversation chain
+            await cross_bot_manager.record_response(
+                str(target_channel.id), 
+                str(sent_message.id)
+            )
+            
+            logger.info(
+                f"Started bot conversation: {character_name} -> {target_bot} "
+                f"in {guild.name} (#{target_channel.name})"
+            )
+        except discord.Forbidden:
+            logger.warning(f"Permission denied to send message in {target_channel.name}")
+        except discord.HTTPException as e:
+            logger.error(f"Failed to send conversation opener: {e}")
+
+    def _get_available_bots_in_guild(self, guild: discord.Guild) -> List[str]:
+        """Get list of known bots that are members of this guild."""
+        available = []
+        known_bots = cross_bot_manager.known_bots
+        
+        for bot_name, discord_id in known_bots.items():
+            member = guild.get_member(discord_id)
+            if member and member.status != discord.Status.offline:
+                available.append(bot_name)
+        
+        return available
 
     def _get_target_channel(self, guild: discord.Guild) -> Optional[discord.TextChannel]:
         """Find the best channel to post in."""
