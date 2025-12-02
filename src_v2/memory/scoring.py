@@ -39,17 +39,22 @@ DEFAULT_DECAY_RATE = 0.95
 # Base influence weight by source type
 # Higher = more trusted/influential
 SOURCE_WEIGHTS = {
+    # New Enum Values
+    "human_direct": 1.0,         # Direct observation of user input (Highest trust)
+    "inference": 0.8,            # AI thought/reasoning trace (Medium trust)
+    "dream": 0.5,                # Generated during dream cycle (Lower trust)
+    "gossip": 0.4,               # Heard from another bot (Low trust)
+    "observation": 0.6,          # Stigmergic observation of environment
+    "diary": 0.7,                # Self-reflection in diary
+    "summary": 0.9,              # Compressed history
+
+    # Legacy/Compat Values
     "direct_conversation": 1.0,  # User said this directly
     "episode": 1.0,              # Raw message
     "conversation": 1.0,         # Conversation memory
     "session_summary": 0.9,      # Summarized conversation
-    "summary": 0.9,              # Alias
     "own_diary": 0.7,            # Character's own diary
-    "diary": 0.7,                # Alias
     "own_dream": 0.5,            # Character's own dream
-    "dream": 0.5,                # Alias
-    "observation": 0.5,          # Bot observation
-    "gossip": 0.4,               # Heard from another bot
     "other_diary": 0.3,          # Another bot's diary
     "other_dream": 0.2,          # Another bot's dream
 }

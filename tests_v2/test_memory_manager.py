@@ -18,6 +18,9 @@ async def test_memory_manager():
     await db_manager.connect_postgres()
     await db_manager.connect_qdrant()
     
+    # Initialize memory manager (creates collections)
+    await memory_manager.initialize()
+
     if not db_manager.postgres_pool:
         logger.error("❌ PostgreSQL not available. Skipping test.")
         return
@@ -158,15 +161,16 @@ async def test_memory_manager():
         if db_manager.postgres_pool:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
-                    DELETE FROM v2_chat_history 
+                    DELETE FROM v2_chat_history
                     WHERE user_id = $1 AND character_name = $2
                 """, test_user, test_character)
-                await conn.execute("""
-                    DELETE FROM v2_chat_sessions 
-                    WHERE user_id = $1 AND character_name = $2
-                """, test_user, test_character)
-        
-        # Clear Qdrant collection
+                try:
+                    await conn.execute("""
+                        DELETE FROM v2_chat_sessions
+                        WHERE user_id = $1 AND character_name = $2
+                    """, test_user, test_character)
+                except Exception:
+                    pass        # Clear Qdrant collection
         if db_manager.qdrant_client:
             try:
                 collection_name = f"whisperengine_memory_{test_character}"

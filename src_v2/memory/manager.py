@@ -8,6 +8,8 @@ from src_v2.core.database import db_manager, retry_db_operation, require_db
 from src_v2.config.settings import settings
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.utils.time_utils import get_relative_time
+from src_v2.memory.models import MemorySourceType
+from src_v2.memory import scoring
 from influxdb_client import Point
 import time
 
@@ -84,7 +86,7 @@ class MemoryManager:
 
     @require_db("postgres")
     @retry_db_operation(max_retries=3)
-    async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None, importance_score: int = 3):
+    async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None):
         """
         Adds a message to the history.
         role: 'human' or 'ai'
@@ -106,7 +108,8 @@ class MemoryManager:
                 metadata=metadata,
                 channel_id=channel_id, 
                 message_id=message_id,
-                importance_score=importance_score
+                importance_score=importance_score,
+                source_type=source_type
             )
             
         except Exception as e:
@@ -119,7 +122,8 @@ class MemoryManager:
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
         collection_name: Optional[str] = None,
-        importance_score: int = 3
+        importance_score: int = 3,
+        source_type: Optional[MemorySourceType] = None
     ) -> None:
         """
         Public method to save typed memories (epiphanies, reasoning traces, patterns, etc.).
@@ -134,6 +138,7 @@ class MemoryManager:
             metadata: Additional metadata to store
             collection_name: Optional override for collection name
             importance_score: Importance score (1-5, default 3)
+            source_type: Source of the memory (human, inference, dream, gossip)
         """
         full_metadata = metadata or {}
         full_metadata["type"] = memory_type
@@ -144,18 +149,28 @@ class MemoryManager:
             content=content,
             metadata=full_metadata,
             collection_name=collection_name,
-            importance_score=importance_score
+            importance_score=importance_score,
+            source_type=source_type
         )
 
     @require_db("qdrant")
     @retry_db_operation(max_retries=3)
-    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3):
+    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None):
         """
         Embeds and saves a memory to Qdrant.
         """
         start_time = time.time()
         
         try:
+            # Determine source type if not provided
+            if source_type is None:
+                if role == "human" or role == "user":
+                    source_type = MemorySourceType.HUMAN_DIRECT
+                elif role == "ai" or role == "assistant":
+                    source_type = MemorySourceType.INFERENCE
+                else:
+                    source_type = MemorySourceType.INFERENCE  # Default for other types
+            
             # Generate embedding
             embedding = await self.embedding_service.embed_query_async(content)
             
@@ -168,7 +183,8 @@ class MemoryManager:
                 "timestamp": datetime.datetime.now().isoformat(),
                 "channel_id": str(channel_id) if channel_id else None,
                 "message_id": str(message_id) if message_id else None,
-                "importance_score": importance_score
+                "importance_score": importance_score,
+                "source_type": source_type.value
             }
             
             # Metadata can override type (e.g., for save_typed_memory)
@@ -313,41 +329,48 @@ class MemoryManager:
                     logger.error(f"Failed to log memory metrics: {e}")
 
             # === WEIGHTED SCORING FOR EPISODES ===
-            now = datetime.datetime.now()
             results = []
             
             for hit in search_result.points:
                 semantic_score = hit.score
-                ts_str = hit.payload.get("timestamp") if hit.payload else None
-                
-                # Recency: Episodes decay faster (7-day half-life vs 30-day for summaries)
-                recency_multiplier = 1.0
-                if ts_str:
-                    try:
-                        dt = datetime.datetime.fromisoformat(str(ts_str))
-                        age_days = (now - dt).total_seconds() / 86400
-                        # Floor at 0.2 for episodes (they fade more than summaries)
-                        recency_multiplier = max(0.2, 0.5 ** (age_days / 7.0))
-                    except Exception:
-                        pass
-                
-                # Importance: 1-10 → 0.5-1.0 (default 3 -> 0.65)
                 payload = hit.payload or {}
+                
+                # 1. Temporal Weight (Decay)
+                # Use centralized scoring logic for consistent decay rates
+                temporal_weight = scoring.calculate_temporal_weight(payload)
+                
+                # 2. Source Weight (Trust)
+                # Prefer direct human interaction over gossip/dreams
+                source_type = payload.get("source_type")
+                # Fallback to role if source_type missing (legacy data)
+                if not source_type:
+                    role = payload.get("role")
+                    if role == "human": source_type = "human_direct"
+                    elif role == "ai": source_type = "inference"
+                
+                source_weight = scoring.SOURCE_WEIGHTS.get(source_type, scoring.DEFAULT_SOURCE_WEIGHT)
+                
+                # 3. Importance Weight
+                # 1-10 → 0.5-1.0 (default 3 -> 0.65)
                 raw_importance = payload.get("importance_score", 3)
                 importance_multiplier = 0.5 + (raw_importance / 20.0)
 
-                weighted_score = semantic_score * recency_multiplier * importance_multiplier
+                # Final Score Calculation
+                # Semantic * Temporal * Source * Importance
+                weighted_score = semantic_score * temporal_weight * source_weight * importance_multiplier
                 
                 results.append({
                     "id": hit.id,
                     "content": payload.get("content"),
                     "role": payload.get("role"),
+                    "source_type": source_type,
                     "score": weighted_score,
                     "semantic_score": semantic_score,
-                    "recency_multiplier": round(recency_multiplier, 3),
+                    "temporal_weight": round(temporal_weight, 3),
+                    "source_weight": round(source_weight, 3),
                     "importance_multiplier": round(importance_multiplier, 3),
-                    "timestamp": ts_str,
-                    "relative_time": get_relative_time(ts_str) if ts_str else "unknown time"
+                    "timestamp": payload.get("timestamp"),
+                    "relative_time": get_relative_time(payload.get("timestamp")) if payload.get("timestamp") else "unknown time"
                 })
             
             # Re-rank by weighted score
