@@ -141,8 +141,16 @@ class ActivityOrchestrator:
         if not character_name:
             return
 
-        # Find a suitable channel
-        target_channel = self._get_target_channel(guild)
+        # Find target channel - use override if set, otherwise auto-detect
+        target_channel = None
+        if settings.BOT_CONVERSATION_CHANNEL_ID:
+            target_channel = self.bot.get_channel(int(settings.BOT_CONVERSATION_CHANNEL_ID))
+            if not target_channel:
+                logger.warning(f"Configured BOT_CONVERSATION_CHANNEL_ID {settings.BOT_CONVERSATION_CHANNEL_ID} not found")
+        
+        if not target_channel:
+            target_channel = self._get_target_channel(guild)
+        
         if not target_channel:
             logger.warning(f"No suitable channel found in {guild.name} for bot conversation")
             return

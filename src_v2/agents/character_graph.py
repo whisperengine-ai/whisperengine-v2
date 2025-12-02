@@ -268,10 +268,19 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
         user_content = await self._prepare_user_message(state['user_input'], state['image_urls'])
         messages.append(HumanMessage(content=user_content))
         
-        # Add router decision and tool outputs if any
+        # Add tool outputs if any - convert to SystemMessage to avoid tool_call_id compatibility issues
+        # (Some models like Mistral have strict tool_call_id format requirements)
         if state['router_response'] and state['router_response'].tool_calls:
-            messages.append(state['router_response'])
-            messages.extend(state['tool_messages'])
+            # Summarize tool calls and results as text instead of passing raw ToolMessages
+            tool_summary_parts = []
+            for i, tool_call in enumerate(state['router_response'].tool_calls):
+                tool_name = tool_call.get("name", "unknown")
+                tool_args = tool_call.get("args", {})
+                tool_result = state['tool_messages'][i].content if i < len(state['tool_messages']) else "No result"
+                tool_summary_parts.append(f"[Tool: {tool_name}]\nArgs: {tool_args}\nResult: {tool_result}")
+            
+            tool_context = "\n\n".join(tool_summary_parts)
+            messages.append(SystemMessage(content=f"[TOOL RESULTS]\n{tool_context}"))
             
             # Handle empty results guidance
             empty_results = False

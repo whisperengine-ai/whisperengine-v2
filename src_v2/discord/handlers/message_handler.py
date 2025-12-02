@@ -1230,6 +1230,13 @@ Recent channel context:
                 # Treat other bots the same as regular users - just use their numeric ID
                 cross_bot_user_id = str(message.author.id)
 
+                # Random pipeline selection: 70% fast (cheap), 30% full (tools enabled)
+                # This creates natural variation - some conversations are quick banter,
+                # others go deeper with tool access for grounded responses
+                tool_roll = random.random()
+                use_fast_mode = tool_roll >= 0.3  # 70% fast, 30% with tools
+                logger.info(f"Cross-bot pipeline: force_fast={use_fast_mode} (roll={tool_roll:.2f})")
+
                 # Use the bot's existing agent engine instance
                 response = await self.bot.agent_engine.generate_response(
                     character=character,
@@ -1241,7 +1248,7 @@ Recent channel context:
                         "cross_bot_context": cross_bot_context
                     },
                     user_id=cross_bot_user_id,
-                    force_fast=True  # Use fast mode for cross-bot banter
+                    force_fast=use_fast_mode
                 )
                 
                 # Send response as a reply

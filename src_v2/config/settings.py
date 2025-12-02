@@ -260,6 +260,7 @@ class Settings(BaseSettings):
     ENABLE_AUTONOMOUS_REACTIONS: bool = True  # Allow bot to react to messages (Phase 1)
     ENABLE_BOT_CONVERSATIONS: bool = False  # Allow bots to start conversations with each other (Phase 3)
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
+    BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations (None = auto-detect)
 
     # --- Scheduled Reminders (Phase E5) ---
     ENABLE_REMINDERS: bool = True  # Enable reminder system

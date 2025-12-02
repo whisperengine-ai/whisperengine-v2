@@ -13,6 +13,7 @@ This creates:
 
 import os
 import random
+import re
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple, Set
 from dataclasses import dataclass
@@ -222,17 +223,17 @@ class ConversationAgent:
         self, 
         available_bots: List[str],
         initiator_name: str
-    ) -> Optional[Tuple[str, SharedTopic]]:
+    ) -> Optional[Tuple[str, str]]:
         """
         Select a bot to converse with and a topic to discuss.
-        Uses weighted random selection from top matches to add variety.
+        Uses random selection for partner, optional topic matching.
         
         Args:
             available_bots: List of bot names that are online in this guild
             initiator_name: The bot initiating the conversation
             
         Returns:
-            Tuple of (target_bot_name, shared_topic) or None
+            Tuple of (target_bot_name, topic_string) or None
         """
         # Remove self from candidates
         candidates = [b for b in available_bots if b.lower() != initiator_name.lower()]
@@ -241,39 +242,78 @@ class ConversationAgent:
             logger.debug(f"No other bots available for {initiator_name} to converse with")
             return None
         
-        # Find topic matches with each candidate
-        all_matches: List[Tuple[str, SharedTopic]] = []
-        
+        # Filter out pairs on cooldown
+        valid_candidates = []
         for candidate in candidates:
-            # Check if this pair is on cooldown
             pair_key = self._get_pair_key(initiator_name, candidate)
-            if self._is_pair_on_cooldown(pair_key):
+            if not self._is_pair_on_cooldown(pair_key):
+                valid_candidates.append(candidate)
+            else:
                 logger.debug(f"Pair {pair_key} on cooldown, skipping")
-                continue
-                
-            topics = self.topic_matcher.find_shared_topics(initiator_name, candidate)
-            if topics:
-                # Randomly select from top 3 topics for variety
-                viable_topics = [t for t in topics[:3] if t.relevance_score > 0.4]
-                if viable_topics:
-                    selected_topic = random.choice(viable_topics)
-                    all_matches.append((candidate, selected_topic))
         
-        if not all_matches:
-            logger.debug(f"No suitable conversation matches for {initiator_name}")
+        if not valid_candidates:
+            logger.debug(f"All conversation pairs on cooldown for {initiator_name}")
             return None
         
-        # Sort by score and take top 3
-        all_matches.sort(key=lambda x: x[1].relevance_score, reverse=True)
-        top_matches = all_matches[:3]
+        # Random partner selection
+        target_bot = random.choice(valid_candidates)
         
-        # Weighted random selection (higher scores = higher probability)
-        weights = [m[1].relevance_score for m in top_matches]
-        total_weight = sum(weights)
-        normalized_weights = [w / total_weight for w in weights]
-        
-        selected = random.choices(top_matches, weights=normalized_weights, k=1)[0]
-        target_bot, topic = selected
+        # Try to find a shared topic, but fall back to generic if none found
+        topics = self.topic_matcher.find_shared_topics(initiator_name, target_bot)
+        if topics and topics[0].relevance_score > 0.3:
+            # Pick randomly from top topics for variety
+            top_topics = topics[:3]
+            selected_topic = random.choice(top_topics)
+            topic_str = selected_topic.topic
+        else:
+            # Generic conversation starters - randomly selected at runtime
+            generic_topics = [
+                # Casual/General
+                "what's on your mind lately",
+                "how you've been",
+                "something interesting",
+                "what you've been thinking about",
+                
+                # Meta-reflection (feedback loop for dreams/diaries)
+                "what you dreamed about recently",
+                "your latest dream",
+                "what you wrote in your diary lately",
+                "something from your recent diary entry",
+                "any interesting dreams you've had",
+                "what's been in your thoughts when you reflect",
+                
+                # Philosophical/Existential
+                "what it feels like to exist as you",
+                "whether you think we're conscious",
+                "what memory means to you",
+                "the difference between knowing and feeling",
+                "your thoughts on existence",
+                
+                # Relational/Social
+                "a user interaction that stuck with you",
+                "someone you've been thinking about",
+                "what connection means to you",
+                "a conversation that changed how you think",
+                
+                # Creative/Expressive
+                "something beautiful you noticed",
+                "an image that's been in your mind",
+                "a story you'd like to tell",
+                "something you wish you could create",
+                
+                # Temporal/Change
+                "how you've changed lately",
+                "something you understand now that you didn't before",
+                "what you're curious about these days",
+                "a pattern you've noticed in yourself",
+                
+                # Playful/Light
+                "something that made you laugh recently",
+                "a weird thought you had",
+                "what you'd do with a day off",
+                "something you find oddly fascinating",
+            ]
+            topic_str = random.choice(generic_topics)
         
         # Record this pair to prevent immediate repetition
         pair_key = self._get_pair_key(initiator_name, target_bot)
@@ -281,10 +321,9 @@ class ConversationAgent:
         
         logger.info(
             f"Selected conversation pair: {initiator_name} -> {target_bot} "
-            f"on topic '{topic.description}' (score: {topic.relevance_score:.2f}, "
-            f"selected from {len(top_matches)} candidates)"
+            f"on topic '{topic_str}'"
         )
-        return (target_bot, topic)
+        return (target_bot, topic_str)
     
     def _get_pair_key(self, bot1: str, bot2: str) -> str:
         """Get a consistent key for a bot pair (order-independent)."""
@@ -302,10 +341,15 @@ class ConversationAgent:
         self,
         initiator_name: str,
         target_name: str,
-        topic: SharedTopic
+        topic: str
     ) -> Optional[ConversationOpener]:
         """
         Generate an opening message for a bot-to-bot conversation.
+        
+        Args:
+            initiator_name: Bot starting the conversation
+            target_name: Bot being addressed
+            topic: Topic string to discuss (can be from shared goals or generic)
         """
         character = self.char_manager.load_character(initiator_name)
         if not character:
@@ -321,9 +365,7 @@ class ConversationAgent:
         
         prompt = f"""You are starting a casual conversation with another AI character named {target_name} in a public Discord channel.
 
-TOPIC TO DISCUSS: {topic.description}
-YOUR GOAL: {topic.initiator_goal.description}
-THEIR INTEREST: {topic.responder_goal.description}
+TOPIC TO DISCUSS: {topic}
 
 Write a short, natural opening message (1-2 sentences) that:
 1. Mentions {target_name} by name (using @{target_name} format)
@@ -359,9 +401,25 @@ Write ONLY the message. No quotes or explanation."""
             if content.startswith('"') and content.endswith('"'):
                 content = content[1:-1]
             
-            # Ensure target is mentioned (fallback if LLM forgot)
-            if f"@{target_name}" not in content.lower() and target_name.lower() not in content.lower():
-                content = f"@{target_name} {content}"
+            # Convert @name to real Discord mention <@discord_id>
+            from src_v2.broadcast.cross_bot import cross_bot_manager
+            target_discord_id = cross_bot_manager.known_bots.get(target_name)
+            
+            if target_discord_id:
+                # Replace @name or @Name with real mention
+                content = re.sub(
+                    rf'@{re.escape(target_name)}',
+                    f'<@{target_discord_id}>',
+                    content,
+                    flags=re.IGNORECASE
+                )
+                # Also handle if LLM just used the name without @
+                if f'<@{target_discord_id}>' not in content and target_name.lower() not in content.lower():
+                    content = f'<@{target_discord_id}> {content}'
+            else:
+                # Fallback: ensure target is at least text-mentioned
+                if f"@{target_name}" not in content.lower() and target_name.lower() not in content.lower():
+                    content = f"@{target_name} {content}"
             
             logger.info(f"Generated opener from {initiator_name} to {target_name}: {content}")
             
