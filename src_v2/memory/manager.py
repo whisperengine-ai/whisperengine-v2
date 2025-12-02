@@ -215,6 +215,7 @@ class MemoryManager:
                     point = Point("memory_latency") \
                         .tag("user_id", user_id) \
                         .tag("operation", "write") \
+                        .tag("source_type", source_type.value) \
                         .field("duration_ms", duration_ms) \
                         .time(datetime.datetime.utcnow())
                     
@@ -313,25 +314,6 @@ class MemoryManager:
             
             logger.debug(f"Found {len(search_result.points)} memory results for re-ranking")
             
-            # Log metrics
-            if db_manager.influxdb_write_api:
-                try:
-                    duration_ms = (time.time() - start_time) * 1000
-                    point = Point("memory_latency") \
-                        .tag("user_id", user_id) \
-                        .tag("operation", "read") \
-                        .field("duration_ms", duration_ms) \
-                        .field("result_count", len(search_result.points)) \
-                        .time(datetime.datetime.utcnow())
-                    
-                    db_manager.influxdb_write_api.write(
-                        bucket=settings.INFLUXDB_BUCKET,
-                        org=settings.INFLUXDB_ORG,
-                        record=point
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to log memory metrics: {e}")
-
             # === WEIGHTED SCORING FOR EPISODES ===
             results = []
             
@@ -380,6 +362,25 @@ class MemoryManager:
             # Re-rank by weighted score
             results.sort(key=lambda x: x["score"], reverse=True)
             
+            # Log metrics
+            if db_manager.influxdb_write_api:
+                try:
+                    duration_ms = (time.time() - start_time) * 1000
+                    point = Point("memory_latency") \
+                        .tag("user_id", user_id) \
+                        .tag("operation", "read") \
+                        .field("duration_ms", duration_ms) \
+                        .field("result_count", len(results)) \
+                        .time(datetime.datetime.utcnow())
+                    
+                    db_manager.influxdb_write_api.write(
+                        bucket=settings.INFLUXDB_BUCKET,
+                        org=settings.INFLUXDB_ORG,
+                        record=point
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log memory search metrics: {e}")
+
             return results[:limit]
             
         except Exception as e:
