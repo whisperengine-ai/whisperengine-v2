@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from loguru import logger
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
+
 
 async def run_dream_generation(
     ctx: Dict[str, Any],
@@ -66,6 +68,37 @@ async def run_dream_generation(
         # - Recent diary themes
         # - Character goals
         material = await dream_manager.gather_dream_material(hours=24)
+        
+        # Log narrative source metrics (Phase E16: Feedback Loop Stability)
+        try:
+            from influxdb_client.client.write.point import Point
+            if db_manager.influxdb_write_api:
+                total_sources = (
+                    len(material.memories) + len(material.facts) + 
+                    len(material.observations) + len(material.gossip) +
+                    len(material.recent_diary_themes) + len(material.goals)
+                )
+                gossip_ratio = len(material.gossip) / max(total_sources, 1)
+                
+                point = Point("narrative_sources") \
+                    .tag("bot_name", character_name) \
+                    .tag("narrative_type", "dream") \
+                    .field("from_conversations", len(material.memories)) \
+                    .field("from_facts", len(material.facts)) \
+                    .field("from_observations", len(material.observations)) \
+                    .field("from_gossip", len(material.gossip)) \
+                    .field("from_diary_themes", len(material.recent_diary_themes)) \
+                    .field("from_goals", len(material.goals)) \
+                    .field("total_sources", total_sources) \
+                    .field("gossip_ratio", gossip_ratio)
+                
+                db_manager.influxdb_write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET,
+                    org=settings.INFLUXDB_ORG,
+                    record=point
+                )
+        except Exception as e:
+            logger.debug(f"Failed to log narrative source metrics: {e}")
         
         if not material.is_sufficient():
             logger.info(f"Not enough dream material for {character_name}")

@@ -223,6 +223,82 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
+async def run_weekly_drift_observation(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Weekly cron job that observes personality drift for all active characters.
+    
+    Runs once per week (Sunday at midnight UTC) and compares recent responses
+    to a baseline embedding to detect personality drift over time.
+    
+    Phase E16: Feedback Loop Stability - Observability layer for emergence.
+    """
+    if not settings.ENABLE_DRIFT_OBSERVATION:
+        logger.info("Drift observation feature disabled, skipping weekly run")
+        return {"success": False, "reason": "disabled"}
+    
+    logger.info("Starting weekly drift observation for all characters")
+    
+    try:
+        from pathlib import Path
+        from src_v2.workers.tasks.drift_observation import run_drift_observation
+        
+        # Scan characters directory for available characters
+        characters_dir = Path("characters")
+        if not characters_dir.exists():
+            logger.warning("Characters directory not found")
+            return {"success": False, "error": "no_characters_dir"}
+        
+        # Get all character names (subdirectories with character.md)
+        all_characters = []
+        for char_dir in characters_dir.iterdir():
+            if char_dir.is_dir() and (char_dir / "character.md").exists():
+                all_characters.append(char_dir.name)
+        
+        if not all_characters:
+            logger.info("No characters found for drift observation")
+            return {"success": True, "processed": 0}
+        
+        logger.info(f"Running drift observation for {len(all_characters)} characters")
+        
+        # Run drift observation for each character
+        processed_count = 0
+        drift_results = {}
+        for char_name in all_characters:
+            # Check if character is active (has memory collection)
+            collection_name = f"whisperengine_memory_{char_name}"
+            try:
+                if db_manager.qdrant_client and not await db_manager.qdrant_client.collection_exists(collection_name):
+                    logger.debug(f"Skipping drift observation for {char_name}: not active")
+                    continue
+            except Exception as e:
+                logger.warning(f"Failed to check collection existence for {char_name}: {e}")
+                continue
+            
+            try:
+                result = await run_drift_observation(ctx, char_name)
+                if result.get("success"):
+                    processed_count += 1
+                    drift_results[char_name] = result.get("drift_score", 0.0)
+                    logger.info(f"Drift observation for {char_name}: distance={result.get('drift_score', 0.0):.4f}")
+            except Exception as e:
+                logger.error(f"Failed drift observation for {char_name}: {e}")
+        
+        logger.info(f"Weekly drift observation complete: {processed_count} characters processed")
+        
+        return {
+            "success": True,
+            "processed": processed_count,
+            "drift_results": drift_results
+        }
+        
+    except Exception as e:
+        logger.error(f"Weekly drift observation failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 async def run_nightly_goal_strategist(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """
     Cron job that runs goal strategist for characters where it's currently

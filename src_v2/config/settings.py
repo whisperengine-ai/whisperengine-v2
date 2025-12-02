@@ -106,6 +106,9 @@ class Settings(BaseSettings):
     ENABLE_UNIVERSE_EVENTS: bool = False
     ENABLE_SENSITIVITY_CHECK: bool = False  # LLM-based sensitivity check for universe events
     ENABLE_TRACE_LEARNING: bool = False
+    
+    # --- Phase E16: Feedback Loop Stability ---
+    ENABLE_DRIFT_OBSERVATION: bool = False  # Weekly personality drift observation (observability, not correction)
 
     # --- Quotas ---
     DAILY_IMAGE_QUOTA: int = Field(default=5, description="Max images a user can generate per day")

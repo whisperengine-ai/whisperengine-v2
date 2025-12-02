@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from loguru import logger
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
+
 
 async def run_diary_generation(
     ctx: Dict[str, Any],
@@ -46,6 +48,29 @@ async def run_diary_generation(
         
         # Get today's summaries
         summaries = await memory_manager.get_summaries_since(hours=24, limit=30)
+        
+        # Log narrative source metrics (Phase E16: Feedback Loop Stability)
+        # Diary sources are simpler - just session summaries
+        try:
+            from influxdb_client.client.write.point import Point
+            if db_manager.influxdb_write_api:
+                point = Point("narrative_sources") \
+                    .tag("bot_name", character_name) \
+                    .tag("narrative_type", "diary") \
+                    .field("from_conversations", len(summaries)) \
+                    .field("from_gossip", 0) \
+                    .field("from_dreams", 0) \
+                    .field("from_past_diaries", 0) \
+                    .field("total_sources", len(summaries)) \
+                    .field("gossip_ratio", 0.0)
+                
+                db_manager.influxdb_write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET,
+                    org=settings.INFLUXDB_ORG,
+                    record=point
+                )
+        except Exception as e:
+            logger.debug(f"Failed to log narrative source metrics: {e}")
         
         if len(summaries) < settings.DIARY_MIN_SESSIONS:
             if not settings.DIARY_ALWAYS_GENERATE:

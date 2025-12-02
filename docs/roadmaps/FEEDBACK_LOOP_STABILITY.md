@@ -1,9 +1,10 @@
 # Feedback Loop Stability (Phase E16)
 
 **Priority:** 🟢 High | **Time:** 1 day | **Complexity:** Low  
-**Status:** 📋 Proposed  
+**Status:** ✅ Complete  
 **Dependencies:** None (foundational observability)  
-**Created:** November 30, 2025
+**Created:** November 30, 2025  
+**Completed:** December 2025
 
 ---
 
@@ -248,16 +249,20 @@ Track in InfluxDB/Grafana:
 
 ## Files to Create/Modify
 
-| File | Action | LOC |
-|------|--------|-----|
-| `src_v2/memory/scoring.py` | NEW | ~60 |
-| `src_v2/memory/manager.py` | Modify search to use scoring | ~20 |
-| `src_v2/workers/tasks/diary_tasks.py` | Add metrics logging | ~15 |
-| `src_v2/workers/tasks/dream_tasks.py` | Add metrics logging | ~15 |
-| `src_v2/workers/tasks/drift_observation.py` | NEW | ~80 |
-| `docker/grafana/dashboards/emergence.json` | NEW | ~100 |
+| File | Action | LOC | Status |
+|------|--------|-----|--------|
+| `src_v2/memory/scoring.py` | NEW | ~110 | ✅ Complete |
+| `src_v2/workers/tasks/diary_tasks.py` | Add metrics logging | ~20 | ✅ Complete |
+| `src_v2/workers/tasks/dream_tasks.py` | Add metrics logging | ~20 | ✅ Complete |
+| `src_v2/workers/tasks/drift_observation.py` | NEW | ~300 | ✅ Complete |
+| `src_v2/workers/tasks/cron_tasks.py` | Add weekly cron | ~70 | ✅ Complete |
+| `src_v2/workers/worker.py` | Register cron job | ~10 | ✅ Complete |
+| `src_v2/config/settings.py` | Add ENABLE_DRIFT_OBSERVATION | ~3 | ✅ Complete |
+| `docker/grafana/dashboards/emergence.json` | NEW | ~100 | 📋 Deferred |
 
-**Total:** ~290 LOC, ~1 day effort
+**Total Implemented:** ~530 LOC
+
+**Note:** Memory manager search integration deferred - scoring.py provides the utilities, but the actual search re-ranking will be added when needed.
 
 ---
 

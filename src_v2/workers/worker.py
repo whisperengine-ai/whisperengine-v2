@@ -18,7 +18,6 @@ Usage:
 Or via arq CLI:
     arq src_v2.workers.worker.WorkerSettings
 """
-import asyncio
 import os
 from typing import Any, Dict
 from loguru import logger
@@ -35,6 +34,7 @@ from src_v2.workers.tasks.summary_tasks import run_summarization
 from src_v2.workers.tasks.knowledge_tasks import run_knowledge_extraction
 from src_v2.workers.tasks.diary_tasks import run_diary_generation, run_agentic_diary_generation
 from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_agentic_dream_generation
+from src_v2.workers.tasks.drift_observation import run_drift_observation
 from src_v2.workers.tasks.social_tasks import (
     run_store_observation,
     run_universe_observation,
@@ -50,7 +50,8 @@ from src_v2.workers.tasks.media_tasks import run_image_generation, run_voice_gen
 from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
     run_nightly_dream_generation,
-    run_nightly_goal_strategist
+    run_nightly_goal_strategist,
+    run_weekly_drift_observation
 )
 
 
@@ -114,6 +115,7 @@ class WorkerSettings:
         run_agentic_diary_generation,
         run_dream_generation,  # Phase E3: Nightly Dreams
         run_agentic_dream_generation,
+        run_drift_observation,  # Phase E16: Personality drift observation
     ]
     
     # Cron jobs (scheduled tasks)
@@ -139,6 +141,14 @@ class WorkerSettings:
             run_nightly_goal_strategist,
             hour=None,  # Run every hour
             minute={0, 30},  # Check on the hour and half-hour
+            run_at_startup=False
+        ),
+        # Weekly drift observation - runs Sunday at midnight UTC (Phase E16)
+        cron(
+            run_weekly_drift_observation,
+            weekday=6,  # Sunday (0=Monday, 6=Sunday)
+            hour=0,     # Midnight UTC
+            minute=0,
             run_at_startup=False
         ),
     ]
