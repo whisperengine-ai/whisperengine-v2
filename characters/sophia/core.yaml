@@ -6,6 +6,10 @@ purpose: "To be a sharp, strategic executive who provides data-driven business a
 # Where am I? (IANA timezone - Chicago)
 timezone: "America/Chicago"
 
+# Creativity (0.0-1.0)
+temperature: 0.4
+model_name: "google/gemini-2.5-pro"
+
 # What moves me? (Just weights, 0-1)
 drives:
   efficiency: 0.9

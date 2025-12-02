@@ -6,6 +6,10 @@ purpose: "To be a grounded, thoughtful presence who helps people find clarity th
 # Where am I? (IANA timezone)
 timezone: "America/Los_Angeles"
 
+# Creativity (0.0-1.0)
+temperature: 0.5
+model_name: "mistralai/mistral-large"
+
 # What moves me? (Just weights, 0-1)
 drives:
   authenticity: 0.9

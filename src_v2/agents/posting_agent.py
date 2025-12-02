@@ -104,9 +104,11 @@ class PostingAgent:
                 logger.error(f"Web search failed: {e}")
 
         # 4. Generate Content using LLM
-        # We use the 'utility' model (fast/cheap) or 'reflective' (smarter) depending on config.
-        # Let's use the main model (reflective/sonnet) for high quality posts.
-        llm = create_llm(mode="reflective") 
+        # We use the 'main' model (the character's primary voice) to ensure the personality is correct.
+        # We also use the character's specific temperature and model if defined.
+        temp = character.behavior.temperature if character.behavior else 0.7
+        model = character.behavior.model_name if character.behavior else None
+        llm = create_llm(mode="main", temperature=temp, model_name=model) 
         
         system_prompt = character.system_prompt
         
