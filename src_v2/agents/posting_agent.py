@@ -1,3 +1,4 @@
+import os
 import random
 from typing import List, Optional, Dict, Any
 from loguru import logger
@@ -166,4 +167,3 @@ async def run_posting_agent(ctx: Dict[str, Any], bot_name: str) -> None:
     agent = PostingAgent()
     await agent.generate_and_schedule_post(bot_name)
 
-import os
