@@ -47,6 +47,7 @@ from src_v2.workers.tasks.analysis_tasks import (
 )
 from src_v2.workers.tasks.vision_tasks import run_vision_analysis
 from src_v2.workers.tasks.media_tasks import run_image_generation, run_voice_generation
+from src_v2.workers.tasks.posting_tasks import run_posting_agent
 from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
     run_nightly_dream_generation,
@@ -116,6 +117,7 @@ class WorkerSettings:
         run_dream_generation,  # Phase E3: Nightly Dreams
         run_agentic_dream_generation,
         run_drift_observation,  # Phase E16: Personality drift observation
+        run_posting_agent,      # Phase E15: Autonomous Posting
     ]
     
     # Cron jobs (scheduled tasks)
