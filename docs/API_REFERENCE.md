@@ -1,6 +1,8 @@
 # WhisperEngine v2 API Reference
 
-**Version**: 2.0.0  
+**Version**: 2.1.0  
+**Last Updated**: December 3, 2025  
+**Architecture**: E17 Supergraph (Primary), Legacy orchestration (Fallback)  
 **Base URL**: `http://localhost:{PORT}` (port varies per bot)
 
 ## Overview
@@ -119,9 +121,9 @@ The `context` object supports these optional fields to simulate Discord environm
 | `bot_name` | string | Name of the character that responded. |
 | `processing_time_ms` | float | Time taken to generate the response in milliseconds. |
 | `memory_stored` | boolean | Whether the interaction was stored in memory. |
-| `mode` | string \| null | Processing mode: `"fast"`, `"agency"`, `"reflective"`, or `"blocked"`. |
-| `complexity` | string \| null | Complexity tier: `"SIMPLE"`, `"COMPLEX_LOW"`, `"COMPLEX_MID"`, `"COMPLEX_HIGH"`, or `"MANIPULATION"`. |
-| `model_used` | string \| null | LLM model that generated the response (e.g., `"openai/gpt-4o"`). |
+| `mode` | string \| null | Processing mode: `"supergraph"` (primary), `"fast"`, `"agency"`, `"reflective"` (legacy fallback), or `"blocked"`. |
+| `complexity` | string \| null | Complexity tier: `"SIMPLE"`, `"COMPLEX_LOW"`, `"COMPLEX_MID"`, `"COMPLEX_HIGH"`, `"DYNAMIC"` (Supergraph), or `"MANIPULATION"`. |
+| `model_used` | string \| null | LLM model that generated the response (e.g., `"openai/gpt-4o"`, `"mixed"` for Supergraph). |
 
 **Example Response**:
 ```json
@@ -132,19 +134,22 @@ The `context` object supports these optional fields to simulate Discord environm
   "bot_name": "elena",
   "processing_time_ms": 1245.67,
   "memory_stored": true,
-  "mode": "fast",
-  "complexity": "SIMPLE",
-  "model_used": "openai/gpt-4o"
+  "mode": "supergraph",
+  "complexity": "DYNAMIC",
+  "model_used": "mixed"
 }
 ```
 
-**Mode Values**:
+**Mode Values** (E17 - December 2025):
 | Mode | Description |
 |------|-------------|
-| `fast` | Direct LLM call without tool usage (most responses) |
-| `agency` | Single tool call (Tier 2 - memory lookup, etc.) |
-| `reflective` | Full ReAct reasoning loop with multiple tool calls |
+| `supergraph` | **Primary path**: LangGraph orchestration with context retrieval, classification, and routing (all user_id requests) |
+| `fast` | Legacy: Direct LLM call without tool usage (fallback for API calls without user_id) |
+| `agency` | Legacy: Single tool call (fallback for Tier 2 - memory lookup) |
+| `reflective` | Legacy: Full ReAct reasoning loop with multiple tool calls (fallback) |
 | `blocked` | Manipulation attempt rejected |
+
+**Note**: As of E17 (December 2025), all Discord messages and API calls with `user_id` use the Supergraph orchestration path. Legacy modes are only used for stateless API calls without user context.
 
 **Complexity Values**:
 | Complexity | Triggers |

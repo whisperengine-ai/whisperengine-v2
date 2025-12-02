@@ -1,7 +1,14 @@
 # WhisperEngine 2.0: "Back to Basics" Design Document
 
 **Version**: 2.2  
-**Last Updated**: December 1, 2025
+**Last Updated**: December 1, 2025  
+**Status**: Historical design document (implementation complete as of Dec 2025)
+
+> **Note:** This is the **original design document** from the v2 planning phase. For current architecture, see:
+> - [AGENT_GRAPH_SYSTEM.md](./AGENT_GRAPH_SYSTEM.md) - LangGraph Supergraph (E17 Complete)
+> - [COGNITIVE_ENGINE.md](./COGNITIVE_ENGINE.md) - Dual-Process architecture
+> - [MESSAGE_FLOW.md](./MESSAGE_FLOW.md) - Complete message lifecycle
+> - [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md) - Unified graph architecture
 
 ## 1. Vision & Philosophy
 **"Complexity is the enemy of execution."**

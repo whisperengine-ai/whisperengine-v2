@@ -1,8 +1,10 @@
 # Agentic Queue System: The Stigmergic Nervous System
 
-**Status:** ✅ Partially Implemented (Phase 1 Complete)
+**Status:** ✅ Complete (E18 - December 2025)
 **Target Phase:** E18
-**Dependencies:** Supergraph Architecture (E17)
+**Dependencies:** Supergraph Architecture (E17 - Complete)
+
+> **Implementation Note:** Phase 1 (Shared Worker) is complete. The system uses a single `insight-worker` container serving all bot instances via the `arq:cognition` queue. See [AGENTIC_QUEUE_ARCHITECTURE.md](../architecture/AGENTIC_QUEUE_ARCHITECTURE.md) for current implementation.
 
 ## Current Implementation (Dec 2024)
 

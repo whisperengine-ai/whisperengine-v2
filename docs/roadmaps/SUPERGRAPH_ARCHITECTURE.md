@@ -1,8 +1,10 @@
 # Supergraph Architecture: The Unified Agent Orchestrator
 
-**Status:** Proposed
+**Status:** ✅ Complete (E17 - December 2025)
 **Target Phase:** E17
 **Dependencies:** LangGraph Implementation (Complete)
+
+> **Implementation Note:** The Supergraph (`master_graph.py`) is now the **primary orchestration layer** for all user-context requests. See [AGENT_GRAPH_SYSTEM.md](../architecture/AGENT_GRAPH_SYSTEM.md) for current implementation details.
 
 ## 1. The Vision
 

@@ -1,8 +1,8 @@
 # Agent Graph System (LangGraph Architecture)
 
-**Version:** 1.0
-**Status:** Production (Feature Flagged)
-**Implemented:** December 2025
+**Version:** 1.1
+**Status:** Production (Primary Architecture)
+**Last Updated:** December 2, 2025
 
 ## Overview
 
@@ -140,35 +140,49 @@ The following background tasks are currently implemented as single-shot LLM chai
 
 ### ✅ Recently Implemented
 
-#### 1. Reflection Agent (`insight_tasks.py` → `run_reflection`)
+#### 1. Posting Agent (E15 Phase 2)
+*   **File**: `src_v2/agents/posting_agent.py`
+*   **Flag**: `ENABLE_AUTONOMOUS_POSTING`
+*   **Graph**: `SelectTopic` → `EnrichWithSearch` (optional) → `GeneratePost` → `END`
+*   **Purpose**: Goals-driven autonomous posting to quiet Discord channels.
+*   **Benefit**: Bots can share content based on their `goals.yaml` and `core.yaml` drives, optionally enriched with current events via web search.
+
+#### 2. Reflection Agent (`insight_tasks.py` → `run_reflection`)
 *   **File**: `src_v2/agents/reflection_graph.py`
 *   **Flag**: `ENABLE_LANGGRAPH_REFLECTION_AGENT`
 *   **Graph**: `Gather` (parallel queries) → `Synthesize` → `END`
 *   **Tools**: `query_summaries`, `query_knowledge_graph`, `query_observations`, `get_existing_insights`
 *   **Benefit**: Queries patterns across summaries, Neo4j facts, and observations before synthesizing insights.
 
-#### 2. Goal Strategist Agent (`strategist.py` → `run_goal_strategist`)
+#### 3. Goal Strategist Agent (`strategist.py` → `run_goal_strategist`)
 *   **File**: `src_v2/agents/strategist_graph.py`
 *   **Flag**: `ENABLE_LANGGRAPH_STRATEGIST_AGENT`
 *   **Graph**: `Gather` → `Reason` (ReAct loop) → `Synthesize` → `END`
 *   **Tools**: `get_active_goals`, `get_community_themes`, `get_user_facts`, `get_recent_history`
 *   **Benefit**: Planning agent that explores goal options, checks progress against stored data, and proposes updates.
 
-### 🔮 Remaining Candidates
+### 📋 Proposed Future Migrations
 
-#### 3. Summary Agent (`summary_tasks.py`)
+#### 1. Conversation Agent (E15 Phase 3)
+*   **Status**: Proposed, not started.
+*   **File**: `src_v2/agents/conversation_agent.py` (to be created)
+*   **Graph Type**: Multi-Agent (Type 7) + State Machine (Type 4)
+*   **Purpose**: Bot-to-bot conversations in public channels with turn-taking.
+*   **Benefit**: Bots can have natural dialogues that users observe, making quiet servers feel alive.
+
+#### 2. Summary Agent (`summary_tasks.py`)
 *   **Current**: Single-shot LLM call via `SummaryManager`.
 *   **Graph Potential**: **Medium**.
 *   **Proposed Graph**: `Generator` → `Critic` → `Refiner`.
 *   **Benefit**: The Critic can evaluate if the summary captures emotional nuance and key facts (Meaningfulness Score > 3) before saving. It can reject "lazy" summaries.
 
-#### 4. Knowledge Agent (`knowledge_tasks.py`)
+#### 3. Knowledge Agent (`knowledge_tasks.py`)
 *   **Current**: Single-shot extraction via `FactExtractor`.
 *   **Graph Potential**: **Low**.
 *   **Proposed Graph**: `Extractor` → `Validator` → `Deduplicator`.
 *   **Benefit**: The Validator can check against the existing Knowledge Graph to prevent contradictions or hallucinations (e.g., ensuring "I have a cat" doesn't overwrite "I have a dog" unless explicitly stated).
 
-#### 5. Goal Analysis Agent (`analysis_tasks.py`)
+#### 4. Goal Analysis Agent (`analysis_tasks.py`)
 *   **Current**: Single-shot evaluation via `GoalAnalyzer`.
 *   **Graph Potential**: **Low**.
 *   **Benefit**: Only needed if goal criteria become extremely complex or multi-step.

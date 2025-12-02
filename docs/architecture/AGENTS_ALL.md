@@ -1,47 +1,64 @@
 # WhisperEngine v2 - Agent Architecture
 
-**Version**: 2.2  
-**Last Updated**: December 1, 2025
+**Version**: 2.3  
+**Last Updated**: December 3, 2025  
+**Architecture**: E17 Supergraph (Primary), Legacy orchestration (Fallback)
 
 This document provides a comprehensive overview of all agents in the WhisperEngine cognitive system.
 
-**For entry point details**, see [Cognitive Engine Architecture](./COGNITIVE_ENGINE.md) for the main orchestrator (`AgentEngine`) and request routing logic.
+**For entry point details**, see [Cognitive Engine Architecture](./COGNITIVE_ENGINE.md) for the main orchestrator (`AgentEngine`) and [Agent Graph System](./AGENT_GRAPH_SYSTEM.md) for the LangGraph Supergraph implementation.
 
 ## Overview
 
-WhisperEngine uses a **Dual-Process Cognitive Architecture** with multiple specialized agents. The system routes messages through different processing paths based on complexity, with background agents handling learning and creative tasks asynchronously.
+WhisperEngine uses a **Dual-Process Cognitive Architecture** with multiple specialized agents. As of December 2025 (E17), the system uses **LangGraph Supergraph** (`master_graph.py`) as the primary orchestration layer, with background agents handling learning and creative tasks asynchronously.
 
 ## Architecture Diagram
 
+### Supergraph Architecture (E17 - Primary Path)
 ```
 User Message
      │
      ▼
-┌─────────────────┐
-│  AgentEngine    │
-│  (orchestrator) │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Classifier     │──────────────────┐
-│  (complexity)   │                  │
-└────────┬────────┘                  │
-         │                           │
-    ┌────┴────┬───────────┐          │
-    │         │           │          │
-    ▼         ▼           ▼          ▼
- SIMPLE   COMPLEX_LOW  COMPLEX_MID+  MANIPULATION
-    │         │           │          │
-    ▼         ▼           ▼          ▼
-  Direct  Character   Reflective   Rejection
-   LLM     Agent       Agent       Response
-    │         │           │
-    └────┬────┴───────────┘
-         │
-         ▼
-    Response + Post-processing
-    (facts, voice, images, reactions)
+┌──────────────────────┐
+│  AgentEngine         │  Entry Point: engine.py:generate_response()
+│  (orchestrator)      │  
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│  MasterGraphAgent    │  LangGraph Supergraph (master_graph.py)
+│  (Hierarchical +     │
+│   Router)            │
+└──────────┬───────────┘
+           │
+    ┌──────┴─────┬──────────────┬──────────────┐
+    │            │              │              │
+    ▼            ▼              ▼              ▼
+Context Node  Classifier  Prompt Builder  Router Logic
+    │            │              │              │
+    └────────────┴──────────────┴──────────────┘
+                 │
+        ┌────────┴─────────┬───────────────┐
+        │                  │               │
+        ▼                  ▼               ▼
+   SIMPLE            COMPLEX_LOW      COMPLEX_MID+
+        │                  │               │
+        ▼                  ▼               ▼
+  Fast Responder    Character         Reflective
+  (direct LLM)      Subgraph          Subgraph
+                    (one tool)        (ReAct loop)
+        │                  │               │
+        └──────────────────┴───────────────┘
+                           │
+                           ▼
+            Response + Post-processing
+            (facts, voice, images, reactions)
+```
+
+### Legacy Architecture (Fallback for API calls without user_id)
+```
+AgentEngine → Classifier → Direct/Character/Reflective Agents
+(Python orchestration, no StateGraph)
 ```
 
 ---

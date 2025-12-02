@@ -203,21 +203,40 @@ if trust_level >= 5:
 system_content += evolution_context
 ```
 
-#### 4.3 Branching Logic: Fast vs Reflective Mode
+#### 4.3 Orchestration: Supergraph vs Legacy
 
-**A. Reflective Mode (Complex Queries)**
-**Condition**: `is_complex == true AND ENABLE_REFLECTIVE_MODE == true`
+**A. Supergraph Path (Primary - E17 Complete)**
+**Condition**: `user_id is provided` (Discord messages, most API calls)
+**Location**: `src_v2/agents/engine.py:generate_response()` → `src_v2/agents/master_graph.py:master_graph_agent.run()`
+
 ```python
-return await reflective_agent.run(user_message, user_id, system_content)
+if user_id:
+    logger.info("Delegating to Master Supergraph")
+    response = await master_graph_agent.run(
+        user_input=user_message,
+        user_id=user_id,
+        character=character,
+        chat_history=chat_history,
+        context_variables=context_variables,
+        image_urls=image_urls
+    )
 ```
-**Process** (`src_v2/agents/reflective.py`):
-1. **ReAct Loop**: Thought → Action → Observation (3-10 iterations)
-2. **Tool Usage**: Search memories, lookup facts, reason over knowledge graph
-3. **Multi-Step Reasoning**: Breaks down complex questions
-4. **Cost**: ~$0.02-0.03 per query
 
-**B. Fast Mode (Standard Flow)**
-**Condition**: Simple/Moderate messages OR reflective mode disabled
+**Process** (LangGraph StateGraph):
+1. **Context Node**: Parallel retrieval (memories, facts, trust, goals)
+2. **Classifier Node**: Complexity + intent detection
+3. **Prompt Builder**: System prompt construction with context injection
+4. **Router Logic**: Routes to appropriate subgraph:
+   - `SIMPLE` → Fast Responder (direct LLM)
+   - `COMPLEX_LOW` → Character Subgraph (one-shot tool)
+   - `COMPLEX_MID+` → Reflective Subgraph (ReAct loop)
+5. **Post-Processing**: Facts, voice, images, reactions
+
+**B. Legacy Python Orchestration (Fallback)**
+**Condition**: `user_id is None` (stateless API calls without user context)
+**Location**: `src_v2/agents/engine.py:generate_response()` remainder
+
+This path preserves the original Python-based flow for backward compatibility with API clients that don't provide user context.
 
 ##### 4.3.1 Cognitive Router (Optional)
 ```python

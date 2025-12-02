@@ -2,24 +2,27 @@
 
 > *"From countless conversations, a universe is born."*
 
-**A Multi-Modal Cognitive AI Platform for Discord**
+**A Multi-Modal Cognitive AI Platform for Discord & Emergence Research**
 
-WhisperEngine v2 creates AI agents with persistent memory and adaptive behavior. Beyond simple chatbots, agents have **Long-Term Memory**, **Advanced Reasoning**, **Knowledge Graphs**, and **Autonomous Engagement** — processing inputs through six distinct data streams to build a comprehensive context.
+WhisperEngine v2 creates AI agents with persistent memory, adaptive behavior, and autonomous engagement. This is also an **emergence research platform** — we study how agentic AI systems develop emergent behaviors over time.
 
-Built on a "Five Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis), it combines the speed of vector search with the precision of knowledge graphs.
+Agents have **Long-Term Memory** (Qdrant vectors), **Advanced Reasoning** (LangGraph Supergraph), **Knowledge Graphs** (Neo4j), and **Autonomous Engagement** (posting, reactions, bot-to-bot conversations) — processing inputs through six distinct data streams.
 
-**Version:** 2.3 | **Python:** 3.13+ | **Status:** Production Ready
+Built on a "Five Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis) with **LangGraph Supergraph orchestration** (E17), it combines the speed of vector search with the precision of knowledge graphs and the observability of graph-based agent flows.
+
+**Version:** 2.5 | **Python:** 3.12+ | **Status:** Production Ready | **Architecture:** E17 Supergraph
 
 ## ✨ What Makes WhisperEngine Different
 
 | Traditional Chatbots | WhisperEngine v2 |
 |---------------------|------------------|
 | Forgets everything between sessions | **Persistent memory** across conversations |
-| Same personality for everyone | **Evolving relationships** (Stranger → Trusted Confidant) |
-| Only responds when asked | **Autonomous engagement** when appropriate |
+| Same personality for everyone | **Evolving relationships** (Stranger → Soulmate, 8 stages) |
+| Only responds when asked | **Autonomous engagement** (posting, reactions, conversations) |
 | Text-only understanding | **Multi-modal processing** (images, voice, context) |
-| Single reasoning mode | **Dual-process architecture** (fast + reflective) |
+| Single reasoning mode | **LangGraph Supergraph** orchestration with subgraphs |
 | Isolated instances | **Multi-agent environment** with shared state |
+| Black box behavior | **Emergence research** — observing and documenting behaviors |
 
 ## 🧠 The Six Modalities
 
@@ -41,22 +44,27 @@ The platform processes information through multiple input vectors:
 Comprehensive documentation lives in `/docs/`:
 
 | I want to... | Read this |
-|--------------|-----------|
+|--------------|-----------||
 | Understand the vision | [Design Philosophy](docs/architecture/WHISPERENGINE_2_DESIGN.md) |
 | See what's built vs planned | [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
+| Understand graph architecture | [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) |
+| Learn about LangGraph agents | [Agent Graph System](docs/architecture/AGENT_GRAPH_SYSTEM.md) |
 | Create a new character | [Character Creation Guide](docs/CREATING_NEW_CHARACTERS.md) |
 | Deploy multiple bots | [Multi-Bot Deployment](docs/MULTI_BOT_DEPLOYMENT.md) |
 | Understand memory architecture | [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) |
 | Learn about the cognitive engine | [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md) |
+| Read emergence research | [Research Journal](docs/research/) |
 
 ### Architecture Deep Dives
 
 | Document | Description |
 |----------|-------------|
+| [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) | **NEW** Unified view of all graph usage (Data, Orchestration, Conceptual) |
+| [Agent Graph System](docs/architecture/AGENT_GRAPH_SYSTEM.md) | LangGraph Supergraph (E17), subgraphs, agent taxonomy |
 | [Cognitive Architecture](docs/architecture/COGNITIVE_ENGINE.md) | Dual-process architecture, Fast Path vs Reflective Path |
 | [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) | Vector + graph hybrid memory, consolidation |
-| [Data Models](docs/architecture/DATA_MODELS.md) | Four Pillars schema definitions |
-| [Message Flow](docs/architecture/MESSAGE_FLOW.md) | Complete request lifecycle |
+| [Data Models](docs/architecture/DATA_MODELS.md) | Five Pillars schema definitions |
+| [Message Flow](docs/architecture/MESSAGE_FLOW.md) | Complete request lifecycle (Supergraph orchestration) |
 | [Trust & Evolution](docs/architecture/TRUST_EVOLUTION_SYSTEM.md) | Relationship progression (8 stages) |
 | [Discord Integration](docs/architecture/DISCORD_INTEGRATION.md) | Autonomous agents, voice architecture |
 | [Vision Pipeline](docs/architecture/VISION_PIPELINE.md) | Image processing and understanding |
@@ -72,15 +80,23 @@ Comprehensive documentation lives in `/docs/`:
 | [Stats Footer](docs/features/STATS_FOOTER.md) | Debug information in responses |
 | [Reflective Mode Controls](docs/features/REFLECTIVE_MODE_CONTROLS.md) | User override commands |
 
+### Recently Completed
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Supergraph Architecture](docs/roadmaps/SUPERGRAPH_ARCHITECTURE.md) | ✅ E17 | LangGraph master orchestrator |
+| [Agentic Queue System](docs/roadmaps/AGENTIC_QUEUE_SYSTEM.md) | ✅ E18 | Redis arq worker architecture |
+| [Autonomous Server Activity](docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md) | ✅ E15.1-2 | Reactions + Posting agents |
+
 ### Future Roadmaps
 
 | Document | Status | Description |
 |----------|--------|-------------|
+| [Bot-to-Bot Conversations](docs/roadmaps/CHARACTER_TO_CHARACTER.md) | 🔜 E15.3 | ConversationAgent for multi-bot dialogue |
 | [Multi-Agent Environment](docs/roadmaps/EMERGENT_UNIVERSE.md) | 🟡 Design | Distributed context, cross-agent awareness |
 | [Channel Lurking](docs/roadmaps/CHANNEL_LURKING.md) | 🟡 Design | Passive engagement system |
 | [Response Pattern Learning](docs/roadmaps/RESPONSE_PATTERN_LEARNING.md) | 🟡 Design | RLHF-style adaptation |
 | [Embedding Upgrade](docs/roadmaps/EMBEDDING_UPGRADE_768D.md) | 📋 Ready | 384D → 768D embeddings |
-| [Reflective Mode Phase 2](docs/roadmaps/REFLECTIVE_MODE_PHASE_2.md) | 📋 Ready | Adaptive steps, self-correction |
 
 ## 🚀 Quick Start
 
@@ -154,7 +170,16 @@ curl -X POST http://localhost:8000/api/chat \
 
 WhisperEngine supports multiple unique AI personalities, each with their own character file, goals, and evolution parameters.
 
-**Available characters:** `elena`, `ryan`, `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `nottaylor`
+**Available characters:** `elena` (dev primary), `nottaylor` (production), `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `ryan`, `gabriel`, `aetheris`
+
+| Bot | Port | Role | Main Model |
+|-----|------|------|------------|
+| elena | 8000 | Dev Primary | Claude Sonnet 4.5 |
+| nottaylor | 8008 | Production | GPT-4o |
+| dotty | 8002 | Personal | Claude 3.7 Sonnet |
+| gabriel | 8009 | Personal | Mistral Medium 3.1 |
+| aetheris | 8011 | Personal | Claude Sonnet 4 |
+| aria, dream, jake, marcus, ryan, sophia | 8003-8007 | Test | Various (A/B testing) |
 
 ### Character Configuration
 
@@ -269,6 +294,7 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 ## ✅ Current Features
 
 ### Core Systems
+- ✅ **LangGraph Supergraph** orchestration ([E17](docs/roadmaps/SUPERGRAPH_ARCHITECTURE.md)) — unified agent execution
 - ✅ Dual-process cognitive engine ([Fast Mode + Reflective Mode](docs/architecture/COGNITIVE_ENGINE.md))
 - ✅ Native function calling with parallel tool execution
 - ✅ Vector memory system ([Qdrant](docs/architecture/MEMORY_SYSTEM_V2.md)) with semantic search
@@ -276,9 +302,8 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 - ✅ Trust/evolution system ([8 stages](docs/architecture/TRUST_EVOLUTION_SYSTEM.md): Stranger → Soulmate)
 - ✅ Background [fact](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) and [preference](docs/features/USER_PREFERENCES.md) extraction
 - ✅ **Dreams & Diary**: Offline memory consolidation and narrative generation
-- ✅ **Universe Simulation**: Shared state and events across agents
-- ✅ **Broadcasting**: Multi-channel announcements and interactions
-- ✅ **Background Workers**: Robust task queue system using Redis/arq
+- ✅ **Agentic Queue System** ([E18](docs/roadmaps/AGENTIC_QUEUE_SYSTEM.md)) — Redis arq workers
+- ✅ **Autonomous Posting & Reactions** ([E15](docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md)) — bots engage proactively
 
 ### Discord Integration
 - ✅ DM support + server mentions
@@ -297,12 +322,12 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 See the full [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) for detailed planning.
 
 **Coming Soon:**
-- 🔜 Streaming LLM responses
-- 🔜 Hot-reload character definitions
+- 🔜 Bot-to-bot conversations ([E15.3](docs/roadmaps/CHARACTER_TO_CHARACTER.md))
+- 🔜 Full activity scaling (E15.4)
 - 🔜 [Channel lurking](docs/roadmaps/CHANNEL_LURKING.md) (passive engagement)
 - 🔜 Reasoning traces (system learns from itself)
-- 🔜 Epiphanies (characters have spontaneous insights)
 - 🔜 [Emergent Universe](docs/roadmaps/EMERGENT_UNIVERSE.md) (cross-bot awareness)
+- 🔜 Web dashboard (admin UI)
 
 ## 📖 Additional Resources
 

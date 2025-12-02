@@ -1,5 +1,7 @@
 # WhisperEngine v2 - Quick Reference
 
+**Version:** 2.5 | **Architecture:** E17 Supergraph | **Updated:** December 2025
+
 ## 🎯 Most Common Commands
 
 ```bash
@@ -195,13 +197,24 @@ Project Root
 
 ## 🔗 Port Reference
 
+### Bot Ports
+| Bot | Port | Role | Model |
+|-----|------|------|-------|
+| elena | 8000 | **Dev Primary** | Claude Sonnet 4.5 |
+| ryan | 8001 | Test | Llama 3.3 70B |
+| dotty | 8002 | Personal | Claude 3.7 Sonnet |
+| aria | 8003 | Test | Gemini 2.0 Flash |
+| dream | 8004 | Test | DeepSeek Chat |
+| jake | 8005 | Test | GPT-4o Mini |
+| sophia | 8006 | Test | Gemini 2.5 Pro |
+| marcus | 8007 | Test | Mistral Large |
+| nottaylor | 8008 | **Production** | GPT-4o |
+| gabriel | 8009 | Personal | Mistral Medium 3.1 |
+| aetheris | 8011 | Personal | Claude Sonnet 4 |
+
+### Infrastructure Ports
 | Service | Port | URL |
 |---------|------|-----|
-| Elena API | 8000 | http://localhost:8000 |
-| Ryan API | 8001 | http://localhost:8001 |
-| Dotty API | 8002 | http://localhost:8002 |
-| Aria API | 8003 | http://localhost:8003 |
-| Dream API | 8004 | http://localhost:8004 |
 | PostgreSQL | 5432 | psql -h localhost -U whisper -d whisperengine_v2 |
 | Qdrant | 6333 | http://localhost:6333/dashboard |
 | Neo4j Browser | 7474 | http://localhost:7474 |
@@ -224,3 +237,13 @@ cat docs/MULTI_BOT_DEPLOYMENT.md
 # Inspect container
 docker inspect whisperengine-v2-{bot}
 ```
+
+## 📚 Key Documentation
+
+| Document | Purpose |
+|----------|--------|
+| [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) | Unified graph architecture (Data, Orchestration, Conceptual) |
+| [Agent Graph System](docs/architecture/AGENT_GRAPH_SYSTEM.md) | LangGraph Supergraph implementation |
+| [Message Flow](docs/architecture/MESSAGE_FLOW.md) | Complete request lifecycle |
+| [API Reference](docs/API_REFERENCE.md) | REST API endpoints |
+| [copilot-instructions](.github/copilot-instructions.md) | AI agent development guide |
