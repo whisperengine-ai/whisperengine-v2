@@ -77,6 +77,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | 📋 Proposed |
 | 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15, E6 | 📋 Proposed |
+| 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
@@ -1719,3 +1720,21 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 **Files:**
 - `src_v2/workers/tasks/summary_tasks.py`
 - `src_v2/workers/tasks/knowledge_tasks.py`
+
+---
+
+### 📋 Phase E21: Semantic Routing (Fast Path)
+**Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+**Dependencies:** None
+**Added:** December 2025
+
+**Problem:** The `ComplexityClassifier` uses an LLM for every message, adding latency and cost even for trivial inputs ("Hi", "Stop").
+
+**Solution:** Implement a local, embedding-based router before the LLM.
+- **Semantic Router**: Uses `fastembed` to match inputs against archetypes (Greeting, Stop, Voice, Image).
+- **Fast Path**: If similarity > 0.82, bypass LLM and route immediately.
+- **Fallback**: Ambiguous inputs fall through to the LLM classifier.
+
+**Spec:** [SEMANTIC_ROUTING_PROPOSAL.md](./architecture/SEMANTIC_ROUTING_PROPOSAL.md)
+
