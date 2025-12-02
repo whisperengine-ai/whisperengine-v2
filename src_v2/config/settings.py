@@ -167,7 +167,8 @@ class Settings(BaseSettings):
     REACTION_SAME_USER_COOLDOWN_SECONDS: int = 300  # Min seconds between reactions to same user
     REACTION_DAILY_MAX: int = 100  # Global daily limit for reactions
 
-    # --- Manipulation Timeout ---
+    # --- Manipulation Detection & Timeout ---
+    ENABLE_MANIPULATION_DETECTION: bool = True  # Detect manipulation attempts in classifier (jailbreaks, consciousness probing)
     ENABLE_MANIPULATION_TIMEOUTS: bool = False  # Track and timeout manipulation attempts (disabled by default)
     MANIPULATION_TIMEOUT_SCOPE: str = "per_bot"  # "per_bot" or "global"
 

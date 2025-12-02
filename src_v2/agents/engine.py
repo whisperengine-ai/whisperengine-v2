@@ -26,7 +26,7 @@ from influxdb_client.client.write.point import Point
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
-from src_v2.config.constants import get_image_format_for_provider
+from src_v2.config.constants import should_use_base64
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.router import CognitiveRouter
@@ -1128,13 +1128,10 @@ Using the information above, formulate a final response to the user in my authen
             # Type: Union[str, List[Union[str, Dict]]] for multimodal content
             input_content: List[Dict[str, Any]] = [{"type": "text", "text": user_message}]
             
-            # Check if provider requires base64 encoding or supports direct URLs
-            image_format = get_image_format_for_provider(settings.LLM_PROVIDER)
-            
-            if image_format == "base64":
-                # Download and encode images for providers that require base64
-                async with httpx.AsyncClient() as client:
-                    for img_url in image_urls:
+            # Check each URL - use base64 for Discord CDN or if provider requires it
+            async with httpx.AsyncClient() as client:
+                for img_url in image_urls:
+                    if should_use_base64(img_url, settings.LLM_PROVIDER):
                         try:
                             img_response = await client.get(img_url, timeout=10.0)
                             img_response.raise_for_status()
@@ -1154,14 +1151,13 @@ Using the information above, formulate a final response to the user in my authen
                                 "type": "image_url",
                                 "image_url": {"url": img_url}
                             })
-            else:
-                # Use URLs directly for providers that support it (OpenAI, Anthropic, etc.)
-                for img_url in image_urls:
-                    input_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": img_url}
-                    })
-                logger.debug(f"Using direct image URLs for {settings.LLM_PROVIDER}")
+                    else:
+                        # Use URL directly
+                        input_content.append({
+                            "type": "image_url",
+                            "image_url": {"url": img_url}
+                        })
+                        logger.debug(f"Using direct image URL for {settings.LLM_PROVIDER}")
             
             # type: ignore - LangChain accepts this multimodal format at runtime
             return [HumanMessage(content=input_content)]  # type: ignore[arg-type]

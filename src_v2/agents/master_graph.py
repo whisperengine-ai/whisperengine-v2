@@ -1,13 +1,16 @@
 import asyncio
+import base64
 import operator
 import datetime
 from typing import List, Optional, Dict, Any, TypedDict, Literal, cast, Callable, Awaitable
 from loguru import logger
 from langsmith import traceable
+import httpx
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 
 from src_v2.config.settings import settings
+from src_v2.config.constants import should_use_base64
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.classifier import ComplexityClassifier
@@ -230,12 +233,34 @@ class MasterGraphAgent:
         messages = [SystemMessage(content=system_prompt)]
         messages.extend(chat_history)
         
-        if image_urls:
-             # Handle images if present (though usually handled by CharacterAgent, fast path might get them if complexity is low)
-             content = [{"type": "text", "text": user_input}]
-             for url in image_urls:
-                 content.append({"type": "image_url", "image_url": {"url": url}})
-             messages.append(HumanMessage(content=content))
+        if image_urls and settings.LLM_SUPPORTS_VISION:
+            # Handle images - convert to base64 if URL requires it (Discord CDN) or provider requires it
+            content: List[Dict[str, Any]] = [{"type": "text", "text": user_input}]
+            
+            async with httpx.AsyncClient() as client:
+                for img_url in image_urls:
+                    if should_use_base64(img_url, settings.LLM_PROVIDER):
+                        # Download and encode as base64 (needed for Discord CDN URLs)
+                        try:
+                            img_response = await client.get(img_url, timeout=10.0)
+                            img_response.raise_for_status()
+                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                            mime_type = img_response.headers.get("content-type", "image/png")
+                            content.append({
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}
+                            })
+                        except Exception as e:
+                            logger.error(f"Failed to download/encode image {img_url}: {e}")
+                            # Fallback to URL (might still fail, but worth trying)
+                            content.append({"type": "image_url", "image_url": {"url": img_url}})
+                    else:
+                        # Provider accepts direct URLs and URL doesn't require base64
+                        content.append({"type": "image_url", "image_url": {"url": img_url}})
+            messages.append(HumanMessage(content=content))
+        elif image_urls:
+            # Vision not supported, just add text
+            messages.append(HumanMessage(content=user_input))
         else:
             messages.append(HumanMessage(content=user_input))
 

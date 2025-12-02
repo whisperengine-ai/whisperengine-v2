@@ -10,7 +10,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph import StateGraph, END
 
 from src_v2.agents.llm_factory import create_llm
-from src_v2.config.constants import get_image_format_for_provider
+from src_v2.config.constants import should_use_base64
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
@@ -546,11 +546,10 @@ TOOL USAGE GUIDE:
         if image_urls and settings.LLM_SUPPORTS_VISION:
             user_message_content = [{"type": "text", "text": user_input}]
             provider = settings.REFLECTIVE_LLM_PROVIDER or settings.LLM_PROVIDER
-            image_format = get_image_format_for_provider(provider)
             
-            if image_format == "base64":
-                async with httpx.AsyncClient() as client:
-                    for img_url in image_urls:
+            async with httpx.AsyncClient() as client:
+                for img_url in image_urls:
+                    if should_use_base64(img_url, provider):
                         try:
                             img_response = await client.get(img_url, timeout=10.0)
                             img_response.raise_for_status()
@@ -566,12 +565,11 @@ TOOL USAGE GUIDE:
                                 "type": "image_url",
                                 "image_url": {"url": img_url}
                             })
-            else:
-                for img_url in image_urls:
-                    user_message_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": img_url}
-                    })
+                    else:
+                        user_message_content.append({
+                            "type": "image_url",
+                            "image_url": {"url": img_url}
+                        })
 
         # 4. Build Initial Messages
         initial_messages: List[BaseMessage] = [SystemMessage(content=full_prompt)]

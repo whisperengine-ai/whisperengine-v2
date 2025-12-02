@@ -9,7 +9,7 @@ import httpx
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.settings import settings
-from src_v2.config.constants import get_image_format_for_provider
+from src_v2.config.constants import should_use_base64
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
@@ -406,14 +406,10 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
         # Build multimodal content
         content: List[Dict[str, Any]] = [{"type": "text", "text": user_input}]
         
-        # Check if provider requires base64 encoding or supports direct URLs
-        # Use main LLM provider since CharacterAgent uses the main LLM for final response
-        image_format = get_image_format_for_provider(settings.LLM_PROVIDER)
-        
-        if image_format == "base64":
-            # Download and encode images for providers that require base64
-            async with httpx.AsyncClient() as client:
-                for img_url in image_urls:
+        # Check each URL - use base64 for Discord CDN or if provider requires it
+        async with httpx.AsyncClient() as client:
+            for img_url in image_urls:
+                if should_use_base64(img_url, settings.LLM_PROVIDER):
                     try:
                         logger.debug(f"CharacterAgent: Downloading image from {img_url[:100]}...")
                         img_response = await client.get(img_url, timeout=10.0)
@@ -434,14 +430,13 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
                             "type": "image_url",
                             "image_url": {"url": img_url}
                         })
-        else:
-            # Use URLs directly for providers that support it
-            for img_url in image_urls:
-                content.append({
-                    "type": "image_url",
-                    "image_url": {"url": img_url}
-                })
-            logger.info(f"CharacterAgent: Using direct image URLs for {settings.LLM_PROVIDER}")
+                else:
+                    # Use URL directly
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {"url": img_url}
+                    })
+                    logger.info(f"CharacterAgent: Using direct image URL for {settings.LLM_PROVIDER}")
         
         logger.info(f"CharacterAgent: Final multimodal content has {len(content)} parts")
         return content

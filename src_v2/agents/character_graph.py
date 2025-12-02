@@ -11,7 +11,7 @@ from langgraph.graph import StateGraph, END
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.settings import settings
-from src_v2.config.constants import get_image_format_for_provider
+from src_v2.config.constants import should_use_base64
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
@@ -146,11 +146,10 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             return user_input
         
         content: List[Dict[str, Any]] = [{"type": "text", "text": user_input}]
-        image_format = get_image_format_for_provider(settings.LLM_PROVIDER)
         
-        if image_format == "base64":
-            async with httpx.AsyncClient() as client:
-                for img_url in image_urls:
+        async with httpx.AsyncClient() as client:
+            for img_url in image_urls:
+                if should_use_base64(img_url, settings.LLM_PROVIDER):
                     try:
                         img_response = await client.get(img_url, timeout=10.0)
                         img_response.raise_for_status()
@@ -163,9 +162,8 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
                     except Exception as e:
                         logger.error(f"Failed to download/encode image {img_url}: {e}")
                         content.append({"type": "image_url", "image_url": {"url": img_url}})
-        else:
-            for img_url in image_urls:
-                content.append({"type": "image_url", "image_url": {"url": img_url}})
+                else:
+                    content.append({"type": "image_url", "image_url": {"url": img_url}})
         
         return content
 
