@@ -11,8 +11,8 @@ The queue system is now operational with the following architecture:
 ### Queue Names (arq-compatible)
 | Queue | Purpose | Listener |
 |-------|---------|----------|
-| `arq:cognition` | Deep reasoning tasks | Worker containers (3 replicas) |
-| `broadcast:queue:{bot_name}` | Discord broadcasts | Each bot polls its own queue |
+| `arq:cognition` | Deep reasoning tasks | Single shared worker container |
+| `whisper:broadcast:queue:{bot_name}` | Discord broadcasts | Each bot polls its own queue via background task |
 
 ### Key Files
 - `src_v2/workers/worker.py` - Worker with `queue_name = "arq:cognition"`
@@ -137,6 +137,18 @@ if user_is_sad:
         delay="4h"
     )
 ```
+
+---
+
+## 3.5 LangGraph Conversion Status
+
+See [AGENT_GRAPH_SYSTEM.md](../architecture/AGENT_GRAPH_SYSTEM.md) for detailed LangGraph architecture and migration status.
+
+**Summary:**
+- ✅ Reflective, Character, Insight, Diary, Dream, Reflection, Strategist agents all have LangGraph versions
+- 🔮 Remaining candidates: `run_summarization`, `run_knowledge_extraction` (low priority)
+
+---
 
 ## 4. Benefits
 

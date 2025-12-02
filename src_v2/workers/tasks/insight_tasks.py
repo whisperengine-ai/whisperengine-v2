@@ -4,6 +4,7 @@ from src_v2.agents.insight_agent import insight_agent
 from src_v2.agents.insight_graph import insight_graph_agent
 from src_v2.config.settings import settings
 
+
 async def run_insight_analysis(
     ctx: Dict[str, Any],
     user_id: str,
@@ -82,29 +83,59 @@ async def run_reflection(
     logger.info(f"Processing reflection for user {user_id} (character: {character_name})")
     
     try:
-        from src_v2.intelligence.reflection import ReflectionEngine
-        
-        reflection_engine = ReflectionEngine()
-        result = await reflection_engine.analyze_user_patterns(user_id, character_name)
-        
-        if result:
-            inferred_goal_slugs = [g.slug for g in result.inferred_goals] if result.inferred_goals else []
-            logger.info(f"Reflection complete for user {user_id}: {len(result.insights)} insights, {len(result.updated_traits)} traits, {len(inferred_goal_slugs)} inferred goals")
-            return {
-                "success": True,
-                "insights": result.insights,
-                "traits": result.updated_traits,
-                "inferred_goals": inferred_goal_slugs,
-                "user_id": user_id,
-                "character_name": character_name
-            }
+        if settings.ENABLE_LANGGRAPH_REFLECTION_AGENT:
+            # Use the new LangGraph-based reflection agent
+            logger.info("Using LangGraph Reflection Agent")
+            from src_v2.agents.reflection_graph import reflection_graph_agent, save_reflection_output
+            
+            result = await reflection_graph_agent.analyze(user_id, character_name)
+            
+            if result:
+                # Save to database
+                await save_reflection_output(user_id, character_name, result)
+                
+                inferred_goal_slugs = [g.slug for g in result.inferred_goals] if result.inferred_goals else []
+                logger.info(f"Reflection complete for user {user_id}: {len(result.insights)} insights, {len(result.updated_traits)} traits, {len(inferred_goal_slugs)} inferred goals")
+                return {
+                    "success": True,
+                    "insights": result.insights,
+                    "traits": result.updated_traits,
+                    "inferred_goals": inferred_goal_slugs,
+                    "user_id": user_id,
+                    "character_name": character_name
+                }
+            else:
+                return {
+                    "success": True,
+                    "skipped": True,
+                    "reason": "no_data",
+                    "user_id": user_id
+                }
         else:
-            return {
-                "success": True,
-                "skipped": True,
-                "reason": "no_summaries",
-                "user_id": user_id
-            }
+            # Use legacy single-shot reflection
+            from src_v2.intelligence.reflection import ReflectionEngine
+            
+            reflection_engine = ReflectionEngine()
+            result = await reflection_engine.analyze_user_patterns(user_id, character_name)
+            
+            if result:
+                inferred_goal_slugs = [g.slug for g in result.inferred_goals] if result.inferred_goals else []
+                logger.info(f"Reflection complete for user {user_id}: {len(result.insights)} insights, {len(result.updated_traits)} traits, {len(inferred_goal_slugs)} inferred goals")
+                return {
+                    "success": True,
+                    "insights": result.insights,
+                    "traits": result.updated_traits,
+                    "inferred_goals": inferred_goal_slugs,
+                    "user_id": user_id,
+                    "character_name": character_name
+                }
+            else:
+                return {
+                    "success": True,
+                    "skipped": True,
+                    "reason": "no_summaries",
+                    "user_id": user_id
+                }
             
     except Exception as e:
         logger.error(f"Reflection failed for user {user_id}: {e}")

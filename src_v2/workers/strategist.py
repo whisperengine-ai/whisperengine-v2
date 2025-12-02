@@ -372,6 +372,41 @@ async def run_goal_strategist(ctx: Dict[str, Any], bot_name: str):
     
     if not settings.ENABLE_GOAL_STRATEGIST:
         logger.debug("Goal strategist is disabled, skipping")
-        return
+        return {"success": False, "reason": "disabled"}
     
-    await goal_strategist.run_nightly_analysis(bot_name)
+    if settings.ENABLE_LANGGRAPH_STRATEGIST_AGENT:
+        # Use the new LangGraph-based strategist agent
+        logger.info(f"Using LangGraph Strategist Agent for {bot_name}")
+        from src_v2.agents.strategist_graph import strategist_graph_agent, save_strategist_output
+        
+        try:
+            output = await strategist_graph_agent.run(bot_name)
+            
+            if output:
+                results = await save_strategist_output(bot_name, output)
+                logger.info(f"Strategist complete for {bot_name}: {results['strategies_applied']} strategies, {results['goals_created']} new goals")
+                return {
+                    "success": True,
+                    "strategies_applied": results["strategies_applied"],
+                    "goals_created": results["goals_created"],
+                    "summary": output.summary,
+                    "character_name": bot_name
+                }
+            else:
+                return {
+                    "success": True,
+                    "skipped": True,
+                    "reason": "no_output",
+                    "character_name": bot_name
+                }
+        except Exception as e:
+            logger.error(f"LangGraph strategist failed for {bot_name}: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "character_name": bot_name
+            }
+    else:
+        # Use legacy strategist
+        await goal_strategist.run_nightly_analysis(bot_name)
+        return {"success": True, "character_name": bot_name}

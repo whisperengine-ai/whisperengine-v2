@@ -1,8 +1,26 @@
 # Agentic Queue Architecture: The Stigmergic Nervous System
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** December 1, 2025  
-**Status:** Proposed / In-Progress
+**Status:** Phase 1 Complete ✅
+
+---
+
+## Current State Summary
+
+**What's Working:**
+- `arq:cognition` queue handles all deep reasoning tasks (diaries, dreams, insight, reflection)
+- `whisper:broadcast:queue:{bot_name}` queues handle per-bot Discord broadcasts
+- Cron jobs (worker) check every 30 min, enqueue jobs for characters in their target timezone window
+- Each bot polls its broadcast queue every 5 seconds via `process_broadcast_queue_loop()`
+- Workers process jobs from `arq:cognition` with 5 concurrent slots, 2 min timeout
+
+**What's Future:**
+- `arq:sensory` queue for fast sentiment/intent analysis
+- `arq:action` queue for proactive messaging
+- Inter-agent triggers (Insight → Proactive)
+
+---
 
 ## 1. The Vision: From "Scripts" to "Collective Intelligence"
 
@@ -86,14 +104,16 @@ Here is how a complex behavior emerges from simple, decoupled agents using this 
 
 ## 5. Implementation Roadmap
 
-### Phase 1: Decouple Scheduling (Done/In-Progress)
-- [x] Refactor `cron_tasks.py` to enqueue jobs instead of running them.
-- [x] Update `trigger_*.py` scripts to use the queue.
-- [ ] Verify `TaskQueue` can handle multiple named queues (currently single default queue).
+### Phase 1: Decouple Scheduling ✅ COMPLETE
+- [x] Refactor `cron_tasks.py` to enqueue jobs instead of running them
+- [x] Update `trigger_*.py` scripts to use the queue
+- [x] Worker listens to `arq:cognition` queue
+- [x] Per-bot broadcast queues (`whisper:broadcast:queue:{bot_name}`)
+- [x] Bots poll their broadcast queues every 5 seconds
 
-### Phase 2: Specialized Workers
-- [ ] Define `WorkerSettings` to listen to specific queues (e.g., `Worker(queues=['cognition'])`).
-- [ ] Split the monolithic `worker.py` into `cognitive_worker.py`, `sensory_worker.py`, etc. (Optional, for scaling).
+### Phase 2: Specialized Workers (Future)
+- [ ] Split `worker.py` into specialized workers (cognition, sensory, action)
+- [ ] Define per-queue `WorkerSettings` for independent scaling
 
 ### Phase 3: Inter-Agent Triggers
 - [ ] Update `InsightAgent` to post jobs to `TaskQueue` instead of just returning strings.

@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     ENABLE_LANGGRAPH_INSIGHT_AGENT: bool = False  # Enable new LangGraph-based insight agent
     ENABLE_LANGGRAPH_DIARY_AGENT: bool = False  # Enable new LangGraph-based diary agent
     ENABLE_LANGGRAPH_DREAM_AGENT: bool = False  # Enable new LangGraph-based dream agent
+    ENABLE_LANGGRAPH_REFLECTION_AGENT: bool = False  # Enable new LangGraph-based reflection agent
+    ENABLE_LANGGRAPH_STRATEGIST_AGENT: bool = False  # Enable new LangGraph-based goal strategist agent
     ENABLE_SUPERGRAPH: bool = False  # Enable Master Supergraph architecture
     ENABLE_CHARACTER_AGENCY: bool = True  # Phase A7: Tier 2 Tool Usage
     REFLECTIVE_LLM_PROVIDER: str = "openrouter"

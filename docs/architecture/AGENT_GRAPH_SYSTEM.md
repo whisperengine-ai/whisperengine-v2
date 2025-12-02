@@ -69,6 +69,18 @@ graph TD
 *   **Purpose**: Analyzes conversation patterns for long-term learning.
 *   **Structure**: ReAct loop for pattern detection.
 
+### 6. Reflection Graph Agent (Background)
+*   **File**: `src_v2/agents/reflection_graph.py`
+*   **Purpose**: Analyzes user patterns across summaries, knowledge graph, and observations.
+*   **Structure**: `Gather` (parallel tool queries) → `Synthesize` → `END`
+*   **Key Feature**: Queries multiple data sources (summaries, Neo4j facts, observations) in parallel, then synthesizes insights and infers goals.
+
+### 7. Strategist Graph Agent (Background)
+*   **File**: `src_v2/agents/strategist_graph.py`
+*   **Purpose**: Nightly goal planning and strategy generation.
+*   **Structure**: `Gather` → `Reason` (ReAct loop) → `Synthesize` → `END`
+*   **Key Feature**: Uses tools to explore user facts and conversation history before generating strategies. Can create new goals based on community trends.
+
 ## Feature Flags
 
 The system is controlled by a set of feature flags in `.env` or `settings.py`.
@@ -88,6 +100,8 @@ These run independently in the worker container and must be enabled separately.
 | `ENABLE_LANGGRAPH_DIARY_AGENT` | Uses the Graph version of the Diary generator. | `True` |
 | `ENABLE_LANGGRAPH_DREAM_AGENT` | Uses the Graph version of the Dream generator. | `True` |
 | `ENABLE_LANGGRAPH_INSIGHT_AGENT` | Uses the Graph version of the Insight analyzer. | `True` |
+| `ENABLE_LANGGRAPH_REFLECTION_AGENT` | Uses the Graph version of the Reflection analyzer. | `True` |
+| `ENABLE_LANGGRAPH_STRATEGIST_AGENT` | Uses the Graph version of the Goal Strategist. | `True` |
 
 ## Migration Guide
 
@@ -104,6 +118,8 @@ To switch fully to the new system:
     ENABLE_LANGGRAPH_DIARY_AGENT=True
     ENABLE_LANGGRAPH_DREAM_AGENT=True
     ENABLE_LANGGRAPH_INSIGHT_AGENT=True
+    ENABLE_LANGGRAPH_REFLECTION_AGENT=True
+    ENABLE_LANGGRAPH_STRATEGIST_AGENT=True
     ```
 3.  **Restart Services**:
     ```bash
@@ -122,19 +138,37 @@ All graph executions are traced in **LangSmith**.
 
 The following background tasks are currently implemented as single-shot LLM chains but are candidates for future migration to LangGraph to improve quality and robustness.
 
-### 1. Summary Agent (`summary_tasks.py`)
+### ✅ Recently Implemented
+
+#### 1. Reflection Agent (`insight_tasks.py` → `run_reflection`)
+*   **File**: `src_v2/agents/reflection_graph.py`
+*   **Flag**: `ENABLE_LANGGRAPH_REFLECTION_AGENT`
+*   **Graph**: `Gather` (parallel queries) → `Synthesize` → `END`
+*   **Tools**: `query_summaries`, `query_knowledge_graph`, `query_observations`, `get_existing_insights`
+*   **Benefit**: Queries patterns across summaries, Neo4j facts, and observations before synthesizing insights.
+
+#### 2. Goal Strategist Agent (`strategist.py` → `run_goal_strategist`)
+*   **File**: `src_v2/agents/strategist_graph.py`
+*   **Flag**: `ENABLE_LANGGRAPH_STRATEGIST_AGENT`
+*   **Graph**: `Gather` → `Reason` (ReAct loop) → `Synthesize` → `END`
+*   **Tools**: `get_active_goals`, `get_community_themes`, `get_user_facts`, `get_recent_history`
+*   **Benefit**: Planning agent that explores goal options, checks progress against stored data, and proposes updates.
+
+### 🔮 Remaining Candidates
+
+#### 3. Summary Agent (`summary_tasks.py`)
 *   **Current**: Single-shot LLM call via `SummaryManager`.
-*   **Graph Potential**: **High**.
+*   **Graph Potential**: **Medium**.
 *   **Proposed Graph**: `Generator` → `Critic` → `Refiner`.
 *   **Benefit**: The Critic can evaluate if the summary captures emotional nuance and key facts (Meaningfulness Score > 3) before saving. It can reject "lazy" summaries.
 
-### 2. Knowledge Agent (`knowledge_tasks.py`)
+#### 4. Knowledge Agent (`knowledge_tasks.py`)
 *   **Current**: Single-shot extraction via `FactExtractor`.
-*   **Graph Potential**: **Medium**.
+*   **Graph Potential**: **Low**.
 *   **Proposed Graph**: `Extractor` → `Validator` → `Deduplicator`.
 *   **Benefit**: The Validator can check against the existing Knowledge Graph to prevent contradictions or hallucinations (e.g., ensuring "I have a cat" doesn't overwrite "I have a dog" unless explicitly stated).
 
-### 3. Goal Agent (`analysis_tasks.py`)
+#### 5. Goal Analysis Agent (`analysis_tasks.py`)
 *   **Current**: Single-shot evaluation via `GoalAnalyzer`.
 *   **Graph Potential**: **Low**.
 *   **Benefit**: Only needed if goal criteria become extremely complex or multi-step.
