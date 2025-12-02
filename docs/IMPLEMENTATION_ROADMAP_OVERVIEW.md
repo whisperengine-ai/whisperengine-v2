@@ -76,6 +76,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | 📋 Proposed |
+| 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15, E6 | 📋 Proposed |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
@@ -118,6 +119,7 @@ E6 (Cross-Bot Chat) ──► E15 (Autonomous Server Activity)
                               ├──► Phase 1: Reactions ✅
                               ├──► Phase 2: Goals-Driven Posts ✅
                               ├──► Phase 3: Bot-to-Bot Conversations 📋
+                              └──► E20 (Bot Introspection Tools)
                               └──► Phase 4: Activity Scaling 📋
 ```
 
