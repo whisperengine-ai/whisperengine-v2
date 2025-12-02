@@ -18,6 +18,7 @@ from src_v2.voice.player import play_text
 from src_v2.core.database import db_manager
 from src_v2.core.quota import QuotaExceededError
 from src_v2.evolution.trust import trust_manager
+from src_v2.memory.models import MemorySourceType
 from src_v2.voice.response import voice_response_manager
 from src_v2.workers.task_queue import task_queue
 from src_v2.moderation.timeout_manager import timeout_manager
@@ -1185,7 +1186,8 @@ Recent channel context:
                         role="human",
                         content=message.content,
                         channel_id=str(message.channel.id),
-                        message_id=str(message.id)
+                        message_id=str(message.id),
+                        source_type=MemorySourceType.GOSSIP
                     )
                     
                     # Save our response
@@ -1195,7 +1197,8 @@ Recent channel context:
                         role="ai",
                         content=response,
                         channel_id=str(message.channel.id),
-                        message_id=str(sent_message.id)
+                        message_id=str(sent_message.id),
+                        source_type=MemorySourceType.INFERENCE
                     )
                     logger.debug(f"Saved cross-bot conversation with {other_bot_name} to memory")
                 except Exception as mem_err:

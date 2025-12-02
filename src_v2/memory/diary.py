@@ -18,6 +18,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
+from src_v2.memory.models import MemorySourceType
 from pydantic import BaseModel, Field
 from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue
 
@@ -510,6 +511,7 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
                 vector=embedding,
                 payload={
                     "type": "diary",
+                    "source_type": MemorySourceType.DIARY.value,
                     "bot_name": self.bot_name,
                     "date": date_str,
                     "content": entry.entry,

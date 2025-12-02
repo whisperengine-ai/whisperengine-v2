@@ -13,6 +13,7 @@ from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.config.settings import settings
 from src_v2.memory.shared_artifacts import shared_artifact_manager
+from src_v2.memory.models import MemorySourceType
 
 
 class AnalyzePatternsInput(BaseModel):
@@ -139,7 +140,8 @@ class GenerateEpiphanyTool(BaseTool):
                     "character_name": self.character_name,
                     "observation": observation
                 },
-                collection_name=f"whisperengine_memory_{self.character_name}"
+                collection_name=f"whisperengine_memory_{self.character_name}",
+                source_type=MemorySourceType.INFERENCE
             )
             
             # --- Shared Artifact Storage (Phase E13) ---
@@ -194,7 +196,8 @@ class StoreReasoningTraceTool(BaseTool):
                     "tools_used": tools_used.split(","),
                     "complexity": complexity
                 },
-                collection_name=f"whisperengine_memory_{self.character_name}"
+                collection_name=f"whisperengine_memory_{self.character_name}",
+                source_type=MemorySourceType.INFERENCE
             )
             
             logger.info(f"Stored reasoning trace for pattern: {query_pattern} ({complexity})")
@@ -238,7 +241,8 @@ class LearnResponsePatternTool(BaseTool):
                     "response_style": response_style,
                     "feedback_score": feedback_score
                 },
-                collection_name=f"whisperengine_memory_{self.character_name}"
+                collection_name=f"whisperengine_memory_{self.character_name}",
+                source_type=MemorySourceType.INFERENCE
             )
             
             logger.info(f"Learned response pattern for {query_type} (score: {feedback_score})")

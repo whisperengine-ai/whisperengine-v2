@@ -36,6 +36,7 @@ from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
 from src_v2.safety.content_review import content_safety_checker
 from src_v2.core.provenance import ProvenanceCollector, SourceType
+from src_v2.memory.models import MemorySourceType
 
 
 class DreamContent(BaseModel):
@@ -650,6 +651,7 @@ Create a surreal dream echoing these experiences.""")
                 vector=embedding,
                 payload={
                     "type": "dream",
+                    "source_type": MemorySourceType.DREAM.value,
                     "bot_name": self.bot_name,
                     "user_id": user_id,
                     "content": dream.dream,

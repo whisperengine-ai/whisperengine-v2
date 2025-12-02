@@ -188,8 +188,11 @@ class MemoryManager:
             }
             
             # Metadata can override type (e.g., for save_typed_memory)
+            # But preserve source_type - it should not be overwritten by metadata
             if metadata:
+                preserved_source_type = payload["source_type"]
                 payload.update(metadata)
+                payload["source_type"] = preserved_source_type  # Restore after update
             
             # Upsert to Qdrant
             target_collection = collection_name or self.collection_name
@@ -249,6 +252,7 @@ class MemoryManager:
                 vector=embedding,
                 payload={
                     "type": "summary",
+                    "source_type": MemorySourceType.SUMMARY.value,
                     "session_id": str(session_id),
                     "user_id": str(user_id),
                     "user_name": user_name or "someone",  # For diary provenance display

@@ -18,6 +18,11 @@ class MemorySourceType(str, Enum):
 class Memory(BaseModel):
     """
     Schema for a memory stored in Vector DB.
+    
+    NOTE: This model is defined for future structured operations but is not
+    currently used in the hot path. Qdrant payloads are built as dicts directly
+    for performance. This schema serves as documentation and for potential
+    future migration to strict validation.
     """
     id: str
     user_id: str
