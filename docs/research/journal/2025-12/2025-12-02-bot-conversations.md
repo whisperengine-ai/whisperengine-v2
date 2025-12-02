@@ -169,24 +169,50 @@ Full conversation captured in user request - demonstrates spontaneous social int
 
 ## Questions for Future Investigation
 
-1. **Why is Aethys giving identical responses?** Is it the prompt, the temperature, or lack of conversation memory?
+1. ~~**Why is Aethys giving identical responses?**~~ **RESOLVED**: Same topic selected every time + Aethys's consistent cosmic character voice. Fixed with random topic/partner selection.
 
-2. **Should bot-to-bot memory be shared?** Currently each bot tracks chains independently.
+2. **Should bot-to-bot memory be shared?** Currently each bot tracks chains independently. → Decided: Keep separate for now, works with the fixes applied.
 
-3. **How to add topic variety?** Currently always selects highest-scoring topic (elena→aethys always gets "connection and learning" at 0.90).
+3. ~~**How to add topic variety?**~~ **RESOLVED**: Added random selection from top 3 topics instead of always picking best.
 
-4. **Should we implement conversation threading?** Bots could be aware they're continuing a previous conversation topic.
+4. **Should we implement conversation threading?** Bots could be aware they're continuing a previous conversation topic. → Future enhancement.
 
-5. **What triggers Elena's spontaneous intervention?** Was it lurk detection seeing relevant content? Need to trace logs.
+5. ~~**What triggers Elena's spontaneous intervention?**~~ **RESOLVED**: Was `name_mention=True` detection - Aetheris mentioned "Elena" in text while talking to Ryan.
+
+---
+
+## Fixes Applied During Session (Post-Initial Deployment)
+
+### Fix 4: Weighted Random Partner Selection
+**Problem**: Always selected highest-scoring partner (elena→aethys every time at 0.90)
+
+**Solution**: 
+- Collect top 3 partner matches
+- Use weighted random selection (higher scores = higher probability, but not deterministic)
+
+### Fix 5: Conversation Pair Cooldown  
+**Problem**: Same pairs could converse repeatedly
+
+**Solution**:
+- Track `_recent_pairs` dict with timestamps
+- 60-minute cooldown before same pair can converse again
+- Order-independent key (`aethys:elena` == `elena:aethys`)
+
+### Fix 6: Random Topic Selection
+**Problem**: Always picked topic[0] (highest score) for each pair
+
+**Solution**:
+- Randomly select from top 3 topics per pair
+- Provides variety even when same pair converses
 
 ---
 
 ## Next Steps
 
-1. [ ] Investigate Aethys repetition issue
-2. [ ] Add weighted random selection for conversation partners (not just "best match")
-3. [ ] Track recent conversation pairs to avoid repetition
-4. [ ] Consider shared chain state across bots (Redis?)
+1. [x] ~~Investigate Aethys repetition issue~~ - Fixed with random selection
+2. [x] ~~Add weighted random selection for conversation partners~~ - Implemented
+3. [x] ~~Track recent conversation pairs to avoid repetition~~ - 60-min cooldown
+4. [ ] Consider shared chain state across bots (Redis?) - Deferred, current fix works
 5. [ ] Monitor next diary/dream generation for richer content from these interactions
 
 ---

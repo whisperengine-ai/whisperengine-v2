@@ -13,6 +13,7 @@ This creates:
 
 import os
 import random
+from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple, Set
 from dataclasses import dataclass
 from loguru import logger
@@ -214,6 +215,8 @@ class ConversationAgent:
     def __init__(self):
         self.char_manager = CharacterManager()
         self.topic_matcher = TopicMatcher()
+        self._recent_pairs: Dict[str, datetime] = {}  # "bot1:bot2" -> last_conversation_time
+        self._pair_cooldown_minutes = 60  # Don't repeat same pair within 1 hour
     
     async def select_conversation_pair(
         self, 
@@ -222,6 +225,7 @@ class ConversationAgent:
     ) -> Optional[Tuple[str, SharedTopic]]:
         """
         Select a bot to converse with and a topic to discuss.
+        Uses weighted random selection from top matches to add variety.
         
         Args:
             available_bots: List of bot names that are online in this guild
@@ -237,27 +241,62 @@ class ConversationAgent:
             logger.debug(f"No other bots available for {initiator_name} to converse with")
             return None
         
-        # Find best topic match with each candidate
-        best_match: Optional[Tuple[str, SharedTopic]] = None
-        best_score = 0.0
+        # Find topic matches with each candidate
+        all_matches: List[Tuple[str, SharedTopic]] = []
         
         for candidate in candidates:
+            # Check if this pair is on cooldown
+            pair_key = self._get_pair_key(initiator_name, candidate)
+            if self._is_pair_on_cooldown(pair_key):
+                logger.debug(f"Pair {pair_key} on cooldown, skipping")
+                continue
+                
             topics = self.topic_matcher.find_shared_topics(initiator_name, candidate)
             if topics:
-                # Take the best topic for this pair
-                top_topic = topics[0]
-                if top_topic.relevance_score > best_score:
-                    best_score = top_topic.relevance_score
-                    best_match = (candidate, top_topic)
+                # Randomly select from top 3 topics for variety
+                viable_topics = [t for t in topics[:3] if t.relevance_score > 0.4]
+                if viable_topics:
+                    selected_topic = random.choice(viable_topics)
+                    all_matches.append((candidate, selected_topic))
         
-        if best_match and best_score > 0.4:  # Only if reasonably relevant
-            logger.info(
-                f"Selected conversation pair: {initiator_name} -> {best_match[0]} "
-                f"on topic '{best_match[1].description}' (score: {best_score:.2f})"
-            )
-            return best_match
+        if not all_matches:
+            logger.debug(f"No suitable conversation matches for {initiator_name}")
+            return None
         
-        return None
+        # Sort by score and take top 3
+        all_matches.sort(key=lambda x: x[1].relevance_score, reverse=True)
+        top_matches = all_matches[:3]
+        
+        # Weighted random selection (higher scores = higher probability)
+        weights = [m[1].relevance_score for m in top_matches]
+        total_weight = sum(weights)
+        normalized_weights = [w / total_weight for w in weights]
+        
+        selected = random.choices(top_matches, weights=normalized_weights, k=1)[0]
+        target_bot, topic = selected
+        
+        # Record this pair to prevent immediate repetition
+        pair_key = self._get_pair_key(initiator_name, target_bot)
+        self._recent_pairs[pair_key] = datetime.now(timezone.utc)
+        
+        logger.info(
+            f"Selected conversation pair: {initiator_name} -> {target_bot} "
+            f"on topic '{topic.description}' (score: {topic.relevance_score:.2f}, "
+            f"selected from {len(top_matches)} candidates)"
+        )
+        return (target_bot, topic)
+    
+    def _get_pair_key(self, bot1: str, bot2: str) -> str:
+        """Get a consistent key for a bot pair (order-independent)."""
+        return ":".join(sorted([bot1.lower(), bot2.lower()]))
+    
+    def _is_pair_on_cooldown(self, pair_key: str) -> bool:
+        """Check if a bot pair is on cooldown."""
+        last_time = self._recent_pairs.get(pair_key)
+        if not last_time:
+            return False
+        elapsed = (datetime.now(timezone.utc) - last_time).total_seconds() / 60
+        return elapsed < self._pair_cooldown_minutes
     
     async def generate_opener(
         self,
