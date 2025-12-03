@@ -32,9 +32,25 @@ docs/
 ├── PRIVACY_AND_DATA_SEGMENTATION.md   # Privacy model
 ├── API_REFERENCE.md                   # REST API documentation
 │
+├── prd/                               # 📋 Product Requirements (NEW)
+│   ├── README.md                      # PRD index & format guide
+│   ├── PRD-001-TRUST_EVOLUTION.md     # Trust & relationship system
+│   ├── PRD-002-PRIVACY.md             # Privacy & data handling
+│   ├── PRD-003-CHARACTER_EXPERIENCE.md # Dreams, diaries, artifacts
+│   └── PRD-004-MULTI_MODAL.md         # Vision, voice, image gen
+│
+├── adr/                               # 🏗️ Architecture Decisions (NEW)
+│   ├── README.md                      # ADR index & format guide
+│   ├── ADR-001-EMBODIMENT_MODEL.md    # No "AI self" behind character
+│   ├── ADR-002-DUAL_PROCESS.md        # Fast Mode + Reflective Mode
+│   ├── ADR-003-EMERGENCE_PHILOSOPHY.md # "Observe first, constrain later"
+│   ├── ADR-004-GRAPH_FIRST_MEMORY.md  # Neo4j + Qdrant hybrid
+│   ├── ADR-005-LANGGRAPH_SUPERGRAPH.md # LangGraph over manual loops
+│   └── ADR-006-FEATURE_FLAGS.md       # Gating expensive LLM features
+│
 ├── architecture/                      # How the system works
 │   ├── WHISPERENGINE_2_DESIGN.md      # Core design philosophy
-│   ├── GRAPH_SYSTEMS_DESIGN.md        # 🔗 Unified graph architecture (NEW)
+│   ├── GRAPH_SYSTEMS_DESIGN.md        # 🔗 Unified graph architecture
 │   ├── MULTI_MODAL_PERCEPTION.md      # 🧠 The "senses" of AI characters
 │   ├── AGENT_GRAPH_SYSTEM.md          # LangGraph agent architecture
 │   ├── COGNITIVE_ENGINE.md            # Brain of the system
@@ -47,7 +63,7 @@ docs/
 │   ├── SUMMARIZATION_SYSTEM.md        # Memory consolidation
 │   └── ...
 │
-├── emergence_philosophy/              # 🌱 Emergence research (NEW)
+├── emergence_philosophy/              # 🌱 Emergence research
 │   ├── README.md                      # Overview of Claude collaboration
 │   ├── 01-06_*.md                     # Claude-to-Claude dialogues
 │   └── ...
@@ -67,13 +83,13 @@ docs/
 │   ├── REGRESSION_TESTING.md          # Automated API test suite
 │   └── CHARACTERS.md                  # Character system & testing
 │
-├── roadmaps/                          # Future features & specs
+├── roadmaps/                          # Feature specs & future work
 │   ├── EMERGENT_UNIVERSE.md           # 🌌 Universe modality
 │   ├── GRAPH_WALKER_AGENT.md          # E19: Dynamic graph exploration
-│   ├── FEDERATED_MULTIVERSE.md        # 🌐 Multi-universe federation (DRAFT)
+│   ├── GRAPH_WALKER_EXTENSIONS.md     # E25-29: Graph enhancements
+│   ├── FEDERATED_MULTIVERSE.md        # 🌐 Multi-universe federation
 │   ├── CHANNEL_LURKING.md             # Passive engagement
 │   ├── EMBEDDING_UPGRADE_768D.md      # Memory resolution upgrade
-│   ├── RESPONSE_PATTERN_LEARNING.md   # RLHF-style learning
 │   └── completed/                     # Historical roadmaps
 │
 └── origin/                            # V1 historical documents

@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.7  
+**Document Version:** 2.8  
 **Created:** November 24, 2025  
-**Last Updated:** December 3, 2025 (O1: InfluxDB Analytics Enhancements added)
+**Last Updated:** December 3, 2025 (E25-E29: Graph Walker Extensions added)
 **Status:** Active Planning
 
 ### Status Legend
@@ -90,6 +90,11 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
 | 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15 🔄, E6 ✅ | 📋 Blocked |
+| 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | 📋 Proposed |
+| 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅ | 📋 Proposed |
+| 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | 📋 Proposed |
+| ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
+| ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 | 📋 Proposed |
 | ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
 | ⚪ Low | **O1** | **InfluxDB Analytics Enhancements** | **2-3 hours** | A4 ✅ | 📋 Proposed |
 
@@ -134,6 +139,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 │  E18 (Queue) ✅ ──────────► E24 (Advanced Queue)               │
 │                                                                 │
 │  Insight Agent ✅ ────────► B5 (Trace Learning)                │
+│                                                                 │
+│  E19 (Graph Walker) ✅ ──► E25 (Enrichment) ──► E29 (Recs)     │
+│                       │                                         │
+│                       ├──► E26 (Temporal) ──► E27 (Multi-Char)  │
+│                       │                                         │
+│                       └──► E28 (User Graph)                     │
 │                                                                 │
 │  No deps ─────────────────► E21 (Semantic Routing)             │
 │  No deps ─────────────────► Cross-Bot Memory                   │
@@ -1991,6 +2002,124 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 - Enables callbacks to shared memories ("Remember when we talked about...?")
 
 **Spec:** [CROSS_BOT_MEMORY.md](./roadmaps/CROSS_BOT_MEMORY.md)
+
+---
+
+### 📋 Phase E25: Graph Enrichment Agent
+**Priority:** 🟢 High | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+**Dependencies:** E19 (Graph Walker) ✅
+**Added:** December 2025
+
+**Problem:** The knowledge graph only grows when facts are explicitly extracted. Implicit connections—like two users discussing the same topic, or entities that frequently co-occur—go unnoticed.
+
+**Solution:** A background worker that analyzes conversations and proactively enriches the graph with discovered edges:
+- `(User)-[:DISCUSSED]->(Topic)` — Track what topics each user discusses
+- `(User)-[:CONNECTED_TO]->(User)` — Link users who interact in same channels
+- `(Topic)-[:RELATED_TO]->(Topic)` — Connect co-occurring topics
+- `(Entity)-[:LINKED_TO]->(Entity)` — Link frequently co-mentioned entities
+
+**Key Features:**
+- Runs as background task in insight-worker (no LLM calls needed)
+- Uses existing fact_extractor patterns for entity detection
+- MERGE queries for idempotent edge creation
+- Privacy-aware: only enriches for users with trust > 0
+
+**Emergence Alignment:** The system *notices* connections rather than being told about them.
+
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e25-graph-enrichment-agent)
+
+---
+
+### 📋 Phase E26: Temporal Graph
+**Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
+**Status:** 📋 Proposed
+**Dependencies:** E19 ✅
+**Added:** December 2025
+
+**Problem:** The Graph Walker treats all edges equally. But relationships evolve—a topic discussed daily is more salient than one mentioned once a month ago.
+
+**Solution:** Extend `_score_node()` heuristics to weight by relationship evolution using existing `updated_at`, `created_at`, and count fields:
+- **Velocity boost**: Rate of interaction matters (count / days_active)
+- **Trend detection**: Compare recent activity to older activity
+- **Trust trajectory**: Query InfluxDB for trust evolution patterns
+
+**Emergence Alignment:** Temporal awareness emerges from data patterns, not declared "relationship_phase" labels. No new schema needed.
+
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e26-temporal-graph)
+
+---
+
+### 📋 Phase E27: Multi-Character Walks
+**Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+**Dependencies:** E19 ✅, E6 (Cross-Bot) ✅
+**Added:** December 2025
+
+**Problem:** Each bot walks its own graph in isolation. But bots share a universe—they could discover narrative threads that span multiple characters.
+
+**Solution:** Extend `GraphWalkerAgent` to walk across character boundaries:
+1. Start from current character's graph
+2. Expand to shared entities (Topics, Users)
+3. Cross into other character's subgraph via shared nodes
+4. Apply trust-gating (both characters must trust the user)
+5. Single LLM call to synthesize cross-character narrative
+
+**Use Cases:**
+- Cross-character dreams: "In my dream, I saw what Aetheris wrote about depth..."
+- Conversation references: "Gabriel and I both talked to Mark about this..."
+
+**Privacy:** Cross-character walks only include User nodes where BOTH bots have trust > 20.
+
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e27-multi-character-walks)
+
+---
+
+### 📋 Phase E28: User-Facing Graph
+**Priority:** ⚪ Low | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** 📋 Proposed
+**Dependencies:** E19 ✅
+**Added:** December 2025
+
+**Problem:** Users have no visibility into what the bot knows about them. This creates surprise when bots recall obscure details and no way to correct mistakes.
+
+**Solution:** Add `/api/user-graph` endpoint that returns the user's discoverable subgraph for visualization:
+- D3.js-compatible node/edge format
+- Thematic clusters
+- Privacy filtering (hides other users by default)
+
+**API:**
+```
+POST /api/user-graph
+{user_id: "123", depth: 2, include_other_users: false}
+
+Response: {nodes: [...], edges: [...], clusters: [...], stats: {...}}
+```
+
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e28-user-facing-graph)
+
+---
+
+### 📋 Phase E29: Graph-Based Recommendations
+**Priority:** ⚪ Low | **Time:** 1-2 days | **Complexity:** Low-Medium
+**Status:** 📋 Proposed
+**Dependencies:** E25 (Enrichment)
+**Added:** December 2025
+
+**Problem:** Bots don't leverage the social graph for recommendations. With enough users and topics, the graph can surface interesting connections.
+
+**Solution:** Extend `bfs_expand()` to find users with similar topic clusters using graph structure (not precomputed similarity scores):
+- Count shared edges in the graph (structural similarity)
+- Apply serendipity for unexpected discoveries
+- Same-server-only for privacy
+
+**Use Cases:**
+- "Mark also discusses coral reefs—you might enjoy comparing notes"
+- Dreams that weave in connections to similar users
+
+**Emergence Alignment:** Similarity emerges from graph structure, not declared "similar_users" fields.
+
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e29-graph-based-recommendations)
 
 ---
 
