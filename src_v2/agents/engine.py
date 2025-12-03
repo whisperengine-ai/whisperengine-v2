@@ -317,29 +317,17 @@ class AgentEngine:
             elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW" and not image_urls:
                 channel = context_variables.get("channel") if context_variables else None
                 
-                if settings.ENABLE_LANGGRAPH_CHARACTER_AGENT:
-                    logger.info("Using LangGraph Character Agent")
-                    response = await self.character_graph_agent.run(
-                        user_input=user_message,
-                        user_id=user_id,
-                        system_prompt=system_content,
-                        chat_history=chat_history,
-                        callback=callback,
-                        character_name=character.name,
-                        channel=channel,
-                        image_urls=image_urls
-                    )
-                else:
-                    response = await self.character_agent.run(
-                        user_input=user_message,
-                        user_id=user_id,
-                        system_prompt=system_content,
-                        chat_history=chat_history,
-                        callback=callback,
-                        character_name=character.name,
-                        channel=channel,
-                        image_urls=image_urls
-                    )
+                logger.info("Using LangGraph Character Agent")
+                response = await self.character_graph_agent.run(
+                    user_input=user_message,
+                    user_id=user_id,
+                    system_prompt=system_content,
+                    chat_history=chat_history,
+                    callback=callback,
+                    character_name=character.name,
+                    channel=channel,
+                    image_urls=image_urls
+                )
                 
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency - {complexity_result})")
@@ -697,31 +685,18 @@ class AgentEngine:
                 guild_id = context_variables.get("guild_id") if context_variables else None
                 channel = context_variables.get("channel") if context_variables else None
                 
-                if settings.ENABLE_LANGGRAPH_CHARACTER_AGENT:
-                    logger.info("Using LangGraph Character Agent (Stream)")
-                    response = await self.character_graph_agent.run(
-                        user_input=user_message,
-                        user_id=user_id,
-                        system_prompt=system_content,
-                        chat_history=chat_history,
-                        callback=callback,
-                        guild_id=guild_id,
-                        character_name=character.name,
-                        channel=channel,
-                        image_urls=image_urls
-                    )
-                else:
-                    response = await self.character_agent.run(
-                        user_input=user_message,
-                        user_id=user_id,
-                        system_prompt=system_content,
-                        chat_history=chat_history,
-                        callback=callback,
-                        guild_id=guild_id,
-                        character_name=character.name,
-                        channel=channel,
-                        image_urls=image_urls
-                    )
+                logger.info("Using LangGraph Character Agent (Stream)")
+                response = await self.character_graph_agent.run(
+                    user_input=user_message,
+                    user_id=user_id,
+                    system_prompt=system_content,
+                    chat_history=chat_history,
+                    callback=callback,
+                    guild_id=guild_id,
+                    character_name=character.name,
+                    channel=channel,
+                    image_urls=image_urls
+                )
                 
                 total_time = time.time() - start_time
                 logger.info(f"Total response time: {total_time:.2f}s (Character Agency Stream - {complexity_result})")
@@ -974,33 +949,19 @@ class AgentEngine:
         channel = context_variables.get("channel")
         detected_intents = context_variables.get("detected_intents", [])
         
-        if settings.ENABLE_LANGGRAPH_REFLECTIVE_AGENT:
-            logger.info("Using LangGraph Reflective Agent")
-            response_text, trace = await self.reflective_graph_agent.run(
-                user_message, 
-                user_id, 
-                system_content, 
-                chat_history=chat_history,
-                callback=callback,
-                image_urls=image_urls,
-                max_steps_override=max_steps_override,
-                guild_id=guild_id,
-                channel=channel,
-                detected_intents=detected_intents
-            )
-        else:
-            response_text, trace = await self.reflective_agent.run(
-                user_message, 
-                user_id, 
-                system_content, 
-                chat_history=chat_history,
-                callback=callback,
-                image_urls=image_urls,
-                max_steps_override=max_steps_override,
-                guild_id=guild_id,
-                channel=channel,
-                detected_intents=detected_intents
-            )
+        logger.info("Using LangGraph Reflective Agent")
+        response_text, trace = await self.reflective_graph_agent.run(
+            user_message, 
+            user_id, 
+            system_content, 
+            chat_history=chat_history,
+            callback=callback,
+            image_urls=image_urls,
+            max_steps_override=max_steps_override,
+            guild_id=guild_id,
+            channel=channel,
+            detected_intents=detected_intents
+        )
         
         # Voice Synthesis: Use Main LLM to rewrite the response
         # This ensures character consistency even when using a different reasoning model
