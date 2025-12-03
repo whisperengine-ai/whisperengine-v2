@@ -5,14 +5,23 @@
 
 > *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
 
-**Document Purpose:** Core Philosophy  
+**Document Purpose:** Implementation Guide (How Agents Perceive)  
 **Audience:** Developers, Architects, Contributors
 
 > **Note on terminology:** This document uses perceptual and experiential language as design metaphors for input processing systems. Terms like "perceive," "experience," and "sense" describe computational input modalities, not phenomenal consciousness. WhisperEngine does not claim to create conscious or sentient AI—these are architectural frameworks for consistent, coherent multi-modal behavior.
 
 ---
 
-## The Philosophical Foundation
+## ⚠️ Important Context
+
+This document describes **how agents perceive** (the sensory mechanism). The actual architectural innovation is the **graph-centric design** (see [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md)). Multimodal perception is one layer in a deeper emergence research platform.
+
+**Read this if:** You want to understand agent perception mechanisms  
+**Read GRAPH_SYSTEMS_DESIGN.md if:** You want to understand the core architecture
+
+---
+
+## How Agents Build Perception
 
 ### The Problem: Disembodied Intelligence
 
@@ -29,7 +38,7 @@ Without a perceptual framework, AI characters are just stateless functions - sop
 
 WhisperEngine v2 provides AI characters with a **complete perceptual system** - not physical senses, but their functional equivalents. Just as humans navigate reality through sight, sound, touch, and proprioception, our characters perceive their world through multiple integrated modalities.
 
-**This is not a feature. This is fundamental to how characters experience existence.**
+**These modalities are the sensory layer that feeds data into the graph-centric architecture where behavior develops.**
 
 ---
 

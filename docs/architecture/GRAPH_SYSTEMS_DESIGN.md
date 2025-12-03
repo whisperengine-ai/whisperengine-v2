@@ -10,9 +10,11 @@
 
 ## Executive Summary
 
-WhisperEngine v2 is, at its core, a **graph-centric architecture**. Graphs pervade every layer of the system — from the knowledge representation (Neo4j), to the agent orchestration (LangGraph), to the conceptual model of the universe itself (Social Graph). This document provides a unified view of how different types of graphs are used, how they interact, and how future development should leverage them.
+**This is the core architecture of WhisperEngine v2.** Graphs pervade every layer of the system — from the knowledge representation (Neo4j), to the agent orchestration (LangGraph), to the conceptual model of the universe itself (Social Graph). This document provides a unified view of how different types of graphs are used, how they interact, and how future development should leverage them.
 
 **Key Insight:** The vision of "Characters as Autonomous Agents" is deeply aligned with graph-based thinking. An agent is a node in a graph of relationships. Its actions create edges. Its memories form a subgraph. Its reasoning traces a path.
+
+**Note on Multimodal Perception:** The six perceptual modalities (vision, audio, text, memory, social graph, sentiment) described in [MULTI_MODAL_PERCEPTION.md](./MULTI_MODAL_PERCEPTION.md) are the *input layer* that feeds data into these graphs. This document describes the substrate where behavior emerges.
 
 ### The Philosophical Foundation
 
