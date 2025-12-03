@@ -270,8 +270,14 @@ ENABLE_REFLECTIVE_MODE=false         # Reflective mode (costs more, ~$0.02-0.03/
 ENABLE_RUNTIME_FACT_EXTRACTION=true  # Learn facts from chat
 ENABLE_PREFERENCE_EXTRACTION=true    # Learn user preferences
 LLM_SUPPORTS_VISION=true             # Image analysis (requires GPT-4V/Claude 3)
-ENABLE_PROACTIVE_MESSAGING=false     # Bot initiates contact
 ENABLE_PROMPT_LOGGING=true           # Log prompts for debugging
+
+# Social Presence & Autonomy (hierarchical flags)
+ENABLE_AUTONOMOUS_ACTIVITY=false     # Master switch for all social presence
+ENABLE_CHANNEL_LURKING=false        # Observe channel activity
+ENABLE_AUTONOMOUS_REACTIONS=false   # React with emojis
+ENABLE_AUTONOMOUS_REPLIES=false     # Reply to messages
+ENABLE_CROSS_BOT_CHAT=false         # Initiate bot-to-bot conversations
 
 # DM restrictions (comma-separated Discord user IDs)
 # DM_ALLOWED_USER_IDS=123456789,987654321

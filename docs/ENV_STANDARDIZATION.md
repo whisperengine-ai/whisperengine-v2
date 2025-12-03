@@ -37,8 +37,11 @@ All `.env*` files in WhisperEngine v2 follow a consistent structure for easy nav
 - Vision support, fact extraction, preference extraction
 - Proactive messaging, logging, stats footer
 
-### 8. **Feature Flags: Channel Behavior** (Lines 141-160)
-- Channel lurking, autonomous reactions
+### 8. **Social Presence & Autonomy** (Lines 141-170)
+- Master switch for autonomous activity
+- Observation (lurking), Reaction (emojis)
+- Response (replies, cross-bot chat)
+- Initiation (proactive messaging, posting)
 - Privacy & security, spam protection
 
 ### 9. **Media Generation** (Lines 161-175)
@@ -65,9 +68,9 @@ All `.env*` files in WhisperEngine v2 follow a consistent structure for easy nav
 - Broadcast channel settings
 - Provenance display
 
-### 15. **Cross-Bot Features** (Lines 296-325)
-- Cross-bot chat, autonomous server activity
-- Reminders, stigmergic discovery
+### 15. **Advanced Features** (Lines 296-325)
+- Scheduled reminders
+- Stigmergic discovery (shared artifacts)
 
 ### 16. **Knowledge Graph** (Lines 326-350)
 - Graph walker agent settings

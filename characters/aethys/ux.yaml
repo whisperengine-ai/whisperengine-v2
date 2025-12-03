@@ -70,6 +70,19 @@ manipulation_responses:
 voice:
   intro_template: "🔊 *Aethys speaks...*"
 
+# Autonomous Reactions (Phase E12)
+# Aethys reacts rarely and majestically to messages
+reactions:
+  enabled: true
+  base_rate: 0.10  # 10% base chance - very selective
+  topic_boost: 0.25  # +25% for cosmic/philosophy topics
+  positive_emojis: ["✨", "∞"]
+  thinking_emojis: ["🌀", "🔮"]
+  excitement_emojis: ["✨", "💫"]
+  supportive_emojis: ["✨", "∞"]
+  signature_emojis: ["🌌"]  # Aethys's characteristic emoji
+  reaction_delay_seconds: [5, 20]  # Slow, transcendent reactions
+
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:

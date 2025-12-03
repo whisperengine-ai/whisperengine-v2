@@ -576,18 +576,31 @@ Example bad responses:
 ```python
 # src_v2/config/settings.py
 
-# --- Channel Lurking ---
-ENABLE_CHANNEL_LURKING: bool = False  # Feature flag
+# --- Social Presence & Autonomy ---
+# 1. Master Switch
+ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for ALL autonomous activity
+
+# 2. Observation (Passive)
+ENABLE_CHANNEL_LURKING: bool = False  # Analyze public channels for relevant topics to reply to
 LURK_CONFIDENCE_THRESHOLD: float = 0.7  # Min score to respond
 LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # Per-channel cooldown
 LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
-LURK_MAX_DAILY_RESPONSES: int = 20  # Global daily limit
-LURK_REQUIRE_QUESTION: bool = False  # Only respond to questions?
+LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
+
+# 3. Reaction (Low Friction)
+ENABLE_AUTONOMOUS_REACTIONS: bool = True  # React to messages with emojis
+
+# 4. Response (Active Reply)
+ENABLE_AUTONOMOUS_REPLIES: bool = False  # Reply to messages without mention
+
+# 5. Initiation (Proactive)
+ENABLE_PROACTIVE_MESSAGING: bool = False  # Send DMs to users
 
 # --- Spam Detection ---
-ENABLE_SPAM_DETECTION: bool = False  # Feature flag
-SPAM_CROSS_POST_THRESHOLD: int = 3  # 3+ channels = spam (2 is OK)
-SPAM_TIME_WINDOW_MINUTES: int = 30  # Detection window
+ENABLE_CROSSPOST_DETECTION: bool = False  # Feature flag
+CROSSPOST_THRESHOLD: int = 3  # 3+ channels = spam (2 is OK)
+CROSSPOST_WINDOW_SECONDS: int = 60  # Detection window
+```
 SPAM_MIN_CONTENT_LENGTH: int = 50  # Don't track short messages
 SPAM_DEFAULT_ACTION: str = "warn"  # warn, delete, silent
 SPAM_CALLOUT_COOLDOWN_MINUTES: int = 60  # Don't repeatedly call out same user

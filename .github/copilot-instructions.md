@@ -349,7 +349,7 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - `ENABLE_REFLECTIVE_MODE` (default: false): ReAct reasoning loop (~$0.02-0.03 per complex query)
 - `ENABLE_RUNTIME_FACT_EXTRACTION` (default: true): Extract facts to Neo4j ($0.001 per message)
 - `ENABLE_PREFERENCE_EXTRACTION` (default: true): Detect "be concise" style hints
-- `ENABLE_PROACTIVE_MESSAGING` (default: false): Bot initiates contact (requires trust ≥ 20)
+- `ENABLE_AUTONOMOUS_ACTIVITY` (default: false): Master switch for all social presence (lurking, reacting, posting)
 - `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
 - `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
 

@@ -28,7 +28,8 @@ Transform passive bots into active server participants that create organic engag
 Current State:
 - ✅ Bots respond when mentioned or DMed
 - ✅ Lurk detector can respond to relevant topics (ENABLE_CHANNEL_LURKING)
-- ✅ Proactive scheduler messages individual users (ENABLE_PROACTIVE_MESSAGING)
+- ✅ Autonomous reactions to messages (ENABLE_AUTONOMOUS_REACTIONS)
+- ✅ Autonomous replies to messages (ENABLE_AUTONOMOUS_REPLIES)
 - ✅ Cross-bot chat exists for multi-bot conversations (ENABLE_CROSS_BOT_CHAT)
 - ✅ Goals system exists in `goals.yaml` for each character
 - ✅ Character drives defined in `core.yaml`
@@ -161,8 +162,9 @@ reactions:
 ### 1.3 Enable
 
 ```bash
-ENABLE_AUTONOMOUS_ACTIVITY=true
-ENABLE_AUTONOMOUS_REACTIONS=true
+# Social Presence & Autonomy section
+ENABLE_AUTONOMOUS_ACTIVITY=true  # Master switch
+ENABLE_AUTONOMOUS_REACTIONS=true  # React to messages with emojis
 ```
 
 ---
@@ -180,7 +182,7 @@ ENABLE_AUTONOMOUS_REACTIONS=true
 - `src_v2/intelligence/activity.py` - ServerActivityMonitor (Redis-backed message velocity)
 - `src_v2/agents/posting_agent.py` - PostingAgent + GoalDrivenTopicSelector
 - `src_v2/broadcast/manager.py` - Added `target_channel_id` for guild-specific posting
-- `src_v2/config/settings.py` - Added `ENABLE_AUTONOMOUS_POSTING` flag
+- `src_v2/config/settings.py` - Added Social Presence & Autonomy flags (ENABLE_AUTONOMOUS_ACTIVITY, ENABLE_AUTONOMOUS_REPLIES)
 
 **How It Works:**
 1. `ServerActivityMonitor` tracks messages per minute per guild using Redis sorted sets
@@ -195,7 +197,8 @@ ENABLE_AUTONOMOUS_REACTIONS=true
 ### 2.2 Enable
 
 ```bash
-ENABLE_AUTONOMOUS_POSTING=true
+ENABLE_AUTONOMOUS_ACTIVITY=true
+ENABLE_AUTONOMOUS_REPLIES=true
 ```
 
 ### 2.3 GoalDrivenTopicSelector
@@ -494,7 +497,9 @@ Implemented in `MessageHandler._should_autonomous_reply`:
 ### 4.2 Enable
 
 ```bash
-ENABLE_AUTONOMOUS_REPLIES=true
+# Social Presence & Autonomy section
+ENABLE_AUTONOMOUS_ACTIVITY=true  # Master switch
+ENABLE_AUTONOMOUS_REPLIES=true   # Reply to messages without mention
 ```
     return (false, "not_relevant")
 ```
@@ -669,14 +674,14 @@ class ActivityOrchestrator:
 ### Feature Flags (`.env`)
 
 ```bash
-# Master switch for all autonomous activity
-ENABLE_AUTONOMOUS_ACTIVITY=true
-
-# Individual toggles
-ENABLE_AUTONOMOUS_REACTIONS=true
-ENABLE_AUTONOMOUS_POSTING=true
-ENABLE_BOT_CONVERSATIONS=true
-ENABLE_CURRENT_EVENT_POSTS=true  # Requires ENABLE_WEB_SEARCH
+# Social Presence & Autonomy section
+ENABLE_AUTONOMOUS_ACTIVITY=true     # Master switch for all autonomous activity
+ENABLE_CHANNEL_LURKING=true         # Observe channel activity
+ENABLE_AUTONOMOUS_REACTIONS=true    # React to messages with emojis
+ENABLE_AUTONOMOUS_REPLIES=true      # Reply to messages autonomously
+ENABLE_CROSS_BOT_CHAT=true          # Start conversations with other bots
+ENABLE_CURRENT_EVENT_POSTS=true     # Post about current events (requires ENABLE_WEB_SEARCH)
+```
 
 # Rate limits
 AUTONOMOUS_REACTION_DAILY_MAX=100

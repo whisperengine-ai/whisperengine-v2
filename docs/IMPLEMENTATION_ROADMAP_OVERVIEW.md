@@ -1643,10 +1643,11 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - ✅ `characters/{name}/background.yaml` - Posting topics with web search queries (elena configured)
 
 **Configuration:**
-- `ENABLE_AUTONOMOUS_ACTIVITY` - Master switch
-- `ENABLE_AUTONOMOUS_REACTIONS` - React to messages
-- `ENABLE_AUTONOMOUS_POSTING` - Post to channels
-- `ENABLE_BOT_CONVERSATIONS` - Bot-to-bot dialogue
+- `ENABLE_AUTONOMOUS_ACTIVITY` - Master switch for all social presence
+- `ENABLE_CHANNEL_LURKING` - Observe channel activity
+- `ENABLE_AUTONOMOUS_REACTIONS` - React to messages with emojis
+- `ENABLE_AUTONOMOUS_REPLIES` - Reply to messages autonomously
+- `ENABLE_CROSS_BOT_CHAT` - Bot-to-bot dialogue
 - `characters/{name}/ux.yaml` - Per-bot reaction styles
 - `characters/{name}/background.yaml` - Posting preferences
 

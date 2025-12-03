@@ -140,25 +140,40 @@ class Settings(BaseSettings):
     # --- Preference Extraction ---
     ENABLE_PREFERENCE_EXTRACTION: bool = True
 
-    # --- Proactive Engagement ---
-    ENABLE_PROACTIVE_MESSAGING: bool = False
-    PROACTIVE_CHECK_INTERVAL_MINUTES: int = 60
-    PROACTIVE_MIN_TRUST_SCORE: int = 20
-    PROACTIVE_SILENCE_THRESHOLD_HOURS: int = 24
+    # --- Social Presence & Autonomy ---
+    # 1. Master Switch
+    ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for ALL autonomous activity (lurking, reacting, posting)
 
-    # --- Channel Lurking ---
-    ENABLE_CHANNEL_LURKING: bool = False  # Feature flag
+    # 2. Observation (Passive)
+    ENABLE_CHANNEL_LURKING: bool = False  # Analyze public channels for relevant topics to reply to
     LURK_CONFIDENCE_THRESHOLD: float = 0.7  # Min score to respond (0.0-1.0)
     LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # Per-channel cooldown
     LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
     LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
 
-    # --- Autonomous Activity (Phase E12/E15) ---
-    ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for all autonomous activity
+    # 3. Reaction (Low Friction)
     ENABLE_AUTONOMOUS_REACTIONS: bool = True  # React to messages with emojis (requires AUTONOMOUS_ACTIVITY)
     REACTION_CHANNEL_HOURLY_MAX: int = 10  # Max reactions per channel per hour
     REACTION_SAME_USER_COOLDOWN_SECONDS: int = 300  # Min seconds between reactions to same user
     REACTION_DAILY_MAX: int = 100  # Global daily limit for reactions
+
+    # 4. Response (Active Reply)
+    ENABLE_AUTONOMOUS_REPLIES: bool = False  # Reply to messages without mention (requires LURKING + AUTONOMOUS_ACTIVITY)
+    ENABLE_CROSS_BOT_CHAT: bool = False  # Allow bots to respond to each other
+    CROSS_BOT_MAX_CHAIN: int = 5  # Max replies in a bot-to-bot chain before stopping
+    CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
+    CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
+
+    # 5. Initiation (Proactive)
+    ENABLE_PROACTIVE_MESSAGING: bool = False  # Send DMs to users (requires Trust > 20)
+    PROACTIVE_CHECK_INTERVAL_MINUTES: int = 60
+    PROACTIVE_MIN_TRUST_SCORE: int = 20
+    PROACTIVE_SILENCE_THRESHOLD_HOURS: int = 24
+    
+    ENABLE_AUTONOMOUS_POSTING: bool = False  # Post new thoughts in quiet channels (Phase E15)
+    ENABLE_BOT_CONVERSATIONS: bool = False  # Start conversations with other bots
+    BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
+    BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations
 
     # --- Manipulation Detection & Timeout ---
     ENABLE_MANIPULATION_DETECTION: bool = True  # Detect manipulation attempts in classifier (jailbreaks, consciousness probing)
@@ -240,20 +255,7 @@ class Settings(BaseSettings):
         """Parse broadcast channel IDs from comma-separated string."""
         return self._parse_list_string(self.BOT_BROADCAST_CHANNEL_ID)
 
-    # --- Cross-Bot Chat (Phase E6) ---
-    ENABLE_CROSS_BOT_CHAT: bool = False  # Allow bots to respond to each other
-    # Phase E6.1: Cross-bot memory is now always enabled
-    CROSS_BOT_MAX_CHAIN: int = 5  # Max replies in a bot-to-bot chain before stopping (was 3)
-    CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
-    CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
 
-    # --- Autonomous Server Activity (Phase E15) ---
-    ENABLE_AUTONOMOUS_POSTING: bool = False  # Allow bot to post autonomously in quiet channels
-    ENABLE_AUTONOMOUS_REPLIES: bool = False  # Allow bot to occasionally reply to messages without mention (Phase 4)
-    # Note: ENABLE_AUTONOMOUS_REACTIONS is defined above in Phase E12/E15 section
-    ENABLE_BOT_CONVERSATIONS: bool = False  # Allow bots to start conversations with each other (Phase 3)
-    BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
-    BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations (None = auto-detect)
 
     # --- Scheduled Reminders (Phase E5) ---
     ENABLE_REMINDERS: bool = True  # Enable reminder system

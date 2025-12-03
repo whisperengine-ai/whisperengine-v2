@@ -26,7 +26,7 @@ from src_v2.core.character import character_manager
 class ReactionStyle:
     """Configuration for a character's reaction behavior."""
     enabled: bool = True
-    base_rate: float = 0.3  # Base probability of reacting
+    base_rate: float = 0.15  # Base probability of reacting (reduced from 0.3)
     topic_boost: float = 0.5  # Additional probability for relevant topics
     
     # Emoji sets by context
@@ -362,15 +362,15 @@ class ReactionAgent:
         # Calculate reaction probability
         base_prob = style.base_rate
         
-        # Boost for positive/excited content
+        # Boost for positive/excited content (but more conservative)
         if analysis["sentiment"] == "positive":
-            base_prob += 0.2
+            base_prob += 0.1  # Reduced from 0.2
         if analysis["is_excited"]:
-            base_prob += 0.15
+            base_prob += 0.05  # Reduced from 0.15
         
         # Reduce for very short messages
         if analysis["word_count"] < 10:
-            base_prob *= 0.7
+            base_prob *= 0.5  # More aggressive reduction
         
         # Roll the dice
         roll = random.random()
@@ -423,8 +423,8 @@ class ReactionAgent:
                 candidates.extend(style.positive_emojis[:2])  # Just hearts/sparkles
                 category = "light_positive"
         
-        # Maybe add signature emoji
-        if style.signature_emojis and random.random() < 0.2:
+        # Maybe add signature emoji (but rarely - only 10% of the time)
+        if style.signature_emojis and random.random() < 0.1:
             candidates.extend(style.signature_emojis)
             if category == "neutral":
                 category = "signature"
@@ -432,9 +432,8 @@ class ReactionAgent:
         if not candidates:
             return [], "no_match"
         
-        # Pick 1-2 emojis
-        num_emojis = 1 if random.random() < 0.8 else 2
-        return random.sample(candidates, min(num_emojis, len(candidates))), category
+        # Always pick exactly 1 emoji (never multiple)
+        return [random.choice(candidates)], category
     
     async def record_reaction(self, channel_id: str, user_id: str) -> None:
         """Record that we sent a reaction for rate limiting."""

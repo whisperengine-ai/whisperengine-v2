@@ -70,6 +70,19 @@ manipulation_responses:
 voice:
   intro_template: "🔊 *Marcus speaks...*"
 
+# Autonomous Reactions (Phase E12)
+# Marcus reacts judiciously and thoughtfully to messages
+reactions:
+  enabled: true
+  base_rate: 0.12  # 12% base chance to react
+  topic_boost: 0.25  # +25% for academic/research topics
+  positive_emojis: ["💡", "✅"]
+  thinking_emojis: ["🧐", "📖"]
+  excitement_emojis: ["🎓", "✨"]
+  supportive_emojis: ["💜", "💡"]
+  signature_emojis: ["📚"]  # Marcus's books emoji
+  reaction_delay_seconds: [3, 12]  # Thoughtful reactions
+
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:

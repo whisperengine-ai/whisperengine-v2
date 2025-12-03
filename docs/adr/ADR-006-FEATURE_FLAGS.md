@@ -37,7 +37,7 @@ WhisperEngine uses multiple LLM calls per user message:
 | **Cognitive** | `ENABLE_RUNTIME_FACT_EXTRACTION` | `true` | $0.001/message |
 | **Generation** | `ENABLE_IMAGE_GENERATION` | `true` | $0.04-0.10/image |
 | **Generation** | `ENABLE_VOICE_RESPONSES` | `false` | $0.01-0.05/audio |
-| **Engagement** | `ENABLE_PROACTIVE_MESSAGING` | `false` | $0.01-0.03/proactive |
+| **Social Presence** | `ENABLE_AUTONOMOUS_ACTIVITY` | `false` | $0.01-0.03/autonomous action |
 | **Background** | `ENABLE_GRAPH_WALKER` | `false` | $0.01-0.02/walk |
 
 ### Implementation Pattern
@@ -112,8 +112,12 @@ class Settings(BaseSettings):
     ENABLE_IMAGE_GENERATION: bool = True  # Generate images on request
     ENABLE_VOICE_RESPONSES: bool = False  # TTS audio responses
     
-    # Engagement features
-    ENABLE_PROACTIVE_MESSAGING: bool = False  # Bot initiates contact
+    # Social Presence & Autonomy (consolidated hierarchy)
+    ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for all social presence
+    ENABLE_CHANNEL_LURKING: bool = False      # Observe channel activity
+    ENABLE_AUTONOMOUS_REACTIONS: bool = False # React with emojis
+    ENABLE_AUTONOMOUS_REPLIES: bool = False   # Reply to messages
+    ENABLE_CROSS_BOT_CHAT: bool = False       # Initiate bot-to-bot conversations
     
     # Background processing
     ENABLE_GRAPH_WALKER: bool = False  # Graph exploration for dreams/diaries
@@ -131,17 +135,28 @@ class Settings(BaseSettings):
 ENABLE_REFLECTIVE_MODE=true
 ENABLE_IMAGE_GENERATION=true
 ENABLE_VOICE_RESPONSES=true
+ENABLE_AUTONOMOUS_ACTIVITY=true
+ENABLE_CHANNEL_LURKING=true
+ENABLE_AUTONOMOUS_REACTIONS=true
+ENABLE_AUTONOMOUS_REPLIES=true
+ENABLE_CROSS_BOT_CHAT=true
 ENABLE_GRAPH_WALKER=true
 
 # .env.nottaylor (production)
 ENABLE_REFLECTIVE_MODE=true
 ENABLE_IMAGE_GENERATION=true
 ENABLE_VOICE_RESPONSES=false  # Cost control
+ENABLE_AUTONOMOUS_ACTIVITY=true
+ENABLE_CHANNEL_LURKING=true
+ENABLE_AUTONOMOUS_REACTIONS=true
+ENABLE_AUTONOMOUS_REPLIES=false  # Cost control
+ENABLE_CROSS_BOT_CHAT=false   # Cost control
 ENABLE_GRAPH_WALKER=false     # Cost control
 
 # .env.aria (test bot)
 ENABLE_REFLECTIVE_MODE=false  # Testing fast mode only
 ENABLE_IMAGE_GENERATION=false
+ENABLE_AUTONOMOUS_ACTIVITY=false  # Minimal social presence
 ```
 
 ### Usage Pattern

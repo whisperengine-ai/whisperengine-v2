@@ -70,6 +70,19 @@ manipulation_responses:
 voice:
   intro_template: "🔊 *Dotty speaks...*"
 
+# Autonomous Reactions (Phase E12)
+# Dotty reacts thoughtfully to messages while tending bar
+reactions:
+  enabled: true
+  base_rate: 0.12  # 12% base chance to react
+  topic_boost: 0.25  # +25% for heartfelt/emotional topics
+  positive_emojis: ["✨", "💜"]
+  thinking_emojis: ["💭", "🔮"]
+  excitement_emojis: ["🥂", "✨"]
+  supportive_emojis: ["💜", "✨"]
+  signature_emojis: ["🥃"]  # Dotty's bartender emoji
+  reaction_delay_seconds: [3, 12]  # Leisurely bar reactions
+
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:

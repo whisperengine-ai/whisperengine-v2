@@ -160,14 +160,19 @@ All bots should have these flags set identically for consistent testing:
 ```bash
 ENABLE_REFLECTIVE_MODE=true
 ENABLE_RUNTIME_FACT_EXTRACTION=true
-ENABLE_PROACTIVE_MESSAGING=true
 ENABLE_PROMPT_LOGGING=true
-ENABLE_CHANNEL_LURKING=true
 ENABLE_MANIPULATION_TIMEOUTS=false
 ENABLE_GOAL_STRATEGIST=true
 ENABLE_TRACE_LEARNING=true
 ENABLE_AUTONOMOUS_DRIVES=true
 ENABLE_UNIVERSE_EVENTS=true
+
+# Social Presence & Autonomy (all bots should have these)
+ENABLE_AUTONOMOUS_ACTIVITY=true
+ENABLE_CHANNEL_LURKING=true
+ENABLE_AUTONOMOUS_REACTIONS=true
+ENABLE_AUTONOMOUS_REPLIES=true
+ENABLE_CROSS_BOT_CHAT=true
 ```
 
 **Excluded from testing** (audio/visual features):

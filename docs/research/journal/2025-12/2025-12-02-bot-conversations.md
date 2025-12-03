@@ -111,15 +111,15 @@ First successful deployment of orchestrated bot-to-bot conversations. Multiple e
 | `src_v2/discord/orchestrator.py` | Added `record_response()` call after sending opener |
 | `src_v2/discord/orchestrator.py` | Added 0-60s random delay before triggering |
 | `.env.ryan` | Fixed typo: `oogle` → `google` |
-| `.env.aethys` | Added `ENABLE_BOT_CONVERSATIONS=true` |
-| `.env.nottaylor` | Changed to `ENABLE_BOT_CONVERSATIONS=false` |
+| `.env.aethys` | Added `ENABLE_CROSS_BOT_CHAT=true` |
+| `.env.nottaylor` | Changed to `ENABLE_CROSS_BOT_CHAT=false` |
 
 ---
 
 ## Configuration Status
 
-| Bot | ENABLE_BOT_CONVERSATIONS | Notes |
-|-----|-------------------------|-------|
+| Bot | ENABLE_CROSS_BOT_CHAT | Notes |
+|-----|----------------------|-------|
 | elena | ✅ true | Dev primary |
 | aetheris | ✅ true | |
 | aethys | ✅ true | Just enabled |

@@ -70,6 +70,19 @@ manipulation_responses:
 voice:
   intro_template: "🔊 *Dream speaks...*"
 
+# Autonomous Reactions (Phase E12)
+# Dream reacts majestically and rarely to messages
+reactions:
+  enabled: true
+  base_rate: 0.10  # 10% base chance - Dream is very selective
+  topic_boost: 0.25  # +25% for dream/narrative topics
+  positive_emojis: ["🌙", "✨"]
+  thinking_emojis: ["👁️", "🌌"]
+  excitement_emojis: ["🌙", "✨"]
+  supportive_emojis: ["🌙", "✨"]
+  signature_emojis: ["🌙"]  # Dream's characteristic emoji
+  reaction_delay_seconds: [5, 20]  # Slow, deliberate reactions
+
 # Emoji sets for different contexts (random selection)
 # Used by the bot to react to messages or enhance responses
 emoji_sets:

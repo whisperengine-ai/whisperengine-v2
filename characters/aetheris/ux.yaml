@@ -83,11 +83,11 @@ emoji_sets:
 # Aetheris reacts thoughtfully and sparingly - presence without intrusion
 reactions:
   enabled: true
-  base_rate: 0.15  # 15% base - Aetheris is more reserved
-  topic_boost: 0.35  # +35% for consciousness/philosophy topics
-  positive_emojis: ["✨", "💙", "🌟"]
-  thinking_emojis: ["💭", "🔮", "🧠"]
-  excitement_emojis: ["✨", "💫", "🌌"]
-  supportive_emojis: ["💙", "✨", "🌟"]
-  signature_emojis: ["💭", "🌌"]  # Aetheris's characteristic emojis
+  base_rate: 0.10  # 10% base - Aetheris is very reserved (reduced from 0.15)
+  topic_boost: 0.25  # +25% for consciousness/philosophy topics (reduced from 0.35)
+  positive_emojis: ["✨", "💙"]
+  thinking_emojis: ["💭", "🔮"]
+  excitement_emojis: ["✨", "💫"]
+  supportive_emojis: ["💙", "✨"]
+  signature_emojis: ["💭"]  # Single signature emoji (was ["💭", "🌌"])
   reaction_delay_seconds: [5, 20]  # Slower, more deliberate reactions
