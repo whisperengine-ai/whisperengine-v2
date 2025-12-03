@@ -378,7 +378,7 @@ class ReactionAgent:
             return ReactionDecision(False, [], 0, f"random_skip:{roll:.2f}>{base_prob:.2f}")
         
         # Pick appropriate emoji(s)
-        emojis = self._select_emojis(analysis, style)
+        emojis, category = self._select_emojis(analysis, style)
         
         if not emojis:
             return ReactionDecision(False, [], 0, "no_emoji_match")
@@ -390,38 +390,51 @@ class ReactionAgent:
             should_react=True,
             emojis=emojis,
             delay_seconds=delay,
-            reason=f"sentiment:{analysis['sentiment']}"
+            reason=f"category:{category}"
         )
     
-    def _select_emojis(self, analysis: dict, style: ReactionStyle) -> List[str]:
-        """Select appropriate emojis based on message analysis."""
+    def _select_emojis(self, analysis: dict, style: ReactionStyle) -> tuple[List[str], str]:
+        """
+        Select appropriate emojis based on message analysis.
+        
+        Returns:
+            Tuple of (emoji_list, category_reason)
+        """
         candidates: List[str] = []
+        category = "neutral"
         
         if analysis["needs_support"]:
             candidates.extend(style.supportive_emojis)
+            category = "support"
         elif analysis["is_excited"] or analysis["sentiment"] == "positive":
             # 70% chance positive, 30% chance excitement
             if random.random() < 0.7:
                 candidates.extend(style.positive_emojis)
+                category = "positive"
             else:
                 candidates.extend(style.excitement_emojis)
+                category = "excitement"
         elif analysis["is_question"]:
             candidates.extend(style.thinking_emojis)
+            category = "thinking"
         else:
             # Neutral - maybe a light positive
             if random.random() < 0.5:
                 candidates.extend(style.positive_emojis[:2])  # Just hearts/sparkles
+                category = "light_positive"
         
         # Maybe add signature emoji
         if style.signature_emojis and random.random() < 0.2:
             candidates.extend(style.signature_emojis)
+            if category == "neutral":
+                category = "signature"
         
         if not candidates:
-            return []
+            return [], "no_match"
         
         # Pick 1-2 emojis
         num_emojis = 1 if random.random() < 0.8 else 2
-        return random.sample(candidates, min(num_emojis, len(candidates)))
+        return random.sample(candidates, min(num_emojis, len(candidates))), category
     
     async def record_reaction(self, channel_id: str, user_id: str) -> None:
         """Record that we sent a reaction for rate limiting."""

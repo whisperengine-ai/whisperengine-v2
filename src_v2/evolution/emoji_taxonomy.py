@@ -172,7 +172,6 @@ EMOJI_DEFINITIONS: list[EmojiDefinition] = [
     EmojiDefinition("⚡", Sentiment.POSITIVE, Category.AMAZEMENT, 1.0, "high voltage"),
     EmojiDefinition("💥", Sentiment.POSITIVE, Category.AMAZEMENT, 1.0, "collision"),
     EmojiDefinition("🤌", Sentiment.POSITIVE, Category.AMAZEMENT, 1.0, "pinched fingers"),  # Chef's kiss
-    EmojiDefinition("👀", Sentiment.POSITIVE, Category.AMAZEMENT, 0.5, "eyes"),  # Interest/attention
     
     # --- Support & Encouragement (score: 0.8 - 1.2) ---
     EmojiDefinition("💪", Sentiment.POSITIVE, Category.SUPPORT, 1.0, "flexed biceps"),
@@ -190,6 +189,7 @@ EMOJI_DEFINITIONS: list[EmojiDefinition] = [
     EmojiDefinition("✌️", Sentiment.POSITIVE, Category.COOL, 0.8, "victory hand"),
     EmojiDefinition("🤟", Sentiment.POSITIVE, Category.COOL, 0.8, "love-you gesture"),
     EmojiDefinition("🤘", Sentiment.POSITIVE, Category.COOL, 0.8, "sign of the horns"),
+    EmojiDefinition("👊", Sentiment.POSITIVE, Category.COOL, 0.8, "fist bump"),  # Solidarity/agreement
     EmojiDefinition("😈", Sentiment.POSITIVE, Category.COOL, 0.8, "smiling imp"),  # Playful mischief
     EmojiDefinition("👻", Sentiment.POSITIVE, Category.COOL, 0.5, "ghost"),  # Playful
     EmojiDefinition("🦾", Sentiment.POSITIVE, Category.COOL, 1.0, "mechanical arm"),
@@ -218,7 +218,7 @@ EMOJI_DEFINITIONS: list[EmojiDefinition] = [
     EmojiDefinition("😭", Sentiment.NEGATIVE, Category.SADNESS, -1.0, "loudly crying face"),
     EmojiDefinition("💔", Sentiment.NEGATIVE, Category.SADNESS, -1.0, "broken heart"),
     EmojiDefinition("😿", Sentiment.NEGATIVE, Category.SADNESS, -0.8, "crying cat"),
-    EmojiDefinition("🥺", Sentiment.NEGATIVE, Category.SADNESS, -0.5, "pleading face"),
+    EmojiDefinition("🥺", Sentiment.NEUTRAL, Category.SURPRISE, 0.0, "pleading face"),  # Context-dependent: cute or sad
     EmojiDefinition("😞", Sentiment.NEGATIVE, Category.SADNESS, -0.8, "disappointed face"),
     EmojiDefinition("😔", Sentiment.NEGATIVE, Category.SADNESS, -0.6, "pensive face"),
     
@@ -227,7 +227,6 @@ EMOJI_DEFINITIONS: list[EmojiDefinition] = [
     EmojiDefinition("😡", Sentiment.NEGATIVE, Category.ANGER, -1.3, "pouting face"),
     EmojiDefinition("🤬", Sentiment.NEGATIVE, Category.ANGER, -1.5, "face with symbols on mouth"),
     EmojiDefinition("💢", Sentiment.NEGATIVE, Category.ANGER, -1.0, "anger symbol"),
-    EmojiDefinition("👊", Sentiment.NEGATIVE, Category.ANGER, -0.8, "oncoming fist"),  # Can be aggressive
     
     # --- Disgust (score: -1.0 to -1.5) ---
     EmojiDefinition("🤮", Sentiment.NEGATIVE, Category.DISGUST, -1.3, "face vomiting"),
@@ -249,6 +248,7 @@ EMOJI_DEFINITIONS: list[EmojiDefinition] = [
     
     # --- Thinking & Contemplation (score: 0.0) ---
     EmojiDefinition("🤔", Sentiment.NEUTRAL, Category.THINKING, 0.0, "thinking face"),
+    EmojiDefinition("👀", Sentiment.NEUTRAL, Category.THINKING, 0.0, "eyes"),  # Interest/watching
     EmojiDefinition("🧐", Sentiment.NEUTRAL, Category.THINKING, 0.0, "face with monocle"),
     EmojiDefinition("🫠", Sentiment.NEUTRAL, Category.THINKING, 0.0, "melting face"),
     EmojiDefinition("🤷", Sentiment.NEUTRAL, Category.THINKING, 0.0, "shrug"),
