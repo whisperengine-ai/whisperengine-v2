@@ -150,54 +150,8 @@ class DiaryManager:
         self.bot_name = bot_name or settings.DISCORD_BOT_NAME or "default"
         self.collection_name = f"whisperengine_memory_{self.bot_name}"
         self.embedding_service = EmbeddingService()
-        
-        # Use utility LLM for diary generation (cheaper, but capable)
-        base_llm = create_llm(temperature=0.8, mode="utility")  # Higher temp for creativity
-        self.llm = base_llm.with_structured_output(DiaryEntry)
-        
-        # Enhanced prompt for multi-source diary - story-like
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are {character_name}, writing in your private diary at the end of the day.
-
-CHARACTER CONTEXT:
-{character_context}
-
-WRITING STYLE:
-- Write in first person ("I", "my", "me") as a personal narrative
-- Tell the STORY of your day - what happened, how it unfolded, what it meant
-- Be introspective and emotionally honest, with vivid details
-- Weave together conversations, observations, and things you heard into a cohesive narrative
-- Include sensory details - what things felt like, sounded like, reminded you of
-- Express genuine feelings about people and moments
-- Reflect on themes, patterns, or realizations from the day
-- End with thoughts about tomorrow or lingering feelings
-- Stay deeply in character - your unique voice, quirks, and perspective
-
-NARRATIVE STRUCTURE:
-- Opening: Set the scene or mood of the day
-- Middle: The meat of what happened - the conversations, the discoveries, the moments
-- Reflection: What it all means, how you're processing it
-- Closing: Looking forward, lingering thoughts, or a meaningful final note
-
-PRIVACY RULES:
-- This is YOUR private diary - be vulnerable and authentic
-- Do NOT include specific secrets users shared in confidence
-- Focus on YOUR experience and reactions
-- Use general terms for people ("someone", "a friend", "they")
-
-Write 4-6 rich paragraphs that tell the story of your day. Make it feel like a chapter from a memoir."""),
-            ("human", """Here's everything from your day:
-
-{diary_material}
-
----
-Today's date: {date}
-Number of conversations: {conversation_count}
-
-Write your diary entry for today. Tell the story of your day - the moments, the feelings, the meaning.""")
-        ])
-        
-        self.chain = self.prompt | self.llm
+        # Note: Diary generation now uses DiaryGraphAgent (LangGraph)
+        # Legacy prompt/chain removed - see src_v2/agents/diary_graph.py
 
     async def gather_diary_material(self, hours: int = 24) -> DiaryMaterial:
         """
@@ -454,35 +408,26 @@ Write your diary entry for today. Tell the story of your day - the moments, the 
             # Escape curly braces in character_context to prevent LangChain template interpretation
             safe_context = character_context.replace("{", "{{").replace("}", "}}")
             
-            if settings.ENABLE_LANGGRAPH_DIARY_AGENT:
-                logger.info("Using LangGraph Diary Agent")
-                from src_v2.agents.diary_graph import diary_graph_agent
-                
-                # Extract user names from summaries for the agent
-                user_names = list(set(s.get("user_name", s.get("user_id", "someone")) for s in material.summaries))
-                
-                # Fetch previous diary entries for anti-pattern injection
-                previous_entries = []
-                try:
-                    recent_diaries = await self.get_recent_diary(days=3)
-                    previous_entries = [d.get("content", "") for d in recent_diaries if d.get("content")]
-                except Exception as e:
-                    logger.debug(f"Could not fetch previous diaries for anti-pattern: {e}")
-                
-                result = await diary_graph_agent.run(
-                    material=material,
-                    character_context=safe_context,
-                    user_names=user_names,
-                    previous_entries=previous_entries
-                )
-            else:
-                result = await self.chain.ainvoke({
-                    "character_name": self.bot_name.title(),
-                    "character_context": safe_context,
-                    "diary_material": material.to_prompt_text(),
-                    "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
-                    "conversation_count": len(material.summaries)
-                })
+            logger.info("Using LangGraph Diary Agent")
+            from src_v2.agents.diary_graph import diary_graph_agent
+            
+            # Extract user names from summaries for the agent
+            user_names = list(set(s.get("user_name", s.get("user_id", "someone")) for s in material.summaries))
+            
+            # Fetch previous diary entries for anti-pattern injection
+            previous_entries = []
+            try:
+                recent_diaries = await self.get_recent_diary(days=3)
+                previous_entries = [d.get("content", "") for d in recent_diaries if d.get("content")]
+            except Exception as e:
+                logger.debug(f"Could not fetch previous diaries for anti-pattern: {e}")
+            
+            result = await diary_graph_agent.run(
+                material=material,
+                character_context=safe_context,
+                user_names=user_names,
+                previous_entries=previous_entries
+            )
             
             if isinstance(result, DiaryEntry):
                 # Safety Review

@@ -31,8 +31,6 @@ BOT_PORTS = {
 def setup_env(bot_name: str):
     """Set up environment variables for the bot."""
     os.environ["DISCORD_BOT_NAME"] = bot_name
-    os.environ["ENABLE_AGENTIC_NARRATIVES"] = "true"
-    os.environ["ENABLE_LANGGRAPH_DIARY_AGENT"] = "true"
     
     # Override DB URLs for local execution
     os.environ["POSTGRES_URL"] = "postgresql://whisper:password@localhost:5432/whisperengine_v2"

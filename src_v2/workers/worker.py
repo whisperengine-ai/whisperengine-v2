@@ -112,10 +112,10 @@ class WorkerSettings:
         run_image_generation,
         run_voice_generation,
         run_gossip_dispatch,
-        run_diary_generation,  # Phase E2: Character Diary
-        run_agentic_diary_generation,
-        run_dream_generation,  # Phase E3: Nightly Dreams
-        run_agentic_dream_generation,
+        run_diary_generation,  # Phase E2/E10: Character Diary (agentic)
+        run_agentic_diary_generation,  # Alias for backward compatibility
+        run_dream_generation,  # Phase E3/E10: Nightly Dreams (agentic)
+        run_agentic_dream_generation,  # Alias for backward compatibility
         run_drift_observation,  # Phase E16: Personality drift observation
         run_posting_agent,      # Phase E15: Autonomous Posting
     ]

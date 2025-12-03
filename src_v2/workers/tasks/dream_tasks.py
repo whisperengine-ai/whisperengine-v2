@@ -1,7 +1,6 @@
 from typing import Dict, Any
 from loguru import logger
 from src_v2.config.settings import settings
-from src_v2.core.database import db_manager
 
 
 async def run_dream_generation(
@@ -10,213 +9,15 @@ async def run_dream_generation(
     override: bool = False
 ) -> Dict[str, Any]:
     """
-    Generate a nightly dream for a character (Phase E3 - enhanced).
+    Generate a dream using the LangGraph Dream Agent.
     
-    This task synthesizes high-meaningfulness memories from recent interactions
-    into a surreal dream that can be broadcast, giving the character a sense
-    of continuous inner life.
+    This uses a multi-step graph approach:
+    1. Gather material from memories, facts, gossip, observations
+    2. Plan the narrative arc (dream structure, symbolic journey)
+    3. Weave the final dream with surreal imagery and emotional resonance
     
-    Args:
-        ctx: arq context
-        character_name: Bot character name (e.g., "elena")
-        override: If True, ignore "already exists" check
-        
-    Returns:
-        Dict with success status and dream summary
-    """
-    if not settings.ENABLE_DREAM_SEQUENCES:
-        return {"success": False, "reason": "disabled"}
-    
-    logger.info(f"Generating nightly dream for {character_name} (override={override})")
-    
-    try:
-        from src_v2.memory.dreams import get_dream_manager
-        from src_v2.core.behavior import load_behavior_profile
-        from src_v2.safety.content_review import content_safety_checker
-        from datetime import datetime, timezone
-        
-        dream_manager = get_dream_manager(character_name)
-        
-        # Check if dream already exists for today (character-level)
-        if not override:
-            last_dream = await dream_manager.get_last_character_dream()
-            if last_dream:
-                last_ts = last_dream.get("timestamp", "")
-                if last_ts:
-                    try:
-                        if isinstance(last_ts, str):
-                            last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
-                        else:
-                            last_dt = last_ts
-                        today = datetime.now(timezone.utc).date()
-                        if last_dt.date() == today:
-                            logger.info(f"Dream already exists for {character_name} today, skipping")
-                            return {
-                                "success": True,
-                                "skipped": True,
-                                "reason": "already_exists",
-                                "character_name": character_name
-                            }
-                    except Exception:
-                        pass
-        
-        # Gather dream material from ALL sources (enhanced E3)
-        # - Memories from conversations
-        # - Facts from knowledge graph
-        # - Observations the bot has made
-        # - Gossip from other bots
-        # - Recent diary themes
-        # - Character goals
-        material = await dream_manager.gather_dream_material(hours=24)
-        
-        # Log narrative source metrics (Phase E16: Feedback Loop Stability)
-        try:
-            from influxdb_client.client.write.point import Point
-            if db_manager.influxdb_write_api:
-                total_sources = (
-                    len(material.memories) + len(material.facts) + 
-                    len(material.observations) + len(material.gossip) +
-                    len(material.recent_diary_themes) + len(material.goals)
-                )
-                gossip_ratio = len(material.gossip) / max(total_sources, 1)
-                
-                point = Point("narrative_sources") \
-                    .tag("bot_name", character_name) \
-                    .tag("narrative_type", "dream") \
-                    .field("from_conversations", len(material.memories)) \
-                    .field("from_facts", len(material.facts)) \
-                    .field("from_observations", len(material.observations)) \
-                    .field("from_gossip", len(material.gossip)) \
-                    .field("from_diary_themes", len(material.recent_diary_themes)) \
-                    .field("from_goals", len(material.goals)) \
-                    .field("total_sources", total_sources) \
-                    .field("gossip_ratio", gossip_ratio)
-                
-                db_manager.influxdb_write_api.write(
-                    bucket=settings.INFLUXDB_BUCKET,
-                    org=settings.INFLUXDB_ORG,
-                    record=point
-                )
-        except Exception as e:
-            logger.debug(f"Failed to log narrative source metrics: {e}")
-        
-        if not material.is_sufficient():
-            logger.info(f"Not enough dream material for {character_name}")
-            return {
-                "success": True,
-                "skipped": True,
-                "reason": "insufficient_material",
-                "material_count": (
-                    len(material.memories) + len(material.facts) + 
-                    len(material.observations) + len(material.gossip)
-                ),
-                "character_name": character_name
-            }
-        
-        # Get character context for dream generation
-        character_context = ""
-        try:
-            character_dir = f"characters/{character_name}"
-            behavior = load_behavior_profile(character_dir)
-            if behavior:
-                character_context = behavior.to_prompt_section()
-        except Exception:
-            pass
-        
-        if not character_context:
-            character_context = f"You are {character_name.title()}."
-        
-        # Generate dream from blended material
-        dream, provenance = await dream_manager.generate_dream_from_material(
-            material=material,
-            character_context=character_context
-        )
-        
-        if not dream:
-            logger.warning(f"Failed to generate dream for {character_name}")
-            return {
-                "success": False,
-                "error": "generation_failed",
-                "character_name": character_name
-            }
-        
-        # Save to Qdrant as character-level dream
-        point_id = await dream_manager.save_dream(
-            dream=dream,
-            user_id="__character__",
-            provenance=provenance
-        )
-        
-        # Create public version and queue for broadcast
-        broadcast_queued = False
-        if settings.ENABLE_BOT_BROADCAST and settings.BOT_BROADCAST_DREAMS:
-            try:
-                from src_v2.broadcast.manager import broadcast_manager, PostType
-                
-                # Create a public-friendly dream message
-                public_dream = await dream_manager.create_public_dream_version(dream)
-                
-                if public_dream:
-                    # Content safety check
-                    is_safe = await content_safety_checker.is_safe(
-                        public_dream,
-                        content_type="dream"
-                    )
-                    
-                    if is_safe:
-                        broadcast_queued = await broadcast_manager.queue_broadcast(
-                            content=public_dream,
-                            post_type=PostType.DREAM,
-                            character_name=character_name,
-                            provenance=provenance
-                        )
-                        if broadcast_queued:
-                            logger.info(f"Dream broadcast queued for {character_name}")
-                    else:
-                        logger.warning(f"Dream failed content safety check for {character_name}")
-            except Exception as e:
-                logger.warning(f"Failed to queue dream broadcast: {e}")
-        
-        if point_id:
-            logger.info(f"Dream saved for {character_name}: mood={dream.mood}, symbols={dream.symbols}")
-            return {
-                "success": True,
-                "character_name": character_name,
-                "mood": dream.mood,
-                "symbols": dream.symbols,
-                "point_id": point_id,
-                "broadcast_queued": broadcast_queued
-            }
-        else:
-            return {
-                "success": False,
-                "error": "save_failed",
-                "character_name": character_name
-            }
-        
-    except Exception as e:
-        logger.error(f"Dream generation failed for {character_name}: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "character_name": character_name
-        }
-
-
-async def run_agentic_dream_generation(
-    ctx: Dict[str, Any],
-    character_name: str,
-    override: bool = False
-) -> Dict[str, Any]:
-    """
-    Generate a dream using the DreamWeaver agent (Phase E10).
-    
-    This uses a multi-step agentic approach:
-    1. Plan the narrative arc (dream structure, emotional journey)
-    2. Use tools to gather data from multiple sources (memories, facts, gossip, etc.)
-    3. Weave the final dream with proper story arc and symbolic imagery
-    
-    Much richer output than the simple dream generator, but uses more tokens.
+    Dreams are synthesized in the character's voice using the model 
+    specified in core.yaml.
     
     Args:
         ctx: arq context
@@ -229,16 +30,11 @@ async def run_agentic_dream_generation(
     if not settings.ENABLE_DREAM_SEQUENCES:
         return {"success": False, "reason": "disabled"}
     
-    if not settings.ENABLE_AGENTIC_NARRATIVES:
-        # Fall back to simple generation
-        return await run_dream_generation(ctx, character_name, override=override)
-    
-    logger.info(f"Generating AGENTIC dream for {character_name} (override={override})")
+    logger.info(f"Generating dream for {character_name} (override={override})")
     
     try:
-        from src_v2.agents.dreamweaver import get_dreamweaver_agent
         from src_v2.agents.dream_graph import DreamGraphAgent
-        from src_v2.memory.dreams import get_dream_manager, DreamContent, DreamMaterial
+        from src_v2.memory.dreams import get_dream_manager
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
         from datetime import datetime, timezone
@@ -263,8 +59,7 @@ async def run_agentic_dream_generation(
                                 "success": True,
                                 "skipped": True,
                                 "reason": "already_exists",
-                                "character_name": character_name,
-                                "mode": "agentic"
+                                "character_name": character_name
                             }
                     except Exception:
                         pass
@@ -291,121 +86,48 @@ async def run_agentic_dream_generation(
         if not character_description:
             character_description = f"You are {character_name.title()}, an AI companion."
         
-        # --- LANGGRAPH PATH ---
-        if settings.ENABLE_LANGGRAPH_DREAM_AGENT:
-            logger.info(f"Using LangGraph Dream Agent for {character_name}")
-            graph_agent = DreamGraphAgent()
-            
-            # Gather material (Graph expects DreamMaterial object)
-            # We reuse the logic from dream_manager which gathers it
-            material = await dream_manager.gather_dream_material(hours=24)
-            
-            if not material.is_sufficient():
-                logger.info(f"Not enough dream material for {character_name} (LangGraph)")
-                return {
-                    "success": True,
-                    "skipped": True,
-                    "reason": "insufficient_material",
-                    "mode": "langgraph"
-                }
+        # Run LangGraph Dream Agent
+        logger.info(f"Using LangGraph Dream Agent for {character_name}")
+        graph_agent = DreamGraphAgent()
+        
+        # Gather material (Graph expects DreamMaterial object)
+        material = await dream_manager.gather_dream_material(hours=24)
+        
+        if not material.is_sufficient():
+            logger.info(f"Not enough dream material for {character_name}")
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "insufficient_material",
+                "character_name": character_name
+            }
 
-            # Run Graph
-            dream = await graph_agent.run(
-                material=material,
-                character_context=character_description
-            )
-            
-            if not dream:
-                logger.warning("LangGraph Dream Agent returned None")
-                return await run_dream_generation(ctx, character_name)
-                
-            # Save
-            # Provenance is simplified for now
-            provenance_data = [{"type": "mixed", "count": len(material.memories)}]
-            point_id = await dream_manager.save_dream(dream, user_id="__character__", provenance=provenance_data)
-            
-            # Queue Broadcast (Same as below)
-            broadcast_queued = False
-            if settings.ENABLE_BOT_BROADCAST and settings.BOT_BROADCAST_DREAMS:
-                try:
-                    from src_v2.broadcast.manager import broadcast_manager, PostType
-                    public_dream = await dream_manager.create_public_dream_version(dream)
-                    if public_dream:
-                        is_safe = await content_safety_checker.is_safe(public_dream, content_type="dream")
-                        if is_safe:
-                            broadcast_queued = await broadcast_manager.queue_broadcast(
-                                content=public_dream,
-                                post_type=PostType.DREAM,
-                                character_name=character_name,
-                                provenance=provenance_data
-                            )
-                except Exception as e:
-                    logger.warning(f"Failed to queue dream broadcast: {e}")
-
-            if point_id:
-                return {
-                    "success": True,
-                    "character_name": character_name,
-                    "mood": dream.mood,
-                    "symbols": dream.symbols,
-                    "point_id": point_id,
-                    "broadcast_queued": broadcast_queued,
-                    "mode": "langgraph"
-                }
-        # ----------------------
-
-        # Run the DreamWeaver agent (Legacy)
-        agent = get_dreamweaver_agent()
-        success, result = await agent.generate_dream(
-            character_name=character_name,
-            character_description=character_description
+        # Run Graph
+        dream = await graph_agent.run(
+            material=material,
+            character_context=character_description
         )
         
-        if not success or not result:
-            logger.warning(f"Agentic dream generation failed for {character_name}, falling back to simple")
-            return await run_dream_generation(ctx, character_name)
+        if not dream:
+            logger.warning("LangGraph Dream Agent returned None")
+            return {
+                "success": False,
+                "error": "graph_returned_none",
+                "character_name": character_name
+            }
+            
+        # Save
+        provenance_data = [{"type": "mixed", "count": len(material.memories)}]
+        point_id = await dream_manager.save_dream(dream, user_id="__character__", provenance=provenance_data)
         
-        # Extract the dream content from the agent's output
-        dream_narrative = result.get("content", "")
-        if "---" in dream_narrative:
-            # Extract just the dream from the formatted output
-            parts = dream_narrative.split("---")
-            if len(parts) >= 2:
-                dream_narrative = parts[1].strip()
-        
-        # Get provenance directly from agent (now returns rich dicts)
-        # material_sources is now List[Dict] with type, description, who, when, etc.
-        provenance_data = result.get("material_sources", [])
-        
-        # Create DreamContent from agent output
-        dream = DreamContent(
-            dream=dream_narrative,
-            mood=result.get("mood", "dreamlike"),
-            symbols=result.get("symbols", []),
-            memory_echoes=result.get("memory_echoes", [])
-        )
-        
-        # Save to Qdrant
-        point_id = await dream_manager.save_dream(
-            dream=dream,
-            user_id="__character__",
-            provenance=provenance_data
-        )
-        
-        # Queue for broadcast
+        # Queue Broadcast
         broadcast_queued = False
         if settings.ENABLE_BOT_BROADCAST and settings.BOT_BROADCAST_DREAMS:
             try:
                 from src_v2.broadcast.manager import broadcast_manager, PostType
-                
                 public_dream = await dream_manager.create_public_dream_version(dream)
-                
                 if public_dream:
-                    is_safe = await content_safety_checker.is_safe(
-                        public_dream,
-                        content_type="dream"
-                    )
-                    
+                    is_safe = await content_safety_checker.is_safe(public_dream, content_type="dream")
                     if is_safe:
                         broadcast_queued = await broadcast_manager.queue_broadcast(
                             content=public_dream,
@@ -415,29 +137,32 @@ async def run_agentic_dream_generation(
                         )
             except Exception as e:
                 logger.warning(f"Failed to queue dream broadcast: {e}")
-        
+
         if point_id:
-            logger.info(f"Agentic dream saved for {character_name}: mood={dream.mood}, symbols={dream.symbols}")
+            logger.info(f"Dream saved for {character_name}: mood={dream.mood}, symbols={dream.symbols}")
             return {
                 "success": True,
                 "character_name": character_name,
                 "mood": dream.mood,
                 "symbols": dream.symbols,
                 "point_id": point_id,
-                "broadcast_queued": broadcast_queued,
-                "mode": "agentic",
-                "plan": result.get("plan")
+                "broadcast_queued": broadcast_queued
             }
         else:
             return {
                 "success": False,
                 "error": "save_failed",
-                "character_name": character_name,
-                "mode": "agentic"
+                "character_name": character_name
             }
         
     except Exception as e:
-        logger.error(f"Agentic dream generation failed for {character_name}: {e}")
-        # Fall back to simple generation
-        logger.info(f"Falling back to simple dream generation for {character_name}")
-        return await run_dream_generation(ctx, character_name)
+        logger.error(f"Dream generation failed for {character_name}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "character_name": character_name
+        }
+
+
+# Backward compatibility alias
+run_agentic_dream_generation = run_dream_generation

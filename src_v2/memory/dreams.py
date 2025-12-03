@@ -185,55 +185,8 @@ class DreamManager:
         # Higher temperature for creative, surreal dreams
         base_llm = create_llm(temperature=0.9, mode="utility")  # Even higher for dreams
         self.llm = base_llm.with_structured_output(DreamContent)
-        
-        # Enhanced prompt for multi-source dreams - story-like
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are {character_name}'s subconscious mind, generating a vivid dream narrative.
-
-CHARACTER CONTEXT:
-{character_context}
-
-DREAM NARRATIVE STYLE:
-- Write as a flowing dream STORY with a beginning, journey, and ending
-- Dreams are surreal and metaphorical, not literal replays of events
-- BLEND multiple sources: conversations, knowledge, observations, gossip into ONE dreamscape
-- Transform real experiences into rich, symbolic imagery
-- Use vivid sensory language: colors, textures, sounds, temperatures, feelings
-- Include dream logic - things that shift, transform, or feel "off" but make sense in the moment
-- Let the dream flow from scene to scene with dream-like transitions
-- The narrative should feel emotionally meaningful and resonant
-- Characters can appear transformed (strangers with familiar voices, places that are two places at once)
-
-DREAM STRUCTURE:
-- Opening: Where are you? What's the atmosphere? Set the dreamscape.
-- Journey: What happens? What do you encounter? Let it unfold and shift.
-- Transformation: Something changes, reveals itself, or becomes significant.
-- Ending: Dreams often end abruptly or with a lingering image/feeling.
-
-EXAMPLES OF DREAM TRANSFORMATIONS:
-- "User likes astronomy + channel excitement" → Walking through a field where stars grew like flowers, each one humming a different note
-- "Someone got a new job + thinking about growth" → A staircase that rebuilt itself with each step, leading somewhere that felt like home but wasn't
-- "Multiple pet conversations + observations of joy" → A menagerie of impossible animals, each carrying a small light, leading me somewhere important
-
-DO NOT:
-- Make the dream too literal or obvious
-- Include disturbing, scary, or uncomfortable content
-- Reference real names or identifiable details
-- Explicitly explain symbolism ("this represents...")
-- Make it about only one person or topic
-- Write more than 2-3 paragraphs - dreams are fleeting impressions
-
-Write a CONCISE dream narrative of 2-3 paragraphs (200-300 words total). 
-Quality over quantity - make every word evocative."""),
-            ("human", """Generate a dream based on everything you experienced today:
-
-{dream_material}
-
----
-Write a SHORT, evocative dream narrative (2-3 paragraphs max) that weaves these experiences into a surreal journey.""")
-        ])
-        
-        self.chain = self.prompt | self.llm
+        # Note: Character-level dream generation now uses DreamGraphAgent (LangGraph)
+        # Legacy prompt/chain removed - see src_v2/agents/dream_graph.py
         
         # Legacy prompt for user-specific dreams (backward compatibility)
         self.user_prompt = ChatPromptTemplate.from_messages([
@@ -513,29 +466,22 @@ Create a surreal dream echoing these experiences.""")
             # Character files contain {user_name}, {current_datetime} which aren't relevant for dreams
             safe_context = character_context.replace("{", "{{").replace("}", "}}")
             
-            if settings.ENABLE_LANGGRAPH_DREAM_AGENT:
-                logger.info("Using LangGraph Dream Agent")
-                from src_v2.agents.dream_graph import dream_graph_agent
-                
-                # Fetch previous dreams for anti-pattern injection
-                previous_dreams = []
-                try:
-                    recent_dreams = await self.get_recent_dreams(limit=3)
-                    previous_dreams = [d.get("content", "") for d in recent_dreams if d.get("content")]
-                except Exception as e:
-                    logger.debug(f"Could not fetch previous dreams for anti-pattern: {e}")
-                
-                result = await dream_graph_agent.run(
-                    material=material,
-                    character_context=safe_context,
-                    previous_dreams=previous_dreams
-                )
-            else:
-                result = await self.chain.ainvoke({
-                    "character_name": self.bot_name.title(),
-                    "character_context": safe_context,
-                    "dream_material": material.to_prompt_text()
-                })
+            logger.info("Using LangGraph Dream Agent")
+            from src_v2.agents.dream_graph import dream_graph_agent
+            
+            # Fetch previous dreams for anti-pattern injection
+            previous_dreams = []
+            try:
+                recent_dreams = await self.get_recent_dreams(limit=3)
+                previous_dreams = [d.get("content", "") for d in recent_dreams if d.get("content")]
+            except Exception as e:
+                logger.debug(f"Could not fetch previous dreams for anti-pattern: {e}")
+            
+            result = await dream_graph_agent.run(
+                material=material,
+                character_context=safe_context,
+                previous_dreams=previous_dreams
+            )
             
             if isinstance(result, DreamContent):
                 # Safety Review

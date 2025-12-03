@@ -50,17 +50,15 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     Each character can have a timezone in their core.yaml. The cron runs hourly
     and only generates diaries for characters where it's currently 10 PM local.
     
-    If ENABLE_AGENTIC_NARRATIVES is True, uses the DreamWeaver agent for
-    richer, multi-step narrative generation with proper story arcs.
+    Uses the LangGraph Diary Agent for narrative generation.
     """
     if not settings.ENABLE_CHARACTER_DIARY:
         logger.info("Character diary feature disabled, skipping nightly generation")
         return {"success": False, "reason": "disabled"}
     
-    mode = "agentic" if settings.ENABLE_AGENTIC_NARRATIVES else "simple"
     target_hour = settings.DIARY_GENERATION_LOCAL_HOUR
     target_minute = settings.DIARY_GENERATION_LOCAL_MINUTE
-    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for diary generation (mode: {mode})")
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for diary generation")
     
     try:
         from pathlib import Path
@@ -97,9 +95,6 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         
         logger.info(f"Found {len(character_names)} characters for diary generation: {character_names}")
         
-        # Choose generation function based on settings
-        job_name = "run_agentic_diary_generation" if settings.ENABLE_AGENTIC_NARRATIVES else "run_diary_generation"
-        
         # Run diary generation for each character
         processed_count = 0
         for char_name in character_names:
@@ -114,20 +109,18 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
                 # Continue anyway
             
             try:
-                # Enqueue job instead of running directly
-                # This decouples scheduling from execution
-                await ctx['redis'].enqueue_job(job_name, character_name=char_name, _queue_name="arq:cognition")
+                # Enqueue diary generation job
+                await ctx['redis'].enqueue_job("run_diary_generation", character_name=char_name, _queue_name="arq:cognition")
                 processed_count += 1
-                logger.debug(f"Enqueued diary generation for {char_name} (job: {job_name}) to arq:cognition")
+                logger.debug(f"Enqueued diary generation for {char_name} to arq:cognition")
             except Exception as e:
                 logger.error(f"Failed to enqueue diary for {char_name}: {e}")
         
-        logger.info(f"Nightly diary generation check complete: {processed_count} processed (mode: {mode})")
+        logger.info(f"Nightly diary generation check complete: {processed_count} processed")
         
         return {
             "success": True,
-            "processed": processed_count,
-            "mode": mode
+            "processed": processed_count
         }
         
     except Exception as e:
@@ -146,17 +139,15 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     Each character can have a timezone in their core.yaml. The cron runs hourly
     and only generates dreams for characters where it's currently 7 AM local.
     
-    If ENABLE_AGENTIC_NARRATIVES is True, uses the DreamWeaver agent for
-    richer, multi-step narrative generation with proper story arcs.
+    Uses the LangGraph Dream Agent for narrative generation.
     """
     if not settings.ENABLE_DREAM_SEQUENCES:
         logger.info("Dream sequences feature disabled, skipping nightly generation")
         return {"success": False, "reason": "disabled"}
     
-    mode = "agentic" if settings.ENABLE_AGENTIC_NARRATIVES else "simple"
     target_hour = settings.DREAM_GENERATION_LOCAL_HOUR
     target_minute = settings.DREAM_GENERATION_LOCAL_MINUTE
-    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for dream generation (mode: {mode})")
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for dream generation")
     
     try:
         from pathlib import Path
@@ -193,26 +184,22 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         
         logger.info(f"Found {len(character_names)} characters for dream generation: {character_names}")
         
-        # Choose generation function based on settings
-        job_name = "run_agentic_dream_generation" if settings.ENABLE_AGENTIC_NARRATIVES else "run_dream_generation"
-        
         # Run dream generation for each character
         processed_count = 0
         for char_name in character_names:
             try:
-                # Enqueue job instead of running directly
-                await ctx['redis'].enqueue_job(job_name, character_name=char_name, _queue_name="arq:cognition")
+                # Enqueue dream generation job
+                await ctx['redis'].enqueue_job("run_dream_generation", character_name=char_name, _queue_name="arq:cognition")
                 processed_count += 1
-                logger.debug(f"Enqueued dream generation for {char_name} (job: {job_name}) to arq:cognition")
+                logger.debug(f"Enqueued dream generation for {char_name} to arq:cognition")
             except Exception as e:
                 logger.error(f"Failed to enqueue dream for {char_name}: {e}")
         
-        logger.info(f"Nightly dream generation check complete: {processed_count} processed (mode: {mode})")
+        logger.info(f"Nightly dream generation check complete: {processed_count} processed")
         
         return {
             "success": True,
-            "processed": processed_count,
-            "mode": mode
+            "processed": processed_count
         }
         
     except Exception as e:

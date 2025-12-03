@@ -904,7 +904,7 @@ class MemoryManager:
         """
         Search for memories by type (observation, gossip, diary, dream, epiphany, etc).
         
-        Used by DreamWeaver agent to gather different types of material.
+        Used by narrative agents (Diary/Dream) to gather different types of material.
         
         Args:
             memory_type: The type of memory to search for

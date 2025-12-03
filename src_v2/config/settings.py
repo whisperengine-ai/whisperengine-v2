@@ -86,8 +86,7 @@ class Settings(BaseSettings):
     ENABLE_LANGGRAPH_REFLECTIVE_AGENT: bool = False  # DEPRECATED: Supergraph always uses LangGraph agents
     ENABLE_LANGGRAPH_CHARACTER_AGENT: bool = False  # DEPRECATED: Supergraph always uses LangGraph agents
     ENABLE_LANGGRAPH_INSIGHT_AGENT: bool = False  # Enable new LangGraph-based insight agent
-    ENABLE_LANGGRAPH_DIARY_AGENT: bool = False  # Enable new LangGraph-based diary agent
-    ENABLE_LANGGRAPH_DREAM_AGENT: bool = False  # Enable new LangGraph-based dream agent
+    # Note: ENABLE_LANGGRAPH_DIARY_AGENT and ENABLE_LANGGRAPH_DREAM_AGENT removed - LangGraph is now the only path
     ENABLE_LANGGRAPH_REFLECTION_AGENT: bool = False  # Enable new LangGraph-based reflection agent
     ENABLE_LANGGRAPH_STRATEGIST_AGENT: bool = False  # Enable new LangGraph-based goal strategist agent
     ENABLE_SUPERGRAPH: bool = True  # DEPRECATED: Supergraph is now always enabled
@@ -219,12 +218,8 @@ class Settings(BaseSettings):
     DREAM_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when dreams are generated
     
     # --- Agentic Narrative Generation (Phase E10) ---
-    # When enabled, diary/dream generation uses the DreamWeaver agent which:
-    # 1. Plans the narrative arc (story structure, emotional journey)
-    # 2. Uses tools to gather correlated data from multiple sources
-    # 3. Takes extended steps since it's batch mode (no user waiting)
-    # This produces richer, more coherent narratives but uses more LLM tokens.
-    ENABLE_AGENTIC_NARRATIVES: bool = False  # Use reflective agent for diary/dream generation
+    # Diary and dream generation now always uses LangGraph agents.
+    # The legacy ReAct DreamWeaver and feature flags have been removed.
 
     # --- LangSmith Tracing (Optional) ---
     # Enable LangSmith for full observability of LLM calls, tool executions, and traces

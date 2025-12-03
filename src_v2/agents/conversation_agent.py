@@ -356,10 +356,9 @@ class ConversationAgent:
             logger.error(f"Could not load character for {initiator_name}")
             return None
         
-        # Get character-specific temperature
+        # Temperature comes from core.yaml, but model comes from .env (core.yaml model is for workers only)
         temp = character.behavior.temperature if character.behavior else 0.7
-        model = character.behavior.model_name if character.behavior else None
-        llm = create_llm(mode="main", temperature=temp, model_name=model)
+        llm = create_llm(mode="main", temperature=temp)
         
         system_prompt = character.system_prompt
         
@@ -446,9 +445,9 @@ Write ONLY the message. No quotes or explanation."""
         if not character:
             return None
         
+        # Temperature comes from core.yaml, but model comes from .env (core.yaml model is for workers only)
         temp = character.behavior.temperature if character.behavior else 0.7
-        model = character.behavior.model_name if character.behavior else None
-        llm = create_llm(mode="main", temperature=temp, model_name=model)
+        llm = create_llm(mode="main", temperature=temp)
         
         system_prompt = character.system_prompt
         

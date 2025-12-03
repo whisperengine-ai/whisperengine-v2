@@ -105,10 +105,9 @@ class PostingAgent:
 
         # 4. Generate Content using LLM
         # We use the 'main' model (the character's primary voice) to ensure the personality is correct.
-        # We also use the character's specific temperature and model if defined.
+        # Temperature comes from core.yaml, but model comes from .env (core.yaml model is for workers only)
         temp = character.behavior.temperature if character.behavior else 0.7
-        model = character.behavior.model_name if character.behavior else None
-        llm = create_llm(mode="main", temperature=temp, model_name=model) 
+        llm = create_llm(mode="main", temperature=temp) 
         
         system_prompt = character.system_prompt
         
