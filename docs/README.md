@@ -89,7 +89,7 @@ WhisperEngine v2 is built on a **three-layer graph architecture**:
 2. **Orchestration Graphs (LangGraph)** — agent behavior (reasoning, decision-making)
 3. **Conceptual Graphs** — the universe (social topology, presence)
 
-**Character perception emerges from traversing these graphs.** We provide six modalities (vision, audio, memory, etc.) as the *mechanism* for feeding data into the graphs, but the graphs themselves are what enable authentic behavior.
+Character perception emerges from traversing these graphs. We provide six modalities (vision, audio, memory, etc.) as the mechanism for feeding data into the graphs. The graphs themselves enable authentic behavior.
 
 **Deep dive**: [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md)
 
