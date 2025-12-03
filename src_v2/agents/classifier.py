@@ -223,6 +223,8 @@ Classify the complexity and detect specific intents.
 
 COMPLEXITY LEVELS:
 1. SIMPLE: Greetings, direct questions about immediate context, casual chat. No tools needed.
+   - Sharing creative writing, dreams, or diary entries WITHOUT a specific complex question.
+   - "Here is my dream...", "I wrote this...", "Journal entry...".
 2. COMPLEX_LOW: Needs 1-2 simple lookups. Examples:
    - "Where did you grow up?" (memory lookup)
    - "What is my name?" (fact lookup)
