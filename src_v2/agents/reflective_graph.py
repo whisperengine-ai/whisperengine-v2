@@ -308,12 +308,12 @@ TOOL USAGE GUIDE:
             return {"messages": [AIMessage(content="I encountered an error while thinking.")], "steps": state['steps'] + 1}
 
         # Stream thought if callback exists and the model is reasoning (has content)
-        # Show reasoning when: 1) there's content AND 2) either it's calling tools (explaining why) 
-        # or it's in the middle of multi-step reasoning (not the final answer)
+        # ONLY show reasoning if the model is ALSO calling tools (explaining the tool choice).
+        # If there are no tool_calls, this is the final answer - don't show it in the
+        # thinking/status message, as it will be streamed as the actual response.
         if isinstance(response, AIMessage) and response.content and callback:
-            # Only show reasoning if it's calling tools (explaining the tool choice)
-            # or if verbosity is detailed (show all thoughts)
-            if response.tool_calls or settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+            if response.tool_calls:
+                # Show the reasoning that explains why the tool is being called
                 await callback(f"💭 {response.content}")
 
         return {"messages": [response], "steps": state['steps'] + 1}
