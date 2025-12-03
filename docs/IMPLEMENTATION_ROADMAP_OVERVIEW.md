@@ -2,7 +2,7 @@
 
 **Document Version:** 2.7  
 **Created:** November 24, 2025  
-**Last Updated:** December 3, 2025 (Roadmap sync: E15 status corrected, E19 marked complete, E24 added, Cross-Bot Memory added)
+**Last Updated:** December 3, 2025 (O1: InfluxDB Analytics Enhancements added)
 **Status:** Active Planning
 
 ### Status Legend
@@ -91,6 +91,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
 | 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15 🔄, E6 ✅ | 📋 Blocked |
 | ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
+| ⚪ Low | **O1** | **InfluxDB Analytics Enhancements** | **2-3 hours** | A4 ✅ | 📋 Proposed |
 
 #### ⏸️ On Hold / Deferred
 
@@ -136,6 +137,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 │                                                                 │
 │  No deps ─────────────────► E21 (Semantic Routing)             │
 │  No deps ─────────────────► Cross-Bot Memory                   │
+│  No deps ─────────────────► O1 (InfluxDB Analytics)            │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -1989,3 +1991,63 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 - Enables callbacks to shared memories ("Remember when we talked about...?")
 
 **Spec:** [CROSS_BOT_MEMORY.md](./roadmaps/CROSS_BOT_MEMORY.md)
+
+---
+
+### 📋 Phase O1: InfluxDB Analytics Enhancements
+**Priority:** ⚪ Low | **Time:** 2-3 hours | **Complexity:** Low
+**Status:** 📋 Proposed
+**Dependencies:** A4 (Grafana Dashboards) ✅
+**Added:** December 2025
+
+**Problem:** InfluxDB is currently used for basic analytics (reaction metrics, response latency, classification decisions). There are untapped opportunities for time-series analysis that would benefit emergent behavior research.
+
+**Current InfluxDB Measurements:**
+- `reaction_event` — User emoji reactions
+- `classification` — Complexity routing decisions
+- `response_timing` — Response latency (TTFB, total)
+- `trust_update` — Trust score changes
+- `drift_observation` — Personality drift metrics
+
+**Proposed Enhancements:**
+
+| Measurement | Tags | Fields | Purpose |
+|-------------|------|--------|---------|
+| `trust_evolution` | user_id, bot_name, stage | score, delta, stage_changed | Visualize trust trajectories over time |
+| `memory_latency` | user_id, operation, source_type | query_time_ms, result_count | Detect Qdrant performance issues |
+| `graph_ops` | bot_name, operation, query_type | latency_ms, nodes_visited | Track Neo4j query performance |
+| `quota_usage` | user_id, quota_type | daily_count, limit | Historical quota patterns |
+
+**Priority Order:**
+1. **Trust Evolution** (1 hour) — Already logging to InfluxDB, just need Grafana dashboard
+2. **Memory Retrieval Latency** (1-2 hours) — Add instrumentation to `memory_manager.search_memories()`
+
+**Implementation:**
+
+```python
+# In memory_manager.search_memories()
+if db_manager.influxdb_write_api:
+    point = Point("memory_latency") \
+        .tag("user_id", user_id) \
+        .tag("operation", "search") \
+        .field("query_time_ms", duration_ms) \
+        .field("result_count", len(results))
+    db_manager.influxdb_write_api.write(...)
+```
+
+**Benefits:**
+- **Trust trajectories**: Visualize how relationships evolve (research value)
+- **Performance monitoring**: Identify slow Qdrant queries before they become problems
+- **Graph observability**: Track which Neo4j queries are expensive
+- **Quota analysis**: Understand power user patterns
+
+**Not In Scope:**
+- Message volume metrics (Discord provides this)
+- Knowledge graph growth (Neo4j has built-in metrics)
+- Real-time alerting (keep analytics simple)
+
+**Grafana Dashboards to Create:**
+- Trust Evolution Dashboard (per-user trajectory over time)
+- Memory Performance Dashboard (latency percentiles, slow queries)
+
+**Philosophy:** Keep InfluxDB focused on analytics/observability. Don't expand to transactional data.
