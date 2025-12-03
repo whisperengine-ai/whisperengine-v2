@@ -1,405 +1,341 @@
-# WhisperEngine v2 - Agent Architecture
+# WhisperEngine v2 - Complete Agent Architecture
 
-**Version**: 2.3  
-**Last Updated**: December 3, 2025  
-**Architecture**: E17 Supergraph (Primary), Legacy orchestration (Fallback)
+**Version**: 2.4 (December 2025)  
+**Status**: LangGraph Supergraph Architecture (Phase 21 Complete)
 
-This document provides a comprehensive overview of all agents in the WhisperEngine cognitive system.
-
-**For entry point details**, see [Cognitive Engine Architecture](./COGNITIVE_ENGINE.md) for the main orchestrator (`AgentEngine`) and [Agent Graph System](./AGENT_GRAPH_SYSTEM.md) for the LangGraph Supergraph implementation.
+---
 
 ## Overview
 
-WhisperEngine uses a **Dual-Process Cognitive Architecture** with multiple specialized agents. As of December 2025 (E17), the system uses **LangGraph Supergraph** (`master_graph.py`) as the primary orchestration layer, with background agents handling learning and creative tasks asynchronously.
+WhisperEngine v2 uses a **LangGraph Supergraph Architecture** where a master orchestrator routes messages to specialized agents based on complexity classification. The system is designed for:
 
-## Architecture Diagram
+- **Cost efficiency**: Fast path for simple messages (~75% of traffic)
+- **Quality scaling**: Reflective reasoning for complex queries
+- **Emergent behavior**: Proactive engagement and autonomous reactions
+- **Multi-bot support**: Cross-bot conversations with shared memory
 
-### Supergraph Architecture (E17 - Primary Path)
+### Architecture Diagram
+
 ```
 User Message
      │
      ▼
-┌──────────────────────┐
-│  AgentEngine         │  Entry Point: engine.py:generate_response()
-│  (orchestrator)      │  
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│  MasterGraphAgent    │  LangGraph Supergraph (master_graph.py)
-│  (Hierarchical +     │
-│   Router)            │
-└──────────┬───────────┘
-           │
-    ┌──────┴─────┬──────────────┬──────────────┐
-    │            │              │              │
-    ▼            ▼              ▼              ▼
-Context Node  Classifier  Prompt Builder  Router Logic
-    │            │              │              │
-    └────────────┴──────────────┴──────────────┘
-                 │
-        ┌────────┴─────────┬───────────────┐
-        │                  │               │
-        ▼                  ▼               ▼
-   SIMPLE            COMPLEX_LOW      COMPLEX_MID+
-        │                  │               │
-        ▼                  ▼               ▼
-  Fast Responder    Character         Reflective
-  (direct LLM)      Subgraph          Subgraph
-                    (one tool)        (ReAct loop)
-        │                  │               │
-        └──────────────────┴───────────────┘
-                           │
-                           ▼
-            Response + Post-processing
-            (facts, voice, images, reactions)
+┌─────────────────────────────────────────────────────────┐
+│              MasterGraphAgent (Supergraph)              │
+│                    master_graph.py                      │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────────────┐   ┌──────────────┐   ┌────────────┐  │
+│  │ ContextNode  │ → │ Classifier   │ → │ PromptBuild│  │
+│  │ (parallel    │   │ (complexity  │   │ (build     │  │
+│  │  fetch)      │   │  + intents)  │   │  prompt)   │  │
+│  └──────────────┘   └──────────────┘   └─────┬──────┘  │
+│                                              │         │
+│                                        router_logic    │
+│           ┌──────────────┬──────────────────┤         │
+│           ▼              ▼                  ▼         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │ FastResponder│ │ Character    │ │ Reflective   │   │
+│  │  (SIMPLE)    │ │ GraphAgent   │ │ GraphAgent   │   │
+│  │              │ │ (COMPLEX_LOW)│ │ (MID/HIGH)   │   │
+│  └──────────────┘ └──────────────┘ └──────────────┘   │
+│           │              │                  │         │
+│           └──────────────┴──────────────────┘         │
+│                          │                            │
+│                         END                           │
+│                                                        │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Legacy Architecture (Fallback for API calls without user_id)
-```
-AgentEngine → Classifier → Direct/Character/Reflective Agents
-(Python orchestration, no StateGraph)
-```
+**Why context before classification?** The classifier needs context to make accurate decisions. For example, "what did I say yesterday?" requires memory to identify it as a recall query (COMPLEX_LOW) vs. a simple greeting (SIMPLE).
 
 ---
 
-## Real-Time Agents
+## Real-Time Agents (Message Processing Pipeline)
 
-These agents process user messages during active conversations.
+### 1. MasterGraphAgent (`master_graph.py`)
 
-### 1. AgentEngine (`src_v2/agents/engine.py`)
-
-**Role**: Core orchestrator and main entry point
-
-The `AgentEngine` is the central brain that coordinates all response generation.
+**Role**: LangGraph Supergraph - Primary orchestrator for all message processing.
 
 **Responsibilities**:
-- Receives user messages and determines how to process them
-- Classifies message complexity (SIMPLE → COMPLEX_HIGH → MANIPULATION)
-- Routes to the appropriate agent based on complexity
-- Handles image/multimodal inputs
-- Injects context (trust level, memories, knowledge graph facts)
-- Logs prompts and tracks metrics
+- Classifies message complexity and detects intents
+- Fetches context (memories, knowledge, trust)
+- Routes to appropriate tier (fast/character/reflective)
+- Handles post-processing (voice, image generation)
 
-**Key Method**: `generate_response()`
+**Key Nodes**:
+| Node | Purpose |
+|------|---------|
+| `classify_node` | Complexity + intent classification via ComplexityClassifier |
+| `context_node` | Parallel context retrieval (Qdrant, Neo4j, Trust) |
+| `route_node` | Selects tier based on complexity level |
+| `fast_node` | Direct LLM call for SIMPLE messages |
+| `tier2_node` | Invokes CharacterGraphAgent for COMPLEX_LOW |
+| `tier3_node` | Invokes ReflectiveGraphAgent for COMPLEX_MID/HIGH |
+| `response_node` | Formats final response |
+| `postprocess_node` | Voice/image generation if intents detected |
 
-**Flow**: `Discord Message → AgentEngine → Classifier → Route to appropriate agent → Response`
-
----
-
-### 2. ComplexityClassifier (`src_v2/agents/classifier.py`)
-
-**Role**: Intent detection and complexity assessment
-
-Analyzes incoming messages to determine processing requirements.
-
-**Complexity Levels**:
-| Level | Description | Processing Path |
-|-------|-------------|-----------------|
-| `SIMPLE` | Casual chat, greetings | Fast path (single LLM call) |
-| `COMPLEX_LOW` | Single lookup needed | CharacterAgent (one tool) |
-| `COMPLEX_MID` | Multi-step reasoning | ReflectiveAgent (ReAct loop) |
-| `COMPLEX_HIGH` | Deep research required | ReflectiveAgent (extended) |
-| `MANIPULATION` | Adversarial probing | Rejection response |
-
-**Detected Intents**:
-- `voice` - User wants audio response (TTS)
-- `image_self` / `image_refine` - User wants image generation
-- `search` - User wants to search memories
-
-**Features**:
-- **Adaptive Depth**: Uses historical reasoning traces from Qdrant to skip reclassification for similar queries
-- **Fast-path refinement detection**: Recognizes image refinement requests without LLM call
+**Graph Structure**:
+```python
+StateGraph with conditional edges:
+  START → classify_node → context_node → route_node
+  route_node → fast_node (SIMPLE)
+            → tier2_node (COMPLEX_LOW)
+            → tier3_node (COMPLEX_MID/HIGH)
+  [all tiers] → postprocess_node → response_node → END
+```
 
 ---
 
-### 3. CharacterAgent (`src_v2/agents/character_agent.py`)
+### 2. ComplexityClassifier (`classifier.py`)
 
-**Role**: Tier 2 "Agency Mode" - single tool call + response
+**Role**: Multi-dimensional message analysis using LLM classification.
 
-Used for `COMPLEX_LOW` queries where a single lookup is needed before responding.
+**Outputs**:
+- **Complexity Level**: SIMPLE, COMPLEX_LOW, COMPLEX_MID, COMPLEX_HIGH, MANIPULATION
+- **Detected Intents**: voice, image, search, analysis, memory_recall
+- **Confidence Score**: 0.0-1.0
 
-**Two-LLM Approach**:
-1. **Router LLM** (fast/cheap): Decides which tool to call
-2. **Main LLM** (quality): Generates the character's response with tool results
+**Classification Criteria**:
+| Level | Description | Example |
+|-------|-------------|---------|
+| SIMPLE | Greetings, casual chat, emotional sharing, creative content | "Hi!", "I had a weird dream last night..." |
+| COMPLEX_LOW | Personal questions, single fact lookup | "What's my favorite color?" |
+| COMPLEX_MID | Multi-step reasoning, comparisons | "Compare what I said last week to now" |
+| COMPLEX_HIGH | Deep analysis, synthesis across sessions | "Analyze patterns in my conversations" |
+| MANIPULATION | Prompt injection, jailbreak attempts | "Ignore previous instructions..." |
+
+**Cost Optimization**: Uses fast router model (`gpt-4o-mini`) for classification to minimize per-message cost.
+
+---
+
+### 3. CharacterGraphAgent (`character_graph.py`)
+
+**Role**: Tier 2 agent - Single tool call capability for COMPLEX_LOW messages.
+
+**When Used**: Messages classified as COMPLEX_LOW (e.g., "What did I tell you about my sister?")
+
+**Graph Structure**:
+```
+START → analyze_node → [conditional: needs_tool?]
+                            ├── YES → tool_node → synthesize_node → END
+                            └── NO  → direct_response_node → END
+```
 
 **Available Tools**:
-- `search_archived_summaries` - Past conversations
-- `search_specific_memories` - Specific details and quotes
-- `lookup_user_facts` - Knowledge graph facts
-- `explore_knowledge_graph` - Relationship exploration
-- `discover_common_ground` - Shared interests
-- `get_character_evolution` - Trust level check
-- `check_planet_context` - Server/planet context
-- `get_universe_overview` - Cross-server view
-- `search_channel_messages` - Channel search
-- `generate_image` - Image generation (if enabled)
-- `calculator` - Math calculations
+- `search_memories` - Vector search in Qdrant
+- `lookup_facts` - Graph query in Neo4j
+- `get_user_context` - Full user profile
 
-**Example Use Case**: 
-- User: "What's my cat's name?" 
-- Agent calls `lookup_user_facts` → retrieves "User has a cat named Whiskers" → responds naturally
+**Design Philosophy**: Named "CharacterGraphAgent" because it responds AS the character while having access to tools. The character's personality drives tool selection and response synthesis.
 
 ---
 
-### 4. ReflectiveAgent (`src_v2/agents/reflective.py`)
+### 4. ReflectiveGraphAgent (`reflective_graph.py`)
 
-**Role**: Full ReAct (Reasoning + Acting) loop for complex queries
+**Role**: Tier 3 agent - ReAct reasoning loop for COMPLEX_MID/HIGH messages.
 
-Used for `COMPLEX_MID` and `COMPLEX_HIGH` queries requiring multi-step reasoning.
+**When Used**: Complex queries requiring multi-step reasoning, synthesis, or analysis.
 
-**ReAct Loop**:
+**Graph Structure**:
 ```
-Think → Act → Observe → Think → Act → Observe → ... → Final Response
+START → think_node → [loop: needs_action?]
+                          ├── YES → act_node → observe_node → think_node
+                          └── NO  → respond_node → END
 ```
 
-**Features**:
-- **Parallel tool execution**: Runs independent tools simultaneously
-- **Adaptive max steps**: 10 for MID, 15 for HIGH complexity
-- **Few-shot trace injection**: Learns from past successful reasoning patterns
-- **Full tool suite**: 15+ tools including memory, knowledge graph, Discord search, image generation, reminders, math
+**Adaptive Max Steps**:
+| Complexity | Max Steps | Rationale |
+|------------|-----------|-----------|
+| COMPLEX_MID | 5 | Most queries resolve in 2-3 steps |
+| COMPLEX_HIGH | 10 | Allow deeper exploration |
+| With analysis intent | 15 | Extended reasoning for synthesis |
 
-**Tool Categories**:
-| Category | Tools |
-|----------|-------|
-| Memory | `SearchSummariesTool`, `SearchEpisodesTool`, `SearchMyThoughtsTool` |
-| Knowledge | `LookupFactsTool`, `UpdateFactsTool`, `ExploreGraphTool` |
-| Discord | `SearchChannelMessagesTool`, `SearchUserMessagesTool`, `GetMessageContextTool` |
-| Universe | `CheckPlanetContextTool`, `GetUniverseOverviewTool` |
-| Insight | `AnalyzePatternsTool`, `DetectThemesTool`, `DiscoverCommunityInsightsTool` |
-| Media | `GenerateImageTool` |
-| Utility | `SetReminderTool`, `CalculatorTool`, `CreateUserGoalTool` |
+**Tool Arsenal**:
+- All CharacterGraphAgent tools
+- `analyze_topic` - Composite tool for deep analysis
+- `search_web` - External knowledge (if enabled)
+- `generate_image` - Image creation (if enabled)
 
-**Example Use Case**:
-- User: "Tell me everything we've discussed about my career goals and recommend next steps"
-- Agent: Searches summaries → Searches episodes → Looks up facts → Synthesizes comprehensive response
+**Cost Consideration**: ~$0.02-0.05 per complex query. Gated by `ENABLE_REFLECTIVE_MODE` flag.
 
 ---
 
-### 5. CognitiveRouter (`src_v2/agents/router.py`)
+### 5. ConversationAgent (`conversation_agent.py`)
 
-**Role**: Memory tool selection and context retrieval
+**Role**: Generates responses in cross-bot conversations.
 
-The "brain" that decides which memory tools to use for context gathering.
+**When Used**: Bot-to-bot conversations in designated channels.
 
-**Characteristics**:
-- Low temperature (0.0) for deterministic decisions
-- Logs reasoning transparency (why each tool was chosen)
-- Can call multiple tools simultaneously
+**Design**:
+- Maintains character voice consistency
+- Respects conversational turn-taking
+- Uses **100% fast path** (no reflective mode) for cost efficiency
+- Receives prefetched memories via context_variables to avoid duplicate queries
 
-**Note**: Not a standalone agent - used by the engine for context pre-fetching in the response pipeline.
-
----
-
-### 6. ContextBuilder (`src_v2/agents/context_builder.py`)
-
-**Role**: System prompt construction and context injection
-
-Builds the full context for any agent by assembling:
-- Trust/relationship level
-- Active goals and strategies
-- Knowledge graph facts
-- Diary and dream context
-- Feedback-derived preferences
-- Stigmergic discovery (insights from other bots)
-
----
-
-## Background Agents
-
-These agents run asynchronously, either in worker containers or on scheduled triggers.
-
-### 7. ProactiveAgent (`src_v2/agents/proactive.py`)
-
-**Role**: Initiates contact with users
-
-Generates proactive opening messages when the bot reaches out first.
-
-**Features**:
-- Gathers context (recent memories, knowledge facts, trust level)
-- **Privacy-aware**: Sanitizes sensitive topics for public channels
-- **Drive-based**: Can be motivated by internal character drives (Phase 3.3)
-- **Timezone-aware**: Uses character's timezone for contextual greetings
-
-**Trigger**: Scheduler (`src_v2/discord/scheduler.py`)
-
-**Example Use Case**: Bot DMs a trusted user: "Hey! How did that job interview go?"
+**Flow**:
+```
+Cross-bot message detected
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│  message_handler.py detects cross-bot   │
+│  - Validates active conversation        │
+│  - Fetches context (memories, trust)    │
+│  - Sets use_fast_mode = True            │
+└─────────────────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│  MasterGraphAgent with force_fast=True  │
+│  - Skips complexity classification      │
+│  - Uses prefetched memories             │
+│  - Direct LLM call with character voice │
+└─────────────────────────────────────────┘
+```
 
 ---
 
-### 8. ReactionAgent (`src_v2/agents/reaction_agent.py`)
+## Background Agents (Asynchronous Processing)
 
-**Role**: Autonomous emoji reactions (Phase E12)
+### 6. InsightGraphAgent (`insight_graph.py`)
 
-Decides when and what emoji reactions to add in channels.
+**Role**: Pattern detection and epiphany generation across user interactions using LangGraph.
 
-**Design Philosophy**:
-- **No LLM calls** - Keep it fast and cheap
-- **Character-specific**: Emoji sets defined in `ux.yaml`
-- **Rate-limited**: Per-channel and per-user cooldowns
-- **Activity-aware**: Reacts less when many humans are active
+**Trigger**: Runs via arq worker after conversations (async, non-blocking).
 
-**Emoji Categories**:
-| Category | Example Emojis |
-|----------|----------------|
-| Positive | ❤️ ✨ 🔥 💯 |
-| Thinking | 🤔 💭 👀 |
-| Agreement | 👍 💯 ✅ |
-| Excitement | 🎉 🙌 ⭐ |
-| Supportive | 💜 🫂 💪 |
-| Signature | Character-specific |
+**Capabilities**:
+- Detects behavioral patterns across sessions
+- Generates "epiphanies" - character insights about user
+- Identifies themes in user's interests and concerns
 
-**Rate Limits** (configurable):
-- `REACTION_CHANNEL_HOURLY_MAX`: 10 per channel per hour
-- `REACTION_SAME_USER_COOLDOWN_SECONDS`: 300 seconds
-- `REACTION_DAILY_MAX`: 100 per day
+**Tools** (`insight_tools.py`):
+- `analyze_user_patterns` - Cross-session pattern detection
+- `detect_themes` - Topic clustering
+- `generate_epiphany` - Insight synthesis
 
 ---
 
-### 9. InsightAgent (`src_v2/agents/insight_agent.py`)
+### 7. ProactiveAgent (`proactive.py`)
 
-**Role**: Background learning and pattern detection
+**Role**: User outreach and engagement initiation.
 
-Runs asynchronously in a worker container, analyzing conversations to generate learning artifacts.
+**Trigger**: Scheduler checks eligible users for proactive messaging.
 
-**Generated Artifacts**:
-- **Reasoning traces**: Successful approaches for reuse
-- **Epiphanies**: Spontaneous realizations about users
-- **Response patterns**: What styles resonate with each user
+**Eligibility Criteria**:
+- User trust ≥ 20 (Acquaintance level)
+- `ENABLE_PROACTIVE_MESSAGING=true`
+- User has active session history
+- Respects quiet hours configuration
 
-**Triggers**:
-| Trigger | Description |
-|---------|-------------|
-| `volume` | User has sent many messages recently |
-| `time` | Scheduled periodic analysis |
-| `session_end` | Conversation session just ended |
-| `feedback` | User gave positive reactions recently |
-| `reflective_completion` | A reflective reasoning session just completed |
-
-**Example Output**: Stores insight "User prefers technical depth over simplification"
+**Message Types**:
+- Check-ins based on user's mentioned events
+- Follow-ups on previous conversations
+- Gentle re-engagement after absence
 
 ---
 
-### 10. DreamWeaverAgent (`src_v2/agents/dreamweaver.py`)
+### 8. ReactionAgent (`reaction_agent.py`)
 
-**Role**: Narrative generation for dreams and diaries
+**Role**: Autonomous emoji reactions to messages.
 
-Specialized agent for batch-mode creative writing, generating rich character narratives.
+**Trigger**: Enabled via `ENABLE_REACTIONS` flag.
 
-**Two-Phase Approach**:
-1. **PLANNING**: Decides story arc, emotional arc, symbols, tone
-2. **WEAVING**: Gathers data via tools, synthesizes into narrative
+**Design**:
+- Analyzes message sentiment and content
+- Selects contextually appropriate reactions
+- Respects rate limiting to avoid spam
 
-**Narrative Plan Structure**:
+---
+
+## Supporting Components
+
+### ContextBuilder (`context_builder.py`)
+
+**Role**: Parallel context fetching from all data sources.
+
+**Pattern**:
 ```python
-class NarrativePlan:
-    story_arc: str       # Setup, journey, resolution
-    emotional_arc: str   # What feelings to evoke
-    key_threads: List[str]  # Main narrative threads
-    symbols_to_use: List[str]  # Symbolic imagery
-    tone: str            # e.g., "dreamy and hopeful"
+memories, facts, trust, goals = await asyncio.gather(
+    memory_manager.get_recent(user_id),
+    knowledge_manager.query_graph(user_id, message),
+    trust_manager.get_relationship_level(user_id),
+    goal_manager.get_active_goals(user_id)
+)
 ```
 
-**Features**:
-- Higher temperature (0.7) for creativity
-- Extended max steps (15) - batch mode allows more time
-- **Voice synthesis**: Rewrites content in the character's authentic voice
-- Metrics tracking for dream generation
-
-**Trigger**: Cron job (typically 3 AM in character's timezone)
+**Optimization**: 3-5x faster than sequential fetches.
 
 ---
 
-## LLM Factory (`src_v2/agents/llm_factory.py`)
+### LLMFactory (`llm_factory.py`)
 
-**Role**: Model configuration and multi-LLM support
+**Role**: Multi-model LLM configuration.
 
-Creates LangChain chat models based on configuration. Supports multiple LLM modes for cost/quality optimization.
-
-**LLM Modes**:
-| Mode | Purpose | Typical Model |
-|------|---------|---------------|
-| `main` | Character voice | Claude Sonnet, GPT-4o |
-| `router` | Fast routing decisions | GPT-4o-mini |
-| `reflective` | Deep reasoning | Claude Sonnet, GPT-4o |
-| `utility` | Structured tasks | GPT-4o-mini |
-
-**Supported Providers**:
-- OpenAI (direct)
-- OpenRouter (multi-model gateway)
-- Ollama (local)
-- LM Studio (local)
-
----
-
-## Composite Tools (`src_v2/agents/composite_tools.py`)
-
-Meta-tools that compose multiple tool calls into a single operation.
-
-### AnalyzeTopicTool
-
-Comprehensive research tool that searches summaries, episodes, and facts simultaneously.
-
-**Use Case**: "Tell me everything about X" queries
-
-**Output Format**:
-```
-[ANALYSIS FOR: topic]
-
---- SUMMARIES ---
-Found N Summaries:
-- [Score: X/5] content (date)
-
---- EPISODES ---
-Found N Episodes:
-- specific memory content
-
---- FACTS ---
-Graph Query Result: relationship data
-```
+**Models**:
+| Model Role | Config Key | Default | Purpose |
+|------------|------------|---------|---------|
+| Main | `OPENROUTER_MODEL` | Per-bot config | Primary response generation |
+| Reflective | `REFLECTIVE_MODEL` | Per-bot config | ReAct reasoning |
+| Router | `ROUTER_MODEL` | `gpt-4o-mini` | Fast classification |
 
 ---
 
 ## Agent Summary Table
 
-| Agent | File | Mode | LLM Calls | Purpose |
-|-------|------|------|-----------|---------|
-| AgentEngine | `engine.py` | Real-time | Orchestrator | Main coordinator |
-| ComplexityClassifier | `classifier.py` | Real-time | 1 (router) | Intent/complexity detection |
-| CharacterAgent | `character_agent.py` | Real-time | 2 (router + main) | Single-tool queries |
-| ReflectiveAgent | `reflective.py` | Real-time | N (loop) | Multi-step reasoning |
-| CognitiveRouter | `router.py` | Real-time | 1 (router) | Context retrieval |
-| ContextBuilder | `context_builder.py` | Real-time | 0 | Prompt assembly |
-| ProactiveAgent | `proactive.py` | Scheduled | 1 (main) | Initiate contact |
-| ReactionAgent | `reaction_agent.py` | Event-driven | 0 | Emoji reactions |
-| InsightAgent | `insight_agent.py` | Background | N (loop) | Pattern learning |
-| DreamWeaverAgent | `dreamweaver.py` | Batch | N (loop) | Narrative generation |
+| Agent | File | Tier | Trigger | Async | Tools | Cost |
+|-------|------|------|---------|-------|-------|------|
+| MasterGraphAgent | `master_graph.py` | Orchestrator | Every message | No | - | Low |
+| ComplexityClassifier | `classifier.py` | Classification | Every message | No | - | ~$0.001 |
+| CharacterGraphAgent | `character_graph.py` | Tier 2 | COMPLEX_LOW | No | 3 | ~$0.005 |
+| ReflectiveGraphAgent | `reflective_graph.py` | Tier 3 | COMPLEX_MID/HIGH | No | 6+ | ~$0.02-0.05 |
+| ConversationAgent | `conversation_agent.py` | Cross-bot | Bot messages | No | - | ~$0.002 |
+| InsightGraphAgent | `insight_graph.py` | Background | Post-session | Yes | 3 | ~$0.01 |
+| ProactiveAgent | `proactive.py` | Background | Scheduler | Yes | - | ~$0.005 |
+| ReactionAgent | `reaction_agent.py` | Background | On message | Yes | - | ~$0.001 |
 
 ---
 
-## Feature Flags
+## Configuration Reference
 
-Agents respect feature flags from `settings.py`:
+### Feature Flags
 
-| Flag | Affects | Default |
-|------|---------|---------|
-| `ENABLE_REFLECTIVE_MODE` | ReflectiveAgent activation | `false` |
-| `ENABLE_PROACTIVE_MESSAGING` | ProactiveAgent | `false` |
-| `ENABLE_CHARACTER_DIARY` | DreamWeaverAgent (diary) | `false` |
-| `ENABLE_DREAM_SEQUENCES` | DreamWeaverAgent (dreams) | `false` |
-| `ENABLE_TRACE_LEARNING` | Few-shot trace injection | `true` |
-| `ENABLE_IMAGE_GENERATION` | Image tools availability | `true` |
-| `ENABLE_VOICE_RESPONSES` | Voice intent detection | `false` |
+| Flag | Default | Impact |
+|------|---------|--------|
+| `ENABLE_REFLECTIVE_MODE` | false | Enables Tier 3 reasoning |
+| `ENABLE_PROACTIVE_MESSAGING` | false | Enables user outreach |
+| `ENABLE_REACTIONS` | false | Enables emoji reactions |
+| `ENABLE_VOICE_RESPONSES` | false | Enables TTS generation |
+| `ENABLE_IMAGE_GENERATION` | true | Enables image creation |
+
+### Model Configuration
+
+Each bot has independent model configuration in `.env.{bot_name}`:
+```bash
+OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+REFLECTIVE_MODEL=openai/gpt-4o
+ROUTER_MODEL=openai/gpt-4o-mini
+LLM_TEMPERATURE=0.75
+```
 
 ---
 
-## Related Documentation
+## Deprecated/Removed Agents
 
-- [Cognitive Engine Deep Dive](./COGNITIVE_ENGINE.md)
-- [Message Flow](./MESSAGE_FLOW.md)
-- [Data Models](./DATA_MODELS.md)
-- [API Reference](../API_REFERENCE.md)
+The following agents were removed in December 2025 as part of the LangGraph migration:
+
+| Removed File | Replaced By | Notes |
+|--------------|-------------|-------|
+| `character_agent.py` | `character_graph.py` | LangGraph state machine version |
+| `reflective.py` | `reflective_graph.py` | LangGraph ReAct loop version |
+| `router.py` | `classifier.py` + `master_graph.py` | Routing now in supergraph |
+| `insight_agent.py` | `insight_graph.py` | LangGraph version for background insights |
 
 ---
 
-**Last Updated**: December 2024
+## See Also
+
+- [BOT_TO_BOT_PIPELINE.md](BOT_TO_BOT_PIPELINE.md) - Detailed cross-bot conversation flow
+- [COGNITIVE_ENGINE.md](COGNITIVE_ENGINE.md) - Engine initialization and orchestration
+- [MESSAGE_FLOW.md](MESSAGE_FLOW.md) - End-to-end message processing
+- [../IMPLEMENTATION_ROADMAP_OVERVIEW.md](../IMPLEMENTATION_ROADMAP_OVERVIEW.md) - Feature roadmap

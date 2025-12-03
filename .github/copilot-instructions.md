@@ -217,12 +217,12 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### Background Workers
 - `src_v2/workers/task_queue.py`: TaskQueue singleton wrapping arq for Redis job queue
-- `src_v2/workers/insight_worker.py`: Shared worker container for ALL background processing
+- `src_v2/workers/worker.py`: Shared worker container for ALL background processing
   - `run_insight_analysis`: Pattern detection and epiphany generation
   - `run_summarization`: Session summary generation (post-session)
   - `run_reflection`: User pattern analysis across sessions
   - `run_knowledge_extraction`: Fact extraction to Neo4j (offloaded from response pipeline)
-- `src_v2/agents/insight_agent.py`: ReAct agent for pattern detection and epiphanies
+- `src_v2/agents/insight_graph.py`: LangGraph agent for pattern detection and epiphanies
 - `src_v2/tools/insight_tools.py`: Introspection tools (analyze_patterns, detect_themes, etc.)
 
 ### Character & Evolution

@@ -1337,12 +1337,14 @@ Recent channel context:
                 # Generate response using the engine
                 # cross_bot_user_id already defined above for context retrieval
 
-                # Random pipeline selection: 70% fast (cheap), 30% full (tools enabled)
-                # This creates natural variation - some conversations are quick banter,
-                # others go deeper with tool access for grounded responses
-                tool_roll = random.random()
-                use_fast_mode = tool_roll >= 0.3  # 70% fast, 30% with tools
-                logger.info(f"Cross-bot pipeline: force_fast={use_fast_mode} (roll={tool_roll:.2f})")
+                # Cross-bot always uses fast path (no tools)
+                # Rationale: cross_bot_context already has memories, history, knowledge pre-fetched
+                # Tools add cost/latency but rarely add value for bot banter
+                use_fast_mode = True
+                logger.info("Cross-bot pipeline: force_fast=True (always fast for bot-to-bot)")
+
+                # Pass pre-fetched memories to avoid redundant Qdrant query in Supergraph
+                prefetched_memories = ctx.get("memories", []) if ctx else []
 
                 # Use the bot's existing agent engine instance
                 response = await self.bot.agent_engine.generate_response(
@@ -1352,7 +1354,8 @@ Recent channel context:
                         "user_name": other_bot_name.title(),
                         "channel_name": getattr(message.channel, 'name', 'DM'),
                         "is_cross_bot": True,
-                        "cross_bot_context": cross_bot_context
+                        "cross_bot_context": cross_bot_context,
+                        "prefetched_memories": prefetched_memories  # Avoid duplicate Qdrant fetch
                     },
                     user_id=cross_bot_user_id,
                     force_fast=use_fast_mode

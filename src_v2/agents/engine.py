@@ -29,11 +29,8 @@ from src_v2.core.database import db_manager
 from src_v2.config.constants import should_use_base64
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
-from src_v2.agents.router import CognitiveRouter
 from src_v2.agents.classifier import ComplexityClassifier
-from src_v2.agents.reflective import ReflectiveAgent
 from src_v2.agents.reflective_graph import ReflectiveGraphAgent
-from src_v2.agents.character_agent import CharacterAgent
 from src_v2.agents.character_graph import CharacterGraphAgent
 from src_v2.agents.master_graph import master_graph_agent
 from src_v2.agents.context_builder import ContextBuilder
@@ -64,11 +61,8 @@ class AgentEngine:
             llm_client_dep: Optional LLM client for dependency injection
         """
         self.llm: Any = llm_client_dep or create_llm()
-        self.router: CognitiveRouter = CognitiveRouter()
         self.classifier: ComplexityClassifier = ComplexityClassifier()
-        self.reflective_agent: ReflectiveAgent = ReflectiveAgent()
         self.reflective_graph_agent: ReflectiveGraphAgent = ReflectiveGraphAgent()
-        self.character_agent: CharacterAgent = CharacterAgent()
         self.character_graph_agent: CharacterGraphAgent = CharacterGraphAgent()
         self.context_builder: ContextBuilder = ContextBuilder()
         

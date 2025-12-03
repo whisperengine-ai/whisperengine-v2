@@ -91,11 +91,18 @@ class MasterGraphAgent:
         """Parallel fetch of all necessary context."""
         user_id = state["user_id"]
         user_input = state["user_input"]
+        context_variables = state.get("context_variables", {})
         
-        # Parallel gather
-        # Note: ContextBuilder handles Trust, Goals, and Knowledge internally.
-        # We only fetch Vector Memories here as they are query-specific and not handled by ContextBuilder.
-        memories = await memory_manager.search_memories(user_input, user_id, limit=5)
+        # Check if memories were pre-fetched (e.g., cross-bot pipeline)
+        # This avoids redundant Qdrant queries
+        prefetched_memories = context_variables.get("prefetched_memories")
+        if prefetched_memories is not None:
+            logger.debug(f"Using {len(prefetched_memories)} pre-fetched memories, skipping Qdrant query")
+            memories = prefetched_memories
+        else:
+            # Fetch Vector Memories (query-specific)
+            # Note: ContextBuilder handles Trust, Goals, and Knowledge internally.
+            memories = await memory_manager.search_memories(user_input, user_id, limit=5)
         
         return {
             "context": {
