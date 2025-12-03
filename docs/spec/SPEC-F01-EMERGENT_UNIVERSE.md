@@ -1393,10 +1393,10 @@ relationships:
 
 ## Related Documents
 
-- [`docs/architecture/DATA_MODELS.md`](../architecture/DATA_MODELS.md) - Current data models
-- [`docs/features/KNOWLEDGE_GRAPH_MEMORY.md`](../features/KNOWLEDGE_GRAPH_MEMORY.md) - Neo4j architecture
-- [`docs/PRIVACY_AND_DATA_SEGMENTATION.md`](../PRIVACY_AND_DATA_SEGMENTATION.md) - Privacy design
-- [`docs/MULTI_BOT_DEPLOYMENT.md`](../MULTI_BOT_DEPLOYMENT.md) - Multi-bot setup
+- [`docs/ref/REF-005-DATA_MODELS.md`](../ref/REF-005-DATA_MODELS.md) - Current data models
+- [`docs/guide/GUIDE-002-KNOWLEDGE_GRAPH.md`](../guide/GUIDE-002-KNOWLEDGE_GRAPH.md) - Neo4j architecture
+- [`docs/prd/PRD-002-PRIVACY.md`](../prd/PRD-002-PRIVACY.md) - Privacy design
+- [`docs/run/RUN-001-MULTI_BOT_DEPLOYMENT.md`](../run/RUN-001-MULTI_BOT_DEPLOYMENT.md) - Multi-bot setup
 - [`docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md`](../IMPLEMENTATION_ROADMAP_OVERVIEW.md) - Overall roadmap
 
 ---

@@ -153,6 +153,6 @@ Elena: [Noticeably cooler] Hi. What did you need?
 ## Technical Reference
 
 - Implementation: [`src_v2/evolution/trust.py`](../../src_v2/evolution/trust.py)
-- Architecture: [`docs/architecture/TRUST_EVOLUTION_SYSTEM.md`](../architecture/TRUST_EVOLUTION_SYSTEM.md)
-- Feature guide: [`docs/features/TRUST_AND_EVOLUTION.md`](../features/TRUST_AND_EVOLUTION.md)
+- Architecture: [`docs/ref/REF-007-TRUST_EVOLUTION.md`](../ref/REF-007-TRUST_EVOLUTION.md)
+- Feature guide: [`docs/guide/GUIDE-001-TRUST_SYSTEM.md`](../guide/GUIDE-001-TRUST_SYSTEM.md)
 - Character configs: [`characters/{name}/evolution.yaml`](../../characters/)

@@ -702,7 +702,7 @@ graph_exploration:
 
 - [Neo4j Cypher Manual](https://neo4j.com/docs/cypher-manual/)
 - [LangGraph ReAct Pattern](https://langchain-ai.github.io/langgraph/)
-- `docs/architecture/KNOWLEDGE_GRAPH.md` — Current Neo4j schema
+- `docs/guide/GUIDE-002-KNOWLEDGE_GRAPH.md` — Current Neo4j schema
 - `src_v2/knowledge/manager.py` — Existing graph queries
 - `src_v2/agents/dream_graph.py` — Dream generation (to be enhanced)
 

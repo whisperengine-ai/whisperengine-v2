@@ -437,8 +437,8 @@ channel:{channel_id}:messages -> List of last 100 messages (5 min TTL)
 ## 📚 Related Documents
 
 - [CHANNEL_CONTEXT_AWARENESS.md](./CHANNEL_CONTEXT_AWARENESS.md) - Archived feature (passive channel awareness)
-- [MESSAGE_FLOW.md](../architecture/MESSAGE_FLOW.md) - Current message handling architecture
-- [CHARACTER_AS_AGENT.md](../architecture/CHARACTER_AS_AGENT.md) - Tool usage patterns
+- [ref/REF-004-MESSAGE_FLOW.md](../ref/REF-004-MESSAGE_FLOW.md) - Current message handling architecture
+- [ref/REF-016-CHARACTER_AS_AGENT.md](../ref/REF-016-CHARACTER_AS_AGENT.md) - Tool usage patterns
 
 ---
 

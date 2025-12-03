@@ -631,7 +631,7 @@ E28 (User Graph) can be done independently
 
 - [GRAPH_WALKER_AGENT.md](./GRAPH_WALKER_AGENT.md) — Foundation (E19)
 - [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md) — Design philosophy
-- [GRAPH_SYSTEMS_DESIGN.md](../architecture/GRAPH_SYSTEMS_DESIGN.md) — Unified graph architecture
+- [ref/REF-002-GRAPH_SYSTEMS.md](../ref/REF-002-GRAPH_SYSTEMS.md) — Unified graph architecture
 - [CROSS_BOT_MEMORY.md](./CROSS_BOT_MEMORY.md) — Related cross-bot enhancement
 
 ---

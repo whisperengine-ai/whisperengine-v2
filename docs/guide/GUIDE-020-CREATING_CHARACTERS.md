@@ -1017,13 +1017,13 @@ characters/
 
 ## 🔗 Related Documentation
 
-- [Multi-Modal Perception](architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters process multi-modal input
-- [Multi-Bot Deployment Guide](MULTI_BOT_DEPLOYMENT.md) - Managing multiple bots
-- [Cognitive Engine Architecture](architecture/COGNITIVE_ENGINE.md) - How the AI processes and responds
-- [Memory System](architecture/MEMORY_SYSTEM_V2.md) - How memories are stored and retrieved
-- [Knowledge Graph](features/KNOWLEDGE_GRAPH_MEMORY.md) - Using Neo4j for character facts
-- [Trust Evolution System](architecture/TRUST_EVOLUTION_SYSTEM.md) - Deep dive into relationship progression
-- [Emergent Universe](roadmaps/EMERGENT_UNIVERSE.md) - Future: spatial/social awareness for characters
+- [Multi-Modal Perception](ref/REF-010-MULTI_MODAL.md) - Philosophy of how characters process multi-modal input
+- [Multi-Bot Deployment Guide](run/RUN-001-MULTI_BOT_DEPLOYMENT.md) - Managing multiple bots
+- [Cognitive Engine Architecture](ref/REF-001-COGNITIVE_ENGINE.md) - How the AI processes and responds
+- [Memory System](ref/REF-003-MEMORY_SYSTEM.md) - How memories are stored and retrieved
+- [Knowledge Graph](guide/GUIDE-002-KNOWLEDGE_GRAPH.md) - Using Neo4j for character facts
+- [Trust Evolution System](ref/REF-007-TRUST_EVOLUTION.md) - Deep dive into relationship progression
+- [Emergent Universe](spec/SPEC-F01-EMERGENT_UNIVERSE.md) - Future: spatial/social awareness for characters
 
 ---
 

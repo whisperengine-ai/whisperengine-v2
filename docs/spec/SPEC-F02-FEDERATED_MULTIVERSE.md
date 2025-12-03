@@ -11,10 +11,10 @@
 
 **Related Documents:**
 - [`EMERGENT_UNIVERSE.md`](./EMERGENT_UNIVERSE.md) - The Universe modality that federation extends
-- [`MULTI_MODAL_PERCEPTION.md`](../architecture/MULTI_MODAL_PERCEPTION.md) - Philosophy of how characters process multi-modal input
-- [`PRIVACY_AND_DATA_SEGMENTATION.md`](../PRIVACY_AND_DATA_SEGMENTATION.md) - Current privacy model (foundation for federation privacy)
-- [`DATA_MODELS.md`](../architecture/DATA_MODELS.md) - Database architecture that must support federation
-- [`KNOWLEDGE_GRAPH_MEMORY.md`](../features/KNOWLEDGE_GRAPH_MEMORY.md) - Neo4j graph that would sync across universes
+- [`ref/REF-010-MULTI_MODAL.md`](../ref/REF-010-MULTI_MODAL.md) - Philosophy of how characters process multi-modal input
+- [`prd/PRD-002-PRIVACY.md`](../prd/PRD-002-PRIVACY.md) - Current privacy model (foundation for federation privacy)
+- [`ref/REF-005-DATA_MODELS.md`](../ref/REF-005-DATA_MODELS.md) - Database architecture that must support federation
+- [`guide/GUIDE-002-KNOWLEDGE_GRAPH.md`](../guide/GUIDE-002-KNOWLEDGE_GRAPH.md) - Neo4j graph that would sync across universes
 
 ---
 
@@ -226,7 +226,7 @@ All federation messages use a common envelope:
 
 ## Traveler (Character) Federation
 
-> **Context**: Characters are defined by their [multi-modal perception](../architecture/MULTI_MODAL_PERCEPTION.md). When traveling, they carry their perceptual context with them.
+> **Context**: Characters are defined by their [multi-modal perception](../ref/REF-010-MULTI_MODAL.md). When traveling, they carry their perceptual context with them.
 
 ### Visiting Another Universe
 
@@ -321,7 +321,7 @@ Cross-universe user data requires **explicit consent**:
 
 ## Knowledge Graph Sync
 
-> **Foundation**: The Neo4j knowledge graph is documented in [`KNOWLEDGE_GRAPH_MEMORY.md`](../features/KNOWLEDGE_GRAPH_MEMORY.md) and [`DATA_MODELS.md`](../architecture/DATA_MODELS.md). Federation extends the graph across universe boundaries.
+> **Foundation**: The Neo4j knowledge graph is documented in [`guide/GUIDE-002-KNOWLEDGE_GRAPH.md`](../guide/GUIDE-002-KNOWLEDGE_GRAPH.md) and [`ref/REF-005-DATA_MODELS.md`](../ref/REF-005-DATA_MODELS.md). Federation extends the graph across universe boundaries.
 
 ### What Can Sync
 

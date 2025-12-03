@@ -58,9 +58,9 @@ Each WhisperEngine deployment is a **self-contained universe**. But the ultimate
 **We're building the foundation for understanding emergent behavior in distributed multi-agent environments.**
 
 For deep dive: 
-- [`docs/architecture/GRAPH_SYSTEMS_DESIGN.md`](./architecture/GRAPH_SYSTEMS_DESIGN.md) — The unified graph architecture ⭐ **START HERE**
+- [`docs/ref/REF-002-GRAPH_SYSTEMS.md`](./ref/REF-002-GRAPH_SYSTEMS.md) — The unified graph architecture ⭐ **START HERE**
 - [`docs/emergence_philosophy/README.md`](./emergence_philosophy/README.md) — Design philosophy for emergent behavior
-- [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md) — How agents perceive (implementation)
+- [`docs/ref/REF-010-MULTI_MODAL.md`](./ref/REF-010-MULTI_MODAL.md) — How agents perceive (implementation)
 
 ---
 
@@ -517,7 +517,7 @@ User Message
 - `src_v2/agents/classifier.py` (add MODERATE classification)
 - `src_v2/config/settings.py` (add feature flag)
 
-**Full Specification:** See [architecture/CHARACTER_AS_AGENT.md](./architecture/CHARACTER_AS_AGENT.md)
+**Full Specification:** See [ref/REF-016-CHARACTER_AS_AGENT.md](./ref/REF-016-CHARACTER_AS_AGENT.md)
 
 ---
 
@@ -1726,7 +1726,7 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 - `src_v2/agents/diary_graph.py`: Background diary generation.
 - `src_v2/agents/dream_graph.py`: Background dream generation.
 
-**Spec:** [AGENT_GRAPH_SYSTEM.md](./architecture/AGENT_GRAPH_SYSTEM.md)
+**Spec:** [ref/REF-006-AGENT_GRAPH_SYSTEM.md](./ref/REF-006-AGENT_GRAPH_SYSTEM.md)
 
 ---
 
@@ -1797,7 +1797,7 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 - **Fast Path**: If similarity > 0.82, bypass LLM and route immediately.
 - **Fallback**: Ambiguous inputs fall through to the LLM classifier.
 
-**Spec:** [SEMANTIC_ROUTING_PROPOSAL.md](./architecture/SEMANTIC_ROUTING_PROPOSAL.md)
+**Spec:** [ref/REF-021-SEMANTIC_ROUTING.md](./ref/REF-021-SEMANTIC_ROUTING.md)
 
 ---
 
@@ -1947,7 +1947,7 @@ Enables diary entries like:
 - `src_v2/memory/diary.py`
 - `src_v2/agents/dreamweaver.py`
 
-**Reference:** [GRAPH_SYSTEMS_DESIGN.md Appendix A](./architecture/GRAPH_SYSTEMS_DESIGN.md#appendix-a-graphs-as-substrate-of-consciousness)
+**Reference:** [ref/REF-002-GRAPH_SYSTEMS.md](./ref/REF-002-GRAPH_SYSTEMS.md)
 
 ---
 
@@ -1978,7 +1978,7 @@ Enables diary entries like:
 **Emergence:**
 Allows for "Stigmergic" behavior where agents communicate by modifying the environment (the queue) rather than calling each other directly.
 
-**Spec:** [AGENTIC_QUEUE_ARCHITECTURE.md](./architecture/AGENTIC_QUEUE_ARCHITECTURE.md)
+**Spec:** [ref/REF-017-AGENTIC_QUEUE.md](./ref/REF-017-AGENTIC_QUEUE.md)
 
 ---
 

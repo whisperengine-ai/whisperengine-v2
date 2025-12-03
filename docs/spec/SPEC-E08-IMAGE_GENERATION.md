@@ -50,7 +50,7 @@ Based on production observation of 1.5+ hour iterative image generation sessions
 3. Negative associations emerge (e.g., "cult leader vibes")
 4. Reference photo interpretation is ambiguous
 
-**Production Evidence:** See [IMAGE_GENERATION_WORKFLOW.md](../features/IMAGE_GENERATION_WORKFLOW.md)
+**Production Evidence:** See [guide/GUIDE-005-IMAGE_GENERATION.md](../guide/GUIDE-005-IMAGE_GENERATION.md)
 
 ---
 
@@ -476,9 +476,9 @@ ENABLE_REFERENCE_CLARIFICATION: bool = True
 
 ## Related Documents
 
-- [IMAGE_GENERATION_WORKFLOW.md](../features/IMAGE_GENERATION_WORKFLOW.md) - Production session analysis
+- [guide/GUIDE-005-IMAGE_GENERATION.md](../guide/GUIDE-005-IMAGE_GENERATION.md) - Production session analysis
 - [IMAGE_GENERATION.md](./IMAGE_GENERATION.md) - Original implementation spec
-- [CHARACTER_AS_AGENT.md](../architecture/CHARACTER_AS_AGENT.md) - Latency tolerance evidence
+- [ref/REF-016-CHARACTER_AS_AGENT.md](../ref/REF-016-CHARACTER_AS_AGENT.md) - Latency tolerance evidence
 
 ---
 

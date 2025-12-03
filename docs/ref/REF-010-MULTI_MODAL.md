@@ -457,11 +457,11 @@ The foundation for a **distributed network of autonomous agents** - universes th
 ## Related Documents
 
 - [`EMERGENT_UNIVERSE.md`](../roadmaps/EMERGENT_UNIVERSE.md) - Universe modality deep dive
-- [`VISION_PIPELINE.md`](./VISION_PIPELINE.md) - Vision modality implementation
-- [`MEMORY_SYSTEM_V2.md`](./MEMORY_SYSTEM_V2.md) - Memory modality architecture
-- [`TRUST_AND_EVOLUTION.md`](../features/TRUST_AND_EVOLUTION.md) - Emotion modality
-- [`CHANNEL_LURKING.md`](../roadmaps/CHANNEL_LURKING.md) - Audio/ambient perception
-- [`COGNITIVE_ENGINE.md`](./COGNITIVE_ENGINE.md) - Modality integration
+- [`REF-011-VISION_PIPELINE.md`](./REF-011-VISION_PIPELINE.md) - Vision modality implementation
+- [`REF-003-MEMORY_SYSTEM.md`](./REF-003-MEMORY_SYSTEM.md) - Memory modality architecture
+- [`guide/GUIDE-001-TRUST_SYSTEM.md`](../guide/GUIDE-001-TRUST_SYSTEM.md) - Emotion modality
+- [`spec/SPEC-C02-CHANNEL_LURKING.md`](../spec/SPEC-C02-CHANNEL_LURKING.md) - Audio/ambient perception
+- [`REF-001-COGNITIVE_ENGINE.md`](./REF-001-COGNITIVE_ENGINE.md) - Modality integration
 
 ---
 

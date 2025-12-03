@@ -431,7 +431,7 @@ This is a natural evolution of the existing feedback system and a stepping stone
 
 ## Related Documents
 
-- [TRUST_AND_EVOLUTION.md](../features/TRUST_AND_EVOLUTION.md) - Current feedback → trust system
-- [USER_PREFERENCES.md](../features/USER_PREFERENCES.md) - Current preference detection
+- [guide/GUIDE-001-TRUST_SYSTEM.md](../guide/GUIDE-001-TRUST_SYSTEM.md) - Current feedback → trust system
+- [guide/GUIDE-004-USER_PREFERENCES.md](../guide/GUIDE-004-USER_PREFERENCES.md) - Current preference detection
 - [IMPLEMENTATION_ROADMAP_OVERVIEW.md](../IMPLEMENTATION_ROADMAP_OVERVIEW.md) - Phase C1 Reasoning Traces
-- [BOT_SELF_LEARNING_ANALYSIS.md](../features/BOT_SELF_LEARNING_ANALYSIS.md) - Why not learn about self
+- [guide/GUIDE-014-BOT_SELF_LEARNING.md](../guide/GUIDE-014-BOT_SELF_LEARNING.md) - Why not learn about self

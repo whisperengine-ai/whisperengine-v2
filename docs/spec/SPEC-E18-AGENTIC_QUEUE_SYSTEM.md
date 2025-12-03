@@ -4,7 +4,7 @@
 **Target Phase:** E18
 **Dependencies:** Supergraph Architecture (E17 - Complete)
 
-> **Implementation Note:** Phase 1 (Shared Worker) is complete. The system uses a single `insight-worker` container serving all bot instances via the `arq:cognition` queue. See [AGENTIC_QUEUE_ARCHITECTURE.md](../architecture/AGENTIC_QUEUE_ARCHITECTURE.md) for current implementation.
+> **Implementation Note:** Phase 1 (Shared Worker) is complete. The system uses a single `insight-worker` container serving all bot instances via the `arq:cognition` queue. See [ref/REF-017-AGENTIC_QUEUE.md](../ref/REF-017-AGENTIC_QUEUE.md) for current implementation.
 
 ## Current Implementation (Dec 2024)
 
@@ -144,7 +144,7 @@ if user_is_sad:
 
 ## 3.5 LangGraph Conversion Status
 
-See [AGENT_GRAPH_SYSTEM.md](../architecture/AGENT_GRAPH_SYSTEM.md) for detailed LangGraph architecture and migration status.
+See [ref/REF-006-AGENT_GRAPH_SYSTEM.md](../ref/REF-006-AGENT_GRAPH_SYSTEM.md) for detailed LangGraph architecture and migration status.
 
 **Summary:**
 - ✅ Reflective, Character, Insight, Diary, Dream, Reflection, Strategist agents all have LangGraph versions

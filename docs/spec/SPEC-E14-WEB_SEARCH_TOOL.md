@@ -1043,7 +1043,7 @@ async def test_search_real_time_data(api_client, bot_name):
 
 Update the following docs:
 
-**File:** `docs/architecture/COGNITIVE_ENGINE.md`
+**File:** `docs/ref/REF-001-COGNITIVE_ENGINE.md`
 - Add web search to tool descriptions
 - Update reasoning flow diagrams
 

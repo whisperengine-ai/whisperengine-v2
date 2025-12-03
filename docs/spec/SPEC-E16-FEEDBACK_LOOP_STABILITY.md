@@ -283,7 +283,7 @@ By NOT implementing heavy constraints:
 ## Related Documents
 
 - `docs/emergence_philosophy/` - Full Claude collaboration on this topic
-- `docs/features/AGENTIC_NARRATIVES.md` - DreamWeaver agent details
+- `docs/guide/GUIDE-015-AGENTIC_NARRATIVES.md` - DreamWeaver agent details
 - `docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md` - Cross-bot interaction system
 
 ---

@@ -661,7 +661,7 @@ docker-compose build
 **Documents to Update:**
 
 **A. Architecture Documentation**
-- [ ] Update `docs/architecture/MEMORY_SYSTEM.md`
+- [ ] Update `docs/ref/REF-003-MEMORY_SYSTEM.md`
 - [ ] Add section on user name storage
 - [ ] Update database schema diagrams
 
@@ -676,7 +676,7 @@ docker-compose build
 - [ ] List lessons learned
 
 **Files to Update:**
-- `docs/architecture/MEMORY_SYSTEM.md` (if exists)
+- `docs/ref/REF-003-MEMORY_SYSTEM.md` (if exists)
 - `README.md` (update feature list)
 - `CHANGELOG.md` (add entry for v2.1.0)
 
@@ -865,7 +865,7 @@ Day 6-7: ┌──────────────────────�
 - Monthly retrospective
 
 ### Future Enhancements
-See [USER_IDENTIFICATION_IN_GROUP_CHATS.md](../features/USER_IDENTIFICATION_IN_GROUP_CHATS.md) - Section: Future Enhancements
+See Future Enhancements section below
 
 **Potential Next Steps:**
 1. Rich user context (avatar, roles)
