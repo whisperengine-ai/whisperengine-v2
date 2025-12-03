@@ -105,6 +105,8 @@ This is **science**, not engineering. The goal is discovery, not reliability.
 
 ## Related Documents
 
+- `docs/architecture/GRAPH_SYSTEMS_DESIGN.md` - The unified graph architecture (incorporates insights from doc 06)
 - `docs/features/AGENTIC_NARRATIVES.md` - The DreamWeaver agent implementation
 - `docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md` - Cross-bot interaction system
 - `docs/PRIVACY_AND_DATA_SEGMENTATION.md` - Privacy filters for cross-bot gossip
+- `docs/reviews/EMERGENCE_ARCHITECTURE_AUDIT.md` - Ongoing emergence alignment audit

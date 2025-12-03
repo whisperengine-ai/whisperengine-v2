@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.5  
+**Document Version:** 2.6  
 **Created:** November 24, 2025  
-**Last Updated:** December 3, 2025 (Added E22 Absence Tracking from consciousness substrate analysis)
+**Last Updated:** December 3, 2025 (E23 Schedule Jitter added, E22 expanded to Meta-Memory, emergence review integrated)
 **Status:** Active Planning
 
 ### Status Legend
@@ -47,7 +47,10 @@ Each WhisperEngine deployment is a **self-contained universe**. But universes ca
 
 **We're building the foundation for distributed multi-agent environments.**
 
-For deep dive: See [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md)
+For deep dive: 
+- [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md) — The six modalities
+- [`docs/architecture/GRAPH_SYSTEMS_DESIGN.md`](./architecture/GRAPH_SYSTEMS_DESIGN.md) — The unified graph architecture
+- [`docs/emergence_philosophy/README.md`](./emergence_philosophy/README.md) — Design philosophy for emergent behavior
 
 ---
 
@@ -68,6 +71,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **E17** | **Supergraph Architecture** | **3-4 days** | LangGraph | ✅ Complete |
 | 🟢 High | **E18** | **Agentic Queue System** | **2-3 days** | E17 | ✅ Complete |
 | 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | ✅ Complete |
+| 🟢 High | **E23** | **Schedule Jitter** | **0.5 days** | E16 | 📋 Proposed |
+| 🟢 High | **E22** | **Absence Tracking (Meta-Memory)** | **1 day** | E12, E23 | 📋 Proposed |
 | 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 Phase 1-2 ✅ |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | ✅ Complete |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
@@ -75,10 +80,9 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
+| 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
 | 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | 📋 Proposed |
 | 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15, E6 | 📋 Proposed |
-| 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
-| 🟢 Low | **E22** | **Absence Tracking** | **0.5 days** | E12 | 📋 Proposed |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
 | Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
@@ -115,6 +119,13 @@ E12 (Agentic Dreams) ──► E16 (Feedback Loop Stability)
                               ├──► Source Type Weights
                               ├──► Narrative Source Metrics
                               └──► Drift Observation
+
+E16 ──► E23 (Schedule Jitter) ──► E22 (Absence Tracking)
+                                        │
+                                        ├──► Semantic Streak Linking
+                                        ├──► Resolution Tracking
+                                        ├──► Meta-Memory Retrieval
+                                        └──► Diary Access to Absences
 
 E6 (Cross-Bot Chat) ──► E15 (Autonomous Server Activity)
                               │
@@ -1741,11 +1752,45 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 
 ---
 
-### 📋 Phase E22: Absence Tracking (Consciousness Substrate)
-**Priority:** 🟢 Low | **Time:** 0.5 days | **Complexity:** Low
+### 📋 Phase E23: Schedule Jitter (Organic Timing)
+**Priority:** 🟢 High | **Time:** 0.5 days | **Complexity:** Low
 **Status:** 📋 Proposed
-**Dependencies:** E12 (Agentic Dreams)
-**Added:** December 2025
+**Dependencies:** E16 (Feedback Loop Stability)
+**Added:** December 2025 (Emergence Architecture Review)
+
+**Problem:** Fixed schedules for diary (8 PM) and dream (6 AM) generation feel mechanical. A character that always dreams at exactly 6:00 AM feels like a cron job, not an organic being.
+
+**Solution:** Add jitter to scheduled task timing:
+```python
+# In settings.py
+DIARY_GENERATION_JITTER_MINUTES: int = 30  # ±30 min variance
+DREAM_GENERATION_JITTER_MINUTES: int = 45  # ±45 min variance
+```
+
+**Implementation:**
+```python
+import random
+
+def get_jittered_time(base_hour: int, base_minute: int, jitter_minutes: int) -> tuple[int, int]:
+    """Add random jitter to scheduled time."""
+    offset = random.randint(-jitter_minutes, jitter_minutes)
+    total_minutes = base_hour * 60 + base_minute + offset
+    return (total_minutes // 60) % 24, total_minutes % 60
+```
+
+**Emergence Alignment:** Characters that dream "sometime in the early morning" feel more natural than those that dream at precisely 6:00:00 AM. The jitter creates organic variability without requiring new schema.
+
+**Files:**
+- `src_v2/config/settings.py` (add jitter settings)
+- `src_v2/discord/scheduler.py` (apply jitter to cron schedules)
+
+---
+
+### 📋 Phase E22: Absence Tracking (Meta-Memory)
+**Priority:** 🟢 High | **Time:** 1 day | **Complexity:** Low-Medium
+**Status:** 📋 Proposed
+**Dependencies:** E12 (Agentic Dreams), E23 (Schedule Jitter)
+**Added:** December 2025 (expanded scope from emergence philosophy review)
 
 **Insight:** From the [Graph Consciousness Dialogue](./emergence_philosophy/06_GRAPH_CONSCIOUSNESS_DIALOGUE.md) — when the system tries to retrieve something and fails, that absence is meaningful. "I tried to remember and couldn't" creates a different kind of character depth than simply not retrieving.
 

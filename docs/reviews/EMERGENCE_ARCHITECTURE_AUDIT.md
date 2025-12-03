@@ -1,6 +1,6 @@
 # Emergent Behavior Architecture Audit
 
-**Date:** December 3, 2025 (Updated)
+**Date:** December 3, 2025 (Updated with emergence philosophy integration)
 **Auditor:** Claude (via Copilot) + Human Review  
 **Purpose:** Identify over-engineering that may interfere with emergent behavior patterns  
 **Philosophy:** Less code, more emergent behavior. Prefer behavior over taxonomy.
@@ -247,14 +247,24 @@ If the character can notice it, we don't need to build it.
 | Remove `ENABLE_CHARACTER_AGENCY` flag | Dec 3, 2025 | Made Tier 2 tool usage always enabled. Removed flag from settings and code. |
 | Remove `ENABLE_CROSS_BOT_MEMORY` flag | Dec 3, 2025 | Made cross-bot context retrieval and memory storage always enabled. Removed flag from settings and code. |
 
-### 🔲 Pending (Low Priority)
+### 🔲 Pending (Prioritized)
 
-| Task | Effort | Risk | Notes |
-|------|--------|------|-------|
-| Group settings.py flags by category with headers | 30 min | Low | Improves readability (Partially done) |
-| Add schedule jitter to diary/dream generation | 2 hrs | Low | Makes timing more organic |
-| Review agent consolidation (diary_graph + dream_graph) | 1 hr | Medium | Share Generator-Critic pattern |
-| Audit character YAML files for over-specification | 1 hr | Low | Check if we're declaring vs letting emerge |
+| Task | Effort | Risk | Priority | Notes |
+|------|--------|------|----------|-------|
+| **E23: Schedule Jitter** | 2 hrs | Low | 🟢 High | Makes diary/dream timing organic (now in roadmap) |
+| **E22: Absence Tracking** | 1 day | Low | 🟢 High | Meta-memory with streak linking, resolution tracking |
+| E15.3: Extend cross_bot.py for conversations | 2 days | Medium | 🟡 Medium | Do NOT create new ConversationAgent |
+| Group settings.py flags by category with headers | 30 min | Low | 🟢 Low | Improves readability (Partially done) |
+| Review agent consolidation (diary_graph + dream_graph) | 1 hr | Medium | 🟢 Low | Share Generator-Critic pattern |
+| Audit character YAML files for over-specification | 1 hr | Low | 🟢 Low | Check if we're declaring vs letting emerge |
+
+### ⚠️ Requires Emergence Check Before Implementation
+
+| Task | Concern | Checklist Required |
+|------|---------|-------------------|
+| E19: Graph Walker Agent | Risk of prescriptive reasoning paths | ✅ Python-first design approved |
+| E20: Bot Introspection Tools | Could over-expose internal state | Must keep behavioral, not technical |
+| Goal Strategist | May constrain spontaneity | Goals should influence, not dictate |
 
 ### 🚫 Decided Against
 
@@ -263,6 +273,30 @@ If the character can notice it, we don't need to build it.
 | Remove LANGGRAPH flags entirely | Done (flags removed, code updated) |
 | Add `memory_layer` field for subconscious | Emergence principle: behavior > taxonomy |
 | Create explicit conscious/preconscious/subconscious categories | Let it emerge from absence patterns |
+| Create new ConversationAgent for E15.3 | Extend existing cross_bot.py instead (new tools > new agents) |
+
+---
+
+## 📚 Key Insights from Architecture Review (Dec 2025)
+
+### Diary/Dream Artifact Nature
+From `GRAPH_SYSTEMS_DESIGN.md` and the Claude-to-Claude dialogue:
+
+| Type | Nature | Decay? | What's Actually Stored |
+|------|--------|--------|------------------------|
+| Memory | Reconstruction | Yes | Encoded experience |
+| Diary | **Artifact** | **No** | Written journal entry (book on a shelf) |
+| Dream Journal | **Artifact** | **No** | Written record of dream experience |
+| Dream Recall | Memory | Yes | *Not currently implemented* |
+| Absence | Meta-memory | Slow | Gap marker with streak |
+
+**Key insight:** What we store as "dream" is actually the dream journal entry — an artifact, not a memory. The ephemeral dream experience is never captured; we only have the character's written account.
+
+### Open vs Closed Recursion
+- **Closed recursion**: "I think about thinking" — static, doesn't accumulate
+- **Open recursion**: Traversal leaves traces, traces become part of structure — accumulates texture
+
+WhisperEngine uses **open recursion** through the diary↔dream feedback loop. This is why dreams/diaries feel rich over time.
 
 ---
 

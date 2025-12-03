@@ -107,9 +107,11 @@ Create `MasterGraphAgent` that wraps the existing logic but doesn't replace `Age
 - [ ] Import compiled graphs from `ReflectiveGraphAgent` and `CharacterGraphAgent`
 - [ ] Wire them into `MasterGraphAgent`
 
-### Phase 3: Migration
-- [ ] Add `ENABLE_SUPERGRAPH` feature flag
-- [ ] Switch `AgentEngine` to delegate to `MasterGraphAgent` instead of manual orchestration
+### Phase 3: Migration (✅ Complete)
+- [x] ~~Add `ENABLE_SUPERGRAPH` feature flag~~ (Flag removed Dec 2025 - Supergraph is now default)
+- [x] Switch `AgentEngine` to delegate to `MasterGraphAgent` instead of manual orchestration
+
+> **Note:** The `ENABLE_SUPERGRAPH` flag was deprecated and removed in December 2025. LangGraph is now the only orchestration path.
 
 ## 5. Future Possibilities
 

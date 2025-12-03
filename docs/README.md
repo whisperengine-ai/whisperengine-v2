@@ -12,9 +12,11 @@ Welcome to the WhisperEngine v2 documentation. This guide helps you navigate the
 |--------------|-----------|
 | Understand the project vision | [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) |
 | See what's implemented vs planned | [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
+| Understand the graph-first architecture | [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md) |
+| Learn the emergence philosophy | [emergence_philosophy/README.md](./emergence_philosophy/README.md) |
 | Create a new character | [CREATING_NEW_CHARACTERS.md](./CREATING_NEW_CHARACTERS.md) |
 | Deploy multiple bots | [MULTI_BOT_DEPLOYMENT.md](./MULTI_BOT_DEPLOYMENT.md) |
-| Understand the philosophy | [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) |
+| Understand multi-modal perception | [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) |
 
 ---
 
@@ -24,6 +26,7 @@ Welcome to the WhisperEngine v2 documentation. This guide helps you navigate the
 docs/
 ├── README.md                          # You are here
 ├── IMPLEMENTATION_ROADMAP_OVERVIEW.md # Master roadmap & status
+├── AI_CHARACTER_DESIGN_PHILOSOPHY.md  # The Embodiment Model
 ├── CREATING_NEW_CHARACTERS.md         # Character creation guide
 ├── MULTI_BOT_DEPLOYMENT.md            # Running multiple bots
 ├── PRIVACY_AND_DATA_SEGMENTATION.md   # Privacy model
@@ -31,7 +34,9 @@ docs/
 │
 ├── architecture/                      # How the system works
 │   ├── WHISPERENGINE_2_DESIGN.md      # Core design philosophy
+│   ├── GRAPH_SYSTEMS_DESIGN.md        # 🔗 Unified graph architecture (NEW)
 │   ├── MULTI_MODAL_PERCEPTION.md      # 🧠 The "senses" of AI characters
+│   ├── AGENT_GRAPH_SYSTEM.md          # LangGraph agent architecture
 │   ├── COGNITIVE_ENGINE.md            # Brain of the system
 │   ├── MEMORY_SYSTEM_V2.md            # Vector + graph memory
 │   ├── MESSAGE_FLOW.md                # Request lifecycle
@@ -42,12 +47,21 @@ docs/
 │   ├── SUMMARIZATION_SYSTEM.md        # Memory consolidation
 │   └── ...
 │
+├── emergence_philosophy/              # 🌱 Emergence research (NEW)
+│   ├── README.md                      # Overview of Claude collaboration
+│   ├── 01-06_*.md                     # Claude-to-Claude dialogues
+│   └── ...
+│
 ├── features/                          # Specific feature documentation
 │   ├── KNOWLEDGE_GRAPH_MEMORY.md      # Neo4j fact storage
+│   ├── AGENTIC_NARRATIVES.md          # DreamWeaver agent
 │   ├── TRUST_AND_EVOLUTION.md         # Trust system details
 │   ├── USER_PREFERENCES.md            # Learning user preferences
 │   ├── COMMON_GROUND.md               # Shared interest detection
 │   └── ...
+│
+├── reviews/                           # Architecture reviews
+│   └── EMERGENCE_ARCHITECTURE_AUDIT.md # Emergence alignment audit
 │
 ├── testing/                           # Test suite documentation
 │   ├── REGRESSION_TESTING.md          # Automated API test suite
@@ -55,6 +69,7 @@ docs/
 │
 ├── roadmaps/                          # Future features & specs
 │   ├── EMERGENT_UNIVERSE.md           # 🌌 Universe modality
+│   ├── GRAPH_WALKER_AGENT.md          # E19: Dynamic graph exploration
 │   ├── FEDERATED_MULTIVERSE.md        # 🌐 Multi-universe federation (DRAFT)
 │   ├── CHANNEL_LURKING.md             # Passive engagement
 │   ├── EMBEDDING_UPGRADE_768D.md      # Memory resolution upgrade

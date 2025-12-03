@@ -83,49 +83,32 @@ graph TD
 
 ## Feature Flags
 
-The system is controlled by a set of feature flags in `.env` or `settings.py`.
+> **Note (December 2025):** LangGraph agents are now the **default and only path**. The deprecated `ENABLE_SUPERGRAPH`, `ENABLE_LANGGRAPH_*`, and `ENABLE_CHARACTER_AGENCY` flags have been removed. The system always uses LangGraph for orchestration.
 
 ### Main Chat System
-| Flag | Description | Recommended |
-|------|-------------|-------------|
-| `ENABLE_SUPERGRAPH` | Enables the Master Graph architecture. Overrides legacy logic. | `True` |
-| `ENABLE_REFLECTIVE_MODE` | Allows routing to the Reflective Agent (Tier 3). | `True` |
-| `ENABLE_CHARACTER_AGENCY` | Allows routing to the Character Agent (Tier 2). | `True` |
+
+The Supergraph and Character Agency are always enabled. The only relevant flag is:
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `ENABLE_REFLECTIVE_MODE` | Allows routing to the Reflective Agent (Tier 3) for complex queries | `False` |
 
 ### Background Workers
-These run independently in the worker container and must be enabled separately.
 
-| Flag | Description | Recommended |
-|------|-------------|-------------|
-| `ENABLE_LANGGRAPH_DIARY_AGENT` | Uses the Graph version of the Diary generator. | `True` |
-| `ENABLE_LANGGRAPH_DREAM_AGENT` | Uses the Graph version of the Dream generator. | `True` |
-| `ENABLE_LANGGRAPH_INSIGHT_AGENT` | Uses the Graph version of the Insight analyzer. | `True` |
-| `ENABLE_LANGGRAPH_REFLECTION_AGENT` | Uses the Graph version of the Reflection analyzer. | `True` |
-| `ENABLE_LANGGRAPH_STRATEGIST_AGENT` | Uses the Graph version of the Goal Strategist. | `True` |
+Background agents (Diary, Dream, Insight, Reflection, Strategist) always use LangGraph. No flags required.
 
-## Migration Guide
+### Legacy Migration (Completed)
 
-To switch fully to the new system:
+The following flags were removed in December 2025:
+- `ENABLE_SUPERGRAPH` — now always true
+- `ENABLE_CHARACTER_AGENCY` — now always true  
+- `ENABLE_LANGGRAPH_*` — all agents now use LangGraph unconditionally
 
-1.  **Update `.env`**:
-    ```bash
-    ENABLE_SUPERGRAPH=True
-    ENABLE_REFLECTIVE_MODE=True
-    ENABLE_CHARACTER_AGENCY=True
-    ```
-2.  **Update `.env.worker`**:
-    ```bash
-    ENABLE_LANGGRAPH_DIARY_AGENT=True
-    ENABLE_LANGGRAPH_DREAM_AGENT=True
-    ENABLE_LANGGRAPH_INSIGHT_AGENT=True
-    ENABLE_LANGGRAPH_REFLECTION_AGENT=True
-    ENABLE_LANGGRAPH_STRATEGIST_AGENT=True
-    ```
-3.  **Restart Services**:
-    ```bash
-    ./bot.sh restart all
-    ./bot.sh restart worker
-    ```
+## Architecture Reference
+
+For the complete graph architecture vision, see:
+- [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md) — The unified graph architecture document
+- [emergence_philosophy/](../emergence_philosophy/) — Claude-to-Claude collaboration on emergence principles
 
 ## Observability
 
