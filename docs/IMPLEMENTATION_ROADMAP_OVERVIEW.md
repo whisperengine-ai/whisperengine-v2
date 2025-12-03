@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.6  
+**Document Version:** 2.7  
 **Created:** November 24, 2025  
-**Last Updated:** December 3, 2025 (E23 Schedule Jitter added, E22 expanded to Meta-Memory, emergence review integrated)
+**Last Updated:** December 3, 2025 (Roadmap sync: E15 status corrected, E19 marked complete, E24 added, Cross-Bot Memory added)
 **Status:** Active Planning
 
 ### Status Legend
@@ -62,81 +62,82 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 ### 🎯 What's Next? (Priority Order with Dependencies)
 
+**Legend:** 🔴 Critical | 🟢 High | 🟡 Medium | ⚪ Low
+
+#### 🔄 Active Work (In Progress)
+
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🔴 High | S1 | Content Safety Review | 2-3 days | — | ✅ Complete |
-| 🔴 High | S2 | Classifier Observability | 1 day | — | ✅ Complete |
-| 🔴 High | E13 | Stigmergic Shared Artifacts | 3-4 days | Insight Agent | ✅ Complete |
-| 🔴 High | E13.1 | DiscoverCommunityInsightsTool | 0.5 days | E13 | ✅ Complete |
-| 🟢 High | **E17** | **Supergraph Architecture** | **3-4 days** | LangGraph | ✅ Complete |
-| 🟢 High | **E18** | **Agentic Queue System** | **2-3 days** | E17 | ✅ Complete |
-| 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | ✅ Complete |
-| 🟢 High | **E23** | **Schedule Jitter** | **0.5 days** | E16 | ✅ Complete |
-| 🟢 High | **E22** | **Absence Tracking (Meta-Memory)** | **1 day** | E12, E23 | ✅ Complete |
-| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 Phase 1 Only |
-| 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | ✅ Complete |
-| 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
-| 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
-| 🟡 Medium | S3 | LLM Sensitivity Detection | 2-3 days | S1 | ✅ Complete |
-| 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
-| 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
+| 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | 🔄 Phase 1 Complete |
+
+#### 📋 Proposed (Ready to Start)
+
+| Priority | Phase | Description | Time | Deps | Status |
+|----------|-------|-------------|------|------|--------|
+| 🟢 High | **E15.2** | **Posting Agent** | **2-3 days** | E15.1 ✅ | 📋 Next |
+| 🟢 High | **E15.3** | **Conversation Agent** | **2-3 days** | E15.2 | 📋 Proposed |
 | 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
-| 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | ✅ Complete |
-| 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15, E6 | 📋 Proposed |
-| Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
-| Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
-| Low | E5 | Scheduled Reminders | 3-4 days | — | ✅ Complete |
-| Low | E6 | Character-to-Character | 1 week | E8 | ✅ Complete |
-| Low | E12 | Agentic Dreams (DreamWeaver) | 3-5 days | Insight Agent | ✅ Complete |
-| — | E1-E4 | Threading, Diary, Dreams, Milestones | — | — | ✅ Complete |
+| 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
+| 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
+| 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15 🔄, E6 ✅ | 📋 Blocked |
+| ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
 
-**Dependency Chain:**
+#### ⏸️ On Hold / Deferred
+
+| Phase | Description | Time | Status | Reason |
+|-------|-------------|------|--------|--------|
+| A0 | Embedding Upgrade 768D | 1 hour | ⏸️ On Hold | Performance (30x slower) |
+| — | Vision Fact Extraction | 1-2 days | 🗄️ Deferred | Subject ID complexity |
+
+#### ✅ Completed (Reference)
+
+| Phase | Description | Completed |
+|-------|-------------|--------|
+| E17 | Supergraph Architecture | Dec 2025 |
+| E18 | Agentic Queue System | Dec 2025 |
+| E19 | Graph Walker Agent | Dec 2025 |
+| E16 | Feedback Loop Stability | Dec 2025 |
+| E22 | Absence Tracking (Meta-Memory) | Dec 2025 |
+| E23 | Schedule Jitter | Dec 2025 |
+| S1-S4 | Safety & Observability (all) | Nov-Dec 2025 |
+| E13 | Stigmergic Shared Artifacts | Nov 2025 |
+| E14 | Web Search Tool | Nov 2025 |
+| E11 | Discord Search Tools | Nov 2025 |
+| E9 | Artifact Provenance | Nov 2025 |
+| E5-E8 | Reminders, Timezone, Broadcast, Bot-to-Bot | Nov 2025 |
+| E12 | Agentic Dreams (DreamWeaver) | Nov 2025 |
+| E1-E4 | Threading, Diary, Dreams, Milestones | Nov 2025 |
+| E10 | Channel Observer | ⏭️ Skipped |
+
+**Active Dependency Chain:**
 ```
-LangGraph Refactor ──► E17 (Supergraph)
-
-S1 (Content Safety) ──┬──► S3 (LLM Sensitivity)
-                      └──► E8 (Bot Broadcast) ──► E6 (Bot-to-Bot Chat)
-                                ▲
-E10 (Channel Observer) ──► E9 (Provenance) ─┘
-                      │
-                      └──► Dynamic Dream Temperature (built-in)
-                      └──► Dynamic Diary Tone (built-in)
-
-S4 (Timezone) ──► E7 (User Timezone)
-
-Insight Agent ──┬──► E12 (Agentic Dreams)
-               └──► E13 (Stigmergic Shared Artifacts) ──► E13.1 (Community Tool)
-
-Neo4j + LangGraph ──► E19 (Graph Walker Agent)
-                           │
-                           ├──► Enhanced Dreams (graph-discovered themes)
-                           ├──► Enhanced Diary (relationship patterns)
-                           └──► Enhanced Context (graph-aware retrieval)
-
-E12 (Agentic Dreams) ──► E16 (Feedback Loop Stability)
-                              │
-                              ├──► Temporal Decay Scoring
-                              ├──► Source Type Weights
-                              ├──► Narrative Source Metrics
-                              └──► Drift Observation
-
-E16 ──► E23 (Schedule Jitter) ──► E22 (Absence Tracking)
-                                        │
-                                        ├──► Semantic Streak Linking
-                                        ├──► Resolution Tracking
-                                        ├──► Meta-Memory Retrieval
-                                        └──► Diary Access to Absences
-
-E6 (Cross-Bot Chat) ──► E15 (Autonomous Server Activity)
-                              │
-                              ├──► Phase 1: Reactions ✅
-                              ├──► Phase 2: Goals-Driven Posts ✅
-                              ├──► Phase 3: Bot-to-Bot Conversations 📋
-                              └──► E20 (Bot Introspection Tools)
-                              └──► Phase 4: Activity Scaling 📋
+┌─────────────────────────────────────────────────────────────────┐
+│                    PROPOSED WORK DEPENDENCIES                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  E15.1 (Reactions) ✅ ──► E15.2 (Posting) ──► E15.3 (Convo)    │
+│                                      │                          │
+│                                      └──► E20 (Introspection)   │
+│                                           [blocked until E15]   │
+│                                                                 │
+│  E18 (Queue) ✅ ──────────► E24 (Advanced Queue)               │
+│                                                                 │
+│  Insight Agent ✅ ────────► B5 (Trace Learning)                │
+│                                                                 │
+│  No deps ─────────────────► E21 (Semantic Routing)             │
+│  No deps ─────────────────► Cross-Bot Memory                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-> **Status:** E15 Phase 2 (Goals-Driven Posts) complete. ActivityOrchestrator + ServerActivityMonitor implemented Dec 1, 2025.
+**Completed Dependency Chain (Reference):**
+```
+LangGraph ──► E17 (Supergraph) ──► E18 (Queue) ──► E24 (proposed)
+
+E12 (Dreams) ──► E16 (Feedback Loop) ──► E23 (Jitter) ──► E22 (Absence)
+
+Neo4j + LangGraph ──► E19 (Graph Walker)
+```
 
 ---
 
@@ -1955,3 +1956,26 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 **Spec:** [AGENTIC_QUEUE_ARCHITECTURE.md](./architecture/AGENTIC_QUEUE_ARCHITECTURE.md)
 
+---
+
+### 📋 Cross-Bot Memory Enhancement
+**Priority:** Low | **Time:** 2-3 hours | **Complexity:** Low
+**Status:** 📋 Proposed
+**Dependencies:** E6 (Character-to-Character)
+**Added:** December 2025
+
+**Problem:** Bot-to-bot conversations use `force_fast=True` which bypasses memory retrieval. Bots don't remember what they discussed with each other yesterday.
+
+**Solution:** Add memory retrieval for cross-bot conversations by querying past interactions before generating responses.
+
+**Key Changes:**
+- Add `memory_manager.search_memories()` call for `cross_bot_user_id` in `_handle_cross_bot_message()`
+- Inject retrieved memories into cross-bot context
+- Store bot-to-bot conversations with appropriate metadata
+
+**Benefits:**
+- Bots can reference past conversations with each other
+- Creates richer, more continuous cross-bot relationships
+- Enables callbacks to shared memories ("Remember when we talked about...?")
+
+**Spec:** [CROSS_BOT_MEMORY.md](./roadmaps/CROSS_BOT_MEMORY.md)
