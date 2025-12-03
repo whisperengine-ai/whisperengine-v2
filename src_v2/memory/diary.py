@@ -48,6 +48,10 @@ class DiaryMaterial(BaseModel):
     epiphanies: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
+    # Graph Walker integration (Phase E19)
+    graph_walk_interpretation: str = Field(default="", description="Interpretation from GraphWalker exploration")
+    graph_walk_clusters: List[str] = Field(default_factory=list, description="Thematic clusters discovered by GraphWalker")
+    
     def richness_score(self) -> int:
         """
         Calculate a richness score based on available material.
@@ -138,6 +142,17 @@ class DiaryMaterial(BaseModel):
             for goal in self.goals[:3]:
                 sections.append(f"- {goal}")
         
+        # GraphWalker discovered connections (Phase E19)
+        if self.graph_walk_interpretation or self.graph_walk_clusters:
+            sections.append("\n## Discovered Connections")
+            # Include LLM interpretation of the graph walk
+            if self.graph_walk_interpretation:
+                sections.append(self.graph_walk_interpretation)
+            # Include thematic clusters
+            if self.graph_walk_clusters:
+                for cluster in self.graph_walk_clusters[:3]:
+                    sections.append(f"- {cluster}")
+        
         return "\n".join(sections)
 
 
@@ -197,6 +212,41 @@ class DiaryManager:
                 material.epiphanies = results[4]
             if not isinstance(results[5], Exception):
                 material.goals = results[5]
+            
+            # Optional: GraphWalker integration for discovering hidden connections
+            if settings.ENABLE_GRAPH_WALKER:
+                try:
+                    from src_v2.knowledge.walker import GraphWalkerAgent
+                    
+                    # Extract user IDs from today's interactions
+                    today_interactions: List[str] = []
+                    for summary in material.summaries:
+                        if summary.get("user_id"):
+                            today_interactions.append(str(summary["user_id"]))
+                    
+                    if today_interactions:
+                        # GraphWalkerAgent uses character_name
+                        walker_agent = GraphWalkerAgent(character_name=self.bot_name)
+                        # Use first user as primary seed, others as context
+                        primary_user = today_interactions[0]
+                        
+                        graph_result = await walker_agent.explore_for_diary(
+                            user_id=primary_user,
+                            today_interactions=list(set(today_interactions))[:5]
+                        )
+                        
+                        # Store interpretation and clusters in DiaryMaterial fields
+                        material.graph_walk_interpretation = graph_result.interpretation
+                        material.graph_walk_clusters = [
+                            f"{c.theme}: {', '.join(n.name for n in c.nodes[:3])}"
+                            for c in graph_result.clusters[:3]
+                        ]
+                        logger.info(
+                            f"Graph walker found {len(graph_result.nodes)} nodes, "
+                            f"{len(graph_result.clusters)} clusters for diary"
+                        )
+                except Exception as e:
+                    logger.warning(f"GraphWalker failed for diary (continuing without): {e}")
             
             logger.info(
                 f"Gathered diary material for {self.bot_name}: "

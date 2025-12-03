@@ -70,6 +70,10 @@ class DreamMaterial(BaseModel):
     recent_diary_themes: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
+    # Graph Walker integration (Phase E19)
+    graph_walk_interpretation: str = Field(default="", description="Interpretation from GraphWalker exploration")
+    graph_walk_clusters: List[str] = Field(default_factory=list, description="Thematic clusters discovered by GraphWalker")
+    
     def richness_score(self) -> int:
         """
         Calculate a richness score based on available material.
@@ -166,6 +170,17 @@ class DreamMaterial(BaseModel):
             for goal in self.goals[:2]:
                 sections.append(f"- {goal}")
         
+        # GraphWalker discovered connections (Phase E19)
+        if self.graph_walk_interpretation or self.graph_walk_clusters:
+            sections.append("\n## Discovered Connections")
+            # Include LLM interpretation of the graph walk
+            if self.graph_walk_interpretation:
+                sections.append(self.graph_walk_interpretation)
+            # Include thematic clusters
+            if self.graph_walk_clusters:
+                for cluster in self.graph_walk_clusters[:3]:
+                    sections.append(f"- {cluster}")
+        
         return "\n".join(sections)
 
 
@@ -257,6 +272,48 @@ Create a surreal dream echoing these experiences.""")
                 material.recent_diary_themes = results[4]
             if not isinstance(results[5], Exception):
                 material.goals = results[5]
+            
+            # Optional: GraphWalker integration for discovering hidden connections
+            if settings.ENABLE_GRAPH_WALKER:
+                try:
+                    from src_v2.knowledge.walker import GraphWalkerAgent
+                    
+                    # Build seed themes from gathered material
+                    memory_themes: List[str] = []
+                    recent_users: List[str] = []
+                    
+                    # Extract themes from memories
+                    for mem in material.memories[:3]:
+                        if mem.get("emotions"):
+                            memory_themes.extend(mem["emotions"][:2])
+                        if mem.get("user_id"):
+                            recent_users.append(str(mem["user_id"]))
+                    
+                    # Extract themes from diary
+                    memory_themes.extend(material.recent_diary_themes[:2])
+                    
+                    if memory_themes or recent_users:
+                        # GraphWalkerAgent uses character_name
+                        walker_agent = GraphWalkerAgent(character_name=self.bot_name)
+                        # Use first user as primary seed, others as context
+                        primary_user = recent_users[0] if recent_users else self.bot_name
+                        graph_result = await walker_agent.explore_for_dream(
+                            user_id=primary_user,
+                            recent_memory_themes=list(set(memory_themes))[:5],
+                            recent_user_ids=list(set(recent_users))[:3]
+                        )
+                        # Store interpretation and clusters in DreamMaterial fields
+                        material.graph_walk_interpretation = graph_result.interpretation
+                        material.graph_walk_clusters = [
+                            f"{c.theme}: {', '.join(n.name for n in c.nodes[:3])}"
+                            for c in graph_result.clusters[:3]
+                        ]
+                        logger.info(
+                            f"Graph walker found {len(graph_result.nodes)} nodes, "
+                            f"{len(graph_result.clusters)} clusters"
+                        )
+                except Exception as e:
+                    logger.warning(f"GraphWalker failed (continuing without): {e}")
             
             logger.info(
                 f"Gathered dream material for {self.bot_name}: "

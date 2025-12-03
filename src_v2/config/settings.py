@@ -263,6 +263,12 @@ class Settings(BaseSettings):
     STIGMERGIC_CONFIDENCE_THRESHOLD: float = 0.7  # Min confidence for cross-bot artifacts
     STIGMERGIC_DISCOVERY_LIMIT: int = 3  # Max artifacts from other bots per query
 
+    # --- Graph Walker Agent (Phase E19) ---
+    ENABLE_GRAPH_WALKER: bool = True  # Use graph walking for dream/diary generation
+    GRAPH_WALKER_MAX_NODES: int = 50  # Max nodes in a single graph walk
+    GRAPH_WALKER_MAX_DEPTH: int = 3  # Max traversal depth
+    GRAPH_WALKER_SERENDIPITY: float = 0.1  # Probability of exploring random low-score paths (0.0-0.5)
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

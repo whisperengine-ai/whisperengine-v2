@@ -452,7 +452,7 @@ class ExploreGraphInput(BaseModel):
 
 class ExploreGraphTool(BaseTool):
     name: str = "explore_knowledge_graph"
-    description: str = "Explores the knowledge graph to find connections and relationships. Use this when the user asks 'what is connected?', 'who else?', 'what do you know about the network?', or wants to explore relationships beyond specific facts."
+    description: str = "Explores the knowledge graph to find hidden connections, thematic clusters, and relationships. Use this when the user asks 'what is connected?', 'explore the graph', 'find connections', or wants to discover relationships beyond specific facts."
     args_schema: Type[BaseModel] = ExploreGraphInput
     user_id: str = Field(exclude=True)
     bot_name: str = Field(default="default", exclude=True)
@@ -462,6 +462,50 @@ class ExploreGraphTool(BaseTool):
 
     async def _arun(self, start_node: Optional[str] = "user", depth: Optional[int] = 2) -> str:
         try:
+            # Use GraphWalker if enabled (Phase E19)
+            if settings.ENABLE_GRAPH_WALKER:
+                try:
+                    from src_v2.knowledge.walker import GraphWalkerAgent
+                    walker_agent = GraphWalkerAgent(character_name=self.bot_name)
+                    
+                    # Determine seed IDs based on start_node
+                    seed_ids = []
+                    if start_node == "user":
+                        seed_ids.append(self.user_id)
+                    elif start_node == "character":
+                        seed_ids.append(self.bot_name)
+                    elif start_node:
+                        seed_ids.append(start_node)
+                    
+                    # Use explore_for_context which is optimized for query context
+                    result = await walker_agent.explore_for_context(
+                        user_id=self.user_id,
+                        query_themes=seed_ids
+                    )
+                    
+                    # Format result
+                    lines = ["Graph Exploration Result (via GraphWalker):"]
+                    if result.nodes:
+                        lines.append(f"Found {len(result.nodes)} nodes and {len(result.clusters)} clusters.")
+                        
+                        lines.append("\nTop Nodes:")
+                        for node in result.nodes[:10]:
+                            lines.append(f"- {node.name} ({node.label}) [score: {node.score:.2f}]")
+                            
+                        if result.clusters:
+                            lines.append("\nThematic Clusters:")
+                            for cluster in result.clusters[:3]:
+                                members = ", ".join(n.name for n in cluster.nodes[:3])
+                                lines.append(f"- {cluster.theme}: {members}")
+                    else:
+                        lines.append("No significant connections found.")
+                        
+                    return "\n".join(lines)
+                    
+                except Exception as e:
+                    # Fallback to legacy method if walker fails
+                    pass
+
             result = await knowledge_manager.explore_graph(
                 user_id=self.user_id, 
                 bot_name=self.bot_name,
