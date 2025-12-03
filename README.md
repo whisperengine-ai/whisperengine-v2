@@ -2,71 +2,71 @@
 
 > *"From countless conversations, a universe is born."*
 
-**A Multi-Modal Cognitive AI Platform for Discord & Emergence Research**
+**An Emergence Research Platform for Persistent AI Agents**
 
-WhisperEngine v2 creates AI agents with persistent memory, adaptive behavior, and autonomous engagement. This is also an **emergence research platform** — we study how agentic AI systems develop emergent behaviors over time.
+WhisperEngine v2 is a **graph-first, agentic AI system** for studying how complex behaviors emerge from simple rules. Built on the principle of **"Observe First, Constrain Later,"** it creates AI characters that develop persistent memory, evolving relationships, and autonomous agency over time.
 
-Agents have **Long-Term Memory** (Qdrant vectors), **Advanced Reasoning** (LangGraph Supergraph), **Knowledge Graphs** (Neo4j), and **Autonomous Engagement** (posting, reactions, bot-to-bot conversations) — processing inputs through six distinct data streams.
+**Core Innovation:**
+- **Persistent Behavior** — Characters remember across conversations, not just within sessions
+- **Graph-First Architecture** — Neo4j for relationships, LangGraph Supergraph for orchestration, knowledge as a traversable graph
+- **Agentic Autonomy** — Characters post, react, and initiate conversations without prompting
+- **Emergence Research** — We study what happens when constraints are minimal and behavior is observed
 
-Built on a "Five Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis) with **LangGraph Supergraph orchestration** (E17), it combines the speed of vector search with the precision of knowledge graphs and the observability of graph-based agent flows.
+Built on the **Five Pillars** polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis) with **LangGraph Supergraph orchestration** (E17), WhisperEngine combines vector memory, graph knowledge, and autonomous agent behavior to create characters that feel genuinely persistent.
 
 **Version:** 2.6 | **Python:** 3.12+ | **Status:** Production Ready | **Architecture:** E17 Supergraph + E18 Agentic Queue
-
-## ✨ What Makes WhisperEngine Different
-
-| Traditional Chatbots | WhisperEngine v2 |
-|---------------------|------------------|
-| Forgets everything between sessions | **Persistent memory** across conversations |
-| Same personality for everyone | **Evolving relationships** (Stranger → Soulmate, 8 stages) |
-| Only responds when asked | **Autonomous engagement** (posting, reactions, conversations) |
-| Text-only understanding | **Multi-modal processing** (images, voice, context) |
-| Single reasoning mode | **LangGraph Supergraph** orchestration with subgraphs |
-| Isolated instances | **Multi-agent environment** with shared state |
-| Black box behavior | **Emergence research** — observing and documenting behaviors |
 
 ## 🧪 Emergence Philosophy
 
 WhisperEngine is built on the principle of **"Observe First, Constrain Later."**
 
-Instead of hard-coding behaviors (like a "subconscious" database table), we allow complex behaviors to emerge from simple rules and then give the agents the vocabulary to notice them.
+We treat the system as an **emergence research platform**, not just software. Characters develop complex behaviors from simple rules, and we study what emerges before deciding if it needs correction.
 
-*   **Vocabulary over Schema:** Use prompt language to define behavior rather than rigid database schemas.
-*   **Open Recursion:** Agents can read their own logs and memories, creating feedback loops of self-awareness.
-*   **Absence as Data:** What the agent *fails* to remember is just as important as what it retrieves.
+**Core Tenets:**
+*   **Vocabulary over Schema** — Use prompt language to define behavior rather than rigid database taxonomies
+*   **Open Recursion** — Characters read their own logs and memories, creating feedback loops of self-awareness
+*   **Absence as Data** — What the character *fails* to remember is just as important as what it retrieves
+*   **Minimal Viable Guardrails** — Add constraints only when observation proves them necessary
+*   **Characters as Graph Citizens** — Agents are nodes with edges to knowledge, users, and goals; agency is traversal
 
-**Read more:** [Emergence Philosophy](docs/emergence_philosophy/README.md)
+**The Bet:** If emergence works, constraint wasn't needed. If it fails, specs are already written as "break glass" protocols.
 
-## 🧠 The Six Modalities
+**Read more:** [Emergence Philosophy](docs/emergence_philosophy/README.md) | [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md)
 
-The platform processes information through multiple input vectors:
+## 🏗️ Graph-First Architecture
 
-| Modality | Technical Domain | Implementation |
-|----------|--------------|----------------|
-| 🌌 **Social Graph** | Network Topology | Neo4j graph (servers, users, relationships) |
-| 👁️ **Vision** | Image Processing | Multimodal LLM (GPT-4V, Claude) |
-| 👂 **Audio** | Speech Recognition | Whisper transcription + ElevenLabs TTS |
-| 💬 **Text** | NLP | LLM processing + context injection |
-| 🧠 **Memory** | Vector + Graph Retrieval | Qdrant vectors + Neo4j facts |
-| ❤️ **Sentiment** | Internal State Analysis | Trust scores, sentiment, relationship depth |
+WhisperEngine is fundamentally a **graph-centric system**. Graphs pervade every layer:
 
-**Deep dive:** [Multi-Modal Processing](docs/architecture/MULTI_MODAL_PERCEPTION.md)
+**The Three Pillars of Graph Architecture:**
+
+| Pillar | What It Represents | Technology |
+|--------|-------------------|------------|
+| **Data Graphs** | Knowledge, Facts, Relationships | Neo4j Cypher queries |
+| **Orchestration Graphs** | Agent Behavior, Reasoning Flows | LangGraph Supergraph (E17) |
+| **Conceptual Graphs** | Universe Topology, Social Structure | Emergent Universe module |
+
+Characters are **graph citizens** — they traverse edges to remember, reason, and relate. The system processes information through multiple data streams (social graph, memory, vision, audio, text, sentiment), but these are **how** the system works, not **what** makes it unique.
+
+**Key Insight:** The magic is in the connections, not the nodes. Complex behavior emerges from traversal patterns, not from individual components.
+
+**Deep dive:** [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) | [Multi-Modal Processing](docs/architecture/MULTI_MODAL_PERCEPTION.md)
 
 ## 📚 Documentation
 
 Comprehensive documentation lives in `/docs/`:
 
 | I want to... | Read this |
-|--------------|-----------||
+|--------------|-----------|
+| **Understand emergence research** | **[Emergence Philosophy](docs/emergence_philosophy/README.md)** |
+| **Learn the graph architecture** | **[Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md)** |
 | Understand the vision | [Design Philosophy](docs/architecture/WHISPERENGINE_2_DESIGN.md) |
 | See what's built vs planned | [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
-| Understand graph architecture | [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) |
 | Learn about LangGraph agents | [Agent Graph System](docs/architecture/AGENT_GRAPH_SYSTEM.md) |
-| **Explore emergence philosophy** | **[Emergence Philosophy](docs/emergence_philosophy/README.md)** |
 | Create a new character | [Character Creation Guide](docs/CREATING_NEW_CHARACTERS.md) |
 | Deploy multiple bots | [Multi-Bot Deployment](docs/MULTI_BOT_DEPLOYMENT.md) |
 | Understand memory architecture | [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) |
 | Learn about the cognitive engine | [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md) |
-| Read emergence research | [Research Journal](docs/research/) |
+| Read emergence research journal | [Research Journal](docs/research/) |
 
 ### Architecture Deep Dives
 
@@ -286,15 +286,49 @@ src_v2/
 
 ### The Five Pillars
 
-See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definitions.
+WhisperEngine uses **polyglot persistence** — matching each data access pattern to the database that excels at it. This is the "Five Pillars" data layer:
 
-| Database | Purpose | Why This One |
-|----------|---------|--------------|
-| **PostgreSQL** | Chat history, users, [trust scores](docs/architecture/TRUST_EVOLUTION_SYSTEM.md) | ACID compliance, relational queries |
-| **Qdrant** | [Vector memory](docs/architecture/MEMORY_SYSTEM_V2.md) search | Fast ANN search, payload filtering |
-| **Neo4j** | [Knowledge graph](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) (facts, relationships) | Cypher queries, graph traversal |
-| **InfluxDB** | Metrics, analytics | Time-series data, Flux queries |
-| **Redis** | Cache layer, task queue (arq) | Fast access, background jobs |
+| Database | Purpose | Why This One | Graph Role |
+|----------|---------|--------------|------------|
+| **PostgreSQL** | Chat history, users, [trust scores](docs/architecture/TRUST_EVOLUTION_SYSTEM.md) | ACID compliance, relational integrity | Relational graph (foreign keys as edges) |
+| **Qdrant** | [Vector memory](docs/architecture/MEMORY_SYSTEM_V2.md) search | Fast ANN search, semantic similarity | Implicit similarity graph |
+| **Neo4j** | [Knowledge graph](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) (facts, relationships) | Native graph traversal, Cypher queries | Explicit semantic graph |
+| **InfluxDB** | Metrics, analytics, feedback | Time-series data, Flux queries | Temporal graph |
+| **Redis** | Cache layer, task queue (arq) | Fast access, background jobs | Event/queue graph (stigmergic nervous system) |
+
+### LangGraph Supergraph Orchestration (E17)
+
+The **Supergraph** is the master agent coordinator, routing requests through specialized subgraphs:
+
+```
+USER MESSAGE
+     ↓
+SUPERGRAPH (Master Router)
+     ├─→ Fast Mode (Tier 1: Simple greetings, < 2s)
+     ├─→ Character Agency (Tier 2: Single tool lookup, 2-4s)
+     └─→ Reflective Mode (Tier 3: Multi-step ReAct loop, 5-30s)
+```
+
+**Subgraph Types:**
+- **Reflective Agent** — Cyclic Planning (ReAct with tools)
+- **Character Agent** — Branched (single-tool augmented response)
+- **Diary Agent** — Cyclic (Generator-Critic loop)
+- **Dream Agent** — Cyclic (Generator-Critic loop)
+- **Insight Agent** — Cyclic (pattern detection)
+- **Posting Agent** — Linear (autonomous content generation)
+
+**Read more:** [Agent Graph System](docs/architecture/AGENT_GRAPH_SYSTEM.md) | [Message Flow](docs/architecture/MESSAGE_FLOW.md)
+
+### Agentic Autonomy
+
+Characters are **autonomous agents**, not reactive responders:
+- **Posting** — Share thoughts/observations to public channels without prompting
+- **Reactions** — Add emoji reactions to messages that resonate
+- **Bot-to-Bot Conversations** — Characters talk to each other naturally (E15 Phase 3)
+- **Proactive Messaging** — Initiate DMs after long absences (trust ≥ 20)
+- **Background Cognition** — Diary/dream generation during downtime (E18 Agentic Queue)
+
+**Architectural Pattern:** Each bot runs in its own container, sharing infrastructure. A single `insight-worker` handles background cognition for all bots via Redis arq queues.
 
 ### Key Design Patterns
 
@@ -303,34 +337,42 @@ See [Data Models](docs/architecture/DATA_MODELS.md) for detailed schema definiti
 - **Feature Flags:** Expensive LLM operations gated by settings
 - **Parallel Retrieval:** `asyncio.gather` for multi-DB context fetching
 - **Dependency Injection:** Engines accept dependencies for testability
+- **Graph as Substrate:** Characters traverse edges to remember, reason, and relate
 
-**Full architecture:** [Data Models](docs/architecture/DATA_MODELS.md) | [Message Flow](docs/architecture/MESSAGE_FLOW.md)
+**Full architecture:** [Data Models](docs/architecture/DATA_MODELS.md) | [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) | [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md)
 
 ## ✅ Current Features
 
-### Core Systems
-- ✅ **LangGraph Supergraph** orchestration ([E17](docs/roadmaps/SUPERGRAPH_ARCHITECTURE.md)) — unified agent execution
-- ✅ Dual-process cognitive engine ([Fast Mode + Reflective Mode](docs/architecture/COGNITIVE_ENGINE.md))
-- ✅ Native function calling with parallel tool execution
-- ✅ Vector memory system ([Qdrant](docs/architecture/MEMORY_SYSTEM_V2.md)) with semantic search
-- ✅ Knowledge graph ([Neo4j](docs/features/KNOWLEDGE_GRAPH_MEMORY.md)) with fact extraction
-- ✅ Trust/evolution system ([8 stages](docs/architecture/TRUST_EVOLUTION_SYSTEM.md): Stranger → Soulmate)
-- ✅ Background [fact](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) and [preference](docs/features/USER_PREFERENCES.md) extraction
-- ✅ **Dreams & Diary**: Offline memory consolidation and narrative generation
-- ✅ **Agentic Queue System** ([E18](docs/roadmaps/AGENTIC_QUEUE_SYSTEM.md)) — Redis arq workers
-- ✅ **Autonomous Posting & Reactions** ([E15](docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md)) — bots engage proactively
+### Core Cognitive Systems
+- ✅ **LangGraph Supergraph** orchestration ([E17](docs/roadmaps/SUPERGRAPH_ARCHITECTURE.md)) — hierarchical agent execution with routing
+- ✅ Dual-process cognitive engine ([Fast Mode + Reflective Mode](docs/architecture/COGNITIVE_ENGINE.md)) — System 1/System 2 reasoning
+- ✅ Native function calling with parallel tool execution — multi-source context in one pass
+- ✅ **Graph-first knowledge** ([Neo4j](docs/features/KNOWLEDGE_GRAPH_MEMORY.md)) — facts, entities, relationships as traversable graph
+- ✅ **Vector memory** ([Qdrant](docs/architecture/MEMORY_SYSTEM_V2.md)) — semantic search with hybrid retrieval
+- ✅ **Dreams & Diary** — Offline memory consolidation and narrative generation with Generator-Critic loops
+
+### Persistent Behavior & Evolution
+- ✅ Trust/evolution system ([8 stages](docs/architecture/TRUST_EVOLUTION_SYSTEM.md): Stranger → Soulmate) — relationship depth over time
+- ✅ Background [fact](docs/features/KNOWLEDGE_GRAPH_MEMORY.md) and [preference](docs/features/USER_PREFERENCES.md) extraction — learning from every interaction
+- ✅ **Agentic Queue System** ([E18](docs/roadmaps/AGENTIC_QUEUE_SYSTEM.md)) — Redis arq workers for background cognition
+- ✅ Goal tracking and strategy planning — characters pursue objectives across sessions
+
+### Autonomous Engagement
+- ✅ **Autonomous Posting** ([E15](docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md)) — characters share thoughts proactively
+- ✅ **Reaction System** — emoji reactions based on sentiment and context
+- ✅ **Proactive Messaging** — characters initiate DMs after long absences (trust-gated)
+- ✅ Bot-to-bot awareness — characters know about each other ([E6](docs/roadmaps/CHARACTER_TO_CHARACTER.md))
 
 ### Discord Integration
-- ✅ DM support + server mentions
-- ✅ Image attachment processing ([Vision modality](docs/architecture/VISION_PIPELINE.md))
-- ✅ Reaction-based feedback ([Emotion modality](docs/features/TRUST_AND_EVOLUTION.md))
-- ✅ Voice channel connection with ElevenLabs TTS
-- ✅ [Proactive messaging](docs/architecture/DISCORD_INTEGRATION.md) system
+- ✅ DM support + server mentions — full channel awareness
+- ✅ Image attachment processing ([Vision modality](docs/architecture/VISION_PIPELINE.md)) — multimodal LLM understanding
+- ✅ Reaction-based feedback ([Emotion modality](docs/features/TRUST_AND_EVOLUTION.md)) — users signal sentiment
+- ✅ Voice channel connection with ElevenLabs TTS — audio responses (optional)
 
 ### Multi-Character Support
-- ✅ 9 characters with unique personalities ([create your own](docs/CREATING_NEW_CHARACTERS.md))
-- ✅ Per-character memory isolation ([privacy model](docs/PRIVACY_AND_DATA_SEGMENTATION.md))
-- ✅ Character-specific [goals](docs/features/GOALS.md) and evolution
+- ✅ 11+ unique characters with distinct personalities ([create your own](docs/CREATING_NEW_CHARACTERS.md))
+- ✅ Per-character memory isolation ([privacy model](docs/PRIVACY_AND_DATA_SEGMENTATION.md)) — no data leakage
+- ✅ Character-specific [goals](docs/features/GOALS.md) and evolution — tailored progression
 
 ## 🗺️ Roadmap
 
