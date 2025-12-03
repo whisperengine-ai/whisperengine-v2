@@ -1,4 +1,5 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+import random
 from datetime import datetime, timedelta
 from loguru import logger
 from src_v2.config.settings import settings
@@ -14,23 +15,62 @@ except ImportError:
     from backports.zoneinfo import ZoneInfo  # Python < 3.9
 
 
-def is_processing_window(target_hour: int, target_minute: int, timezone_str: str, window_hours: int = 4) -> bool:
+def is_processing_window(
+    target_hour: int, 
+    target_minute: int, 
+    timezone_str: str, 
+    window_hours: int = 4,
+    jitter_minutes: int = 0,
+    seed_key: Optional[str] = None
+) -> bool:
     """
     Check if the current time is within the processing window (target time + window).
     This allows catching up on missed jobs if the worker was down.
+    
+    Args:
+        target_hour: The hour to start the window
+        target_minute: The minute to start the window
+        timezone_str: The timezone of the character
+        window_hours: How long the window stays open
+        jitter_minutes: Max random offset in minutes (±jitter)
+        seed_key: Unique key for deterministic jitter (e.g., character name)
     """
     try:
         tz = ZoneInfo(timezone_str)
         local_now = datetime.now(tz)
         
+        # Calculate deterministic jitter if enabled
+        jitter_offset = 0
+        if jitter_minutes > 0 and seed_key:
+            # Use date + seed_key to ensure consistent jitter for the day
+            # We use local_now.date() so the jitter is fixed for "today"
+            seed_str = f"{local_now.date().isoformat()}_{seed_key}"
+            # Use a separate Random instance to avoid affecting global state
+            rng = random.Random(seed_str)
+            jitter_offset = rng.randint(-jitter_minutes, jitter_minutes)
+            
         # Check window for TODAY
         target_today = local_now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        
+        # Apply jitter
+        target_today = target_today + timedelta(minutes=jitter_offset)
+        
         end_today = target_today + timedelta(hours=window_hours)
         if target_today <= local_now < end_today:
             return True
             
         # Check window for YESTERDAY (in case we are in the early morning spillover)
-        target_yesterday = target_today - timedelta(days=1)
+        # Re-calculate jitter for yesterday
+        jitter_offset_yesterday = 0
+        if jitter_minutes > 0 and seed_key:
+            yesterday_date = (local_now - timedelta(days=1)).date()
+            seed_str = f"{yesterday_date.isoformat()}_{seed_key}"
+            rng = random.Random(seed_str)
+            jitter_offset_yesterday = rng.randint(-jitter_minutes, jitter_minutes)
+
+        target_yesterday = (local_now - timedelta(days=1)).replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        target_yesterday = target_yesterday + timedelta(minutes=jitter_offset_yesterday)
+        
         end_yesterday = target_yesterday + timedelta(hours=window_hours)
         if target_yesterday <= local_now < end_yesterday:
             return True
@@ -58,7 +98,8 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     target_hour = settings.DIARY_GENERATION_LOCAL_HOUR
     target_minute = settings.DIARY_GENERATION_LOCAL_MINUTE
-    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for diary generation")
+    jitter_minutes = settings.DIARY_GENERATION_JITTER_MINUTES
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} (±{jitter_minutes}m) for diary generation")
     
     try:
         from pathlib import Path
@@ -83,7 +124,7 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         character_names = []
         for char_name in all_characters:
             char_tz = get_character_timezone(char_name)
-            if is_processing_window(target_hour, target_minute, char_tz):
+            if is_processing_window(target_hour, target_minute, char_tz, jitter_minutes=jitter_minutes, seed_key=char_name):
                 character_names.append(char_name)
                 logger.debug(f"Character {char_name} ({char_tz}): in diary window {target_hour}:{target_minute:02d}, will generate if needed")
             else:
@@ -147,7 +188,8 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     target_hour = settings.DREAM_GENERATION_LOCAL_HOUR
     target_minute = settings.DREAM_GENERATION_LOCAL_MINUTE
-    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} for dream generation")
+    jitter_minutes = settings.DREAM_GENERATION_JITTER_MINUTES
+    logger.info(f"Checking for characters with local time {target_hour}:{target_minute:02d} (±{jitter_minutes}m) for dream generation")
     
     try:
         from pathlib import Path
@@ -172,7 +214,7 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         character_names = []
         for char_name in all_characters:
             char_tz = get_character_timezone(char_name)
-            if is_processing_window(target_hour, target_minute, char_tz):
+            if is_processing_window(target_hour, target_minute, char_tz, jitter_minutes=jitter_minutes, seed_key=char_name):
                 character_names.append(char_name)
                 logger.debug(f"Character {char_name} ({char_tz}): in dream window {target_hour}:{target_minute:02d}, will generate if needed")
             else:

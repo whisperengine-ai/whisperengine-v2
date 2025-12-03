@@ -198,6 +198,7 @@ class Settings(BaseSettings):
     DIARY_MIN_RICHNESS: int = 5  # Minimum richness score to generate (prevents hollow entries)
     DIARY_GENERATION_LOCAL_HOUR: int = 20  # Local hour (in character's timezone) when diary is generated (8 PM)
     DIARY_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when diary is generated
+    DIARY_GENERATION_JITTER_MINUTES: int = 30  # ±30 min variance (Phase E23)
     
     # --- Session Summarization ---
     SUMMARY_MESSAGE_THRESHOLD: int = 20  # Messages per session before auto-summarization
@@ -210,6 +211,7 @@ class Settings(BaseSettings):
     DREAM_MIN_RICHNESS: int = 4  # Minimum richness score to generate (prevents hollow dreams)
     DREAM_GENERATION_LOCAL_HOUR: int = 6  # Local hour (in character's timezone) when dreams are generated (6 AM)
     DREAM_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when dreams are generated
+    DREAM_GENERATION_JITTER_MINUTES: int = 45  # ±45 min variance (Phase E23)
     
     # --- Agentic Narrative Generation (Phase E10) ---
     # Diary and dream generation now always uses LangGraph agents.
