@@ -40,7 +40,7 @@ class SharedTopic:
 class ConversationOpener:
     """An opening message for a bot-to-bot conversation."""
     content: str
-    topic: SharedTopic
+    topic: str
     initiator: str
     target: str
 
@@ -402,18 +402,29 @@ Write ONLY the message. No quotes or explanation."""
             
             # Convert @name to real Discord mention <@discord_id>
             from src_v2.broadcast.cross_bot import cross_bot_manager
-            target_discord_id = cross_bot_manager.known_bots.get(target_name)
+            target_discord_id = cross_bot_manager.known_bots.get(target_name.lower())
             
             if target_discord_id:
-                # Replace @name or @Name with real mention
+                # 1. Replace @name with mention
                 content = re.sub(
                     rf'@{re.escape(target_name)}',
                     f'<@{target_discord_id}>',
                     content,
                     flags=re.IGNORECASE
                 )
-                # Also handle if LLM just used the name without @
-                if f'<@{target_discord_id}>' not in content and target_name.lower() not in content.lower():
+                
+                # 2. If no mention yet, try to replace plain name
+                if f'<@{target_discord_id}>' not in content:
+                    # Use word boundary to avoid replacing partial words
+                    content = re.sub(
+                        rf'\b{re.escape(target_name)}\b',
+                        f'<@{target_discord_id}>',
+                        content,
+                        flags=re.IGNORECASE
+                    )
+                
+                # 3. If still no mention, prepend it
+                if f'<@{target_discord_id}>' not in content:
                     content = f'<@{target_discord_id}> {content}'
             else:
                 # Fallback: ensure target is at least text-mentioned
