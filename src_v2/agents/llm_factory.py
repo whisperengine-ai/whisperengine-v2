@@ -59,18 +59,17 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main", model_na
     
     elif provider == "openrouter":
         # OpenRouter is OpenAI-compatible
-        # Add bot name to headers for OpenRouter tracking
-        headers = {}
-        if settings.DISCORD_BOT_NAME:
-            headers["X-Title"] = f"WhisperEngine - {settings.DISCORD_BOT_NAME}"
-            headers["HTTP-Referer"] = "https://github.com/whisperengine-ai/whisperengine-v2"
+        headers = {
+            "X-Title": "WhisperEngine",
+            "HTTP-Referer": "https://github.com/whisperengine-ai/whisperengine-v2"
+        }
         
         return ChatOpenAI(
             api_key=api_key,
             base_url=base_url or "https://openrouter.ai/api/v1",
             model=_model,
             temperature=temp,
-            default_headers=headers if headers else None
+            default_headers=headers
         )
         
     elif provider == "lmstudio":
