@@ -34,7 +34,7 @@ class SuperGraphState(TypedDict):
     
     # Internal Processing
     classification: Optional[Dict[str, Any]] # {complexity: str, intents: List[str]}
-    context: Optional[Dict[str, Any]] # {memories, facts, trust, goals}
+    context: Optional[Dict[str, Any]] # {memories, facts, trust, goals, evolution, diary, dream, knowledge, known_bots, stigmergy}
     system_prompt: Optional[str]
     
     # Output
@@ -91,34 +91,112 @@ class MasterGraphAgent:
         """Parallel fetch of all necessary context."""
         user_id = state["user_id"]
         user_input = state["user_input"]
+        character = state["character"]
         context_variables = state.get("context_variables", {})
         
         # Check if memories were pre-fetched (e.g., cross-bot pipeline)
-        # This avoids redundant Qdrant queries
         prefetched_memories = context_variables.get("prefetched_memories")
+        
+        # Prepare tasks for parallel execution
+        tasks = {}
+        
+        # 1. Memories (if not prefetched)
         if prefetched_memories is not None:
-            logger.debug(f"Using {len(prefetched_memories)} pre-fetched memories, skipping Qdrant query")
+            logger.debug(f"Using {len(prefetched_memories)} pre-fetched memories")
             memories = prefetched_memories
         else:
-            # Fetch user-specific memories AND broadcast memories in parallel
-            # Broadcasts use special user_id "__broadcast__" for diary/dream posts
-            user_memories, broadcast_memories = await asyncio.gather(
-                memory_manager.search_memories(user_input, user_id, limit=5),
-                memory_manager.search_memories(user_input, "__broadcast__", limit=2)
+            # We'll await this separately or add to tasks if we want full parallelism
+            # But memory_manager.search_memories is already async.
+            # Let's group memory fetches
+            tasks["user_memories"] = memory_manager.search_memories(user_input, user_id, limit=5)
+            tasks["broadcast_memories"] = memory_manager.search_memories(user_input, "__broadcast__", limit=2)
+
+        # 2. Evolution (Trust, Mood, Feedback)
+        tasks["evolution"] = self.context_builder.get_evolution_context(user_id, character.name)
+        
+        # 3. Goals
+        tasks["goals"] = self.context_builder.get_goal_context(user_id, character.name)
+        
+        # 4. Diary
+        if settings.ENABLE_CHARACTER_DIARY:
+            tasks["diary"] = self.context_builder.get_diary_context(character.name)
+            
+        # 5. Dream
+        if settings.ENABLE_DREAM_SEQUENCES and user_id:
+            user_name = context_variables.get("user_name", "the user")
+            # We need character context for dream generation. 
+            # We can use the raw system prompt from character object.
+            tasks["dream"] = self.context_builder.get_dream_context(
+                user_id=user_id,
+                user_name=user_name,
+                char_name=character.name,
+                character_context=character.system_prompt[:500] if character.system_prompt else ""
             )
             
-            # Merge results, keeping user memories prioritized
-            memories = user_memories + broadcast_memories
-            if broadcast_memories:
-                logger.debug(f"Found {len(broadcast_memories)} broadcast memories (diary/dream posts)")
+        # 6. Knowledge Graph
+        prefetched_knowledge = context_variables.get("prefetched_knowledge")
+        if prefetched_knowledge:
+            # If we have pre-fetched knowledge (string), wrap it in a future-like result or just use it
+            # Since we are using asyncio.gather, we can't just assign the string to tasks["knowledge"] 
+            # if we expect a coroutine.
+            # However, we process results later.
+            # Let's just set it directly in context_results if we skip the task.
+            pass 
+        else:
+            tasks["knowledge"] = self.context_builder.get_knowledge_context(user_id, character.name, user_input)
+        
+        # 7. Known Bots
+        guild_id = context_variables.get("guild_id")
+        tasks["known_bots"] = self.context_builder.get_known_bots_context(character.name, guild_id)
+        
+        # 8. Stigmergy (Shared Artifacts)
+        if settings.ENABLE_STIGMERGIC_DISCOVERY:
+            # We need to import here or move import to top. 
+            # ContextBuilder imports it inside method, so we can't easily call it unless we expose it.
+            # But wait, ContextBuilder.build_system_context handles stigmergy internally with an import.
+            # I didn't expose get_stigmergic_context in ContextBuilder.
+            # So we'll skip pre-fetching stigmergy for now, or add it to ContextBuilder.
+            pass
+
+        # Execute all tasks in parallel
+        # We need to map keys back to results
+        task_keys = list(tasks.keys())
+        task_values = list(tasks.values())
+        
+        results = await asyncio.gather(*task_values, return_exceptions=True)
+        
+        # Process results
+        context_results = {}
+        
+        # Add prefetched knowledge if available
+        if prefetched_knowledge:
+             context_results["knowledge"] = prefetched_knowledge
+
+        memories = []
+        
+        for i, key in enumerate(task_keys):
+            result = results[i]
+            if isinstance(result, Exception):
+                logger.error(f"Context fetch failed for {key}: {result}")
+                if key in ["user_memories", "broadcast_memories"]:
+                    pass # memories will be empty
+                else:
+                    context_results[key] = "" # Default to empty string
+            else:
+                if key == "user_memories":
+                    memories.extend(result)
+                elif key == "broadcast_memories":
+                    memories.extend(result)
+                else:
+                    context_results[key] = result
+
+        if prefetched_memories:
+            memories = prefetched_memories
+
+        context_results["memories"] = memories
         
         return {
-            "context": {
-                "memories": memories,
-                "facts": [], # Handled by ContextBuilder
-                "trust": None, # Handled by ContextBuilder
-                "goals": [] # Handled by ContextBuilder
-            }
+            "context": context_results
         }
 
     async def classifier_node(self, state: SuperGraphState):
@@ -137,17 +215,20 @@ class MasterGraphAgent:
         user_input = state["user_input"]
         user_id = state["user_id"]
         context_variables = state.get("context_variables", {})
+        context_data = state.get("context", {})
         
         # 1. Build base system context (Identity, Trust, Goals, Knowledge, Diary, Dreams)
+        # Pass the pre-fetched context to avoid re-fetching
         system_content = await self.context_builder.build_system_context(
             character=character,
             user_message=user_input,
             user_id=user_id,
-            context_variables=context_variables
+            context_variables=context_variables,
+            prefetched_context=context_data
         )
         
         # 2. Inject Vector Memories (fetched in context_node)
-        memories = state.get("context", {}).get("memories", [])
+        memories = context_data.get("memories", [])
         if memories:
             memory_context = ""
             for mem in memories:

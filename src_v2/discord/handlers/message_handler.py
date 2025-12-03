@@ -668,7 +668,10 @@ class MessageHandler:
                     "parent_channel_name": parent_channel_name,
                     "is_thread": is_thread,
                     "has_documents": doc_context.has_documents,
-                    "channel": message.channel  # For Discord search tools
+                    "channel": message.channel,  # For Discord search tools
+                    # OPTIMIZATION: Pass raw data to avoid re-fetching in MasterGraphAgent
+                    "prefetched_memories": memories,
+                    "prefetched_knowledge": knowledge_facts
                 }
                 
                 # Append document preview to user message for LLM
@@ -948,21 +951,21 @@ class MessageHandler:
                         # Just edit the text (files can't be attached to edited messages in discord.py)
                         
                         if active_message == status_message:
-                             current_status = "\n".join(status_lines)
-                             combined_text = f"{current_status}\n\n{message_chunks[0]}"
-                             if len(combined_text) < 2000:
-                                 await active_message.edit(content=combined_text)
-                                 sent_messages.append(active_message)
-                             else:
-                                 # Fallback: Send as new message if it doesn't fit with status
-                                 if use_reply:
-                                     sent_msg = await message.reply(message_chunks[0], mention_author=False)
-                                 else:
-                                     sent_msg = await message.channel.send(message_chunks[0])
-                                 sent_messages.append(sent_msg)
+                            current_status = "\n".join(status_lines)
+                            combined_text = f"{current_status}\n\n{message_chunks[0]}"
+                            if len(combined_text) < 2000:
+                                await active_message.edit(content=combined_text)
+                                sent_messages.append(active_message)
+                            else:
+                                # Fallback: Send as new message if it doesn't fit with status
+                                if use_reply:
+                                    sent_msg = await message.reply(message_chunks[0], mention_author=False)
+                                else:
+                                    sent_msg = await message.channel.send(message_chunks[0])
+                                sent_messages.append(sent_msg)
                         else:
-                             await active_message.edit(content=message_chunks[0])
-                             sent_messages.append(active_message)
+                            await active_message.edit(content=message_chunks[0])
+                            sent_messages.append(active_message)
                         
                         # Send remaining chunks
                         for chunk in message_chunks[1:]:
