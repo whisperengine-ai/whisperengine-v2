@@ -248,7 +248,7 @@ class KnowledgeGraphPruner:
         Strategy:
         - Find entities with same toLower(name)
         - Keep the one with most relationships
-        - Redirect all relationships to the kept node
+        - Redirect all relationships to the kept node (copying properties)
         - Delete the duplicates
         """
         try:
@@ -266,16 +266,15 @@ class KnowledgeGraphPruner:
                     return record["count"] if record else 0
                 else:
                     # Perform merges
-                    # This is complex - we do it in a transaction
                     merge_count = 0
                     
-                    # First, find all duplicates
+                    # First, find all duplicates (limit to avoid timeouts)
                     find_query = """
                     MATCH (e:Entity)
                     WITH toLower(e.name) as normalized, collect(e) as entities
                     WHERE size(entities) > 1
                     RETURN normalized, entities
-                    LIMIT 100
+                    LIMIT 50
                     """
                     result = await session.run(find_query)
                     records = await result.data()
@@ -305,21 +304,45 @@ class KnowledgeGraphPruner:
                         # Merge others into best
                         for entity in entities:
                             if entity["name"] != best_entity["name"]:
+                                # Robust merge query that preserves properties and handles multiple relationship types
                                 merge_query = """
                                 MATCH (old:Entity {name: $old_name})
                                 MATCH (new:Entity {name: $new_name})
                                 
-                                // Redirect incoming FACT relationships
+                                // 1. Move incoming FACTs (User/Character -> Entity)
+                                WITH old, new
                                 OPTIONAL MATCH (n)-[r:FACT]->(old)
-                                WITH old, new, collect(r) as rels
-                                FOREACH (rel in rels |
-                                    CREATE (startNode(rel))-[:FACT]->(new)
+                                WITH old, new, collect({start: n, rel: r}) as incoming_facts
+                                FOREACH (item IN incoming_facts | 
+                                    CREATE (item.start)-[new_r:FACT]->(new)
+                                    SET new_r = properties(item.rel)
+                                    DELETE item.rel
                                 )
                                 
-                                // Delete old relationships and node
+                                // 2. Move outgoing IS_A (Entity -> Entity)
+                                WITH old, new
+                                OPTIONAL MATCH (old)-[r:IS_A]->(target)
+                                WITH old, new, collect({end: target, rel: r}) as outgoing_isa
+                                FOREACH (item IN outgoing_isa |
+                                    CREATE (new)-[new_r:IS_A]->(item.end)
+                                    SET new_r = properties(item.rel)
+                                    DELETE item.rel
+                                )
+                                
+                                // 3. Move outgoing BELONGS_TO (Entity -> Entity)
+                                WITH old, new
+                                OPTIONAL MATCH (old)-[r:BELONGS_TO]->(target)
+                                WITH old, new, collect({end: target, rel: r}) as outgoing_belongs
+                                FOREACH (item IN outgoing_belongs |
+                                    CREATE (new)-[new_r:BELONGS_TO]->(item.end)
+                                    SET new_r = properties(item.rel)
+                                    DELETE item.rel
+                                )
+                                
+                                // 4. Delete old node
                                 WITH old
                                 DETACH DELETE old
-                                RETURN count(*) as merged
+                                RETURN 1 as merged
                                 """
                                 try:
                                     await session.run(
