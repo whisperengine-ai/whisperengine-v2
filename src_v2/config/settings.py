@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     ENABLE_REFLECTIVE_MODE: bool = False
     REFLECTIVE_STATUS_VERBOSITY: Literal["none", "minimal", "detailed"] = "detailed"  # How much reasoning to show in Discord
     # Note: LangGraph agents are now the default and only path. Legacy flags removed.
-    ENABLE_CHARACTER_AGENCY: bool = True  # Phase A7: Tier 2 Tool Usage
+    # Phase A7: Tier 2 Tool Usage (Character Agency) is now always enabled.
     REFLECTIVE_LLM_PROVIDER: str = "openrouter"
     REFLECTIVE_LLM_MODEL_NAME: str = "anthropic/claude-3.5-sonnet"
     REFLECTIVE_LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
@@ -240,7 +240,7 @@ class Settings(BaseSettings):
 
     # --- Cross-Bot Chat (Phase E6) ---
     ENABLE_CROSS_BOT_CHAT: bool = True  # Allow bots to respond to each other
-    ENABLE_CROSS_BOT_MEMORY: bool = False  # Allow bots to remember past conversations with each other (Phase E6.1)
+    # Phase E6.1: Cross-bot memory is now always enabled
     CROSS_BOT_MAX_CHAIN: int = 5  # Max replies in a bot-to-bot chain before stopping (was 3)
     CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
     CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)

@@ -314,7 +314,7 @@ class AgentEngine:
             
             # 3b. Character Agency (Tier 2 - Single Tool Call)
             # Skip CharacterAgent for image uploads - use Fast Mode instead (simpler, proven to work)
-            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW" and not image_urls:
+            elif complexity_result == "COMPLEX_LOW" and not image_urls:
                 channel = context_variables.get("channel") if context_variables else None
                 
                 logger.info("Using LangGraph Character Agent")
@@ -670,7 +670,7 @@ class AgentEngine:
             # 3b. Character Agency (Tier 2 - Single Tool Call) for COMPLEX_LOW
             # 3b. Character Agency Stream (Tier 2 - Single Tool Call)
             # Skip CharacterAgent for image uploads - use Fast Mode instead (simpler, proven to work)
-            elif settings.ENABLE_CHARACTER_AGENCY and complexity_result == "COMPLEX_LOW" and not image_urls:
+            elif complexity_result == "COMPLEX_LOW" and not image_urls:
                 # Update status header with character-specific indicator
                 if callback:
                     if character.thinking_indicators:
@@ -835,10 +835,6 @@ class AgentEngine:
         if not user_id:
             return False, []
         
-        # Neither agency nor reflective mode enabled = fast mode only
-        if not (settings.ENABLE_REFLECTIVE_MODE or settings.ENABLE_CHARACTER_AGENCY):
-            return False, []
-
         # Trivial message detection (bypass LLM classifier for speed)
         if self._is_trivial_message(user_message):
             logger.info("Complexity Analysis: TRIVIAL (fast path)")

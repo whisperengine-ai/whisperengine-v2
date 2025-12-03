@@ -1189,51 +1189,50 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 formatted_knowledge = ""
                 formatted_summaries = ""
                 
-                if settings.ENABLE_CROSS_BOT_MEMORY:
-                    try:
-                        # Use the shared context builder (same as normal user path)
-                        ctx = await context_builder.build_context(
-                            user_id=cross_bot_user_id,
-                            character_name=self.bot.character_name,
-                            query=message.content,
-                            limit_history=10,
-                            limit_memories=5,
-                            limit_summaries=2
-                        )
-                        
-                        # Format history
-                        if ctx.get("history"):
-                            formatted = []
-                            for msg in ctx["history"][-10:]:
-                                role = "You" if getattr(msg, 'role', None) == "ai" or (hasattr(msg, 'type') and msg.type == "ai") else other_bot_name.title()
-                                content = getattr(msg, 'content', str(msg))[:200]
-                                formatted.append(f"{role}: {content}")
-                            formatted_history = "\n".join(formatted)
-                        
-                        # Format memories
-                        if ctx.get("memories"):
-                            def format_mem(m):
-                                rel = m.get('relative_time', 'unknown time')
-                                content = m.get('content', '')
-                                return f"- {content} ({rel})"
-                            formatted_memories = "\n".join([format_mem(m) for m in ctx["memories"]])
-                        
-                        # Format knowledge
-                        if ctx.get("knowledge"):
-                            formatted_knowledge = ctx["knowledge"]
-                        
-                        # Format summaries
-                        if ctx.get("summaries"):
-                            formatted_summaries = "\n".join([
-                                f"- {s['content'][:150]} ({s.get('relative_time', 'unknown time')})" 
-                                for s in ctx["summaries"]
-                            ])
-                        
-                        total_context = sum(1 for x in [formatted_memories, formatted_history, formatted_knowledge, formatted_summaries] if x)
-                        logger.debug(f"Retrieved {total_context}/4 context sources for cross-bot chat with {other_bot_name}")
-                        
-                    except Exception as e:
-                        logger.warning(f"Failed to retrieve cross-bot context: {e}")
+                try:
+                    # Use the shared context builder (same as normal user path)
+                    ctx = await context_builder.build_context(
+                        user_id=cross_bot_user_id,
+                        character_name=self.bot.character_name,
+                        query=message.content,
+                        limit_history=10,
+                        limit_memories=5,
+                        limit_summaries=2
+                    )
+                    
+                    # Format history
+                    if ctx.get("history"):
+                        formatted = []
+                        for msg in ctx["history"][-10:]:
+                            role = "You" if getattr(msg, 'role', None) == "ai" or (hasattr(msg, 'type') and msg.type == "ai") else other_bot_name.title()
+                            content = getattr(msg, 'content', str(msg))[:200]
+                            formatted.append(f"{role}: {content}")
+                        formatted_history = "\n".join(formatted)
+                    
+                    # Format memories
+                    if ctx.get("memories"):
+                        def format_mem(m):
+                            rel = m.get('relative_time', 'unknown time')
+                            content = m.get('content', '')
+                            return f"- {content} ({rel})"
+                        formatted_memories = "\n".join([format_mem(m) for m in ctx["memories"]])
+                    
+                    # Format knowledge
+                    if ctx.get("knowledge"):
+                        formatted_knowledge = ctx["knowledge"]
+                    
+                    # Format summaries
+                    if ctx.get("summaries"):
+                        formatted_summaries = "\n".join([
+                            f"- {s['content'][:150]} ({s.get('relative_time', 'unknown time')})" 
+                            for s in ctx["summaries"]
+                        ])
+                    
+                    total_context = sum(1 for x in [formatted_memories, formatted_history, formatted_knowledge, formatted_summaries] if x)
+                    logger.debug(f"Retrieved {total_context}/4 context sources for cross-bot chat with {other_bot_name}")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to retrieve cross-bot context: {e}")
 
                 # Build a special system prompt addition for cross-bot interaction
                 # Include all retrieved context like the normal user path
@@ -1328,26 +1327,26 @@ Recent channel context:
                 
                 # Enqueue background processing for cross-bot conversations (same as normal users)
                 # This enables knowledge extraction, summarization, and insight analysis
-                if settings.ENABLE_CROSS_BOT_MEMORY:
-                    # Knowledge extraction: Extract facts about the other bot
-                    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
-                        try:
-                            await task_queue.enqueue_knowledge_extraction(
-                                user_id=cross_bot_user_id,
-                                message=message.content,
-                                character_name=self.bot.character_name
-                            )
-                        except Exception as e:
-                            logger.debug(f"Failed to enqueue cross-bot knowledge extraction: {e}")
-                    
-                    # Summarization: Check if we've accumulated enough messages for a summary
-                    # Cross-bot conversations don't use sessions, so we check message count directly
-                    self.bot.loop.create_task(
-                        self._check_and_summarize_cross_bot(
-                            cross_bot_user_id, 
-                            other_bot_name.title()
+                
+                # Knowledge extraction: Extract facts about the other bot
+                if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+                    try:
+                        await task_queue.enqueue_knowledge_extraction(
+                            user_id=cross_bot_user_id,
+                            message=message.content,
+                            character_name=self.bot.character_name
                         )
+                    except Exception as e:
+                        logger.debug(f"Failed to enqueue cross-bot knowledge extraction: {e}")
+                
+                # Summarization: Check if we've accumulated enough messages for a summary
+                # Cross-bot conversations don't use sessions, so we check message count directly
+                self.bot.loop.create_task(
+                    self._check_and_summarize_cross_bot(
+                        cross_bot_user_id, 
+                        other_bot_name.title()
                     )
+                )
                 
                 logger.info(f"Sent cross-bot response to {other_bot_name}")
                 

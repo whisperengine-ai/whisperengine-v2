@@ -178,7 +178,7 @@ class MasterGraphAgent:
             return "reflective"
             
         # Low Complexity + Agency -> Character Agent
-        if settings.ENABLE_CHARACTER_AGENCY and complexity == "COMPLEX_LOW":
+        if complexity == "COMPLEX_LOW":
             return "character"
             
         # Default -> Fast

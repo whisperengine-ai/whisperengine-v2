@@ -1,6 +1,6 @@
 # Emergent Behavior Architecture Audit
 
-**Date:** December 3, 2025  
+**Date:** December 3, 2025 (Updated)
 **Auditor:** Claude (via Copilot) + Human Review  
 **Purpose:** Identify over-engineering that may interfere with emergent behavior patterns  
 **Philosophy:** Less code, more emergent behavior. Prefer behavior over taxonomy.
@@ -14,9 +14,9 @@ This audit reviews WhisperEngine v2 through the lens of our emergence philosophy
 - **Can vocabulary do what schema would do?**
 - **Are we building it, or letting the system notice it?**
 
-### Verdict: **Mostly Good, Some Cleanup Needed**
+### Verdict: **Mostly Good, Cleanup In Progress**
 
-The core architecture is sound and emergence-friendly. Most complexity exists for good reasons (cost control, safety, operational needs). However, there are areas where we've accumulated configuration debt or built features that could be simplified.
+The core architecture is sound and emergence-friendly. We have successfully removed deprecated configuration flags and consolidated the agent architecture to use LangGraph exclusively. Remaining work focuses on simplifying the agent class structure and adding organic variability to schedules.
 
 ---
 
@@ -62,22 +62,14 @@ Trust is a continuous score (0-100) that evolves from interactions, not a declar
 
 ## 🟡 Caution: Potentially Over-Engineered
 
-### 1. Feature Flags (39 ENABLE_* flags!)
-**Status:** ⚠️ Configuration debt
+### 1. Feature Flags (Reduced count)
+**Status:** ✅ Improved
 
-Current count: **39 boolean flags** in `settings.py`
-
-Many are legitimate (cost control, safety gates), but some are accumulating:
-- 6 deprecated `ENABLE_LANGGRAPH_*` flags (supergraph is always on now)
-- `ENABLE_SUPERGRAPH: bool = True # DEPRECATED`
-- Duplicate flags: `ENABLE_AUTONOMOUS_REACTIONS` appears twice (lines 165 and 260)
-
-**Risk:** Configuration complexity makes it hard to reason about system behavior.
+We have removed the deprecated `ENABLE_LANGGRAPH_*` and `ENABLE_SUPERGRAPH` flags. The configuration is now cleaner, though still extensive due to the many features of the system.
 
 **Recommendation:** 
-1. Remove deprecated flags (LANGGRAPH_*, SUPERGRAPH)
-2. Consolidate duplicates
-3. Consider grouping related flags into config objects
+1. Continue to monitor flag count.
+2. Consider grouping related flags into config objects (ongoing).
 
 ### 2. Agent Proliferation
 **Status:** ⚠️ Watch carefully
@@ -251,13 +243,15 @@ If the character can notice it, we don't need to build it.
 | Fix duplicate `ENABLE_AUTONOMOUS_REACTIONS` flag | Dec 3, 2025 | Consolidated to one location, added cross-reference comment |
 | Delete `audit_manipulation.py` | Dec 3, 2025 | One-off script, not needed |
 | Move root utility scripts to `scripts/` | Dec 3, 2025 | Moved 15 scripts: `check_*.py`, `trigger_*.py`, `test_*.py`, etc. |
+| Remove deprecated LANGGRAPH/SUPERGRAPH flags | Dec 3, 2025 | Removed from settings.py and .env files. Code updated to use LangGraph unconditionally. |
+| Remove `ENABLE_CHARACTER_AGENCY` flag | Dec 3, 2025 | Made Tier 2 tool usage always enabled. Removed flag from settings and code. |
+| Remove `ENABLE_CROSS_BOT_MEMORY` flag | Dec 3, 2025 | Made cross-bot context retrieval and memory storage always enabled. Removed flag from settings and code. |
 
 ### 🔲 Pending (Low Priority)
 
 | Task | Effort | Risk | Notes |
 |------|--------|------|-------|
-| Mark deprecated LANGGRAPH flags more clearly | 10 min | Low | Still used for legacy fallback path |
-| Group settings.py flags by category with headers | 30 min | Low | Improves readability |
+| Group settings.py flags by category with headers | 30 min | Low | Improves readability (Partially done) |
 | Add schedule jitter to diary/dream generation | 2 hrs | Low | Makes timing more organic |
 | Review agent consolidation (diary_graph + dream_graph) | 1 hr | Medium | Share Generator-Critic pattern |
 | Audit character YAML files for over-specification | 1 hr | Low | Check if we're declaring vs letting emerge |
@@ -266,7 +260,7 @@ If the character can notice it, we don't need to build it.
 
 | Task | Reason |
 |------|--------|
-| Remove LANGGRAPH flags entirely | Still used for production fallback |
+| Remove LANGGRAPH flags entirely | Done (flags removed, code updated) |
 | Add `memory_layer` field for subconscious | Emergence principle: behavior > taxonomy |
 | Create explicit conscious/preconscious/subconscious categories | Let it emerge from absence patterns |
 
