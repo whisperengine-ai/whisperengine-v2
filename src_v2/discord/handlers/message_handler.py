@@ -3,11 +3,13 @@ import asyncio
 import time
 import random
 from typing import List, Tuple, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from loguru import logger
 from zoneinfo import ZoneInfo
 
 from src_v2.config.settings import settings
+from src_v2.memory.context_builder import context_builder
+from src_v2.broadcast.cross_bot import cross_bot_manager
 from src_v2.core.character import character_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
@@ -1108,8 +1110,6 @@ class MessageHandler:
             message: Discord message from another bot
         """
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
-            
             # Detect if this message mentions us
             mention = await cross_bot_manager.detect_cross_bot_mention(message)
             if not mention:
@@ -1181,31 +1181,62 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 except Exception as e:
                     logger.debug(f"Failed to get channel history for cross-bot: {e}")
                 
-                # Retrieve past conversations with this bot if enabled
+                # Retrieve past conversations with this bot using the shared context builder
+                # This uses the same path as normal users: Postgres + Qdrant + Neo4j
+                cross_bot_user_id = str(message.author.id)
                 formatted_memories = ""
+                formatted_history = ""
+                formatted_knowledge = ""
+                formatted_summaries = ""
+                
                 if settings.ENABLE_CROSS_BOT_MEMORY:
                     try:
-                        # Use the bot's Discord ID as the user_id for memory search
-                        cross_bot_user_id = str(message.author.id)
-                        cross_bot_memories = await memory_manager.search_memories(
-                            query=message.content,
+                        # Use the shared context builder (same as normal user path)
+                        ctx = await context_builder.build_context(
                             user_id=cross_bot_user_id,
-                            limit=5
+                            character_name=self.bot.character_name,
+                            query=message.content,
+                            limit_history=10,
+                            limit_memories=5,
+                            limit_summaries=2
                         )
                         
-                        if cross_bot_memories:
-                            # Format memories for context
+                        # Format history
+                        if ctx.get("history"):
+                            formatted = []
+                            for msg in ctx["history"][-10:]:
+                                role = "You" if getattr(msg, 'role', None) == "ai" or (hasattr(msg, 'type') and msg.type == "ai") else other_bot_name.title()
+                                content = getattr(msg, 'content', str(msg))[:200]
+                                formatted.append(f"{role}: {content}")
+                            formatted_history = "\n".join(formatted)
+                        
+                        # Format memories
+                        if ctx.get("memories"):
                             def format_mem(m):
                                 rel = m.get('relative_time', 'unknown time')
                                 content = m.get('content', '')
                                 return f"- {content} ({rel})"
-                            
-                            formatted_memories = "\n".join([format_mem(m) for m in cross_bot_memories])
-                            logger.debug(f"Retrieved {len(cross_bot_memories)} memories for cross-bot chat with {other_bot_name}")
+                            formatted_memories = "\n".join([format_mem(m) for m in ctx["memories"]])
+                        
+                        # Format knowledge
+                        if ctx.get("knowledge"):
+                            formatted_knowledge = ctx["knowledge"]
+                        
+                        # Format summaries
+                        if ctx.get("summaries"):
+                            formatted_summaries = "\n".join([
+                                f"- {s['content'][:150]} ({s.get('relative_time', 'unknown time')})" 
+                                for s in ctx["summaries"]
+                            ])
+                        
+                        total_context = sum(1 for x in [formatted_memories, formatted_history, formatted_knowledge, formatted_summaries] if x)
+                        logger.debug(f"Retrieved {total_context}/4 context sources for cross-bot chat with {other_bot_name}")
+                        
                     except Exception as e:
-                        logger.warning(f"Failed to retrieve cross-bot memories: {e}")
+                        logger.warning(f"Failed to retrieve cross-bot context: {e}")
 
                 # Build a special system prompt addition for cross-bot interaction
+                # Include all retrieved context like the normal user path
                 cross_bot_context = f"""
 [CROSS-BOT CONVERSATION]
 You are engaging in a conversation with another AI character named {other_bot_name.title()}.
@@ -1216,8 +1247,17 @@ This is a playful interaction between characters. Keep your response:
 - Avoid being repetitive or forcing the conversation
 {original_context}
 
-[PAST INTERACTIONS WITH {other_bot_name.upper()}]
-{formatted_memories if formatted_memories else "No previous conversations recalled."}
+[RECENT CONVERSATION HISTORY WITH {other_bot_name.upper()}]
+{formatted_history if formatted_history else "No recent conversation history."}
+
+[RELEVANT MEMORIES WITH {other_bot_name.upper()}]
+{formatted_memories if formatted_memories else "No relevant memories found."}
+
+[WHAT YOU KNOW ABOUT {other_bot_name.upper()}]
+{formatted_knowledge if formatted_knowledge else "No specific facts recorded."}
+
+[PAST CONVERSATION SUMMARIES]
+{formatted_summaries if formatted_summaries else "No past summaries available."}
 
 {other_bot_name.title()} said: "{message.content}"
 
@@ -1226,9 +1266,7 @@ Recent channel context:
 """
                 
                 # Generate response using the engine
-                # Use bot's Discord ID as the "user_id" for memory storage
-                # Treat other bots the same as regular users - just use their numeric ID
-                cross_bot_user_id = str(message.author.id)
+                # cross_bot_user_id already defined above for context retrieval
 
                 # Random pipeline selection: 70% fast (cheap), 30% full (tools enabled)
                 # This creates natural variation - some conversations are quick banter,
@@ -1287,6 +1325,29 @@ Recent channel context:
                     logger.debug(f"Saved cross-bot conversation with {other_bot_name} to memory")
                 except Exception as mem_err:
                     logger.warning(f"Failed to save cross-bot conversation to memory: {mem_err}")
+                
+                # Enqueue background processing for cross-bot conversations (same as normal users)
+                # This enables knowledge extraction, summarization, and insight analysis
+                if settings.ENABLE_CROSS_BOT_MEMORY:
+                    # Knowledge extraction: Extract facts about the other bot
+                    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+                        try:
+                            await task_queue.enqueue_knowledge_extraction(
+                                user_id=cross_bot_user_id,
+                                message=message.content,
+                                character_name=self.bot.character_name
+                            )
+                        except Exception as e:
+                            logger.debug(f"Failed to enqueue cross-bot knowledge extraction: {e}")
+                    
+                    # Summarization: Check if we've accumulated enough messages for a summary
+                    # Cross-bot conversations don't use sessions, so we check message count directly
+                    self.bot.loop.create_task(
+                        self._check_and_summarize_cross_bot(
+                            cross_bot_user_id, 
+                            other_bot_name.title()
+                        )
+                    )
                 
                 logger.info(f"Sent cross-bot response to {other_bot_name}")
                 
@@ -1541,6 +1602,69 @@ Recent channel context:
                     
         except Exception as e:
             logger.error(f"Error in _check_and_summarize: {e}")
+
+    async def _check_and_summarize_cross_bot(self, bot_user_id: str, bot_name: str):
+        """
+        Check if cross-bot conversation needs summarization.
+        
+        Unlike user sessions, cross-bot conversations don't have explicit sessions.
+        We check if there are enough unsummarized messages and trigger summarization.
+        
+        Args:
+            bot_user_id: The other bot's Discord user ID
+            bot_name: The other bot's display name
+        """
+        try:
+            # Get message count in the last 24 hours with this bot
+            since_time = datetime.now(timezone.utc) - timedelta(hours=24)
+            message_count = await memory_manager.count_messages_since(
+                bot_user_id, 
+                self.bot.character_name, 
+                since_time
+            )
+            
+            # Use same threshold as normal users
+            if message_count >= settings.SUMMARY_MESSAGE_THRESHOLD:
+                logger.info(f"Cross-bot conversation with {bot_name} reached {message_count} messages. Enqueueing summarization.")
+                
+                # Fetch messages for summarization
+                messages = await memory_manager.get_recent_history(
+                    bot_user_id, 
+                    self.bot.character_name, 
+                    limit=message_count
+                )
+                
+                # Convert to dict format
+                from langchain_core.messages import HumanMessage
+                msg_dicts = [{"role": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content} for m in messages]
+                
+                # Generate a synthetic session ID for cross-bot conversations
+                cross_bot_session_id = f"crossbot_{bot_user_id}_{self.bot.character_name}"
+                
+                # Enqueue summarization
+                try:
+                    await task_queue.enqueue_summarization(
+                        user_id=bot_user_id,
+                        character_name=self.bot.character_name,
+                        session_id=cross_bot_session_id,
+                        messages=msg_dicts,
+                        user_name=bot_name
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to enqueue cross-bot summarization: {e}")
+                    return
+                
+                # Enqueue reflection
+                try:
+                    await task_queue.enqueue_reflection(
+                        user_id=bot_user_id,
+                        character_name=self.bot.character_name
+                    )
+                except Exception as e:
+                    logger.debug(f"Could not enqueue cross-bot reflection: {e}")
+                    
+        except Exception as e:
+            logger.debug(f"Error in _check_and_summarize_cross_bot: {e}")
 
     async def _process_attachments(
         self, 
