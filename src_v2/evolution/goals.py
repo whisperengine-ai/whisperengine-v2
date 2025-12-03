@@ -270,12 +270,13 @@ class GoalAnalyzer:
             # 3. Process Updates
             updates = result.get("updates", [])
             for update in updates:
-                if update["status"] in ["completed", "in_progress"]:
+                status = update.get("status")
+                if status in ["completed", "in_progress"]:
                     await goal_manager.update_goal_progress(
                         user_id=user_id,
-                        goal_slug=update["slug"],
+                        goal_slug=update.get("slug", "unknown"),
                         character_name=character_name,
-                        status=update["status"],
+                        status=status,
                         progress=update.get("progress_score", 0.0),
                         metadata={"reasoning": update.get("reasoning"), "extracted": update.get("extracted_data")}
                     )
