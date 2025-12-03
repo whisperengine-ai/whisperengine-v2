@@ -1,7 +1,7 @@
 # WhisperEngine 2.0: Agentic Memory Architecture
 
-**Version**: 2.2  
-**Last Updated**: December 1, 2025
+**Version**: 2.3  
+**Last Updated**: December 2, 2025
 
 ## Overview
 
@@ -195,6 +195,43 @@ In humans, **memory consolidation** occurs during sleep, transferring informatio
     *   WhisperEngine implements a modified decay: `relevance_score = base_score * e^(-λ * time_since_access)`
     *   High-meaningfulness memories (score 4-5) decay slower (lower λ), while mundane exchanges (score 1-2) fade quickly.
     *   **Why it matters**: Prevents the "database bloat" problem where the character remembers trivial details from years ago better than yesterday's important conversation.
+
+## Broadcast Memories (Public Posts)
+
+When a character posts diary entries, dream journals, or observations to Discord channels, they store **broadcast memories** - memories of having shared content publicly.
+
+### The Problem
+Without broadcast memories, this happens:
+- Elena posts her dream journal: "I dreamed I was swimming with whales..."
+- User asks: "What was your dream about?"
+- Elena: "I don't recall sharing a dream recently" ❌
+
+### The Solution
+**Broadcast memories** are stored with special `user_id="__broadcast__"` so they're searchable separately from user-specific memories.
+
+**Storage Flow:**
+1. Character posts to Discord via `BroadcastManager.post_to_channel()`
+2. After successful post, `_store_broadcast_memory()` is called
+3. Memory is stored as: "I shared my {diary/dream/observation} in the broadcast channel: {preview}"
+4. Metadata includes `is_broadcast: True` and `post_type: diary|dream|observation`
+
+**Retrieval Flow:**
+1. User asks about character's posts
+2. `MasterGraphAgent.context_node()` searches BOTH user memories AND broadcast memories (in parallel)
+3. Broadcast memories are merged into context with semantic relevance scoring
+
+### Memory Content Example
+```
+"I shared my dream journal in the broadcast channel: I dreamed I was standing 
+on the edge of a coral reef, watching the sunlight filter down through 
+crystal-clear water. Schools of fish in colors I've never seen..."
+```
+
+### Design Rationale
+- **Why separate user_id?** Broadcasts are public, not tied to any specific conversation
+- **Why parallel search?** Avoids latency - both searches run concurrently
+- **Why limit=2?** Broadcasts are supplementary; user memories take priority
+- **Why store?** Characters should remember what they've shared publicly (self-knowledge)
 
 ## Reasoning Transparency
 

@@ -100,9 +100,17 @@ class MasterGraphAgent:
             logger.debug(f"Using {len(prefetched_memories)} pre-fetched memories, skipping Qdrant query")
             memories = prefetched_memories
         else:
-            # Fetch Vector Memories (query-specific)
-            # Note: ContextBuilder handles Trust, Goals, and Knowledge internally.
-            memories = await memory_manager.search_memories(user_input, user_id, limit=5)
+            # Fetch user-specific memories AND broadcast memories in parallel
+            # Broadcasts use special user_id "__broadcast__" for diary/dream posts
+            user_memories, broadcast_memories = await asyncio.gather(
+                memory_manager.search_memories(user_input, user_id, limit=5),
+                memory_manager.search_memories(user_input, "__broadcast__", limit=2)
+            )
+            
+            # Merge results, keeping user memories prioritized
+            memories = user_memories + broadcast_memories
+            if broadcast_memories:
+                logger.debug(f"Found {len(broadcast_memories)} broadcast memories (diary/dream posts)")
         
         return {
             "context": {

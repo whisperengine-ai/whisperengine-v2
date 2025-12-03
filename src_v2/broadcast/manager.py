@@ -175,6 +175,8 @@ class BroadcastManager:
                     sent_messages.append(first_message)
                     # Store broadcast record (use first message for reference)
                     await self._store_broadcast(first_message, post_type, character_name, content, provenance)
+                    # Store as conversation memory so bot remembers posting it
+                    await self._store_broadcast_memory(first_message, post_type, character_name, content)
                 
             except discord.Forbidden:
                 logger.error(f"No permission to post in broadcast channel {channel_id_str}")
@@ -287,6 +289,60 @@ class BroadcastManager:
             return f"{main_content}\n{footer}"
         
         return main_content
+    
+    async def _store_broadcast_memory(
+        self,
+        message: discord.Message,
+        post_type: PostType,
+        character_name: str,
+        content: str
+    ) -> None:
+        """
+        Store broadcast as a conversation memory so the bot remembers posting it.
+        
+        This creates a memory like: "I shared my dream journal in the broadcast channel"
+        so when users reference "your dream post yesterday", the bot has context.
+        """
+        try:
+            from src_v2.memory.manager import memory_manager
+            from src_v2.memory.models import MemorySourceType
+            
+            # Create a concise summary of what was posted
+            post_type_labels = {
+                PostType.DIARY: "diary entry",
+                PostType.DREAM: "dream journal",
+                PostType.OBSERVATION: "observation",
+                PostType.MUSING: "thought",
+            }
+            post_label = post_type_labels.get(post_type, "post")
+            
+            # Truncate content for the memory (first ~200 chars)
+            content_preview = content[:200] + "..." if len(content) > 200 else content
+            
+            # Memory content: What I posted and a preview
+            memory_content = f"I shared my {post_label} in the broadcast channel: {content_preview}"
+            
+            # Store as AI message (role="ai") with no user_id (broadcast, not to specific user)
+            # Use a special "broadcast" user_id so it can be retrieved
+            await memory_manager.add_message(
+                user_id="__broadcast__",  # Special ID for broadcast memories
+                character_name=character_name,
+                role="ai",
+                content=memory_content,
+                channel_id=str(message.channel.id),
+                message_id=str(message.id),
+                source_type=MemorySourceType.INFERENCE,
+                importance_score=4,  # Slightly above average importance
+                metadata={
+                    "post_type": post_type.value,
+                    "is_broadcast": True
+                }
+            )
+            
+            logger.debug(f"Stored broadcast memory for {character_name}: {post_label}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to store broadcast memory: {e}")
     
     async def _store_broadcast(
         self,
