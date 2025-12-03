@@ -16,6 +16,7 @@ class BotTasks:
             self.bot.loop.create_task(self.process_broadcast_queue_loop(), name="broadcast_queue"),
             self.bot.loop.create_task(self.refresh_endpoint_registration_loop(), name="endpoint_registration"),
             self.bot.loop.create_task(self.update_status_loop(), name="status_update"),
+            self.bot.loop.create_task(self.weekly_graph_pruning_loop(), name="graph_pruning"),
         ]
         logger.info(f"Started {len(self._background_tasks)} background tasks")
 
@@ -135,3 +136,52 @@ class BotTasks:
                 logger.error(f"Failed to update status: {e}")
             
             await asyncio.sleep(settings.STATUS_UPDATE_INTERVAL_SECONDS)
+
+    async def weekly_graph_pruning_loop(self) -> None:
+        """
+        Background task to run weekly knowledge graph pruning (Phase E24).
+        
+        Runs once per week (every 7 days) to:
+        - Remove orphan entities
+        - Prune stale facts
+        - Merge duplicate entities
+        - Remove low-confidence facts
+        """
+        await self.bot.wait_until_ready()
+        
+        # Wait 1 hour before first check (let system stabilize)
+        await asyncio.sleep(3600)
+        
+        # Run weekly (604800 seconds = 7 days)
+        week_seconds = 604800
+        
+        while not self.bot.is_closed():
+            try:
+                if not settings.ENABLE_GRAPH_PRUNING:
+                    logger.debug("Graph pruning disabled, skipping")
+                else:
+                    from src_v2.knowledge.pruning import run_scheduled_prune
+                    
+                    logger.info("Starting weekly knowledge graph pruning...")
+                    stats = await run_scheduled_prune()
+                    
+                    total_removed = (
+                        stats.orphans_removed +
+                        stats.stale_facts_removed +
+                        stats.duplicates_merged +
+                        stats.low_confidence_removed
+                    )
+                    
+                    if total_removed > 0:
+                        logger.info(
+                            f"Graph pruning complete: {total_removed} items cleaned "
+                            f"({stats.orphans_removed} orphans, {stats.stale_facts_removed} stale, "
+                            f"{stats.duplicates_merged} duplicates, {stats.low_confidence_removed} low-conf)"
+                        )
+                    else:
+                        logger.info("Graph pruning complete: no items needed cleanup")
+                        
+            except Exception as e:
+                logger.error(f"Graph pruning failed: {e}")
+            
+            await asyncio.sleep(week_seconds)

@@ -269,6 +269,15 @@ class Settings(BaseSettings):
     GRAPH_WALKER_MAX_DEPTH: int = 3  # Max traversal depth
     GRAPH_WALKER_SERENDIPITY: float = 0.1  # Probability of exploring random low-score paths (0.0-0.5)
 
+    # --- Knowledge Graph Pruning (Phase E24) ---
+    ENABLE_GRAPH_PRUNING: bool = False  # Enable scheduled graph cleanup
+    GRAPH_PRUNE_ORPHAN_GRACE_DAYS: int = 7  # Days before orphan entities are pruned
+    GRAPH_PRUNE_STALE_FACT_DAYS: int = 90  # Days before stale facts are considered for pruning
+    GRAPH_PRUNE_MIN_ACCESS_COUNT: int = 1  # Min access count to preserve a stale fact
+    GRAPH_PRUNE_MIN_CONFIDENCE: float = 0.3  # Facts below this confidence are pruned after grace period
+    GRAPH_PRUNE_CONFIDENCE_GRACE_DAYS: int = 14  # Days before low-confidence facts are pruned
+    GRAPH_PRUNE_DRY_RUN: bool = False  # If True, report what would be pruned without deleting
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

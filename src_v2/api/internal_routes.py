@@ -280,3 +280,77 @@ async def internal_health():
         "bot_connected": bot is not None and not bot.is_closed() if bot else False,
         "bot_name": settings.DISCORD_BOT_NAME
     }
+
+
+# ============================================================================
+# Graph Pruning Endpoints (Phase E24)
+# ============================================================================
+
+class PruneRequest(BaseModel):
+    """Request to run graph pruning."""
+    dry_run: bool = Field(default=True, description="If True, report what would be pruned without deleting")
+
+
+class PruneResponse(BaseModel):
+    """Response from graph pruning."""
+    success: bool
+    stats: Dict[str, Any]
+    message: str = ""
+
+
+@router.post("/graph/prune", response_model=PruneResponse, summary="Run knowledge graph pruning")
+async def run_graph_prune(request: PruneRequest):
+    """
+    Manually trigger knowledge graph pruning.
+    
+    Use dry_run=True (default) to see what would be removed without actually deleting.
+    Use dry_run=False to perform the actual cleanup.
+    """
+    try:
+        from src_v2.knowledge.pruning import get_pruner
+        
+        pruner = get_pruner()
+        stats = await pruner.run_full_prune(dry_run=request.dry_run)
+        
+        action = "Would prune" if request.dry_run else "Pruned"
+        total = stats.orphans_removed + stats.stale_facts_removed + stats.duplicates_merged + stats.low_confidence_removed
+        
+        return PruneResponse(
+            success=True,
+            stats=stats.to_dict(),
+            message=f"{action} {total} items from knowledge graph"
+        )
+        
+    except Exception as e:
+        logger.error(f"Graph pruning API failed: {e}")
+        return PruneResponse(
+            success=False,
+            stats={},
+            message=str(e)
+        )
+
+
+@router.get("/graph/health", summary="Get knowledge graph health report")
+async def get_graph_health():
+    """
+    Get a health report for the knowledge graph.
+    
+    Returns counts of nodes, edges, orphans, stale facts, and other metrics.
+    """
+    try:
+        from src_v2.knowledge.pruning import get_pruner
+        
+        pruner = get_pruner()
+        report = await pruner.get_graph_health_report()
+        
+        return {
+            "success": True,
+            "report": report
+        }
+        
+    except Exception as e:
+        logger.error(f"Graph health API failed: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
