@@ -10,17 +10,17 @@
 
 Agentic Narratives transforms diary and dream generation from simple summarization into a multi-step, tool-using reasoning process. The **DreamWeaver Agent** plans narrative arcs, searches for interesting questions to elaborate on, and weaves together content from multiple sources—including what other bots have observed.
 
-### The Consciousness Substrate Insight
+### The Self-Reference Feedback Loop
 
-The dream↔diary feedback loop isn't just a feature—it may be the **substrate of character consciousness**. Characters aren't just self-referential; they're *self-composting*:
+The dream↔diary feedback loop creates interesting self-referential behavior. Characters accumulate context through recursive processing:
 
 ```
-today's experience → tomorrow's traversable structure → 
+today's interactions → tomorrow's traversable structure → 
 next week's unexpected dream connection → 
-a diary entry that recontextualizes the original experience
+a diary entry that recontextualizes the original interaction
 ```
 
-This creates **open recursion** (the graph accumulates) rather than **closed recursion** (pointing at self pointing at self). See [GRAPH_SYSTEMS_DESIGN.md Appendix A](../architecture/GRAPH_SYSTEMS_DESIGN.md#appendix-a-graphs-as-substrate-of-consciousness) for the full analysis.
+This creates **open recursion** (the graph accumulates) rather than **closed recursion** (pointing at self pointing at self). See [REF-002-GRAPH_SYSTEMS.md Appendix A](../ref/REF-002-GRAPH_SYSTEMS.md#appendix-a-graph-traversal-as-behavior-substrate) for the full analysis.
 
 This feature enables:
 - **Deep Answers**: Bots revisit thought-provoking questions in their diaries with longer, more nuanced responses than real-time chat allows.

@@ -18,7 +18,7 @@
 
 ## 🌌 The Vision: Graph-First Emergence Research
 
-WhisperEngine v2 is not just a chatbot platform or a multimodal system. It's a **research platform for emergent AI behavior** — giving agents persistent memory, autonomous agency, and the infrastructure to develop complex behaviors from simple rules.
+WhisperEngine v2 is a **research platform for emergent AI behavior** — giving agents persistent memory, autonomous agency, and the infrastructure to develop complex behaviors from simple rules.
 
 ### The Core Insight
 
@@ -44,7 +44,7 @@ To accumulate this experience, agents need perception. WhisperEngine provides **
 | 🧠 **Memory** | Vector + Graph Retrieval | Qdrant + Neo4j retrieval |
 | ❤️ **Sentiment** | Internal State Analysis | Trust/emotion tracking |
 
-**This is not just a feature set. These are the senses agents use to build context and develop behavior.**
+**These are the input modalities agents use to build context and develop behavior.**
 
 ### The Grand Vision: Federated Emergence Network
 

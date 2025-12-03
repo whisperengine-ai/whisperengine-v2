@@ -10,11 +10,11 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 
 **Core Principle: Observe First, Constrain Later**
 
-We treat WhisperEngine as an emergent behavior research platform, not just software. Key tenets:
+WhisperEngine is an emergent behavior research platform. Key tenets:
 - **Document behaviors before deciding if they need correction** — premature optimization prevents discovery
 - **Minimal viable instrumentation** — add only metrics needed to answer current questions
 - **Embrace surprise** — unexpected behaviors are data, not bugs
-- **Character autonomy** — bots are subjects, not just objects
+- **Character autonomy** — bot behavior patterns are worth observing, not just outputs
 
 **Anti-Over-Engineering Principle: Less Code, More Emergent Behavior**
 
@@ -230,7 +230,7 @@ memories, facts, trust, goals = await asyncio.gather(
 - `characters/{name}/character.md`: System prompt (supports `{user_name}`, `{current_datetime}` template vars)
 - `characters/{name}/core.yaml`: Identity (purpose, drives, constitution)
 - `characters/{name}/ux.yaml`: UX config (thinking indicators, response style, reactions)
-- `src_v2/evolution/trust.py`: Trust scoring (5 levels: Stranger→Acquaintance→Friend→Close→Soulmate)
+- `src_v2/evolution/trust.py`: Trust scoring (5 levels: Stranger→Acquaintance→Friend→Close Friend→Trusted)
 - `src_v2/evolution/feedback.py`: Reaction analysis via InfluxDB metrics
 
 ### Discord Integration

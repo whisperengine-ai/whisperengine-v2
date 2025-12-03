@@ -161,7 +161,7 @@ Remove the complex "Protocol/Factory" patterns unless strictly necessary.
     *   **Self-Evolution**: Characters reflect on conversations and update their own "Self-Knowledge" and relationship state.
     *   **Implementation**: 
         *   **Runtime Fact Extraction**: `KnowledgeManager` processes user messages in real-time, extracting facts to Neo4j.
-        *   **Trust Evolution**: `TrustManager` tracks relationship progression through 5 stages (Stranger → Acquaintance → Friend → Close Friend → Soulmate).
+        *   **Trust Evolution**: `TrustManager` tracks relationship progression through 5 stages (Stranger → Acquaintance → Friend → Close Friend → Trusted).
         *   **Goal Tracking**: `GoalManager` maintains active objectives and tracks progress.
         *   **Reflection Engine**: Background process for deep analysis and epiphany generation (planned).
 

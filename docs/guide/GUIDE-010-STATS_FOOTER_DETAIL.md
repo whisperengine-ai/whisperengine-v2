@@ -28,7 +28,7 @@ Shows how your relationship with the bot has developed over time.
 
 | Part | Meaning |
 |------|---------|
-| **Level** | Stranger → Acquaintance → Friend → Close Friend → Soulmate |
+| **Level** | Stranger → Acquaintance → Friend → Close Friend → Trusted |
 | **Trust Score** | Points earned through consistent, meaningful interactions (max 150) |
 | **Traits** | Special personality traits unlocked as trust grows |
 | **Interactions** | Total number of messages you've sent |

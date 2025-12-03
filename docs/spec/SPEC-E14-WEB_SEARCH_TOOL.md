@@ -18,7 +18,7 @@ This isn't just "add a search API." We leverage WhisperEngine's unique architect
 |---------|-------------------|------------------------|
 | **Results** | Ephemeral, used once | **Persisted to Neo4j** with source URLs |
 | **Citations** | None or basic | **Provenance-tracked** via GroundingSource |
-| **Depth** | Same for everyone | **Trust-gated** (Strangers: 3 results, Soulmates: 10+) |
+| **Depth** | Same for everyone | **Trust-gated** (Strangers: 3 results, Trusted: 10+) |
 | **Learning** | None | **Trace storage** for query pattern learning |
 | **Multi-bot** | Isolated | **Shared artifacts** so bots learn from each other |
 | **Voice** | Generic | **Character-specific** synthesis in bot's personality |
@@ -181,7 +181,7 @@ Leverage the trust system to control search behavior:
 | Acquaintance (20-39) | Standard search, 5 results |
 | Friend (40-59) | Extended search, can persist facts |
 | Close Friend (60-79) | Deep search with follow-up queries |
-| Soulmate (80+) | Full research mode, multi-source synthesis |
+| Trusted (80+) | Full research mode, multi-source synthesis |
 
 ```
 // Pseudocode: Trust-aware search depth
@@ -655,7 +655,7 @@ class WebSearchTool(BaseTool):
             )
             trust = relationship.get("trust_score", 0)
             
-            if trust >= 80:  # Soulmate
+            if trust >= 80:  # Trusted
                 return {"max_results": 10, "can_persist": True, "deep_search": True}
             elif trust >= 60:  # Close Friend
                 return {"max_results": 8, "can_persist": True, "follow_up": True}

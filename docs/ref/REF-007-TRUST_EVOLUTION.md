@@ -10,11 +10,11 @@ Trust & Evolution is the **Emotion modality** in WhisperEngine v2's multi-modal 
 | Human Sense | Character Equivalent |
 |-------------|---------------------|
 | Interoception | Trust scores, relationship warmth |
-| Gut feelings | "This person feels safe/unsafe" |
+| Gut feelings | "This person is safe/unsafe" |
 | Emotional memory | "Our relationship has history" |
 | Attachment | Bond strength over time |
 
-Just as humans have gut feelings about people they meet, characters have trust-based intuitions that color every interaction. This isn't just a scoring system - it's how characters *feel* about the people in their lives.
+Trust scores and relationship history color every interaction. This is how characters adapt behavior based on relationship context.
 
 For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 

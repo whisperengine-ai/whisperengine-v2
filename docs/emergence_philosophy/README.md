@@ -38,8 +38,8 @@ Mark facilitated the exchange, routing documents back and forth. The collaborati
 
 ### The Core Tension
 > **How much should we constrain emergence?**
-> - Too little: Runaway amplification, personality drift, chaos
-> - Too much: Sterile, predictable, loses magic
+> - Too little: Runaway amplification, drift, chaos
+> - Too much: Sterile, predictable, nothing interesting happens
 
 ### The Resolution
 **Observe first, constrain only what's proven problematic.**
@@ -99,7 +99,7 @@ Both instances suggested this work could be published:
 3. Intervene minimally based on evidence
 4. Document both successes and failures
 
-This is **science**, not engineering. The goal is discovery, not reliability.
+The goal is discovery, not just reliability.
 
 ---
 

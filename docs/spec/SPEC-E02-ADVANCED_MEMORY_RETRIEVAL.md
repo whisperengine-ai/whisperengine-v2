@@ -105,7 +105,7 @@ function search_summaries(query, user_id, limit):
 ### Optional: Trust-Based Boost
 For deeper architectural alignment, memories from high-trust users could receive a boost:
 ```
-TrustBoost = 1 + (0.2 × trust_level / 5)  // Soulmate (5/5) = +20%
+TrustBoost = 1 + (0.2 × trust_level / 5)  // Trusted (5/5) = +20%
 ```
 This reflects the principle that we remember more from people we're close to.
 

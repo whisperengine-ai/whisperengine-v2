@@ -67,7 +67,7 @@ async def test_trust_manager():
         # Test 4: Level Progression
         # ---------------------------------------------------------
         logger.info("Test 4: Progress through trust levels")
-        # Acquaintance: 20-49, Friend: 50-79, Close Friend: 80-119, Soulmate: 120+
+        # Acquaintance: 20-49, Friend: 50-79, Close Friend: 80-119, Trusted: 120+
         
         # Push to Acquaintance level (need 15 more to reach 20)
         await trust_manager.update_trust(test_user, test_character, delta=15)

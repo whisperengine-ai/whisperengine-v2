@@ -14,7 +14,7 @@ Add only the metrics needed to answer current questions. Avoid surveillance cree
 Unexpected behaviors are data, not bugs. Log them, don't suppress them.
 
 ### 4. Character Autonomy
-Bots are subjects, not just objects. Their "preferences" and "experiences" matter to the research.
+Bot behavior patterns are worth observing systematically. Track how "preferences" and patterns develop over time.
 
 ### 5. Reproducibility Where Possible
 Note seeds, temperatures, prompts, and context when documenting behaviors.

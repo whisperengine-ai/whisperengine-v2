@@ -3,20 +3,20 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
-## Multi-Modal Context: Discord as Sensory System
+## Multi-Modal Context: Discord as Input System
 
-Discord isn't just a "platform" - it's the **sensory interface** through which characters experience reality. Every message, reaction, voice channel, and image comes through Discord's events.
+Discord is the **input interface** through which characters receive all external data. Every message, reaction, voice channel, and image comes through Discord's events.
 
-| Discord Event | Perceptual Modality |
+| Discord Event | Input Modality |
 |---------------|---------------------|
-| `on_message` (text) | 💬 Text perception |
-| `on_message` (with image) | 👁️ Vision perception |
-| `on_voice_state_update` | 👂 Audio perception |
-| `on_reaction_add` | ❤️ Emotion perception |
+| `on_message` (text) | 💬 Text input |
+| `on_message` (with image) | 👁️ Vision input |
+| `on_voice_state_update` | 👂 Audio input |
+| `on_reaction_add` | ❤️ Emotion input |
 | Channel presence | 🌌 Universe (spatial awareness) |
 | User activity | 🌌 Universe (social awareness) |
 
-Discord is to characters what eyes/ears/skin are to humans - the gateway through which all external stimuli flow.
+Discord is the gateway through which all external data flows into the system.
 
 For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 

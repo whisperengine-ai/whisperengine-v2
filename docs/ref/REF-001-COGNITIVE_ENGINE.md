@@ -112,7 +112,7 @@ Handles dynamic system prompt construction.
 **Injected Context Layers:**
 1.  **Base Identity**: `character.md` (Static character definition)
 2.  **Past Summaries**: Relevant long-term memories from Qdrant
-3.  **Relationship Status**: Trust level and evolution state (Stranger→Soulmate)
+3.  **Relationship Status**: Trust level and evolution state (Stranger→Trusted)
 4.  **User Insights**: Psychological observations, preferences, feedback patterns
 5.  **Active Goal**: Current objective with strategy (if goal strategist enabled)
 6.  **Diary Context**: Character's recent private thoughts (Phase E2)
@@ -310,7 +310,7 @@ graph LR
 
 1.  **Base Identity**: `character.md` (Static system prompt)
 2.  **Past Summaries**: Relevant long-term memories from Qdrant (`past_summaries`)
-3.  **Relationship Status**: Trust level (Stranger→Acquaintance→Friend→Close→Soulmate)
+3.  **Relationship Status**: Trust level (Stranger→Acquaintance→Friend→Close→Trusted)
 4.  **User Feedback Patterns**: Recommendations derived from reaction analysis
 5.  **Active Goal**: Current objective + strategy from Goal Strategist
 6.  **Diary Context**: Character's recent private thoughts (Phase E2)

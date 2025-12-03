@@ -13,7 +13,7 @@ Message flow is **perceptual processing** - the pipeline through which raw input
 | Context | 🧠 Memory, ❤️ Emotion (trust), 🌌 Universe (spatial) |
 | Output | 💬 Text, 👂 Audio (TTS) |
 
-This isn't just "processing" - it's how characters **experience** each interaction.
+This is how characters **process** each interaction.
 
 For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 

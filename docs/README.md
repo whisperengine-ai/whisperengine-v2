@@ -216,7 +216,7 @@ python tests_v2/run_regression.py --report
 
 ## 🌌 The Grand Vision: Federated Emergence Network
 
-WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federated network of autonomous agents** where behavior emerges from persistent graph traversal, not configuration. The ultimate vision:
+WhisperEngine v2 is building toward a **federated network of autonomous agents** where behavior emerges from persistent graph traversal, not configuration. The ultimate vision:
 
 1. **Characters are persistent entities** with consistent behavior across six input modalities
 2. **Each deployment is a universe** with its own characters, planets (Discord servers), and inhabitants (users)
