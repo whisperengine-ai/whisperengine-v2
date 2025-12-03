@@ -190,7 +190,7 @@ When done, provide a brief summary of what you learned."""
                 message_count = await conn.fetchval("""
                     SELECT COUNT(*) FROM v2_chat_history 
                     WHERE user_id = $1 AND character_name = $2
-                    AND created_at > NOW() - INTERVAL '24 hours'
+                    AND timestamp > NOW() - INTERVAL '24 hours'
                 """, user_id, character_name)
                 
                 if message_count < 5:

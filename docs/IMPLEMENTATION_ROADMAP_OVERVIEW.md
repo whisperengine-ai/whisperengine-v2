@@ -73,7 +73,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | ✅ Complete |
 | 🟢 High | **E23** | **Schedule Jitter** | **0.5 days** | E16 | ✅ Complete |
 | 🟢 High | **E22** | **Absence Tracking (Meta-Memory)** | **1 day** | E12, E23 | ✅ Complete |
-| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | ✅ Phase 1-4 |
+| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 Phase 1 Only |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | ✅ Complete |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |
@@ -81,7 +81,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | S4 | Proactive Timezone | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | E9 | Artifact Provenance | 1-2 days | — | ✅ Complete |
 | 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
-| 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | 📋 Proposed |
+| 🟡 Medium | **E19** | **Graph Walker Agent** | **2-3 days** | Neo4j, LangGraph | ✅ Complete |
 | 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15, E6 | 📋 Proposed |
 | Low | E8 | Bot Broadcast Channel | 2-3 days | S1 | ✅ Complete |
 | Low | E7 | User Timezone Support | 1-2 days | S4 | ✅ Complete |
@@ -1597,10 +1597,9 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 | Feature | Description | Status |
 |---------|-------------|--------|
 | **Autonomous Reactions** | React to messages with contextually appropriate emojis | ✅ Complete |
-| **Goals-Driven Posting** | Post thoughts driven by goals.yaml + core.yaml | 📋 Phase 2 |
-| **Web Search Commentary** | Post about current events (stocks, news) | 📋 Phase 3 |
+| **Posting Agent** | Goals-driven posting (formerly Phase 2) | 📋 Phase 2 |
+| **Conversation Agent** | Bot-to-bot dialogue (formerly Phase 5) | 📋 Phase 3 |
 | **Activity Orchestrator** | Scale activity inversely to human presence | 📋 Phase 4 |
-| **Bot-to-Bot Conversations** | Public dialogue between bots | 📋 Phase 5 |
 
 **Design Principles:**
 - Activity inversely proportional to human activity (more bots when quiet)
@@ -1611,8 +1610,8 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Files:**
 - ✅ `src_v2/agents/reaction_agent.py` - Emoji reaction decisions (IMPLEMENTED)
-- 📋 `src_v2/agents/posting_agent.py` - Goals-driven post generation
-- 📋 `src_v2/agents/topic_selector.py` - Goals/drives topic selection
+- 📋 `src_v2/agents/posting_agent.py` - Goals-driven post generation (LangGraph)
+- 📋 `src_v2/agents/conversation_agent.py` - Bot-to-bot dialogue (LangGraph)
 - 📋 `src_v2/discord/activity_orchestrator.py` - Central coordinator
 
 **Character Config:**
@@ -1732,6 +1731,31 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 **Files:**
 - `src_v2/workers/tasks/summary_tasks.py`
 - `src_v2/workers/tasks/knowledge_tasks.py`
+
+---
+
+### ✅ Phase E19: Graph Walker Agent
+**Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
+**Status:** ✅ Complete
+**Dependencies:** Neo4j, LangGraph
+**Added:** December 2025
+
+**Problem:** Static Cypher queries (e.g., "Find all facts about Mark") miss the rich, serendipitous connections in the graph. A character should be able to "wander" through their knowledge, following threads of association like a human mind.
+
+**Solution:** A Python-first `GraphWalker` that performs weighted BFS traversal to discover thematic clusters, followed by a single LLM call to synthesize meaning.
+
+**Key Features:**
+- **Weighted Traversal:** Follows edges based on Recency, Frequency, Trust, and Emotional Intensity.
+- **Serendipity:** Configurable randomness to discover unexpected connections.
+- **Cluster Synthesis:** Groups nodes into thematic clusters (e.g., "Mark's Hobbies", "Shared Fears").
+- **Integration:** Powers DreamWeaver (finding dream seeds) and Diary (finding reflection themes).
+
+**Architecture:**
+- `src_v2/knowledge/walker.py`: Core BFS logic + `GraphWalkerAgent`.
+- `src_v2/memory/dreams.py`: Uses walker to find "hidden connections" for dreams.
+- `src_v2/memory/diary.py`: Uses walker to enrich daily reflections.
+
+**Spec:** [GRAPH_WALKER_AGENT.md](./roadmaps/GRAPH_WALKER_AGENT.md)
 
 ---
 
@@ -1899,4 +1923,35 @@ Enables diary entries like:
 - `src_v2/agents/dreamweaver.py`
 
 **Reference:** [GRAPH_SYSTEMS_DESIGN.md Appendix A](./architecture/GRAPH_SYSTEMS_DESIGN.md#appendix-a-graphs-as-substrate-of-consciousness)
+
+---
+
+### 📋 Phase E24: Advanced Queue Operations
+**Priority:** 🟡 Medium | **Time:** 3-4 days | **Complexity:** High
+**Status:** 📋 Proposed
+**Dependencies:** E18 (Agentic Queue System)
+**Added:** December 2025
+
+**Problem:** The current queue system uses a single worker container for all task types, and agents cannot trigger each other directly. This limits scalability and emergent complexity.
+
+**Solution:** Expand the queue system to support specialized workers and inter-agent triggers.
+
+**Key Features:**
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Specialized Workers** | Split `insight-worker` into `cognition`, `sensory`, `action` containers | 📋 Proposed |
+| **Inter-Agent Triggers** | Insight Agent triggers Proactive Agent via `queue:action` | 📋 Proposed |
+| **Hive Mind Dashboard** | CLI/Web tool to visualize queue state and pending thoughts | 📋 Proposed |
+
+**Architecture:**
+- **Sensory Queue (`arq:sensory`)**: Fast analysis (sentiment, intent)
+- **Cognition Queue (`arq:cognition`)**: Deep reasoning (dreams, diaries)
+- **Action Queue (`arq:action`)**: Outbound effects (proactive messages)
+- **Social Queue (`arq:social`)**: Inter-agent communication
+
+**Emergence:**
+Allows for "Stigmergic" behavior where agents communicate by modifying the environment (the queue) rather than calling each other directly.
+
+**Spec:** [AGENTIC_QUEUE_ARCHITECTURE.md](./architecture/AGENTIC_QUEUE_ARCHITECTURE.md)
 

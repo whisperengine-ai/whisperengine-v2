@@ -196,7 +196,7 @@ Return JSON list of objects:
                     SELECT role, content 
                     FROM v2_chat_history 
                     WHERE user_id = $1 AND character_name = $2
-                    ORDER BY created_at DESC 
+                    ORDER BY timestamp DESC 
                     LIMIT 10
                 """, user_id, character_name)
                 

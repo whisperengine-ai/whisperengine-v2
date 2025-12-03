@@ -56,7 +56,7 @@ async def get_or_create_baseline(
                 SELECT content 
                 FROM v2_chat_history 
                 WHERE character_name = $1 AND role = 'assistant'
-                ORDER BY created_at ASC 
+                ORDER BY timestamp ASC 
                 LIMIT 100
             """, bot_name)
             
@@ -109,15 +109,15 @@ async def get_recent_responses(
         
         async with db_manager.postgres_pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT content, created_at 
+                SELECT content, timestamp 
                 FROM v2_chat_history 
                 WHERE character_name = $1 AND role = 'assistant'
-                AND created_at > $2
-                ORDER BY created_at DESC 
+                AND timestamp > $2
+                ORDER BY timestamp DESC 
                 LIMIT 100
             """, bot_name, cutoff)
             
-            return [{"content": row["content"], "created_at": row["created_at"]} for row in rows]
+            return [{"content": row["content"], "created_at": row["timestamp"]} for row in rows]
             
     except Exception as e:
         logger.error(f"Failed to get recent responses for {bot_name}: {e}")
