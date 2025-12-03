@@ -17,11 +17,21 @@ WhisperEngine 1.0 proved that high-fidelity, memory-persistent AI roleplay is po
 
 **WhisperEngine 2.0** aims to deliver the same high-quality user experience (rich personality, long-term memory) with **simplified code logic** while leveraging **robust, specialized infrastructure**.
 
-### The Core Insight: Multi-Modal Processing
+### The Core Insight: Graph-First Orchestration
 
-> *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
+> *"The magic is in what we traverse, not what we perceive."*
 
-AI agents process information through multiple input streams. WhisperEngine v2 provides six first-class data modalities:
+WhisperEngine v2's actual innovation is **unified graph-based agent orchestration**, not multimodal input. The system uses:
+
+- **Neo4j** for semantic knowledge (facts, relationships, emergent concepts)
+- **LangGraph** for agent behavior (reasoning loops, decision-making workflows)
+- **Shared universe model** for cross-agent awareness
+
+Multimodal perception (vision, audio, text, etc.) is the *sensory layer* that feeds data into these graphs, but the graphs are the substrate where behavior develops.
+
+### The Perceptual Architecture
+
+To build this graph, agents need input. WhisperEngine provides **six perceptual modalities** that feed into the knowledge graph:
 
 | Modality | Technical Domain | Implementation |
 |----------|------------------|----------------|
@@ -32,9 +42,7 @@ AI agents process information through multiple input streams. WhisperEngine v2 p
 | 🧠 **Memory** | Vector + Graph Retrieval | Qdrant vectors + Neo4j facts |
 | ❤️ **Sentiment** | Internal State Analysis | Trust Evolution + Feedback Analysis |
 
-**This is not just a feature set. This is how agents build context.**
-
-For full philosophy: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
+For the six modalities: See [`MULTI_MODAL_PERCEPTION.md`](./MULTI_MODAL_PERCEPTION.md)
 
 ### The Grand Vision: Federated Multiverse
 

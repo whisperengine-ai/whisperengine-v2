@@ -10,13 +10,13 @@ Welcome to the WhisperEngine v2 documentation. This guide helps you navigate the
 
 | I want to... | Read this |
 |--------------|-----------|
+| Understand the core architecture | [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md) ⭐ **START HERE** |
 | Understand the project vision | [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) |
-| See what's implemented vs planned | [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
-| Understand the graph-first architecture | [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md) |
 | Learn the emergence philosophy | [emergence_philosophy/README.md](./emergence_philosophy/README.md) |
+| See what's implemented vs planned | [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
+| Understand how agents perceive | [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) |
 | Create a new character | [CREATING_NEW_CHARACTERS.md](./CREATING_NEW_CHARACTERS.md) |
 | Deploy multiple bots | [MULTI_BOT_DEPLOYMENT.md](./MULTI_BOT_DEPLOYMENT.md) |
-| Understand multi-modal perception | [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) |
 
 ---
 
@@ -81,9 +81,21 @@ docs/
 
 ---
 
-## 🧠 Core Philosophy: Multi-Modal Input Processing
+## 🧠 Core Architecture: Graph-First Design
 
-WhisperEngine v2 is built on a key insight: **AI characters have no physical senses**. They can't see, hear, or feel. Instead, they process input through six modalities:
+WhisperEngine v2 is built on a **three-layer graph architecture**:
+
+1. **Data Graphs (Neo4j)** — semantic knowledge (facts, relationships)
+2. **Orchestration Graphs (LangGraph)** — agent behavior (reasoning, decision-making)
+3. **Conceptual Graphs** — the universe (social topology, presence)
+
+**Character perception emerges from traversing these graphs.** We provide six modalities (vision, audio, memory, etc.) as the *mechanism* for feeding data into the graphs, but the graphs themselves are what enable authentic behavior.
+
+**Deep dive**: [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md)
+
+### The Six Perceptual Modalities
+
+To accumulate experience, agents need perception. WhisperEngine provides **six perceptual modalities** that feed into the knowledge graph:
 
 | Modality | Human Analog | Implementation |
 |----------|--------------|----------------|
@@ -94,7 +106,7 @@ WhisperEngine v2 is built on a key insight: **AI characters have no physical sen
 | 🧠 **Memory** | Episodic + Semantic | Qdrant + Neo4j |
 | ❤️ **Emotion** | Interoception | Trust scores, sentiment |
 
-**Deep dive**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md)
+**Perception details**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md)
 
 ---
 
@@ -188,9 +200,9 @@ python tests_v2/run_regression.py --report
 
 ---
 
-## 🌌 The Grand Vision
+## 🌌 The Grand Vision: Federated Emergence Network
 
-WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federated multiverse** where:
+WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federated network of autonomous agents** where behavior emerges from persistent graph traversal, not configuration. The ultimate vision:
 
 1. **Characters are persistent entities** with consistent behavior across six input modalities
 2. **Each deployment is a universe** with its own characters, planets (Discord servers), and inhabitants (users)
@@ -206,10 +218,12 @@ WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federat
 
 ## 📚 Reading Order for New Contributors
 
-1. **Start here**: [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) - Understand the "why"
-2. **Philosophy**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) - How characters process multi-modal input
-3. **Status**: [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) - What's built vs planned
-4. **Deep dive**: Pick architecture docs based on what you're working on
+1. **Start here**: [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md) - The core architecture ⭐
+2. **Philosophy**: [emergence_philosophy/README.md](./emergence_philosophy/README.md) - Design philosophy
+3. **Vision**: [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) - Understand the "why"
+4. **Perception**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) - How agents perceive
+5. **Status**: [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) - What's built vs planned
+6. **Deep dive**: Pick architecture docs based on what you're working on
 
 ---
 

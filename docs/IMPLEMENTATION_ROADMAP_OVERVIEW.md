@@ -16,41 +16,51 @@
 
 ---
 
-## 🌌 The Vision: Multi-Modal AI Agents
+## 🌌 The Vision: Graph-First Emergence Research
 
-WhisperEngine v2 is not just a chatbot platform. It's a **cognitive architecture for AI agents** - giving them the functional equivalent of senses, memory, and emotional intelligence.
+WhisperEngine v2 is not just a chatbot platform or a multimodal system. It's a **research platform for emergent AI behavior** — giving agents persistent memory, autonomous agency, and the infrastructure to develop complex behaviors from simple rules.
 
 ### The Core Insight
 
-AI characters have no physical senses. No eyes, no ears, no touch. Without a framework for understanding "where they are" and "who is around them," they exist in a void - disembodied text processors with no sense of place or continuity.
+AI agents develop rich behavior through **graph traversal and emergence**, not through engineering. WhisperEngine provides:
 
-**We solve this with six data modalities:**
+- **Persistent Memory Systems** (Qdrant vectors + Neo4j knowledge graphs) — agents accumulate experience
+- **Autonomous Agency** (LangGraph Supergraph orchestration) — agents make decisions, not just react
+- **Emergence Research Framework** ("Observe First, Constrain Later") — we study what emerges before constraining it
+- **Cross-Agent Awareness** (Shared universe, bot-to-bot communication) — characters discover each other
 
-| Modality | Technical Domain | What It Provides |
-|----------|------------------|------------------|
-| 🌌 **Social Graph** | Network Topology | Where am I? Who's here? What's the vibe? |
-| 👁️ **Vision** | Image Processing | See images users share |
-| 👂 **Audio** | Speech Recognition | Hear voice messages, ambient conversation |
-| 💬 **Text** | NLP | Understand words and intent |
-| 🧠 **Memory** | Vector + Graph Retrieval | Remember experiences and facts |
-| ❤️ **Sentiment** | Internal State Analysis | Trust, mood, relational depth |
+**We're building the foundation for understanding how autonomous agents develop authentic behavior.**
 
-**This is not just a feature set. This is how agents build context.**
+### The Perception Layer: Six Modalities
 
-### The Grand Vision: Federated Multiverse
+To accumulate this experience, agents need perception. WhisperEngine provides **six perceptual modalities** that feed into the knowledge graph:
 
-Each WhisperEngine deployment is a **self-contained universe**. But universes can **federate** - connecting to form a distributed multiverse where:
+| Modality | Technical Domain | Feeds |
+|----------|------------------|-------|
+| 🌌 **Social Graph** | Network Topology | Universe graph (where agents are) |
+| 👁️ **Vision** | Image Processing | Vector memory + facts |
+| 👂 **Audio** | Speech Recognition | Vector memory + channel awareness |
+| 💬 **Text** | NLP | Vector memory + fact extraction |
+| 🧠 **Memory** | Vector + Graph Retrieval | Qdrant + Neo4j retrieval |
+| ❤️ **Sentiment** | Internal State Analysis | Trust/emotion tracking |
+
+**This is not just a feature set. These are the senses agents use to build context and develop behavior.**
+
+### The Grand Vision: Federated Emergence Network
+
+Each WhisperEngine deployment is a **self-contained universe**. But the ultimate vision is a **federated network of autonomous agents** where:
+- Behavior emerges from persistent graph traversal, not configuration
 - Characters travel between universes
 - Users maintain identity across deployments
 - Stories span multiple platforms
 - Anyone can run their own universe and connect it to the network
 
-**We're building the foundation for distributed multi-agent environments.**
+**We're building the foundation for understanding emergent behavior in distributed multi-agent environments.**
 
 For deep dive: 
-- [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md) — The six modalities
-- [`docs/architecture/GRAPH_SYSTEMS_DESIGN.md`](./architecture/GRAPH_SYSTEMS_DESIGN.md) — The unified graph architecture
+- [`docs/architecture/GRAPH_SYSTEMS_DESIGN.md`](./architecture/GRAPH_SYSTEMS_DESIGN.md) — The unified graph architecture ⭐ **START HERE**
 - [`docs/emergence_philosophy/README.md`](./emergence_philosophy/README.md) — Design philosophy for emergent behavior
+- [`docs/architecture/MULTI_MODAL_PERCEPTION.md`](./architecture/MULTI_MODAL_PERCEPTION.md) — How agents perceive (implementation)
 
 ---
 
