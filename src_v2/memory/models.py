@@ -14,6 +14,7 @@ class MemorySourceType(str, Enum):
     OBSERVATION = "observation"         # Stigmergic observation of environment
     DIARY = "diary"                     # Self-reflection in diary
     SUMMARY = "summary"                 # Compressed history
+    ABSENCE = "absence"                 # Meta-memory of missing information (Phase E22)
 
 class Memory(BaseModel):
     """

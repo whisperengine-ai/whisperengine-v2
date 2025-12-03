@@ -1,6 +1,9 @@
 from typing import Dict, Any
 from loguru import logger
 from src_v2.config.settings import settings
+from src_v2.memory.manager import memory_manager
+from src_v2.memory.models import MemorySourceType
+from datetime import datetime, timedelta
 
 
 async def run_dream_generation(
@@ -37,7 +40,7 @@ async def run_dream_generation(
         from src_v2.memory.dreams import get_dream_manager
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
-        from datetime import datetime, timezone
+        from datetime import timezone
         
         dream_manager = get_dream_manager(character_name)
         
@@ -95,11 +98,57 @@ async def run_dream_generation(
         
         if not material.is_sufficient():
             logger.info(f"Not enough dream material for {character_name}")
+            
+            # Phase E22: Absence Tracking
+            # Record the failure to dream as a memory
+            try:
+                # 1. Find previous absence to calculate streak
+                # We search for recent "absence" type memories
+                recent_absences = await memory_manager.search_memories_advanced(
+                    query="absence of dream material",
+                    metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
+                    limit=1,
+                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp() # Look back 48h
+                )
+                
+                streak = 1
+                prior_id = None
+                
+                if recent_absences:
+                    last_absence = recent_absences[0]
+                    last_streak = last_absence.get("absence_streak", 1)
+                    streak = last_streak + 1
+                    prior_id = last_absence.get("id")
+                    logger.info(f"Found prior absence (streak: {last_streak} -> {streak})")
+                
+                # 2. Store new absence memory
+                content = f"I tried to dream tonight, but the day felt thin. Not enough to weave. (Streak: {streak})"
+                
+                await memory_manager.save_typed_memory(
+                    user_id=character_name, # Self-memory
+                    memory_type="absence",
+                    content=content,
+                    metadata={
+                        "what_was_sought": "dream_material",
+                        "material_richness": material.richness_score(),
+                        "threshold": settings.DREAM_MIN_RICHNESS,
+                        "prior_absence_id": prior_id,
+                        "absence_streak": streak
+                    },
+                    source_type=MemorySourceType.ABSENCE,
+                    importance_score=2 # Low importance, but present
+                )
+                logger.info(f"Recorded absence memory for {character_name} (streak: {streak})")
+                
+            except Exception as e:
+                logger.error(f"Failed to record absence memory: {e}")
+
             return {
                 "success": True,
                 "skipped": True,
                 "reason": "insufficient_material",
-                "character_name": character_name
+                "character_name": character_name,
+                "absence_recorded": True
             }
 
         # Run Graph
