@@ -44,19 +44,20 @@ class BotConfig:
     is_production: bool = False
 
 
-# All bot configurations (synced with actual .env.* files as of Nov 30, 2025)
+# All bot configurations (synced with actual .env.* files as of Dec 3, 2025)
 BOT_CONFIGS = [
-    BotConfig("elena", 8000, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
-    BotConfig("ryan", 8001, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
-    BotConfig("dotty", 8002, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
-    BotConfig("aria", 8003, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
-    BotConfig("dream", 8004, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
-    BotConfig("jake", 8005, "anthropic/claude-haiku-4.5", "anthropic/claude-haiku-4.5"),
-    BotConfig("sophia", 8006, "anthropic/claude-sonnet-4.5", "anthropic/claude-haiku-4.5"),
-    BotConfig("marcus", 8007, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
-    BotConfig("nottaylor", 8008, "anthropic/claude-haiku-4.5", "openai/gpt-4o", is_production=True),
-    BotConfig("gabriel", 8009, "mistralai/mistral-medium-3.1", "openai/gpt-4o"),
+    BotConfig("elena", 8000, "anthropic/claude-sonnet-4.5", "anthropic/claude-sonnet-4.5"),
+    BotConfig("ryan", 8001, "meta-llama/llama-3.3-70b-instruct", "anthropic/claude-sonnet-4.5"),
+    BotConfig("dotty", 8002, "anthropic/claude-3.7-sonnet", "openai/gpt-4o"),
+    BotConfig("aria", 8003, "anthropic/claude-3.5-sonnet", "anthropic/claude-sonnet-4.5"),
+    BotConfig("dream", 8004, "deepseek/deepseek-chat", "mistralai/mistral-large"),
+    BotConfig("jake", 8005, "anthropic/claude-3.5-sonnet", "deepseek/deepseek-r1"),
+    BotConfig("sophia", 8006, "google/gemini-2.5-pro", "anthropic/claude-sonnet-4.5"),
+    BotConfig("marcus", 8007, "mistralai/mistral-large", "anthropic/claude-sonnet-4.5"),
+    BotConfig("nottaylor", 8008, "openai/gpt-4o", "anthropic/claude-sonnet-4.5", is_production=True),
+    BotConfig("gabriel", 8009, "mistralai/mistral-medium-3.1", "anthropic/claude-3.5-sonnet"),
     BotConfig("aetheris", 8011, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
+    BotConfig("aethys", 8010, "mistralai/mistral-medium-3.1", "anthropic/claude-3.5-sonnet"),
 ]
 
 # Test user prefix to avoid polluting real user data
@@ -197,7 +198,7 @@ class TestBasicChat:
             assert result.get("success") is True
             assert result.get("bot_name") == bot.name
             assert len(result.get("response", "")) > 0
-            assert result.get("mode") in ["fast", "agency", "reflective", "blocked", None]
+            assert result.get("mode") in ["fast", "agency", "reflective", "blocked", "supergraph", None]
             
             print(f"\n[{bot.name}] Greeting test:")
             print(f"  Mode: {result.get('mode')}")

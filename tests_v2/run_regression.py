@@ -56,7 +56,7 @@ TEST_CATEGORIES = {
 }
 
 # Bot names for filtering
-BOTS = ["elena", "ryan", "dotty", "aria", "dream", "jake", "sophia", "marcus", "nottaylor"]
+BOTS = ["elena", "ryan", "dotty", "aria", "dream", "jake", "sophia", "marcus", "nottaylor", "gabriel", "aetheris", "aethys"]
 
 
 def start_api_server(bot_name: str, port: int) -> subprocess.Popen:
