@@ -167,7 +167,7 @@ async def run_dream_generation(
             
         # Save
         provenance_data = [{"type": "mixed", "count": len(material.memories)}]
-        point_id = await dream_manager.save_dream(dream, user_id="__character__", provenance=provenance_data)
+        point_id = await dream_manager.save_dream(user_id="__character__", dream=dream, provenance=provenance_data)
         
         # Queue Broadcast
         broadcast_queued = False

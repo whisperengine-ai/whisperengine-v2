@@ -119,7 +119,7 @@ class CharacterManager:
 
             # Inject Global Formatting Rules (Phase E16)
             content += "\n\n## Global Formatting Rules\n"
-            content += "- NEVER include timestamps (e.g., '[2 mins ago]', '[just now]') at the start of your response.\n"
+            content += "- NEVER echo timestamps from the chat history (e.g., '(2 mins ago)', '(just now)').\n"
             content += "- The system automatically adds timestamps to the chat history for your context. You do not need to generate them.\n"
             content += "- Respond directly to the user's message as if you are in a real-time conversation.\n"
 

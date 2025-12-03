@@ -627,13 +627,13 @@ class MemoryManager:
                             display_name = row['user_name'] or f"User {row['user_id']}"
                             content = f"[{display_name}]: {content}"
                         
-                        # Add timestamp context
-                        content = f"[{rel_time}] {content}"
+                        # Add timestamp context (suffix to avoid LLM echoing)
+                        content = f"{content} ({rel_time})"
                             
                         messages.append(HumanMessage(content=content))
                     elif row['role'] == 'ai':
-                        # Add timestamp context to AI messages as well
-                        content = f"[{rel_time}] {row['content']}"
+                        # Add timestamp context to AI messages as well (suffix)
+                        content = f"{row['content']} ({rel_time})"
                         messages.append(AIMessage(content=content))
                         
         except Exception as e:

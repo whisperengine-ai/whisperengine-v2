@@ -160,7 +160,7 @@ class ComplexityClassifier:
         
         # Add hint about document context
         if history_has_documents:
-            context_str += "\n[NOTE: Recent conversation involved document uploads or file analysis. Short follow-up questions likely refer to this content and may need tools to search memories.]\n"
+            context_str += "\n[NOTE: Recent conversation involved document uploads or file analysis. Short follow-up questions likely refer to this content and may need tools to search memories. Assume deeper analysis is needed (COMPLEX_MID) if the user asks for opinions, pros/cons, or evaluation of the documents.]\n"
 
         # Build dynamic intent section
         intent_section = "INTENT DETECTION:\n- \"search\": User asks to search for information or look something up."
@@ -230,8 +230,12 @@ COMPLEXITY LEVELS:
    - "What is my name?" (fact lookup)
    - "What channels can you see?" (planet context lookup)
    - "What is 25 * 4?" (simple math)
+   - "Do a search for X" (explicit simple search command)
 3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, moderate reasoning, OR image generation.
 {image_gen_example}
+   - "What are the pros and cons of X?" (analysis)
+   - "Critique this design" or "Evaluate this idea" (deep reasoning)
+   - "What do you think about [complex topic]?" (opinion/synthesis)
    - Analysis of attached files/documents ([Attached File Content]).
    - Summarization of long text.
    - Follow-up questions about previously uploaded documents or files.
@@ -244,7 +248,7 @@ COMPLEXITY LEVELS:
 IMPORTANT CONTEXT RULES:
 - Any request to generate, create, draw, paint, show, or visualize an image MUST be classified as COMPLEX_MID or higher (to enable Reflective Mode).
 - If the input contains [Attached File Content] or [Attached Files:], default to COMPLEX_MID unless the user just wants a simple acknowledgement.
-- If recent history mentions documents, files, or images, and the user asks a SHORT follow-up question (like "search", "look for X", "what about Y", "can you see them"), classify as COMPLEX_LOW or COMPLEX_MID since they likely refer to the document content.
+- If recent history mentions documents, files, or images, and the user asks a follow-up question (like "search", "look for X", "what about Y", "can you see them", "pros and cons", "thoughts?"), classify as COMPLEX_MID since they likely refer to the document content and require analysis.
 - Short imperative commands like "do a search", "look it up", "find it" after document discussion = COMPLEX_LOW (needs memory search tool).
 
 Return a JSON object with "complexity" and "intents" (list of strings)."""

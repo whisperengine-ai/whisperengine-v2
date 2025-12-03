@@ -150,7 +150,7 @@ class ContextBuilder:
             system_content += self._get_meta_instructions()
             
             # 2.11 Timestamp Instruction (Anti-Hallucination)
-            system_content += "\n\n[SYSTEM NOTE]\nChat history messages are prefixed with relative timestamps (e.g. [2 mins ago]). These are for your context only. DO NOT generate these timestamps in your response."
+            system_content += "\n\n[SYSTEM NOTE]\nChat history messages have relative timestamps at the end (e.g. 'message text (2 mins ago)'). These are for your context only. DO NOT echo these timestamps in your response."
 
         except Exception as e:
             logger.error(f"Failed to inject evolution/goal state: {e}")

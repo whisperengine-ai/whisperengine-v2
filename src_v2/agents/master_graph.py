@@ -228,18 +228,27 @@ class MasterGraphAgent:
         )
         
         # 2. Inject Vector Memories (fetched in context_node)
+        # SKIP memory injection if the user uploaded documents - this prevents context pollution
+        # where the LLM confuses past conversation memories with the current document analysis request
+        has_documents = context_variables.get("has_documents", False)
         memories = context_data.get("memories", [])
-        if memories:
+        
+        if memories and not has_documents:
             memory_context = ""
             for mem in memories:
-                # Format: [Time] Content (Score)
+                # Format: Content (Time) - timestamp at END to avoid LLM echoing it as content
                 rel_time = mem.get("relative_time", "unknown time")
                 content = mem.get("content", "")
-                memory_context += f"- [{rel_time}] {content}\n"
+                # Truncate very long memories to avoid bloating context
+                if len(content) > 500:
+                    content = content[:500] + "..."
+                memory_context += f"- {content} ({rel_time})\n"
             
             if memory_context:
                 system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{memory_context}\n"
                 system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+        elif has_documents:
+            logger.debug("Skipping memory context injection for document-focused request")
 
         # 3. Template Variable Substitution
         # Replace {user_name}, {current_datetime}, and any other context variables

@@ -12,17 +12,13 @@ from langgraph.graph import StateGraph, END
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.constants import should_use_base64
 from src_v2.tools.memory_tools import (
-    SearchSummariesTool, 
-    SearchEpisodesTool, 
-    LookupFactsTool, 
-    UpdateFactsTool, 
-    UpdatePreferencesTool,
-    ExploreGraphTool,
-    DiscoverCommonGroundTool,
-    CharacterEvolutionTool,
-    SearchMyThoughtsTool,
-    CreateUserGoalTool
+    SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, 
+    UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool,
+    CreateUserGoalTool, ExploreGraphTool, DiscoverCommonGroundTool,
+    CharacterEvolutionTool
 )
+from src_v2.tools.document_tools import ReadDocumentTool
+from src_v2.agents.composite_tools import AnalyzeTopicTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
 from src_v2.tools.insight_tools import (
@@ -95,6 +91,9 @@ class ReflectiveGraphAgent:
             UpdatePreferencesTool(user_id=user_id, character_name=character_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
             
+            # Document Tool
+            ReadDocumentTool(user_id=user_id, character_name=character_name),
+            
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
             SearchMyThoughtsTool(character_name=character_name),
             
@@ -160,7 +159,7 @@ class ReflectiveGraphAgent:
         
         # Build tool categories list
         tool_categories = [
-            "1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic",
+            "1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic, read_document",
             "2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)",
             "3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution",
             "4. Introspection: analyze_conversation_patterns, detect_recurring_themes",
@@ -180,6 +179,7 @@ class ReflectiveGraphAgent:
         # Build tool usage guide - each tool gets ONE clear description
         tool_guide_entries = [
             # Memory tools
+            ("read_document", "Read the full content of an attached file. Use this when the user says 'check this out' or asks about a file."),
             ("search_specific_memories", "Search the USER's past conversations, quotes, or things they mentioned."),
             ("search_archived_summaries", "Search summarized conversation history for broader context."),
             ("lookup_user_facts", "Look up stored facts about the user (preferences, background, etc.)."),
@@ -245,7 +245,7 @@ IMPORTANT NOTES:
 - When calling generate_image, copy ALL visual details into the prompt. The tool cannot see your reasoning.
 - If image_type='other', describe the subject only - do NOT include your own appearance.
 - When asked to search/explore/analyze, call the tool immediately. Don't just describe what you'll do.
-- If the user shares a document, you'll see a PREVIEW. Use search_specific_memories to get full content."""
+- If the user shares a document, you'll see a PREVIEW. Use read_document to get full content."""
 
         return f"""You are a reflective AI agent designed to answer complex questions through careful reasoning and tool use.
 
@@ -609,8 +609,8 @@ TOOL USAGE GUIDE:
                 "end": END
             }
         )
-        # Edge: Tools -> Critic (after tool execution)
-        workflow.add_edge("tools", "critic")
+        # Edge: Tools -> Agent (after tool execution, agent processes results)
+        workflow.add_edge("tools", "agent")
         
         # Edge: Critic -> conditionally back to Agent or END
         workflow.add_conditional_edges(

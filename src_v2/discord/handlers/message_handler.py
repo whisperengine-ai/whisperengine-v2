@@ -507,9 +507,11 @@ class MessageHandler:
                             # Format with relative time AND absolute date for clarity
                             def format_mem(m):
                                 rel = m.get('relative_time', 'unknown time')
-                                ts = m.get('timestamp', '')
-                                date_str = ts.split('T')[0] if ts else 'unknown date'
-                                return f"- {m['content']} ({rel}, {date_str})"
+                                content = m.get('content', '')
+                                # Truncate very long memories
+                                if len(content) > 500:
+                                    content = content[:500] + "..."
+                                return f"- {content} ({rel})"
                             
                             fmt = "\n".join([format_mem(m) for m in mems])
                         else:

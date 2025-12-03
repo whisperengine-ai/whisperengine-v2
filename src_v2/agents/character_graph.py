@@ -20,6 +20,7 @@ from src_v2.tools.memory_tools import (
     DiscoverCommonGroundTool,
     CharacterEvolutionTool
 )
+from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.math_tools import CalculatorTool
@@ -64,6 +65,7 @@ You have access to tools that let you look things up. Use them when:
 Available tools:
 - search_archived_summaries: Past conversations and topics (days/weeks ago)
 - search_specific_memories: Specific details and quotes from memory
+- read_document: Read the full content of an attached file
 - lookup_user_facts: Facts about the user from the knowledge graph
 - explore_knowledge_graph: Explore connections and relationships
 - discover_common_ground: Find what you have in common
@@ -178,6 +180,7 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             CharacterEvolutionTool(user_id=user_id, character_name=bot_name),
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
+            ReadDocumentTool(user_id=user_id, character_name=bot_name),
         ]
         if channel:
             tools.extend([

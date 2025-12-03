@@ -26,7 +26,7 @@ class DocumentContext:
     has_documents: bool = False
     
     # Configurable limits
-    PREVIEW_LIMIT: int = 2000  # Chars to send to LLM
+    PREVIEW_LIMIT: int = 8000  # Chars to send to LLM (increased to reduce need for read_document tool)
     
     @classmethod
     def from_processed_files(cls, processed_files: List[str]) -> "DocumentContext":
@@ -78,8 +78,7 @@ class DocumentContext:
         return (
             f"\n\n[Attached Files: {filename_list}]\n"
             f"{self.preview_content}\n\n"
-            f"(Full document content has been stored in memory. "
-            f"Use search_specific_memories tool to find more details if needed.)"
+            f"(Analyze the document content above. If the document is truncated, use the read_document tool with the exact filename to get the full content.)"
         )
     
     def format_for_memory(self, user_message: str) -> str:
