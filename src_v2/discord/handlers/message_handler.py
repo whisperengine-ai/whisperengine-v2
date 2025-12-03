@@ -700,9 +700,10 @@ class MessageHandler:
                     # Handle image complexity:
                     # - If user UPLOADED an image (image_urls exists) → keep at COMPLEX_LOW for viewing
                     # - If user wants to GENERATE an image (no upload, but image intent) → COMPLEX_MID for tools
+                    # - If documents are present → don't cap, need reflective agent for read_document tool
                     image_intents = {"image_self", "image_other", "image_refine"}
-                    if image_urls:
-                        # User uploaded an image - CharacterAgent can handle viewing
+                    if image_urls and not doc_context.has_documents:
+                        # User uploaded an image (no documents) - CharacterAgent can handle viewing
                         # Cap at COMPLEX_LOW if classifier over-promoted
                         if complexity in ["COMPLEX_MID", "COMPLEX_HIGH"]:
                             logger.info(f"Capping complexity to COMPLEX_LOW for image upload (was {complexity})")
