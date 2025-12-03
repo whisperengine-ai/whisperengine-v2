@@ -10,7 +10,7 @@ Agents have **Long-Term Memory** (Qdrant vectors), **Advanced Reasoning** (LangG
 
 Built on a "Five Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis) with **LangGraph Supergraph orchestration** (E17), it combines the speed of vector search with the precision of knowledge graphs and the observability of graph-based agent flows.
 
-**Version:** 2.5 | **Python:** 3.12+ | **Status:** Production Ready | **Architecture:** E17 Supergraph
+**Version:** 2.6 | **Python:** 3.12+ | **Status:** Production Ready | **Architecture:** E17 Supergraph + E18 Agentic Queue
 
 ## ✨ What Makes WhisperEngine Different
 
@@ -23,6 +23,18 @@ Built on a "Five Pillars" polyglot architecture (PostgreSQL, Qdrant, Neo4j, Infl
 | Single reasoning mode | **LangGraph Supergraph** orchestration with subgraphs |
 | Isolated instances | **Multi-agent environment** with shared state |
 | Black box behavior | **Emergence research** — observing and documenting behaviors |
+
+## 🧪 Emergence Philosophy
+
+WhisperEngine is built on the principle of **"Observe First, Constrain Later."**
+
+Instead of hard-coding behaviors (like a "subconscious" database table), we allow complex behaviors to emerge from simple rules and then give the agents the vocabulary to notice them.
+
+*   **Vocabulary over Schema:** Use prompt language to define behavior rather than rigid database schemas.
+*   **Open Recursion:** Agents can read their own logs and memories, creating feedback loops of self-awareness.
+*   **Absence as Data:** What the agent *fails* to remember is just as important as what it retrieves.
+
+**Read more:** [Emergence Philosophy](docs/emergence_philosophy/README.md)
 
 ## 🧠 The Six Modalities
 
@@ -49,6 +61,7 @@ Comprehensive documentation lives in `/docs/`:
 | See what's built vs planned | [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
 | Understand graph architecture | [Graph Systems Design](docs/architecture/GRAPH_SYSTEMS_DESIGN.md) |
 | Learn about LangGraph agents | [Agent Graph System](docs/architecture/AGENT_GRAPH_SYSTEM.md) |
+| **Explore emergence philosophy** | **[Emergence Philosophy](docs/emergence_philosophy/README.md)** |
 | Create a new character | [Character Creation Guide](docs/CREATING_NEW_CHARACTERS.md) |
 | Deploy multiple bots | [Multi-Bot Deployment](docs/MULTI_BOT_DEPLOYMENT.md) |
 | Understand memory architecture | [Memory System v2](docs/architecture/MEMORY_SYSTEM_V2.md) |
@@ -86,17 +99,19 @@ Comprehensive documentation lives in `/docs/`:
 |----------|--------|-------------|
 | [Supergraph Architecture](docs/roadmaps/SUPERGRAPH_ARCHITECTURE.md) | ✅ E17 | LangGraph master orchestrator |
 | [Agentic Queue System](docs/roadmaps/AGENTIC_QUEUE_SYSTEM.md) | ✅ E18 | Redis arq worker architecture |
-| [Autonomous Server Activity](docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md) | ✅ E15.1-2 | Reactions + Posting agents |
+| [Autonomous Server Activity](docs/roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md) | ✅ E15 | Reactions + Posting agents |
+| [Bot-to-Bot Conversations](docs/roadmaps/CHARACTER_TO_CHARACTER.md) | ✅ E6 | ConversationAgent for multi-bot dialogue |
 
 ### Future Roadmaps
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Bot-to-Bot Conversations](docs/roadmaps/CHARACTER_TO_CHARACTER.md) | 🔜 E15.3 | ConversationAgent for multi-bot dialogue |
+| [Schedule Jitter](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) | 📋 E23 | Organic timing for scheduled tasks |
+| [Absence Tracking](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) | 📋 E22 | Meta-memory for missing information |
+| [Graph Walker Agent](docs/roadmaps/GRAPH_WALKER_AGENT.md) | 📋 E19 | Agentic knowledge graph exploration |
+| [Bot Introspection Tools](docs/roadmaps/BOT_INTROSPECTION_TOOLS.md) | 📋 E20 | Collaborative debugging tools |
 | [Multi-Agent Environment](docs/roadmaps/EMERGENT_UNIVERSE.md) | 🟡 Design | Distributed context, cross-agent awareness |
-| [Channel Lurking](docs/roadmaps/CHANNEL_LURKING.md) | 🟡 Design | Passive engagement system |
 | [Response Pattern Learning](docs/roadmaps/RESPONSE_PATTERN_LEARNING.md) | 🟡 Design | RLHF-style adaptation |
-| [Embedding Upgrade](docs/roadmaps/EMBEDDING_UPGRADE_768D.md) | 📋 Ready | 384D → 768D embeddings |
 
 ## 🚀 Quick Start
 
