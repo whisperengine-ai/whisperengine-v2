@@ -75,18 +75,11 @@ async def run_diary_generation(
         graph_agent = DiaryGraphAgent()
         
         # Gather material (summaries are the main source)
-        summaries = await diary_manager.get_summaries_since(hours=24, limit=30)
-        
-        # Convert summaries to DiaryMaterial
-        material = DiaryMaterial(
-            summaries=summaries,
-            facts=[],
-            gossip=[],
-            observations=[]
-        )
+        # Use the proper method to gather all material
+        material = await diary_manager.gather_diary_material(hours=24)
         
         # Count users
-        unique_user_ids = set(s.get("user_id", "unknown") for s in summaries)
+        unique_user_ids = set(s.get("user_id", "unknown") for s in material.summaries)
         user_count = len(unique_user_ids)
         user_names = [f"{user_count} different {'people' if user_count > 1 else 'person'}"]
         
@@ -106,7 +99,7 @@ async def run_diary_generation(
             }
             
         # Save
-        provenance_data = [{"type": "summary", "count": len(summaries)}]
+        provenance_data = [{"type": "summary", "count": len(material.summaries)}]
         point_id = await diary_manager.save_diary_entry(entry, provenance=provenance_data)
         
         # Queue Broadcast
