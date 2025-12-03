@@ -92,11 +92,12 @@ class GetActiveGoalsTool(BaseTool):
             
             async with db_manager.postgres_pool.acquire() as conn:
                 rows = await conn.fetch("""
-                    SELECT slug, description, success_criteria, progress, 
+                    SELECT slug, description, success_criteria,
                            current_strategy, source, category, target_user_id
                     FROM v2_goals 
                     WHERE character_name = $1
                     AND (expires_at IS NULL OR expires_at > NOW())
+                    AND is_active = true
                     ORDER BY priority DESC
                     LIMIT 20
                 """, self.character_name)
@@ -106,12 +107,11 @@ class GetActiveGoalsTool(BaseTool):
                 
                 result = []
                 for row in rows:
-                    progress_pct = int((row['progress'] or 0) * 100)
                     user_note = f" (for user {row['target_user_id']})" if row['target_user_id'] else ""
                     strategy_note = f"\n  Current strategy: {row['current_strategy']}" if row['current_strategy'] else ""
                     result.append(f"""
 - [{row['slug']}] {row['description']}{user_note}
-  Category: {row['category']} | Source: {row['source']} | Progress: {progress_pct}%
+  Category: {row['category']} | Source: {row['source']}
   Criteria: {row['success_criteria']}{strategy_note}
 """)
                 
@@ -453,6 +453,68 @@ Provide a brief summary of what you accomplished."""
             logger.error(f"Synthesis failed: {e}")
             return {"output": StrategistOutput(strategies=[], new_goals=[], summary=f"Error: {e}")}
     
+    async def _check_data_availability(self, character_name: str) -> tuple[bool, str]:
+        """
+        Check if there's enough data to run the strategist.
+        
+        Returns:
+            (has_enough_data, reason) - If False, reason explains why.
+        """
+        if not db_manager.postgres_pool:
+            return False, "Database not available"
+        
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Check if we have any active goals for this character
+                goal_count = await conn.fetchval("""
+                    SELECT COUNT(*) FROM v2_goals 
+                    WHERE character_name = $1
+                    AND (expires_at IS NULL OR expires_at > NOW())
+                    AND is_active = true
+                """, character_name)
+                
+                # Check if we have any recent community activity (last 48h)
+                from src_v2.memory.manager import memory_manager
+                collection = f"whisperengine_memory_{character_name}"
+                
+                try:
+                    summaries = await memory_manager.get_summaries_since(
+                        hours=48,
+                        limit=5,
+                        collection_name=collection
+                    )
+                    has_community_data = len(summaries) > 0 if summaries else False
+                except Exception:
+                    has_community_data = False
+                
+                # Need at least goals OR community data to be useful
+                if goal_count == 0 and not has_community_data:
+                    return False, "No active goals and no recent community activity"
+                
+                # If we only have goals without strategies, that's still useful
+                if goal_count > 0:
+                    goals_without_strategy = await conn.fetchval("""
+                        SELECT COUNT(*) FROM v2_goals 
+                        WHERE character_name = $1
+                        AND (expires_at IS NULL OR expires_at > NOW())
+                        AND is_active = true
+                        AND (current_strategy IS NULL OR current_strategy = '')
+                    """, character_name)
+                    
+                    if goals_without_strategy > 0:
+                        return True, f"{goals_without_strategy} goals need strategies"
+                
+                # If we have community data, we might find new goal opportunities
+                if has_community_data:
+                    return True, "Has community data to analyze"
+                
+                # All goals already have strategies and no community data
+                return False, "All goals have strategies, no new opportunities"
+                
+        except Exception as e:
+            logger.error(f"Data availability check failed: {e}")
+            return False, f"Check failed: {e}"
+
     @traceable(name="strategist_graph_run")
     async def run(self, character_name: str) -> Optional[StrategistOutput]:
         """
@@ -461,6 +523,18 @@ Provide a brief summary of what you accomplished."""
         Returns:
             StrategistOutput with strategies and new goals
         """
+        # Check data availability before expensive LLM calls
+        has_data, reason = await self._check_data_availability(character_name)
+        if not has_data:
+            logger.info(f"Strategist skipped for {character_name}: {reason}")
+            return StrategistOutput(
+                strategies=[],
+                new_goals=[],
+                summary=f"Skipped: {reason}. No LLM calls made."
+            )
+        
+        logger.info(f"Strategist starting for {character_name}: {reason}")
+        
         # Load character identity
         character_identity = "A helpful AI assistant."
         try:

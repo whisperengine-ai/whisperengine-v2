@@ -22,6 +22,16 @@ async def run_knowledge_extraction(
     Returns:
         Dict with success status and extracted fact count
     """
+    # Check data availability before LLM call
+    if not message or len(message.strip()) < 20:
+        logger.debug(f"Knowledge extraction skipped for user {user_id}: message too short ({len(message) if message else 0} chars)")
+        return {
+            "success": True,
+            "skipped": True,
+            "reason": "message_too_short",
+            "user_id": user_id
+        }
+    
     logger.info(f"Processing knowledge extraction for user {user_id} (source: {character_name})")
     
     try:

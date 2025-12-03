@@ -25,6 +25,16 @@ async def run_summarization(
     """
     logger.info(f"Processing summarization for session {session_id} (user: {user_id}, character: {character_name})")
     
+    # Check data availability before LLM call
+    if not messages or len(messages) < 2:
+        logger.info(f"Summarization skipped for session {session_id}: insufficient messages ({len(messages) if messages else 0})")
+        return {
+            "success": True,
+            "skipped": True,
+            "reason": "insufficient_messages",
+            "session_id": session_id
+        }
+    
     try:
         # Lazy import to avoid circular dependencies
         from src_v2.memory.summarizer import SummaryManager
@@ -36,6 +46,16 @@ async def run_summarization(
             role = msg.get('role', 'unknown')
             content = msg.get('content', '')
             conversation_text += f"{role}: {content}\n"
+        
+        # Skip if conversation is too short
+        if len(conversation_text) < 100:
+            logger.info(f"Summarization skipped for session {session_id}: conversation too short ({len(conversation_text)} chars)")
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "conversation_too_short",
+                "session_id": session_id
+            }
             
         # Use Graph Agent for generation (includes critique loop)
         result = await summary_graph_agent.run(conversation_text)

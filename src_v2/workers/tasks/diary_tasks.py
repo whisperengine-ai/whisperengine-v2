@@ -78,6 +78,10 @@ async def run_diary_generation(
         # Use the proper method to gather all material
         material = await diary_manager.gather_diary_material(hours=24)
         
+        # Note: We intentionally don't skip on insufficient material.
+        # The diary graph handles sparse days gracefully, and the character
+        # should still reflect even on quiet days (emergence philosophy).
+        
         # Count users
         unique_user_ids = set(s.get("user_id", "unknown") for s in material.summaries)
         user_count = len(unique_user_ids)

@@ -71,11 +71,36 @@ class PostingAgent:
         self.selector = GoalDrivenTopicSelector()
         self.char_manager = CharacterManager()
 
+    def _check_data_availability(self, character_name: str) -> tuple[bool, str]:
+        """
+        Check if there's enough data to generate a post.
+        
+        Returns:
+            (has_enough_data, reason) - If False, reason explains why.
+        """
+        # Check goals
+        goals = goal_manager.load_goals(character_name)
+        if not goals:
+            return False, "No goals defined for character"
+        
+        # Check behavior profile
+        profile = load_behavior_profile(os.path.join("characters", character_name))
+        if not profile:
+            return False, "No behavior profile found"
+        
+        return True, f"{len(goals)} goals available"
+
     async def generate_and_schedule_post(self, character_name: str, target_channel_id: Optional[str] = None) -> bool:
         """
         Generates a post and schedules it via BroadcastManager.
         """
-        logger.info(f"PostingAgent: Generating post for {character_name} (target: {target_channel_id})")
+        # Check data availability before LLM call
+        has_data, reason = self._check_data_availability(character_name)
+        if not has_data:
+            logger.warning(f"PostingAgent skipped for {character_name}: {reason}")
+            return False
+        
+        logger.info(f"PostingAgent: Generating post for {character_name} (target: {target_channel_id}): {reason}")
         
         # 1. Select Topic
         selection = self.selector.select_topic(character_name)

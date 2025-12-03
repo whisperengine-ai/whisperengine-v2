@@ -345,6 +345,42 @@ Generate the structured output now."""
             logger.error(f"Synthesis failed: {e}")
             return {"output": ReflectionOutput(insights=[], updated_traits=[], inferred_goals=[])}
     
+    async def _check_data_availability(self, user_id: str, character_name: str) -> tuple[bool, str]:
+        """
+        Check if there's enough data to run reflection analysis.
+        
+        Returns:
+            (has_enough_data, reason) - If False, reason explains why.
+        """
+        if not db_manager.postgres_pool:
+            return False, "Database not available"
+        
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Check for summaries (primary data source)
+                summary_count = await conn.fetchval("""
+                    SELECT COUNT(*) 
+                    FROM v2_summaries s
+                    JOIN v2_conversation_sessions sess ON s.session_id = sess.id
+                    WHERE sess.user_id = $1 AND sess.character_name = $2
+                """, user_id, character_name)
+                
+                if summary_count == 0:
+                    # Check if we at least have some chat history
+                    history_count = await conn.fetchval("""
+                        SELECT COUNT(*) FROM v2_chat_history 
+                        WHERE user_id = $1 AND character_name = $2
+                    """, user_id, character_name)
+                    
+                    if history_count < 10:
+                        return False, f"Insufficient data: {summary_count} summaries, {history_count} messages"
+                
+                return True, f"{summary_count} summaries available"
+                
+        except Exception as e:
+            logger.error(f"Data availability check failed: {e}")
+            return False, f"Check failed: {e}"
+
     @traceable(name="reflection_graph_analyze")
     async def analyze(
         self,
@@ -357,6 +393,18 @@ Generate the structured output now."""
         Returns:
             ReflectionOutput with insights, traits, and inferred goals
         """
+        # Check data availability before expensive LLM calls
+        has_data, reason = await self._check_data_availability(user_id, character_name)
+        if not has_data:
+            logger.info(f"Reflection skipped for user {user_id}: {reason}")
+            return ReflectionOutput(
+                insights=[],
+                updated_traits=[],
+                inferred_goals=[]
+            )
+        
+        logger.info(f"Reflection starting for user {user_id}: {reason}")
+        
         # Load character identity
         character_identity = "A helpful AI assistant."
         try:

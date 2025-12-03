@@ -157,6 +157,52 @@ When done, provide a brief summary of what you learned."""
             
         return "end"
 
+    async def _check_data_availability(
+        self,
+        user_id: str,
+        character_name: str,
+        trigger: str,
+        recent_context: Optional[str]
+    ) -> tuple[bool, str]:
+        """
+        Check if there's enough data to run insight analysis.
+        
+        Returns:
+            (has_enough_data, reason) - If False, reason explains why.
+        """
+        # If we have explicit recent_context, we have enough data
+        if recent_context and len(recent_context) > 50:
+            return True, "Has recent context provided"
+        
+        # For reflective_completion trigger, we always run (trace analysis)
+        if trigger == "reflective_completion":
+            return True, "Reflective completion trigger"
+        
+        # Check database for user interaction history
+        from src_v2.core.database import db_manager
+        
+        if not db_manager.postgres_pool:
+            return False, "Database not available"
+        
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Check recent message count (last 24h)
+                message_count = await conn.fetchval("""
+                    SELECT COUNT(*) FROM v2_chat_history 
+                    WHERE user_id = $1 AND character_name = $2
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                """, user_id, character_name)
+                
+                if message_count < 5:
+                    return False, f"Only {message_count} messages in last 24h (need 5+)"
+                
+                return True, f"{message_count} messages in last 24h"
+                
+        except Exception as e:
+            logger.error(f"Data availability check failed: {e}")
+            # On error, proceed anyway (fail-open for insights)
+            return True, f"Check failed, proceeding: {e}"
+
     @traceable(name="InsightGraphAgent.analyze", run_type="chain")
     async def analyze(
         self,
@@ -168,7 +214,13 @@ When done, provide a brief summary of what you learned."""
         """
         Runs insight analysis for a user using LangGraph.
         """
-        logger.info(f"InsightGraphAgent starting analysis for user {user_id} (trigger: {trigger})")
+        # Check data availability before expensive LLM calls
+        has_data, reason = await self._check_data_availability(user_id, character_name, trigger, recent_context)
+        if not has_data:
+            logger.info(f"Insight analysis skipped for user {user_id}: {reason}")
+            return True, f"Skipped: {reason}. No LLM calls made."
+        
+        logger.info(f"InsightGraphAgent starting analysis for user {user_id} (trigger: {trigger}): {reason}")
         
         # 1. Initialize Tools
         tools = get_insight_tools_with_existing(user_id, character_name)
