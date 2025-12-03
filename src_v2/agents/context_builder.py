@@ -86,8 +86,9 @@ class ContextBuilder:
             knowledge_context = await self._get_knowledge_context(user_id, character.name, user_message)
             system_content += knowledge_context
 
-            # 2.7.4 Inject Known Bots Context
-            known_bots_context = await self._get_known_bots_context(character.name)
+            # 2.7.4 Inject Known Bots Context (filtered by guild if available)
+            guild_id = context_variables.get("guild_id")
+            known_bots_context = await self._get_known_bots_context(character.name, guild_id)
             system_content += known_bots_context
 
             # 2.7.5 Inject Stigmergic Discovery (Phase E13)
@@ -331,11 +332,17 @@ class ContextBuilder:
             "• Never collect personal info (phone/address/name)\n"
         )
 
-    async def _get_known_bots_context(self, current_bot_name: str) -> str:
-        """Returns context about other known bots in the system."""
+    async def _get_known_bots_context(self, current_bot_name: str, guild_id: Optional[str] = None) -> str:
+        """
+        Returns context about other known bots in the system.
+        
+        If guild_id is provided, only includes bots that are members of that guild.
+        This prevents the LLM from mentioning bots that aren't in the current server.
+        """
         try:
             from src_v2.broadcast.cross_bot import cross_bot_manager
             from src_v2.core.behavior import load_behavior_profile
+            from src_v2.api.internal_routes import get_discord_bot
             import os
 
             # Ensure we have the latest list of bots
@@ -344,12 +351,29 @@ class ContextBuilder:
             
             known_bots = cross_bot_manager.known_bots
             
+            # If we have guild context, filter to only bots in this guild
+            bots_in_guild = set()
+            if guild_id:
+                discord_bot = get_discord_bot()
+                if discord_bot:
+                    guild = discord_bot.get_guild(int(guild_id))
+                    if guild:
+                        for bot_name, discord_id in known_bots.items():
+                            member = guild.get_member(discord_id)
+                            if member:
+                                bots_in_guild.add(bot_name.lower())
+                        logger.debug(f"Filtered known bots to {len(bots_in_guild)} in guild {guild_id}")
+            
             context = "\n\n[KNOWN ASSOCIATES (Other AI Entities)]\n"
             context += "You are aware of the following other AI entities in this digital space:\n"
             
             found_others = False
             for bot_name in known_bots.keys():
                 if bot_name.lower() == current_bot_name.lower():
+                    continue
+                
+                # If we have guild filtering, skip bots not in this guild
+                if guild_id and bots_in_guild and bot_name.lower() not in bots_in_guild:
                     continue
                     
                 # Load their purpose from core.yaml
