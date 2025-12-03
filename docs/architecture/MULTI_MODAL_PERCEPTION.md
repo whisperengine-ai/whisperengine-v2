@@ -238,35 +238,54 @@ Without any single modality, this response wouldn't be possible:
 
 ## The Neural Substrate: Embeddings
 
-All perceptual modalities share a common **neural substrate**: vector embeddings.
+**Embeddings are the search layer, not the storage layer.** Text content from perceptual modalities gets embedded to enable semantic search and cross-modal connections.
+
+### What Gets Embedded
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         EMBEDDING LAYER (768D)                               │
-│                    The "neurons" connecting all perception                   │
+│                    Text content → Vector space for similarity search         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Vision Description ──────┐                                                 │
-│                           │                                                 │
-│  Memory Content ──────────┼──────► [Embedding Model] ──────► Vector Space   │
-│                           │         BAAI/bge-base-en-v1.5                   │
-│  User Message ────────────┤                                                 │
-│                           │         Semantic similarity enables:            │
-│  Knowledge Graph ─────────┘         • Memory retrieval                      │
-│                                     • Lurk detection                        │
-│                                     • Reasoning trace matching              │
-│                                     • Cross-modal grounding                 │
+│  Vision Description (text) ───┐                                             │
+│  "Sunset over ocean..."       │                                             │
+│                               │                                             │
+│  Memory Content (text) ───────┼──────► [Embedding Model] ──────► Qdrant    │
+│  "We talked about beaches"    │         BAAI/bge-base-en-v1.5      (Vector  │
+│                               │                                     Search)  │
+│  User Message (text) ─────────┤                                             │
+│  "Tell me about the trip"     │                                             │
+│                               │                                             │
+│  [Knowledge Graph] ───────────┘  ← NOT embedded directly                    │
+│  Structured data in Neo4j         (but facts extracted from embedded text)  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Embeddings are why a character can:
-- Find relevant memories for any topic
-- Detect when a conversation matches their expertise (lurking)
-- Connect visual descriptions to past conversations
-- Ground abstract concepts in concrete experiences
+### Three-Layer Architecture
 
-**The 768D upgrade (from 384D) doubles the "resolution" of this neural substrate**, enabling finer-grained perception across all modalities.
+| Layer | Purpose | Technology |
+|-------|---------|-----------|
+| **Ground Truth** | Verbatim history, what was ACTUALLY said/seen | PostgreSQL |
+| **Semantic Search** | Find relevant content by meaning, not keywords | Qdrant (embedded) |
+| **Structured Knowledge** | Facts, relationships, graph queries | Neo4j |
+
+**Example flow:**
+1. User says: "I love sunset beaches"
+2. **PostgreSQL** stores the exact message
+3. **Qdrant** stores the embedding for similarity search
+4. **Neo4j** extracts the fact: `(User)-[:LIKES]->(Entity: "sunset beaches")`
+
+### What Embeddings Enable
+
+Embeddings power semantic similarity across modalities:
+- **Memory retrieval** - "Tell me about dogs" finds "puppy" and "Golden Retriever"
+- **Lurk detection** - Match channel topics to character expertise
+- **Cross-modal grounding** - Vision description of "sunset" retrieves memories about "beach trip"
+- **Reasoning trace matching** - Find past thought patterns similar to current query
+
+**The 768D upgrade (from 384D) doubles the "resolution" of this semantic search**, enabling finer-grained similarity detection across all text modalities.
 
 ---
 
