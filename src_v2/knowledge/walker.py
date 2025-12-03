@@ -349,7 +349,7 @@ class GraphWalker:
             score *= 1.0 + (trust / 100)
         
         # 4. Thematic alignment (matches character interests)
-        name_lower = node.name.lower()
+        name_lower = str(node.name).lower() if node.name else ""
         for anchor in anchors:
             if anchor in name_lower:
                 score *= 1.5
@@ -437,7 +437,9 @@ class GraphWalker:
                 # Generate theme from node names
                 theme_words = []
                 for n in component[:5]:
-                    theme_words.extend(n.name.lower().split()[:2])
+                    name_str = str(n.name).lower() if n.name else ""
+                    if name_str:
+                        theme_words.extend(name_str.split()[:2])
                 unique_words = list(set(theme_words))[:3]
                 theme = " + ".join(unique_words)
                 
