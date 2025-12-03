@@ -14,7 +14,9 @@
 
 ## ⚠️ Important Context
 
-This document describes **how agents perceive** (the sensory mechanism). The actual architectural innovation is the **graph-centric design** (see [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md)). Multimodal perception is one layer in a deeper emergence research platform.
+This document describes **how agents perceive** (the sensory mechanism). The actual architectural innovation is the **graph-centric design** (see [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md)). 
+
+Multimodal perception is one layer in a deeper emergence research platform.
 
 **Read this if:** You want to understand agent perception mechanisms  
 **Read GRAPH_SYSTEMS_DESIGN.md if:** You want to understand the core architecture
