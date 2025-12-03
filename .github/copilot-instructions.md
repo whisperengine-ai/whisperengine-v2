@@ -441,6 +441,6 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 ---
 
-**Version**: 2.5 (Dec 1, 2025 - E15 Phase 2 complete, E18 complete)  
+**Version**: 2.1.0 (Dec 3, 2025 - E15 Phase 2 complete, E18 complete)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

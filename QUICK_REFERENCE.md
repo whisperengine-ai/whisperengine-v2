@@ -1,6 +1,6 @@
 # WhisperEngine v2 - Quick Reference
 
-**Version:** 2.5 | **Architecture:** E17 Supergraph | **Updated:** December 2025
+**Version:** 2.1.0 | **Architecture:** E17 Supergraph | **Updated:** December 2025
 
 ## 🎯 Most Common Commands
 

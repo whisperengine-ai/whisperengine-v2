@@ -4,7 +4,7 @@
 
 WhisperEngine is a **multi-character Discord AI platform** with persistent memory, evolving relationships, and autonomous behavior. We use it to study how complex behaviors emerge in agentic systems when you give them memory, agency, and minimal constraints.
 
-**Version:** 2.6 | **Python:** 3.12+ | **Status:** Production
+**Version:** 2.1.0 | **Python:** 3.13+ | **Status:** Production
 
 ---
 
@@ -102,7 +102,7 @@ Full docs index: [docs/README.md](docs/README.md)
 - Python 3.13+
 - Docker and Docker Compose
 - Discord bot token
-- LLM API key (OpenAI, OpenRouter, or local)
+- LLM API key (OpenRouter recommended, or OpenAI/local)
 
 ### Installation
 
@@ -183,9 +183,11 @@ WhisperEngine supports multiple unique AI personalities, each with their own cha
 
 Each character has:
 - `characters/{name}/character.md` — System prompt and personality
+- `characters/{name}/core.yaml` — Identity, purpose, drives
 - `characters/{name}/goals.yaml` — Learning objectives and character-specific goals
 - `characters/{name}/evolution.yaml` — Trust thresholds and relationship parameters
 - `characters/{name}/background.yaml` — Background knowledge and expertise
+- `characters/{name}/ux.yaml` — Response style, thinking indicators, reactions
 
 ### Creating a New Character
 
@@ -195,9 +197,11 @@ mkdir characters/newcharacter
 
 # 2. Copy templates
 cp characters/character.md.template characters/newcharacter/character.md
+cp characters/core.yaml.template characters/newcharacter/core.yaml
 cp characters/goals.yaml.template characters/newcharacter/goals.yaml
 cp characters/evolution.yaml.template characters/newcharacter/evolution.yaml
 cp characters/background.yaml.template characters/newcharacter/background.yaml
+cp characters/ux.yaml.template characters/newcharacter/ux.yaml
 
 # 3. Edit files with character specifics
 # 4. Create environment file
@@ -225,13 +229,13 @@ cp .env.example .env.newcharacter
 
 ```bash
 # Generate migration
-alembic revision --autogenerate -m "description"
+alembic -c alembic_v2.ini revision --autogenerate -m "description"
 
-# Apply migrations
-alembic upgrade head
+# Apply migrations (runs automatically on bot startup)
+alembic -c alembic_v2.ini upgrade head
 
 # Rollback
-alembic downgrade -1
+alembic -c alembic_v2.ini downgrade -1
 ```
 
 ### Testing
@@ -251,15 +255,19 @@ pytest tests_v2/ --cov=src_v2 --cov-report=html
 
 ```
 src_v2/
-├── agents/      # Cognitive engine, LLM interactions, reflective mode
-├── memory/      # Qdrant vectors, dreams, diary, summarization
-├── knowledge/   # Neo4j graph, fact extraction
-├── evolution/   # Trust scores, feedback analysis
-├── discord/     # Bot, scheduler, proactive messaging
-├── voice/       # TTS (ElevenLabs)
-├── api/         # FastAPI endpoints
-├── core/        # Database, character loading, settings
-└── workers/     # Background task processing (arq)
+├── agents/       # Cognitive engine, LLM interactions, reflective mode
+├── api/          # FastAPI endpoints
+├── core/         # Database, character loading, settings
+├── discord/      # Bot, scheduler, proactive messaging
+├── evolution/    # Trust scores, feedback analysis
+├── knowledge/    # Neo4j graph, fact extraction
+├── memory/       # Qdrant vectors, dreams, diary, summarization
+├── voice/        # TTS (ElevenLabs)
+├── vision/       # Image processing, multimodal LLM
+├── image_gen/    # Image generation (BFL, Replicate)
+├── workers/      # Background task processing (arq)
+├── tools/        # LangChain tools for agents
+└── utils/        # Helpers, validation, time utilities
 ```
 
 ---
