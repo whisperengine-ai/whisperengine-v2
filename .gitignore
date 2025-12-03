@@ -41,7 +41,9 @@ env/
 .env.*.local
 .env.*
 !.env.example
+!.env.example_worker
 !.env.template
+!.env.bot.template
 
 # Logs
 logs/
