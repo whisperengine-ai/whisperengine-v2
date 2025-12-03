@@ -249,6 +249,7 @@ class Settings(BaseSettings):
 
     # --- Autonomous Server Activity (Phase E15) ---
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Allow bot to post autonomously in quiet channels
+    ENABLE_AUTONOMOUS_REPLIES: bool = False  # Allow bot to occasionally reply to messages without mention (Phase 4)
     # Note: ENABLE_AUTONOMOUS_REACTIONS is defined above in Phase E12/E15 section
     ENABLE_BOT_CONVERSATIONS: bool = False  # Allow bots to start conversations with each other (Phase 3)
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation

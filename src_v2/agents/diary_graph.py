@@ -5,6 +5,7 @@ from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
 from langgraph.graph import StateGraph, END
 
+from pydantic import BaseModel, Field
 from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.diary import DiaryEntry, DiaryMaterial
 from src_v2.config.settings import settings
@@ -24,6 +25,10 @@ class DiaryAgentState(TypedDict):
     steps: int
     max_steps: int
 
+class DiaryCritique(BaseModel):
+    """Structured output for the diary critic."""
+    critique: Optional[str] = Field(description="Specific feedback on what to improve (e.g. 'Too summary-like', 'Lack of emotion'), or None if the entry is excellent.")
+
 class DiaryGraphAgent:
     """
     Generates character diary entries using a Generator-Critic loop.
@@ -35,6 +40,9 @@ class DiaryGraphAgent:
         # Higher temperature (0.85) for more creative variation
         self.llm = create_llm(temperature=0.85, mode="reflective")
         self.structured_llm = self.llm.with_structured_output(DiaryEntry)
+        
+        # Critic LLM - lower temperature for consistent evaluation
+        self.critic_llm = create_llm(temperature=0.1, mode="reflective").with_structured_output(DiaryCritique)
         
         # Build graph
         workflow = StateGraph(DiaryAgentState)
@@ -146,7 +154,7 @@ Write your diary entry now. Be creative and authentic - avoid starting with "Tod
         if "User" in entry_text or "user" in entry_text:
             critiques.append("Do not refer to people as 'User' or 'users'. Use their names or 'someone'.")
             
-        if "summary" in entry_text.lower() or "conversation" in entry_text.lower():
+        if "summary of" in entry_text.lower() or "i had a conversation" in entry_text.lower():
             critiques.append("This sounds too much like a summary. Make it more personal and narrative. Don't say 'I had a conversation', say 'I talked to...'")
         
         # Cliche opening check
@@ -169,6 +177,25 @@ Write your diary entry now. Be creative and authentic - avoid starting with "Tod
 
         if critiques:
             return {"critique": " ".join(critiques)}
+            
+        # If heuristics pass, use LLM for deeper critique
+        logger.info("Heuristics passed, invoking LLM critic...")
+        critic_prompt = f"""You are a strict literary editor. Critique this diary entry.
+
+ENTRY:
+{entry_text}
+
+CRITERIA:
+1. Is it too summary-like? (e.g. "I had a conversation with X about Y") -> It should be narrative ("X told me about Y, and I felt...")
+2. Is it emotional enough? -> It should reveal inner thoughts/feelings.
+3. Is the opening cliche? -> It should start in media res or with a thought.
+4. Is it too repetitive?
+
+If the entry is good, return None. If it needs improvement, provide specific instructions."""
+
+        response = await self.critic_llm.ainvoke([HumanMessage(content=critic_prompt)])
+        if response.critique:
+            return {"critique": response.critique}
             
         return {"critique": None}
 
@@ -208,8 +235,12 @@ Write your diary entry now. Be creative and authentic - avoid starting with "Tod
             "draft": None
         }
         
-        final_state = await self.graph.ainvoke(initial_state)
-        return final_state["draft"]
+        try:
+            final_state = await self.graph.ainvoke(initial_state)
+            return final_state.get("draft")
+        except Exception as e:
+            logger.error(f"Diary generation failed: {e}")
+            return None
 
 # Singleton instance
 diary_graph_agent = DiaryGraphAgent()

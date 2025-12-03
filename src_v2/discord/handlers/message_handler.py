@@ -29,10 +29,74 @@ from src_v2.discord.utils.message_utils import chunk_message, is_image, extract_
 from src_v2.core.behavior import get_character_timezone
 from influxdb_client.client.write.point import Point
 from src_v2.intelligence.activity import server_monitor
+from src_v2.core.goals import goal_manager
 
 class MessageHandler:
     def __init__(self, bot):
         self.bot = bot
+
+    async def _should_autonomous_reply(self, message: discord.Message) -> bool:
+        """Decide if the bot should autonomously reply to a message."""
+        if not settings.ENABLE_AUTONOMOUS_REPLIES:
+            return False
+            
+        # 1. Check Server Activity
+        # We want to reply occasionally, but not if the server is chaotic
+        # Activity level is messages per minute
+        activity_level = await server_monitor.get_activity_level(str(message.guild.id))
+        if activity_level > 1.0: # > 30 msgs/30min (Very Active)
+            return False
+            
+        # 2. Check Character Relevance
+        character = character_manager.get_character(self.bot.character_name)
+        if not character:
+            return False
+            
+        # Get keywords from goals and drives
+        keywords = set()
+        
+        # From drives (keys)
+        if character.behavior and character.behavior.drives:
+            keywords.update(character.behavior.drives.keys())
+            
+        # From goals
+        goals = goal_manager.load_goals(self.bot.character_name)
+        if goals:
+            for goal in goals:
+                # Add significant words from description (simple heuristic)
+                words = [w.lower() for w in goal.description.split() if len(w) > 4]
+                keywords.update(words)
+                keywords.add(goal.category.lower())
+        
+        # Calculate relevance score
+        content_lower = message.content.lower()
+        words = content_lower.split()
+        if not words:
+            return False
+            
+        matches = sum(1 for w in words if w in keywords)
+        relevance = matches / len(words) if len(words) > 0 else 0
+        
+        # 3. Probabilistic Decision
+        base_chance = 0.02  # 2% chance by default
+        
+        if "?" in message.content:
+            base_chance += 0.05  # +5% if it's a question
+            
+        if relevance > 0.05:
+            base_chance += 0.1  # +10% if relevant
+            
+        if relevance > 0.2:
+            base_chance += 0.2  # +20% if very relevant
+            
+        # Cap at 30%
+        chance = min(0.3, base_chance)
+        
+        should_reply = random.random() < chance
+        if should_reply:
+            logger.info(f"Autonomous reply triggered: chance={chance:.2f}, relevance={relevance:.2f}")
+            
+        return should_reply
 
     async def on_message(self, message: discord.Message) -> None:
         """Handles incoming Discord messages and generates AI responses.
@@ -224,6 +288,12 @@ class MessageHandler:
                 )
                 await message.channel.send(embed=embed)
                 return
+
+        # Phase 4: Autonomous Replies (Occasional replies without mention)
+        if not is_dm and not is_mentioned and message.guild:
+            if await self._should_autonomous_reply(message):
+                is_mentioned = True
+                logger.info(f"Triggering autonomous reply for message {message.id}")
 
         if is_dm or is_mentioned:
             # Typing indicator delayed to mimic natural reading time

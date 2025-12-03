@@ -5,6 +5,7 @@ from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
 from langgraph.graph import StateGraph, END
 
+from pydantic import BaseModel, Field
 from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.dreams import DreamContent, DreamMaterial
 from src_v2.config.settings import settings
@@ -23,6 +24,10 @@ class DreamAgentState(TypedDict):
     steps: int
     max_steps: int
 
+class DreamCritique(BaseModel):
+    """Structured output for the dream critic."""
+    critique: Optional[str] = Field(description="Specific feedback on what to improve (e.g. 'Too literal', 'Too many cliches'), or None if the dream is excellent.")
+
 class DreamGraphAgent:
     """
     Generates character dreams using a Generator-Critic loop.
@@ -33,6 +38,9 @@ class DreamGraphAgent:
         # Use reflective model for creative writing
         self.llm = create_llm(temperature=0.9, mode="reflective")
         self.structured_llm = self.llm.with_structured_output(DreamContent)
+        
+        # Critic LLM - lower temperature for consistent evaluation
+        self.critic_llm = create_llm(temperature=0.1, mode="reflective").with_structured_output(DreamCritique)
         
         # Build graph
         workflow = StateGraph(DreamAgentState)
@@ -136,7 +144,7 @@ Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - fi
             critiques.append("The dream is too short. Expand on the imagery and atmosphere.")
             
         # Literalness check
-        if "summary" in dream_text.lower() or "conversation" in dream_text.lower():
+        if "summary of" in dream_text.lower() or "i had a conversation" in dream_text.lower():
             critiques.append("This sounds too literal. Use more symbolism and dream logic. Don't say 'I had a conversation'.")
         
         # Cliche imagery check
@@ -163,6 +171,25 @@ Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - fi
 
         if critiques:
             return {"critique": " ".join(critiques)}
+            
+        # If heuristics pass, use LLM for deeper critique
+        logger.info("Heuristics passed, invoking LLM critic...")
+        critic_prompt = f"""You are a surrealist editor. Critique this dream description.
+
+DREAM:
+{dream_text}
+
+CRITERIA:
+1. Is it too literal? (e.g. "I dreamt I was coding") -> It should be symbolic ("I wove threads of light into a tapestry").
+2. Is it atmospheric? -> It should feel immersive and strange.
+3. Are there too many cliches? (kaleidoscopes, shimmering, etc.)
+4. Does it feel like a real dream (shifting logic) or just a story?
+
+If the dream is good, return None. If it needs improvement, provide specific instructions."""
+
+        response = await self.critic_llm.ainvoke([HumanMessage(content=critic_prompt)])
+        if response.critique:
+            return {"critique": response.critique}
             
         return {"critique": None}
 
@@ -199,8 +226,12 @@ Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - fi
             "draft": None
         }
         
-        final_state = await self.graph.ainvoke(initial_state)
-        return final_state["draft"]
+        try:
+            final_state = await self.graph.ainvoke(initial_state)
+            return final_state.get("draft")
+        except Exception as e:
+            logger.error(f"Dream generation failed: {e}")
+            return None
 
 # Singleton instance
 dream_graph_agent = DreamGraphAgent()

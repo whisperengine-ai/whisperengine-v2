@@ -73,7 +73,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **E16** | **Feedback Loop Stability** | **1 day** | E12 | ✅ Complete |
 | 🟢 High | **E23** | **Schedule Jitter** | **0.5 days** | E16 | ✅ Complete |
 | 🟢 High | **E22** | **Absence Tracking (Meta-Memory)** | **1 day** | E12, E23 | ✅ Complete |
-| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | 🔄 Phase 1-2 ✅ |
+| 🟡 Medium | E15 | Autonomous Server Activity | 5-8 days | E6 | ✅ Phase 1-4 |
 | 🟡 Medium | E14 | Web Search Tool (DuckDuckGo) | 5-7 hours | — | ✅ Complete |
 | 🟡 Medium | E10 | Channel Observer | 2-3 days | — | ⏭️ Skipped |
 | 🟡 Medium | E11 | Discord Search Tools | 1 day | — | ✅ Complete |

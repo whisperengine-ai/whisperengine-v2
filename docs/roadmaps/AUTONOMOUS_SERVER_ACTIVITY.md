@@ -1,9 +1,9 @@
 # Autonomous Server Activity System
 
-**Document Version:** 1.2  
+**Document Version:** 1.3  
 **Created:** November 30, 2025  
-**Updated:** December 1, 2025  
-**Status:** 🔄 In Progress (Phase 1 & 2 Complete)  
+**Updated:** December 2, 2025  
+**Status:** ✅ Complete (Phases 1-4)  
 **Type:** Epic / Feature Roadmap  
 **Priority:** 🟢 High (Server Engagement)
 
@@ -472,32 +472,30 @@ remains beautifully unresolved. 💭
 
 ---
 
-## Phase 4: Occasional Replies to Humans
+## Phase 4: Occasional Replies to Humans (✅ IMPLEMENTED)
+
+**Status:** Complete (Dec 2, 2025).
 
 **Goal:** On active servers, bots occasionally reply to human messages (not just react).
 
 ### 4.1 Reply Trigger Criteria
 
+Implemented in `MessageHandler._should_autonomous_reply`:
+
+1. **Activity Check:** Only reply if server activity is moderate (<= 30 msgs/30min). If chaotic (> 30), stay quiet.
+2. **Relevance Check:** Check message content against character's `goals.yaml` and `core.yaml` drives.
+3. **Probabilistic Decision:**
+   - Base chance: 2%
+   - Is Question? +5%
+   - Relevant Topic? +10%
+   - Very Relevant? +20%
+   - Max Chance: 30%
+
+### 4.2 Enable
+
+```bash
+ENABLE_AUTONOMOUS_REPLIES=true
 ```
-function should_reply(message, character, activity_level) -> (bool, reason):
-    // Never reply if server is very active (let humans lead)
-    if activity_level > 20:
-        return (false, "server_too_active")
-    
-    // Check if message relates to character expertise
-    relevance = calculate_topic_relevance(message, character.expertise)
-    
-    // Check if it's a question the character could answer
-    is_question = detect_question(message)
-    
-    // Higher chance for questions in character's domain
-    if is_question and relevance > 0.7:
-        return (random() < 0.15, "question_in_expertise")
-    
-    // Lower chance for general relevant topics
-    if relevance > 0.5:
-        return (random() < 0.05, "relevant_topic")
-    
     return (false, "not_relevant")
 ```
 

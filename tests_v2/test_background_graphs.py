@@ -11,8 +11,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from src_v2.agents.summary_graph import summary_graph_agent, SummaryResult
 from src_v2.agents.knowledge_graph import knowledge_graph_agent, Fact
-from src_v2.agents.diary_graph import diary_graph_agent
-from src_v2.agents.dream_graph import dream_graph_agent
+from src_v2.agents.diary_graph import diary_graph_agent, DiaryCritique
+from src_v2.agents.dream_graph import dream_graph_agent, DreamCritique
 from src_v2.memory.diary import DiaryEntry, DiaryMaterial
 from src_v2.memory.dreams import DreamContent, DreamMaterial
 
@@ -309,9 +309,13 @@ async def test_diary_graph_critic_approves_good_entry():
         "max_steps": 3
     }
     
-    result = await diary_graph_agent.critic(state)
+    # Mock the critic LLM to approve
+    mock_critic_llm = AsyncMock()
+    mock_critic_llm.ainvoke.return_value = DiaryCritique(critique=None)
     
-    assert result["critique"] is None  # Approved!
+    with patch.object(diary_graph_agent, "critic_llm", mock_critic_llm):
+        result = await diary_graph_agent.critic(state)
+        assert result["critique"] is None  # Approved!
 
 
 # =============================================================================
@@ -397,9 +401,13 @@ async def test_dream_graph_critic_approves_surreal_dream():
         "max_steps": 3
     }
     
-    result = await dream_graph_agent.critic(state)
+    # Mock the critic LLM to approve
+    mock_critic_llm = AsyncMock()
+    mock_critic_llm.ainvoke.return_value = DreamCritique(critique=None)
     
-    assert result["critique"] is None  # Approved!
+    with patch.object(dream_graph_agent, "critic_llm", mock_critic_llm):
+        result = await dream_graph_agent.critic(state)
+        assert result["critique"] is None  # Approved!
 
 
 # =============================================================================
