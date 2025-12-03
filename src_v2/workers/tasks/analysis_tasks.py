@@ -20,9 +20,32 @@ async def run_goal_analysis(
     Returns:
         Dict with success status
     """
-    logger.info(f"Running goal analysis for {character_name} with user {user_id}")
+    # Check data availability before LLM call
+    if not interaction_text or len(interaction_text.strip()) < 50:
+        logger.debug(f"Goal analysis skipped: interaction too short ({len(interaction_text) if interaction_text else 0} chars)")
+        return {
+            "success": True,
+            "skipped": True,
+            "reason": "interaction_too_short",
+            "user_id": user_id
+        }
     
     try:
+        from src_v2.evolution.goals import goal_manager
+        
+        # Check if there are any active goals before running expensive LLM analysis
+        active_goals = await goal_manager.get_active_goals(user_id, character_name)
+        if not active_goals:
+            logger.debug(f"Goal analysis skipped: no active goals for {character_name}")
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "no_active_goals",
+                "user_id": user_id
+            }
+        
+        logger.info(f"Running goal analysis for {character_name} with user {user_id} ({len(active_goals)} goals)")
+        
         from src_v2.evolution.goals import goal_analyzer
         
         await goal_analyzer.check_goals(user_id, character_name, interaction_text)
