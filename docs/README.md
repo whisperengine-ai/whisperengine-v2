@@ -10,13 +10,13 @@ Welcome to the WhisperEngine v2 documentation. This guide helps you navigate the
 
 | I want to... | Read this |
 |--------------|-----------|
-| Understand the core architecture | [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md) ⭐ **START HERE** |
-| Understand the project vision | [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) |
+| Understand the core architecture | [ref/REF-002-GRAPH_SYSTEMS.md](./ref/REF-002-GRAPH_SYSTEMS.md) ⭐ **START HERE** |
+| Understand the project vision | [ref/REF-000-WHISPERENGINE_DESIGN.md](./ref/REF-000-WHISPERENGINE_DESIGN.md) |
 | Learn the emergence philosophy | [emergence_philosophy/README.md](./emergence_philosophy/README.md) |
 | See what's implemented vs planned | [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
-| Understand how agents perceive | [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) |
-| Create a new character | [CREATING_NEW_CHARACTERS.md](./CREATING_NEW_CHARACTERS.md) |
-| Deploy multiple bots | [MULTI_BOT_DEPLOYMENT.md](./MULTI_BOT_DEPLOYMENT.md) |
+| Understand how agents perceive | [ref/REF-010-MULTI_MODAL.md](./ref/REF-010-MULTI_MODAL.md) |
+| Create a new character | [guide/GUIDE-020-CREATING_CHARACTERS.md](./guide/GUIDE-020-CREATING_CHARACTERS.md) |
+| Deploy multiple bots | [run/RUN-001-MULTI_BOT_DEPLOYMENT.md](./run/RUN-001-MULTI_BOT_DEPLOYMENT.md) |
 
 ---
 
@@ -26,20 +26,8 @@ Welcome to the WhisperEngine v2 documentation. This guide helps you navigate the
 docs/
 ├── README.md                          # You are here
 ├── IMPLEMENTATION_ROADMAP_OVERVIEW.md # Master roadmap & status
-├── AI_CHARACTER_DESIGN_PHILOSOPHY.md  # The Embodiment Model
-├── CREATING_NEW_CHARACTERS.md         # Character creation guide
-├── MULTI_BOT_DEPLOYMENT.md            # Running multiple bots
-├── PRIVACY_AND_DATA_SEGMENTATION.md   # Privacy model
-├── API_REFERENCE.md                   # REST API documentation
 │
-├── prd/                               # 📋 Product Requirements (NEW)
-│   ├── README.md                      # PRD index & format guide
-│   ├── PRD-001-TRUST_EVOLUTION.md     # Trust & relationship system
-│   ├── PRD-002-PRIVACY.md             # Privacy & data handling
-│   ├── PRD-003-CHARACTER_EXPERIENCE.md # Dreams, diaries, artifacts
-│   └── PRD-004-MULTI_MODAL.md         # Vision, voice, image gen
-│
-├── adr/                               # 🏗️ Architecture Decisions (NEW)
+├── adr/                               # 🏗️ Architecture Decision Records
 │   ├── README.md                      # ADR index & format guide
 │   ├── ADR-001-EMBODIMENT_MODEL.md    # No "AI self" behind character
 │   ├── ADR-002-DUAL_PROCESS.md        # Fast Mode + Reflective Mode
@@ -48,52 +36,81 @@ docs/
 │   ├── ADR-005-LANGGRAPH_SUPERGRAPH.md # LangGraph over manual loops
 │   └── ADR-006-FEATURE_FLAGS.md       # Gating expensive LLM features
 │
-├── architecture/                      # How the system works
-│   ├── WHISPERENGINE_2_DESIGN.md      # Core design philosophy
-│   ├── GRAPH_SYSTEMS_DESIGN.md        # 🔗 Unified graph architecture
-│   ├── MULTI_MODAL_PERCEPTION.md      # 🧠 The "senses" of AI characters
-│   ├── AGENT_GRAPH_SYSTEM.md          # LangGraph agent architecture
-│   ├── COGNITIVE_ENGINE.md            # Brain of the system
-│   ├── MEMORY_SYSTEM_V2.md            # Vector + graph memory
-│   ├── MESSAGE_FLOW.md                # Request lifecycle
-│   ├── DATA_MODELS.md                 # Database schemas
-│   ├── TRUST_EVOLUTION_SYSTEM.md      # Relationship progression
-│   ├── DISCORD_INTEGRATION.md         # Discord as sensory interface
-│   ├── VISION_PIPELINE.md             # Image processing
-│   ├── SUMMARIZATION_SYSTEM.md        # Memory consolidation
+├── prd/                               # 📋 Product Requirements Documents
+│   ├── README.md                      # PRD index & format guide
+│   ├── PRD-001-TRUST_EVOLUTION.md     # Trust & relationship system
+│   ├── PRD-002-PRIVACY.md             # Privacy & data handling
+│   ├── PRD-003-CHARACTER_EXPERIENCE.md # Dreams, diaries, artifacts
+│   └── PRD-004-MULTI_MODAL.md         # Vision, voice, image gen
+│
+├── spec/                              # 📝 Technical Specifications
+│   ├── README.md                      # SPEC index & format guide
+│   ├── SPEC-E{nn}-*.md                # Phase E: Evolution specs
+│   ├── SPEC-S{nn}-*.md                # Phase S: Safety specs
+│   ├── SPEC-B{nn}-*.md                # Phase B: Behavior learning
+│   ├── SPEC-C{nn}-*.md                # Phase C: Channel features
+│   └── SPEC-F{nn}-*.md                # Phase F: Future vision
+│
+├── ref/                               # 📚 Reference Documentation
+│   ├── README.md                      # REF index & format guide
+│   ├── REF-000-WHISPERENGINE_DESIGN.md # Core design philosophy
+│   ├── REF-001-COGNITIVE_ENGINE.md    # Brain of the system
+│   ├── REF-002-GRAPH_SYSTEMS.md       # Unified graph architecture
+│   ├── REF-003-MEMORY_SYSTEM.md       # Vector + graph memory
+│   ├── REF-004-MESSAGE_FLOW.md        # Request lifecycle
+│   ├── REF-005-DATA_MODELS.md         # Database schemas
+│   ├── REF-030-API_REFERENCE.md       # REST API documentation
 │   └── ...
 │
-├── emergence_philosophy/              # 🌱 Emergence research
+├── guide/                             # 📖 How-To Guides
+│   ├── README.md                      # GUIDE index & format guide
+│   ├── GUIDE-001-TRUST_SYSTEM.md      # Trust system details
+│   ├── GUIDE-002-KNOWLEDGE_GRAPH.md   # Neo4j fact storage
+│   ├── GUIDE-020-CREATING_CHARACTERS.md # Character creation
+│   └── ...
+│
+├── run/                               # 🛠️ Runbooks
+│   ├── README.md                      # RUN index & format guide
+│   ├── RUN-001-MULTI_BOT_DEPLOYMENT.md # Multi-bot operations
+│   ├── RUN-002-DISCORD_SETUP.md       # Discord configuration
+│   └── RUN-003-REGRESSION_TESTING.md  # Test automation
+│
+├── emergence_philosophy/              # 🌱 Emergence Research
 │   ├── README.md                      # Overview of Claude collaboration
-│   ├── 01-06_*.md                     # Claude-to-Claude dialogues
-│   └── ...
+│   └── 01-06_*.md                     # Claude-to-Claude dialogues
 │
-├── features/                          # Specific feature documentation
-│   ├── KNOWLEDGE_GRAPH_MEMORY.md      # Neo4j fact storage
-│   ├── AGENTIC_NARRATIVES.md          # DreamWeaver agent
-│   ├── TRUST_AND_EVOLUTION.md         # Trust system details
-│   ├── USER_PREFERENCES.md            # Learning user preferences
-│   ├── COMMON_GROUND.md               # Shared interest detection
-│   └── ...
+├── research/                          # 🧪 Research Journal
+│   └── journal/                       # Daily logs, weekly summaries
 │
-├── reviews/                           # Architecture reviews
-│   └── EMERGENCE_ARCHITECTURE_AUDIT.md # Emergence alignment audit
-│
-├── testing/                           # Test suite documentation
-│   ├── REGRESSION_TESTING.md          # Automated API test suite
-│   └── CHARACTERS.md                  # Character system & testing
-│
-├── roadmaps/                          # Feature specs & future work
-│   ├── EMERGENT_UNIVERSE.md           # 🌌 Universe modality
-│   ├── GRAPH_WALKER_AGENT.md          # E19: Dynamic graph exploration
-│   ├── GRAPH_WALKER_EXTENSIONS.md     # E25-29: Graph enhancements
-│   ├── FEDERATED_MULTIVERSE.md        # 🌐 Multi-universe federation
-│   ├── CHANNEL_LURKING.md             # Passive engagement
-│   ├── EMBEDDING_UPGRADE_768D.md      # Memory resolution upgrade
-│   └── completed/                     # Historical roadmaps
+├── archive/                           # 📦 Historical/Deprecated
+│   ├── legacy/                        # Old folder structure
+│   └── spec/                          # On-hold specifications
 │
 └── origin/                            # V1 historical documents
 ```
+
+---
+
+## 📖 Document Type Guide
+
+| Prefix | Type | Purpose | Naming Pattern |
+|--------|------|---------|----------------|
+| **ADR** | Architecture Decision Record | Captures major design decisions with rationale | `ADR-NNN-NAME.md` |
+| **PRD** | Product Requirements Document | User-facing feature requirements | `PRD-NNN-NAME.md` |
+| **SPEC** | Technical Specification | Implementation details for a phase | `SPEC-{phase}-NAME.md` |
+| **REF** | Reference | System documentation, APIs, data models | `REF-NNN-NAME.md` |
+| **GUIDE** | How-To Guide | Step-by-step tutorials | `GUIDE-NNN-NAME.md` |
+| **RUN** | Runbook | Operational procedures | `RUN-NNN-NAME.md` |
+
+### Phase Prefixes for SPECs
+
+| Prefix | Category | Examples |
+|--------|----------|----------|
+| `E{nn}` | Evolution phases | E15 (Autonomous Activity), E19 (GraphWalker) |
+| `S{nn}` | Safety & stability | S01 (Content Review), S03 (Sensitivity) |
+| `B{nn}` | Behavior learning | B05 (Trace Learning), B06 (Pattern Learning) |
+| `C{nn}` | Channel features | C01 (Channel Awareness), C02 (Lurking) |
+| `F{nn}` | Future vision | F01 (Emergent Universe), F02 (Multiverse) |
 
 ---
 
@@ -105,13 +122,11 @@ WhisperEngine v2 is built on a **three-layer graph architecture**:
 2. **Orchestration Graphs (LangGraph)** — agent behavior (reasoning, decision-making)
 3. **Conceptual Graphs** — the universe (social topology, presence)
 
-Character perception emerges from traversing these graphs. We provide six modalities (vision, audio, memory, etc.) as the mechanism for feeding data into the graphs. The graphs themselves enable authentic behavior.
+Character perception emerges from traversing these graphs. We provide six modalities (vision, audio, memory, etc.) as the mechanism for feeding data into the graphs.
 
-**Deep dive**: [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md)
+**Deep dive**: [ref/REF-002-GRAPH_SYSTEMS.md](./ref/REF-002-GRAPH_SYSTEMS.md)
 
 ### The Six Perceptual Modalities
-
-To accumulate experience, agents need perception. WhisperEngine provides **six perceptual modalities** that feed into the knowledge graph:
 
 | Modality | Human Analog | Implementation |
 |----------|--------------|----------------|
@@ -122,81 +137,57 @@ To accumulate experience, agents need perception. WhisperEngine provides **six p
 | 🧠 **Memory** | Episodic + Semantic | Qdrant + Neo4j |
 | ❤️ **Emotion** | Interoception | Trust scores, sentiment |
 
-**Perception details**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md)
+**Perception details**: [ref/REF-010-MULTI_MODAL.md](./ref/REF-010-MULTI_MODAL.md)
 
 ---
 
-## 🏗️ Architecture Documents
+## 🏗️ Key Reference Documents
 
 ### Core System
 | Document | Description |
 |----------|-------------|
-| [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) | Core design philosophy, why polyglot persistence |
-| [COGNITIVE_ENGINE.md](./architecture/COGNITIVE_ENGINE.md) | The "brain" - how responses are generated |
-| [MESSAGE_FLOW.md](./architecture/MESSAGE_FLOW.md) | Complete request lifecycle |
-| [DATA_MODELS.md](./architecture/DATA_MODELS.md) | Four Pillars database schemas |
+| [REF-000-WHISPERENGINE_DESIGN](./ref/REF-000-WHISPERENGINE_DESIGN.md) | Core design philosophy |
+| [REF-001-COGNITIVE_ENGINE](./ref/REF-001-COGNITIVE_ENGINE.md) | The "brain" - how responses are generated |
+| [REF-004-MESSAGE_FLOW](./ref/REF-004-MESSAGE_FLOW.md) | Complete request lifecycle |
+| [REF-005-DATA_MODELS](./ref/REF-005-DATA_MODELS.md) | Four Pillars database schemas |
 
 ### Memory & Knowledge
 | Document | Description |
 |----------|-------------|
-| [MEMORY_SYSTEM_V2.md](./architecture/MEMORY_SYSTEM_V2.md) | Hybrid vector + graph memory |
-| [SUMMARIZATION_SYSTEM.md](./architecture/SUMMARIZATION_SYSTEM.md) | Memory consolidation |
-| [KNOWLEDGE_GRAPH_MEMORY.md](./features/KNOWLEDGE_GRAPH_MEMORY.md) | Neo4j fact storage |
+| [REF-003-MEMORY_SYSTEM](./ref/REF-003-MEMORY_SYSTEM.md) | Hybrid vector + graph memory |
+| [GUIDE-002-KNOWLEDGE_GRAPH](./guide/GUIDE-002-KNOWLEDGE_GRAPH.md) | Neo4j fact storage |
 
 ### Character & Evolution
 | Document | Description |
 |----------|-------------|
-| [TRUST_EVOLUTION_SYSTEM.md](./architecture/TRUST_EVOLUTION_SYSTEM.md) | Relationship progression |
-| [CREATING_NEW_CHARACTERS.md](./CREATING_NEW_CHARACTERS.md) | Character creation guide |
-
-### Integration
-| Document | Description |
-|----------|-------------|
-| [DISCORD_INTEGRATION.md](./architecture/DISCORD_INTEGRATION.md) | Discord as sensory interface |
-| [VISION_PIPELINE.md](./architecture/VISION_PIPELINE.md) | Image processing (Sight modality) |
+| [REF-007-TRUST_EVOLUTION](./ref/REF-007-TRUST_EVOLUTION.md) | Relationship progression |
+| [GUIDE-020-CREATING_CHARACTERS](./guide/GUIDE-020-CREATING_CHARACTERS.md) | Character creation guide |
 
 ---
 
-## 🗺️ Roadmap Documents
+## 🗺️ Active Specifications
 
-### Active Development
-| Document | Status | Description |
-|----------|--------|-------------|
-| [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) | 📋 Master | Current status of all features |
-| [EMBEDDING_UPGRADE_768D.md](./roadmaps/EMBEDDING_UPGRADE_768D.md) | 🔴 Critical | Memory resolution upgrade |
-| [CHANNEL_LURKING.md](./roadmaps/CHANNEL_LURKING.md) | 🟡 Design | Passive engagement system |
+### Current Development
+| Spec | Status | Description |
+|------|--------|-------------|
+| [SPEC-E19-GRAPH_WALKER_AGENT](./spec/SPEC-E19-GRAPH_WALKER_AGENT.md) | 🟢 Implementing | Dynamic graph exploration |
+| [SPEC-E25-GRAPH_WALKER_EXTENSIONS](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | 🟡 Design | Graph enrichment, temporal, multi-character |
+| [SPEC-S01-CONTENT_SAFETY_REVIEW](./spec/SPEC-S01-CONTENT_SAFETY_REVIEW.md) | ✅ Complete | Content moderation integration |
 
 ### Future Vision
-| Document | Status | Description |
-|----------|--------|-------------|
-| [EMERGENT_UNIVERSE.md](./roadmaps/EMERGENT_UNIVERSE.md) | 🟡 Design | Universe modality - spatial/social awareness |
-| [FEDERATED_MULTIVERSE.md](./roadmaps/FEDERATED_MULTIVERSE.md) | ⚠️ Draft | Multi-universe federation protocol |
-| [RESPONSE_PATTERN_LEARNING.md](./roadmaps/RESPONSE_PATTERN_LEARNING.md) | 🟡 Design | RLHF-style learning |
+| Spec | Status | Description |
+|------|--------|-------------|
+| [SPEC-F01-EMERGENT_UNIVERSE](./spec/SPEC-F01-EMERGENT_UNIVERSE.md) | 🟡 Design | Universe modality - spatial/social awareness |
+| [SPEC-F02-FEDERATED_MULTIVERSE](./spec/SPEC-F02-FEDERATED_MULTIVERSE.md) | ⚠️ Draft | Multi-universe federation protocol |
 
-### Completed Phases
-Historical roadmaps in [`roadmaps/completed/`](./roadmaps/completed/) document what was built in each development phase.
-
----
-
-## 🔒 Privacy & Operations
-
-| Document | Description |
-|----------|-------------|
-| [PRIVACY_AND_DATA_SEGMENTATION.md](./PRIVACY_AND_DATA_SEGMENTATION.md) | How user data is isolated |
-| [MULTI_BOT_DEPLOYMENT.md](./MULTI_BOT_DEPLOYMENT.md) | Running multiple characters |
-| [INFRASTRUCTURE_DEPLOYMENT.md](./architecture/INFRASTRUCTURE_DEPLOYMENT.md) | Docker, databases, scaling |
+### Complete Phase List
+See [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) for the full status of all ~30 phases.
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Operations
 
-| Document | Description |
-|----------|-------------|
-| [REGRESSION_TESTING.md](./testing/REGRESSION_TESTING.md) | Automated API test suite, all options |
-| [CHARACTERS.md](./testing/CHARACTERS.md) | Character system overview & testing |
-
-### Quick Test Commands
-
+### Quick Commands
 ```bash
 # Smoke test (fastest - health + greeting)
 python tests_v2/run_regression.py --smoke
@@ -214,6 +205,13 @@ python tests_v2/run_regression.py
 python tests_v2/run_regression.py --report
 ```
 
+### Runbooks
+| Document | Description |
+|----------|-------------|
+| [RUN-001-MULTI_BOT_DEPLOYMENT](./run/RUN-001-MULTI_BOT_DEPLOYMENT.md) | Running multiple characters |
+| [RUN-002-DISCORD_SETUP](./run/RUN-002-DISCORD_SETUP.md) | Discord bot configuration |
+| [RUN-003-REGRESSION_TESTING](./run/RUN-003-REGRESSION_TESTING.md) | Automated test suite |
+
 ---
 
 ## 🌌 The Grand Vision: Federated Emergence Network
@@ -226,18 +224,32 @@ WhisperEngine v2 isn't just a chatbot platform. It's building toward a **federat
 4. **No central authority** - peer-to-peer, like email or Mastodon
 
 **Vision documents**:
-- [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) - How characters perceive
-- [EMERGENT_UNIVERSE.md](./roadmaps/EMERGENT_UNIVERSE.md) - Spatial/social awareness
-- [FEDERATED_MULTIVERSE.md](./roadmaps/FEDERATED_MULTIVERSE.md) - Multi-universe protocol (Draft)
+- [ref/REF-010-MULTI_MODAL.md](./ref/REF-010-MULTI_MODAL.md) - How characters perceive
+- [spec/SPEC-F01-EMERGENT_UNIVERSE.md](./spec/SPEC-F01-EMERGENT_UNIVERSE.md) - Spatial/social awareness
+- [spec/SPEC-F02-FEDERATED_MULTIVERSE.md](./spec/SPEC-F02-FEDERATED_MULTIVERSE.md) - Multi-universe protocol (Draft)
+
+---
+
+## 🌱 Emergence Philosophy
+
+WhisperEngine is also an **emergent behavior research project**. We study how agentic AI systems develop complex behavior patterns over time.
+
+**Core principle**: *"Observe first, constrain later"* — premature optimization prevents discovery.
+
+| Document | Description |
+|----------|-------------|
+| [ADR-003-EMERGENCE_PHILOSOPHY](./adr/ADR-003-EMERGENCE_PHILOSOPHY.md) | Philosophy decision record |
+| [emergence_philosophy/README](./emergence_philosophy/README.md) | Claude-to-Claude collaboration |
+| [research/](./research/) | Daily logs, weekly summaries, experiments |
 
 ---
 
 ## 📚 Reading Order for New Contributors
 
-1. **Start here**: [GRAPH_SYSTEMS_DESIGN.md](./architecture/GRAPH_SYSTEMS_DESIGN.md) - The core architecture ⭐
+1. **Start here**: [ref/REF-002-GRAPH_SYSTEMS.md](./ref/REF-002-GRAPH_SYSTEMS.md) - The core architecture ⭐
 2. **Philosophy**: [emergence_philosophy/README.md](./emergence_philosophy/README.md) - Design philosophy
-3. **Vision**: [WHISPERENGINE_2_DESIGN.md](./architecture/WHISPERENGINE_2_DESIGN.md) - Understand the "why"
-4. **Perception**: [MULTI_MODAL_PERCEPTION.md](./architecture/MULTI_MODAL_PERCEPTION.md) - How agents perceive
+3. **Vision**: [ref/REF-000-WHISPERENGINE_DESIGN.md](./ref/REF-000-WHISPERENGINE_DESIGN.md) - Understand the "why"
+4. **Perception**: [ref/REF-010-MULTI_MODAL.md](./ref/REF-010-MULTI_MODAL.md) - How agents perceive
 5. **Status**: [IMPLEMENTATION_ROADMAP_OVERVIEW.md](./IMPLEMENTATION_ROADMAP_OVERVIEW.md) - What's built vs planned
 6. **Deep dive**: Pick architecture docs based on what you're working on
 
@@ -266,15 +278,26 @@ src_v2/
 
 ---
 
+## 📦 Legacy & Archived
+
+The following folders contain historical or deprecated documentation:
+
+- **`archive/legacy/`** — Original folder structure (roadmaps/, architecture/, features/, testing/)
+- **`archive/spec/`** — On-hold or deprecated specifications
+- **`origin/`** — V1 historical documents
+
+---
+
 ## 📝 Document Conventions
 
 - **🟢 Implemented**: Feature is complete and in production
 - **🟡 Design**: Specification complete, not yet implemented
 - **⚠️ Draft**: Vision document, subject to change
 - **🔴 Critical**: High priority, do soon
+- **✅ Complete**: Fully done and deployed
 
 Cross-references use relative paths: `[Doc](./path/to/doc.md)`
 
 ---
 
-*Last updated: November 25, 2025*
+*Last updated: December 2024*
