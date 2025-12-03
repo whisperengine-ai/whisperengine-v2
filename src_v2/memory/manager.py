@@ -101,6 +101,8 @@ class MemoryManager:
                 """, str(user_id), character_name, role, content, user_name or "User", str(channel_id) if channel_id else None, str(message_id) if message_id else None)
             
             # Also save to vector memory
+            # Derive collection name from character_name to support cross-bot operations (e.g., gossip injection)
+            target_collection = f"whisperengine_memory_{character_name}" if character_name else self.collection_name
             await self._save_vector_memory(
                 user_id=user_id, 
                 role=role, 
@@ -108,6 +110,7 @@ class MemoryManager:
                 metadata=metadata,
                 channel_id=channel_id, 
                 message_id=message_id,
+                collection_name=target_collection,
                 importance_score=importance_score,
                 source_type=source_type
             )
