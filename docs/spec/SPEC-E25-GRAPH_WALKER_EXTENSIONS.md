@@ -29,8 +29,8 @@ Five extensions to the Graph Walker Agent that deepen the knowledge graph's valu
 | Phase | Name | Purpose | Time | Status |
 |-------|------|---------|------|--------|
 | E25 | Graph Enrichment Agent | Proactively add edges from conversation analysis | 2-3 days | ✅ Complete |
-| E26 | Temporal Graph | Weight relationships by evolution over time | 1-2 days | 📋 Proposed |
-| E27 | Multi-Character Walks | Discover shared narrative space between bots | 2-3 days | 📋 Proposed |
+| E26 | Temporal Graph | Weight relationships by evolution over time | 1-2 days | ✅ Complete |
+| E27 | Multi-Character Walks | Discover shared narrative space between bots | 2-3 days | ✅ Complete |
 | E28 | User-Facing Graph | Let users explore their own knowledge graph | 2-3 days | 📋 Proposed |
 | E29 | Graph-Based Recommendations | "Users like you also discussed..." | 1-2 days | 📋 Proposed |
 
@@ -357,7 +357,7 @@ This approach follows emergence philosophy:
 ## Phase E27: Multi-Character Walks
 
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+**Status:** ✅ Complete (December 5, 2025)
 **Dependencies:** E19 ✅, E6 (Cross-Bot) ✅
 
 ### Problem

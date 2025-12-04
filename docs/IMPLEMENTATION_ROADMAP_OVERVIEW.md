@@ -2,7 +2,7 @@
 
 **Document Version:** 3.0  
 **Created:** November 24, 2025  
-**Last Updated:** December 5, 2025 (E26: Temporal Graph complete)
+**Last Updated:** December 5, 2025 (E26: Temporal Graph complete, E27: Multi-Character Walks complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -81,6 +81,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | ✅ Complete (All Phases) |
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | ✅ Complete |
 | 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅, E25 ✅ | ✅ Complete |
+| 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | ✅ Complete |
 
 #### 📋 Proposed (Ready to Start)
 
@@ -88,7 +89,6 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|------|--------|
 | 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
-| 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | 📋 Proposed |
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
 | ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
@@ -2101,20 +2101,28 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 ---
 
-### 📋 Phase E27: Multi-Character Walks
+### ✅ Phase E27: Multi-Character Walks
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+**Status:** ✅ Complete (December 2025)
 **Dependencies:** E19 ✅, E6 (Cross-Bot) ✅
 **Added:** December 2025
 
 **Problem:** Each bot walks its own graph in isolation. But bots share a universe—they could discover narrative threads that span multiple characters.
 
-**Solution:** Extend `GraphWalkerAgent` to walk across character boundaries:
+**Solution:** Extended `GraphWalkerAgent` to walk across character boundaries:
 1. Start from current character's graph
 2. Expand to shared entities (Topics, Users)
 3. Cross into other character's subgraph via shared nodes
-4. Apply trust-gating (both characters must trust the user)
+4. Apply trust-gating (both characters must trust the user > 20)
 5. Single LLM call to synthesize cross-character narrative
+
+**Implementation:**
+- `multi_character_walk()` in `src_v2/knowledge/walker.py`
+- `_trust_gate()` helper using `TrustManager`
+- `_merge_walks()` to combine results
+- `explore_multi_character()` in `GraphWalkerAgent` for orchestration
+
+**Tests:** 5 unit tests in `tests_v2/test_multi_walk.py`
 
 **Use Cases:**
 - Cross-character dreams: "In my dream, I saw what Aetheris wrote about depth..."

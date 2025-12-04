@@ -29,6 +29,7 @@ from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.core.cache import cache_manager
 from src_v2.agents.llm_factory import create_llm
+from src_v2.evolution.trust import TrustManager
 
 
 @dataclass
@@ -73,6 +74,17 @@ class GraphWalkResult:
     clusters: List[ThematicCluster]
     interpretation: str = ""
     walk_stats: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class MultiWalkResult:
+    """Result of a multi-character graph walk (Phase E27)."""
+    primary_walk: GraphWalkResult
+    secondary_walks: Dict[str, GraphWalkResult]
+    merged_nodes: List[WalkedNode]
+    merged_edges: List[WalkedEdge]
+    shared_concepts: List[str]
+    interpretation: str = ""
 
 
 class GraphWalker:
@@ -596,6 +608,134 @@ class GraphWalker:
         except Exception as e:
             logger.debug(f"Trust trajectory query failed (non-critical): {e}")
             return []
+
+    async def multi_character_walk(
+        self,
+        primary_character: str,
+        secondary_characters: List[str],
+        seed_ids: List[str],
+        max_depth: int = 2,
+        max_nodes: int = 30
+    ) -> MultiWalkResult:
+        """
+        Walk across multiple character subgraphs (Phase E27).
+        
+        Discovers shared narrative space by:
+        1. Walking primary character's graph
+        2. Identifying shared nodes (Users, Topics)
+        3. Crossing into secondary characters' graphs (trust-gated)
+        4. Merging results
+        """
+        # 1. Walk primary graph
+        primary_result = await self.explore(
+            seed_ids=seed_ids,
+            bot_name=primary_character,
+            max_depth=max_depth,
+            max_nodes=max_nodes
+        )
+        
+        # 2. Find shared nodes (Users, Topics)
+        shared_nodes = self._find_shared_nodes(primary_result.nodes)
+        
+        # 3. Walk secondary graphs
+        secondary_results = {}
+        trust_manager = TrustManager()
+        
+        for bot_name in secondary_characters:
+            if bot_name == primary_character:
+                continue
+                
+            # Filter seeds by trust (User nodes must be trusted by secondary bot)
+            gated_seeds = await self._trust_gate(
+                nodes=shared_nodes,
+                bot_name=bot_name,
+                trust_manager=trust_manager
+            )
+            
+            if not gated_seeds:
+                continue
+                
+            # Walk secondary graph
+            # Use smaller depth/nodes for secondary walks to keep focus
+            result = await self.explore(
+                seed_ids=gated_seeds,
+                bot_name=bot_name,
+                max_depth=max(1, max_depth - 1),
+                max_nodes=max(10, int(max_nodes * 0.6))
+            )
+            secondary_results[bot_name] = result
+            
+        # 4. Merge results
+        return self._merge_walks(primary_result, secondary_results)
+    
+    def _find_shared_nodes(self, nodes: List[WalkedNode]) -> List[WalkedNode]:
+        """Identify nodes that can serve as bridges between characters."""
+        shared = []
+        for node in nodes:
+            # Users are shared (if trusted)
+            if node.label == "User":
+                shared.append(node)
+            # Topics and Entities are shared concepts
+            elif node.label in ["Topic", "Entity", "Concept"]:
+                shared.append(node)
+        return shared
+    
+    async def _trust_gate(
+        self,
+        nodes: List[WalkedNode],
+        bot_name: str,
+        trust_manager: TrustManager
+    ) -> List[str]:
+        """
+        Filter nodes based on trust.
+        User nodes are only included if bot trusts them > 20.
+        """
+        allowed_ids = []
+        
+        for node in nodes:
+            if node.label == "User":
+                # Check trust
+                try:
+                    rel = await trust_manager.get_relationship_level(node.id, bot_name)
+                    if rel.get("trust_score", 0) > 20:
+                        allowed_ids.append(node.id)
+                except Exception as e:
+                    logger.warning(f"Trust check failed for {node.id}/{bot_name}: {e}")
+            else:
+                # Non-user nodes are always allowed
+                allowed_ids.append(node.id)
+                
+        return allowed_ids
+
+    def _merge_walks(
+        self,
+        primary: GraphWalkResult,
+        secondaries: Dict[str, GraphWalkResult]
+    ) -> MultiWalkResult:
+        """Merge multiple walk results into a unified view."""
+        all_nodes = {n.id: n for n in primary.nodes}
+        all_edges = {f"{e.source_id}-{e.target_id}-{e.edge_type}": e for e in primary.edges}
+        
+        shared_concepts = set()
+        primary_ids = {n.id for n in primary.nodes}
+        
+        for bot_name, result in secondaries.items():
+            for node in result.nodes:
+                if node.id in primary_ids:
+                    shared_concepts.add(node.name)
+                all_nodes[node.id] = node
+                
+            for edge in result.edges:
+                key = f"{edge.source_id}-{edge.target_id}-{edge.edge_type}"
+                all_edges[key] = edge
+                
+        return MultiWalkResult(
+            primary_walk=primary,
+            secondary_walks=secondaries,
+            merged_nodes=list(all_nodes.values()),
+            merged_edges=list(all_edges.values()),
+            shared_concepts=list(shared_concepts)
+        )
     
     def _find_clusters(
         self,
@@ -878,6 +1018,74 @@ Be introspective and brief."""
             
         except Exception as e:
             logger.error(f"Diary interpretation failed: {e}")
+            return ""
+
+    async def explore_multi_character(
+        self,
+        secondary_characters: List[str],
+        seed_ids: List[str]
+    ) -> MultiWalkResult:
+        """
+        Explore shared narrative space across multiple characters (Phase E27).
+        """
+        # Step 1: Python multi-walk
+        result = await self.walker.multi_character_walk(
+            primary_character=self.character_name,
+            secondary_characters=secondary_characters,
+            seed_ids=seed_ids
+        )
+        
+        if not result.merged_nodes:
+            return result
+            
+        # Step 2: Interpret shared narrative
+        result.interpretation = await self._interpret_shared_narrative(result)
+        
+        return result
+
+    async def _interpret_shared_narrative(self, result: MultiWalkResult) -> str:
+        """Generate a narrative interpretation of the shared graph space."""
+        
+        # Format nodes for prompt
+        nodes_text = "\n".join([
+            f"- {n.label}: {n.name} (Score: {n.score})" 
+            for n in result.merged_nodes[:20]
+        ])
+        
+        shared_text = ", ".join(result.shared_concepts)
+        secondaries = ", ".join(result.secondary_walks.keys())
+        
+        prompt = f"""
+        Analyze this shared knowledge graph between {self.character_name} and {secondaries}.
+        
+        Shared Concepts: {shared_text}
+        
+        Graph Nodes:
+        {nodes_text}
+        
+        Task:
+        1. Identify narrative threads that connect these characters.
+        2. How do their perspectives on these shared topics differ or align?
+        3. Suggest a potential interaction or conversation topic.
+        
+        Keep it concise (2-3 sentences).
+        """
+        
+        try:
+            response = await self.llm.ainvoke([
+                SystemMessage(content="You are an expert narrative analyst."),
+                HumanMessage(content=prompt)
+            ])
+            
+            if hasattr(response, 'content'):
+                content = response.content
+                if isinstance(content, str):
+                    return content
+                return str(content)
+            return str(response)
+            
+        except Exception as e:
+            logger.error(f"Shared narrative interpretation failed: {e}")
             return ""
 
 
