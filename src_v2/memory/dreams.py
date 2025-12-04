@@ -528,6 +528,28 @@ Create a surreal dream echoing these experiences.""")
         """
         if not material.is_sufficient():
             logger.info(f"Insufficient dream material for {self.bot_name}")
+            
+            # [E22] Store absence as meta-memory
+            try:
+                from src_v2.memory.manager import memory_manager
+                await memory_manager.save_typed_memory(
+                    user_id=None,  # System-level reflection, not tied to a user
+                    memory_type="dream_absence",
+                    content=f"Wanted to generate a dream but lacked sufficient material ({len(material.memories)} memories, {len(material.observations)} observations). Need richer experiences.",
+                    metadata={
+                        "reason": "insufficient_material",
+                        "memories_count": len(material.memories),
+                        "observations_count": len(material.observations),
+                        "gossip_count": len(material.gossip),
+                        "facts_count": len(material.facts)
+                    },
+                    importance_score=2,
+                    source_type=MemorySourceType.ABSENCE,
+                    collection_name=self.collection_name
+                )
+            except Exception as e:
+                logger.warning(f"Failed to store dream absence: {e}")
+            
             return None, []
         
         # Check richness - skip hollow dreams even if ALWAYS_GENERATE is on
@@ -538,6 +560,29 @@ Create a surreal dream echoing these experiences.""")
                 f"Material: {len(material.memories)} memories, {len(material.observations)} observations, "
                 f"{len(material.gossip)} gossip, {len(material.facts)} facts"
             )
+            
+            # [E22] Store absence due to low richness
+            try:
+                from src_v2.memory.manager import memory_manager
+                await memory_manager.save_typed_memory(
+                    user_id=None,
+                    memory_type="dream_absence",
+                    content=f"Tried to dream but the experiences were too scattered or shallow (richness score {richness}/10). Need deeper or more connected experiences.",
+                    metadata={
+                        "reason": "low_richness",
+                        "richness_score": richness,
+                        "memories_count": len(material.memories),
+                        "observations_count": len(material.observations),
+                        "gossip_count": len(material.gossip),
+                        "facts_count": len(material.facts)
+                    },
+                    importance_score=2,
+                    source_type=MemorySourceType.ABSENCE,
+                    collection_name=self.collection_name
+                )
+            except Exception as e:
+                logger.warning(f"Failed to store dream richness absence: {e}")
+            
             return None, []
         
         logger.info(f"Generating dream with richness score {richness}")

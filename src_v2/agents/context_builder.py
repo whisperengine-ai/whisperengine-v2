@@ -102,6 +102,11 @@ class ContextBuilder:
                     system_content += stigmergic_context
                     logger.debug(f"Injected {len(other_bot_insights)} shared artifacts")
 
+            # 2.7.6 Inject Absence Context (Phase E22 - Self-Awareness)
+            absence_context = await self.get_absence_context(character.name)
+            if absence_context:
+                system_content += absence_context
+
             # 2.8 Identity Reinforcement
             if context_variables.get("user_name"):
                 system_content += f"\n\nIMPORTANT: You are talking to {context_variables['user_name']}. Do NOT confuse them with anyone mentioned in the chat history or reply context."
@@ -410,4 +415,45 @@ class ContextBuilder:
             return ""
         except Exception as e:
             logger.warning(f"Failed to load known bots context: {e}")
+            return ""
+
+    async def get_absence_context(self, character_name: str) -> str:
+        """[E22] Retrieves recent absence traces (knowledge gaps) to inform character behavior."""
+        try:
+            from src_v2.memory.manager import memory_manager
+            
+            # Search for recent absence traces
+            collection_name = f"whisperengine_memory_{character_name}"
+            absences = await memory_manager.search_memories(
+                query="wanted to dream, wanted to reflect, tried to remember, lacked material, insufficient",
+                collection_name=collection_name,
+                limit=3
+            )
+            
+            # Filter for absence-related memories
+            absence_traces = [
+                a for a in absences 
+                if a.get("source_type") == "absence" or "absence" in a.get("type", "").lower()
+            ]
+            
+            if not absence_traces:
+                return ""
+            
+            # Format as self-aware context
+            context = "\n\n[RECENT SELF-AWARENESS]\n"
+            context += "Things I've wanted to do but couldn't:\n"
+            
+            for trace in absence_traces:
+                content = trace.get("content", "")
+                # Extract the key insight from absence message
+                if "dream" in content.lower():
+                    context += "- Dream more deeply, but lacked enough experiences\n"
+                elif "reflect" in content.lower() or "diary" in content.lower():
+                    context += "- Reflect on recent events, but haven't had enough interactions\n"
+                elif "remember" in content.lower():
+                    context += "- Remember more, but you haven't shared those details with me\n"
+            
+            return context
+        except Exception as e:
+            logger.warning(f"Failed to get absence context: {e}")
             return ""
