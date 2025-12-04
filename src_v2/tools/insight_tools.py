@@ -327,6 +327,35 @@ Returns artifacts from the shared community mind, excluding your own thoughts.""
             return f"Error searching community insights: {e}"
 
 
+class TriggerProactiveActionInput(BaseModel):
+    user_id: str = Field(description="User ID to message")
+    reason: str = Field(description="Why we are messaging them")
+
+
+class TriggerProactiveActionTool(BaseTool):
+    """Triggers a proactive message to the user based on an insight."""
+    name: str = "trigger_proactive_action"
+    description: str = "Triggers a proactive message to the user based on an insight. Use this when you detect a good reason to reach out (e.g. shared interest, concern, celebration)."
+    args_schema: Type[BaseModel] = TriggerProactiveActionInput
+    
+    bot_name: str = Field(default="default", exclude=True)
+
+    def _run(self, user_id: str, reason: str) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, user_id: str, reason: str) -> str:
+        from src_v2.workers.task_queue import task_queue, TaskQueue
+        
+        job_id = await task_queue.enqueue(
+            "run_proactive_message",
+            _queue_name=TaskQueue.QUEUE_ACTION,
+            user_id=user_id,
+            character_name=self.bot_name,
+            reason=reason
+        )
+        return f"Triggered proactive action (Job: {job_id})"
+
+
 def get_insight_tools(user_id: str, character_name: str) -> List[BaseTool]:
     """Returns all insight tools configured for a specific user and character."""
     return [
@@ -336,6 +365,7 @@ def get_insight_tools(user_id: str, character_name: str) -> List[BaseTool]:
         StoreReasoningTraceTool(user_id=user_id, character_name=character_name),
         LearnResponsePatternTool(user_id=user_id, character_name=character_name),
         DiscoverCommunityInsightsTool(character_name=character_name),
+        TriggerProactiveActionTool(bot_name=character_name),
     ]
 
 

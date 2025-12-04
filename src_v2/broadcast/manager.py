@@ -550,7 +550,8 @@ class BroadcastManager:
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None,
         artifact_user_id: Optional[str] = None,
-        target_channel_id: Optional[str] = None
+        target_channel_id: Optional[str] = None,
+        target_user_id: Optional[str] = None
     ) -> bool:
         """
         Queue a broadcast for posting by the bot.
@@ -566,6 +567,7 @@ class BroadcastManager:
             provenance: Optional source data
             artifact_user_id: If provided, bot will fetch pending artifacts for this user and attach them
             target_channel_id: Optional specific channel to post to (overrides global broadcast channels)
+            target_user_id: Optional user ID to DM (overrides channel posting)
             
         Returns:
             True if queued successfully
@@ -586,7 +588,8 @@ class BroadcastManager:
                 "provenance": provenance or [],
                 "queued_at": datetime.now(timezone.utc).isoformat(),
                 "artifact_user_id": artifact_user_id,
-                "target_channel_id": target_channel_id
+                "target_channel_id": target_channel_id,
+                "target_user_id": target_user_id
             }
             
             # Push to bot-specific queue (no more shared queue race conditions)
@@ -596,7 +599,7 @@ class BroadcastManager:
                 json.dumps(queue_item)
             )
             
-            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key} (artifacts: {artifact_user_id}, target: {target_channel_id})")
+            logger.info(f"Queued {post_type.value} broadcast for {character_name} -> {bot_queue_key} (artifacts: {artifact_user_id}, target: {target_channel_id}, user: {target_user_id})")
             return True
             
         except Exception as e:
@@ -662,6 +665,23 @@ class BroadcastManager:
                         if files:
                             logger.info(f"Attached {len(files)} artifacts to broadcast for {item['character_name']}")
                     
+                    # Handle DM if target_user_id is present
+                    if item.get("target_user_id"):
+                        try:
+                            user_id = int(item["target_user_id"])
+                            user = await self._bot.fetch_user(user_id)
+                            if user:
+                                # Send DM
+                                await user.send(item["content"], files=files)
+                                posted += 1
+                                logger.info(f"Sent queued DM to {user_id} from {item['character_name']}")
+                                continue
+                            else:
+                                logger.warning(f"Could not fetch user {user_id} for DM")
+                        except Exception as e:
+                            logger.error(f"Failed to send queued DM to {item.get('target_user_id')}: {e}")
+                            continue
+
                     result = await self.post_to_channel(
                         content=item["content"],
                         post_type=PostType(item["post_type"]),

@@ -727,6 +727,42 @@ services:
     networks:
       - v2_network
 
+  # 4. SOCIAL WORKER (Inter-agent communication)
+  # - Gossip, Cross-bot messaging
+  worker-social:
+    profiles: ["worker", "all"]
+    image: whisperengine-v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 1
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/.venv
+      - ./logs:/app/logs
+    env_file:
+      - .env.worker
+    environment:
+      - DISCORD_BOT_NAME=worker-social
+      - DISCORD_TOKEN=not_needed_for_worker
+      - TZ=America/Los_Angeles
+      - REDIS_URL=redis://redis:6379/0
+      - ARQ_QUEUE_NAME=arq:social
+    command: ["python", "-m", "src_v2.workers.worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - v2_network
+
 volumes:
   postgres_data_v2:
   qdrant_data_v2:

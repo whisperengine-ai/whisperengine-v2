@@ -52,6 +52,7 @@ from src_v2.workers.tasks.enrichment_tasks import (
     run_batch_enrichment,
     run_nightly_enrichment
 )
+from src_v2.workers.tasks.action_tasks import run_proactive_message
 from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
     run_nightly_dream_generation,
@@ -121,6 +122,7 @@ class WorkerSettings:
         run_posting_agent,      # Phase E15: Autonomous Posting
         run_graph_enrichment,   # Phase E25: Graph Enrichment
         run_batch_enrichment,   # Phase E25: Batch Graph Enrichment
+        run_proactive_message,  # Phase E24: Proactive Message (Action Queue)
     ]
     
     # Cron jobs (scheduled tasks)

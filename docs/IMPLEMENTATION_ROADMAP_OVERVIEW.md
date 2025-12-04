@@ -82,12 +82,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | ✅ Complete |
 | 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅, E25 ✅ | ✅ Complete |
 | 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | ✅ Complete |
+| 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | ✅ Complete |
 
 #### 📋 Proposed (Ready to Start)
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
 | ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
@@ -1988,9 +1988,9 @@ Enables diary entries like:
 
 ---
 
-### 📋 Phase E24: Advanced Queue Operations
+### ✅ Phase E24: Advanced Queue Operations
 **Priority:** 🟡 Medium | **Time:** 3-4 days | **Complexity:** High
-**Status:** 📋 Proposed
+**Status:** ✅ Complete (Dec 4, 2025)
 **Dependencies:** E18 (Agentic Queue System)
 **Added:** December 2025
 
@@ -2002,9 +2002,9 @@ Enables diary entries like:
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Specialized Workers** | Split `insight-worker` into `cognition`, `sensory`, `action` containers | 📋 Proposed |
-| **Inter-Agent Triggers** | Insight Agent triggers Proactive Agent via `queue:action` | 📋 Proposed |
-| **Hive Mind Dashboard** | CLI/Web tool to visualize queue state and pending thoughts | 📋 Proposed |
+| **Specialized Workers** | Split `insight-worker` into `cognition`, `sensory`, `action` containers | ✅ |
+| **Inter-Agent Triggers** | Insight Agent triggers Proactive Agent via `queue:action` | ✅ |
+| **Hive Mind Dashboard** | CLI/Web tool to visualize queue state and pending thoughts | ✅ |
 
 **Architecture:**
 - **Sensory Queue (`arq:sensory`)**: Fast analysis (sentiment, intent)

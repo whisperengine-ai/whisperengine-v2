@@ -374,7 +374,7 @@ class TaskQueue:
         return await self.enqueue(
             "run_gossip_dispatch",
             _job_id=job_id,
-            _queue_name=self.QUEUE_SENSORY,
+            _queue_name=self.QUEUE_SOCIAL,
             event_data=event.to_dict()
         )
 
