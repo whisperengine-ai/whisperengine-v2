@@ -56,6 +56,16 @@
 
 ---
 
+## Origin
+
+> **How did this system come to be?** Document the provenance—especially for designs emerging from human-AI collaboration.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "Architecture review", "Scaling requirement", "AI collaboration"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)"] |
+| **Key insight** | [Core realization that shaped the design] |
+
 ## Overview
 Brief description of this system's purpose and scope.
 

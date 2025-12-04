@@ -28,6 +28,16 @@ ADRs are immutable once accepted—if we change our minds, we create a new ADR t
 **Date:** [when decision was made]
 **Deciders:** [who made this decision]
 
+## Origin
+
+> **How did this decision arise?** Document the provenance—especially for decisions emerging from human-AI collaboration.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "Production incident", "Architecture review", "AI collaboration", "User feedback"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)", "Elena observation"] |
+| **Catalyst** | [What forced the decision? e.g., "Performance degradation under load"] |
+
 ## Context
 What is the issue that we're seeing that is motivating this decision?
 

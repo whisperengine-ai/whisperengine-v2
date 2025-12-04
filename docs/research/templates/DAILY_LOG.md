@@ -1,6 +1,7 @@
 # Daily Log: YYYY-MM-DD
 
 **Observer**: [Your name]  
+**AI Collaborator**: [Claude model, if session involved AI pair-work]  
 **Active Bots**: [elena, dotty, ...]  
 **Session Duration**: [X hours]
 

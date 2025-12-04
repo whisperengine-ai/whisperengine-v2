@@ -44,6 +44,16 @@
 
 ---
 
+## Origin
+
+> **Why was this runbook created?** Document the trigger—incident, new feature, or operational learning.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "Production incident", "New deployment", "Operational learning"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)", "On-call engineer"] |
+| **Catalyst** | [What necessitated this procedure?] |
+
 ## Overview
 What this runbook accomplishes.
 

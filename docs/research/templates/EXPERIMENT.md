@@ -8,6 +8,18 @@
 
 ---
 
+## Origin
+
+> **How did this experiment idea emerge?** Document the provenance—especially for hypotheses arising from human-AI collaboration or bot observations.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "Daily observation", "AI collaboration", "Bot behavior anomaly", "User report"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)", "Elena observation"] |
+| **Catalyst** | [What sparked the hypothesis?] |
+
+---
+
 ## 🎯 Hypothesis
 
 <!-- What do we expect to happen? Be specific and falsifiable. -->

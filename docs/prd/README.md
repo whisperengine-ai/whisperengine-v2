@@ -34,6 +34,16 @@ Each PRD follows this structure:
 **Created:** [date]
 **Updated:** [date]
 
+## Origin
+
+> **How did this need emerge?** Document the provenance—user requests, AI insights, or observed patterns.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "User feedback", "Support tickets", "AI collaboration", "Analytics insight"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)", "User community"] |
+| **Catalyst** | [What surfaced the need? e.g., "Repeated user confusion about X"] |
+
 ## Problem Statement
 What user problem are we solving?
 
