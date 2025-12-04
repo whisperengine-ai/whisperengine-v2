@@ -345,8 +345,9 @@ class TaskQueue:
 
     async def enqueue_graph_enrichment(
         self,
+        session_id: str,
+        user_id: str,
         channel_id: str,
-        messages: List[Dict[str, Any]],
         bot_name: str,
         server_id: Optional[str] = None
     ) -> Optional[str]:
@@ -360,8 +361,9 @@ class TaskQueue:
         - Entity ↔ Entity links
         
         Args:
+            session_id: Session identifier for the conversation
+            user_id: User ID who triggered the enrichment
             channel_id: Discord channel ID where conversation occurred
-            messages: List of message dicts with conversation details
             bot_name: Bot character name (for logging/segmentation)
             server_id: Discord server ID or "dm" for direct messages
             
@@ -371,11 +373,14 @@ class TaskQueue:
         if not settings.ENABLE_GRAPH_ENRICHMENT:
             return None
             
+        job_id = f"graph_enrichment_{session_id}"
         return await self.enqueue(
             "run_graph_enrichment",
+            _job_id=job_id,
+            session_id=session_id,
+            user_id=user_id,
             channel_id=channel_id,
             server_id=server_id or "dm",
-            messages=messages,
             bot_name=bot_name
         )
 

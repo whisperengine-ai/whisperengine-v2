@@ -142,6 +142,8 @@ class Settings(BaseSettings):
     ENRICHMENT_MIN_TOPIC_MENTIONS: int = 2  # User mentions topic N times before DISCUSSED edge
     ENRICHMENT_MIN_COOCCURRENCE: int = 2    # Entities appear together N times before RELATED_TO edge
     ENRICHMENT_MIN_INTERACTION: int = 1     # Users interact N times before CONNECTED_TO edge
+    ENRICHMENT_MIN_MESSAGES: int = 4        # Minimum messages before queueing enrichment job
+    ENRICHMENT_MAX_MESSAGES: int = 120      # Cap message batch size for enrichment
 
     # --- Preference Extraction ---
     ENABLE_PREFERENCE_EXTRACTION: bool = True

@@ -85,10 +85,7 @@ async def enqueue_post_conversation_tasks(
     session_id: str,
     messages: list,
     user_name: str,
-    trigger: str = "session_end",
-    channel_id: Optional[str] = None,
-    server_id: Optional[str] = None,
-    enrichment_messages: Optional[List[Dict[str, Any]]] = None
+    trigger: str = "session_end"
 ) -> None:
     """
     Unified post-conversation processing pipeline.
@@ -103,9 +100,6 @@ async def enqueue_post_conversation_tasks(
         messages: List of message dicts with role/content
         user_name: Display name for diary provenance
         trigger: What triggered this (session_end, cross_bot_session, etc.)
-        channel_id: Discord channel where the conversation occurred
-        server_id: Discord server identifier (if applicable)
-        enrichment_messages: Optional preprocessed messages for graph enrichment
     """
     # Enqueue summarization
     try:
@@ -140,78 +134,37 @@ async def enqueue_post_conversation_tasks(
     except Exception as e:
         logger.debug(f"Could not enqueue {trigger} insight analysis: {e}")
 
-    # Enqueue graph enrichment (Phase E25)
-    if enrichment_messages:
-        try:
-            await task_queue.enqueue_graph_enrichment(
-                channel_id=channel_id or f"dm:{user_id}",
-                messages=enrichment_messages,
-                bot_name=character_name,
-                server_id=server_id or ("dm" if channel_id is None else None)
-            )
-        except Exception as e:
-            logger.debug(f"Could not enqueue {trigger} graph enrichment: {e}")
-
 
 class MessageHandler:
     def __init__(self, bot):
         self.bot = bot
 
-    async def _prepare_enrichment_messages(
+    def _should_enqueue_enrichment(self, message_count: int) -> bool:
+        return (
+            settings.ENABLE_GRAPH_ENRICHMENT
+            and message_count >= settings.ENRICHMENT_MIN_MESSAGES
+        )
+
+    async def _enqueue_graph_enrichment_job(
         self,
+        session_id: str,
         user_id: str,
-        character_name: str,
-        limit: int,
-        channel_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Fetch raw conversation messages for graph enrichment."""
-        if not db_manager.postgres_pool or limit <= 0:
-            return []
-
-        query: str
-        params: Tuple[Any, ...]
-
-        if channel_id:
-            query = """
-                SELECT user_id, user_name, role, content, message_id, channel_id, timestamp
-                FROM v2_chat_history
-                WHERE channel_id = $1 AND character_name = $2
-                ORDER BY timestamp DESC
-                LIMIT $3
-            """
-            params = (str(channel_id), character_name, limit)
-        else:
-            query = """
-                SELECT user_id, user_name, role, content, message_id, channel_id, timestamp
-                FROM v2_chat_history
-                WHERE user_id = $1 AND character_name = $2
-                ORDER BY timestamp DESC
-                LIMIT $3
-            """
-            params = (str(user_id), character_name, limit)
+        channel_id: Optional[str],
+        server_id: Optional[str]
+    ) -> None:
+        channel_ref = channel_id or f"dm:{user_id}"
+        server_ref = server_id or ("dm" if channel_id is None else None)
 
         try:
-            async with db_manager.postgres_pool.acquire() as conn:
-                rows = await conn.fetch(query, *params)
-        except Exception as exc:  # pragma: no cover - database failure logged and ignored
-            logger.debug(f"Failed to load enrichment messages: {exc}")
-            return []
-
-        enrichment_messages: List[Dict[str, Any]] = []
-        for row in reversed(rows):
-            enrichment_messages.append(
-                {
-                    "user_id": row["user_id"],
-                    "user_name": row["user_name"],
-                    "role": row["role"],
-                    "content": row["content"],
-                    "message_id": row["message_id"],
-                    "channel_id": row["channel_id"],
-                    "timestamp": row["timestamp"].isoformat() if row["timestamp"] else None,
-                }
+            await task_queue.enqueue_graph_enrichment(
+                session_id=session_id,
+                user_id=user_id,
+                channel_id=channel_ref,
+                server_id=server_ref,
+                bot_name=self.bot.character_name
             )
-
-        return enrichment_messages
+        except Exception as exc:  # pragma: no cover - background queue failures are non-blocking
+            logger.debug(f"Could not enqueue graph enrichment for {session_id}: {exc}")
 
     async def _should_autonomous_reply(self, message: discord.Message) -> bool:
         """Decide if the bot should autonomously reply to a message."""
@@ -1877,18 +1830,24 @@ Recent channel context:
 
             # 2. Count messages
             message_count = await memory_manager.count_messages_since(user_id, self.bot.character_name, start_time)
+
+            if self._should_enqueue_enrichment(message_count):
+                await self._enqueue_graph_enrichment_job(
+                    session_id=session_id,
+                    user_id=user_id,
+                    channel_id=channel_id,
+                    server_id=server_id
+                )
             
             # 3. Check threshold
             if message_count >= settings.SUMMARY_MESSAGE_THRESHOLD:
                 logger.info(f"Session {session_id} reached {message_count} messages. Enqueueing summarization.")
                 
                 # Fetch messages
-                history_limit = message_count * 2 if channel_id else message_count
-
                 messages = await memory_manager.get_recent_history(
                     user_id,
                     self.bot.character_name,
-                    limit=history_limit,
+                    limit=message_count,
                     channel_id=channel_id
                 )
                 # Convert to dict format expected by SummaryManager
@@ -1901,13 +1860,6 @@ Recent channel context:
                     for m in messages
                 ]
 
-                enrichment_messages = await self._prepare_enrichment_messages(
-                    user_id=user_id,
-                    character_name=self.bot.character_name,
-                    limit=history_limit,
-                    channel_id=channel_id
-                )
-                
                 # Unified post-conversation processing
                 await enqueue_post_conversation_tasks(
                     user_id=user_id,
@@ -1915,10 +1867,7 @@ Recent channel context:
                     session_id=session_id,
                     messages=msg_dicts,
                     user_name=user_name,
-                    trigger="session_end",
-                    channel_id=channel_id,
-                    server_id=server_id,
-                    enrichment_messages=enrichment_messages
+                    trigger="session_end"
                 )
                     
         except Exception as e:
@@ -1943,6 +1892,24 @@ Recent channel context:
                 self.bot.character_name, 
                 since_time
             )
+
+            cross_bot_session_id = f"crossbot_{bot_user_id}_{self.bot.character_name}"
+
+            if self._should_enqueue_enrichment(message_count):
+                enrichment_limit = self._calculate_enrichment_limit(message_count, channel_id=None)
+                enrichment_messages = await self._prepare_enrichment_messages(
+                    user_id=bot_user_id,
+                    character_name=self.bot.character_name,
+                    limit=enrichment_limit,
+                    channel_id=None
+                )
+                await self._enqueue_graph_enrichment_job(
+                    session_id=cross_bot_session_id,
+                    user_id=bot_user_id,
+                    channel_id=None,
+                    server_id=None,
+                    enrichment_messages=enrichment_messages
+                )
             
             # Use same threshold as normal users
             if message_count >= settings.SUMMARY_MESSAGE_THRESHOLD:
@@ -1960,8 +1927,6 @@ Recent channel context:
                 msg_dicts = [{"role": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content} for m in messages]
                 
                 # Generate a synthetic session ID for cross-bot conversations
-                cross_bot_session_id = f"crossbot_{bot_user_id}_{self.bot.character_name}"
-                
                 # Unified post-conversation processing - bot user IDs are just user IDs!
                 await enqueue_post_conversation_tasks(
                     user_id=bot_user_id,

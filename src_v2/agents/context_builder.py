@@ -426,6 +426,7 @@ class ContextBuilder:
             collection_name = f"whisperengine_memory_{character_name}"
             absences = await memory_manager.search_memories(
                 query="wanted to dream, wanted to reflect, tried to remember, lacked material, insufficient",
+                user_id=character_name,
                 collection_name=collection_name,
                 limit=3
             )
@@ -454,6 +455,6 @@ class ContextBuilder:
                     context += "- Remember more, but you haven't shared those details with me\n"
             
             return context
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - fallback logging only
             logger.warning(f"Failed to get absence context: {e}")
             return ""
