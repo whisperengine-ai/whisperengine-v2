@@ -136,6 +136,12 @@ class Settings(BaseSettings):
 
     # --- Knowledge Graph ---
     ENABLE_RUNTIME_FACT_EXTRACTION: bool = True
+    
+    # --- Graph Enrichment (Phase E25) ---
+    ENABLE_GRAPH_ENRICHMENT: bool = False  # Proactive graph enrichment from conversations
+    ENRICHMENT_MIN_TOPIC_MENTIONS: int = 2  # User mentions topic N times before DISCUSSED edge
+    ENRICHMENT_MIN_COOCCURRENCE: int = 2    # Entities appear together N times before RELATED_TO edge
+    ENRICHMENT_MIN_INTERACTION: int = 1     # Users interact N times before CONNECTED_TO edge
 
     # --- Preference Extraction ---
     ENABLE_PREFERENCE_EXTRACTION: bool = True

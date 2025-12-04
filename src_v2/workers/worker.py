@@ -48,6 +48,11 @@ from src_v2.workers.tasks.analysis_tasks import (
 from src_v2.workers.tasks.vision_tasks import run_vision_analysis
 from src_v2.workers.tasks.media_tasks import run_image_generation, run_voice_generation
 from src_v2.workers.tasks.posting_tasks import run_posting_agent
+from src_v2.workers.tasks.enrichment_tasks import (
+    run_graph_enrichment,
+    run_batch_enrichment,
+    run_nightly_enrichment
+)
 from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
     run_nightly_dream_generation,
@@ -118,6 +123,8 @@ class WorkerSettings:
         run_agentic_dream_generation,  # Alias for backward compatibility
         run_drift_observation,  # Phase E16: Personality drift observation
         run_posting_agent,      # Phase E15: Autonomous Posting
+        run_graph_enrichment,   # Phase E25: Graph Enrichment
+        run_batch_enrichment,   # Phase E25: Batch Graph Enrichment
     ]
     
     # Cron jobs (scheduled tasks)
@@ -150,6 +157,13 @@ class WorkerSettings:
             run_weekly_drift_observation,
             weekday=6,  # Sunday (0=Monday, 6=Sunday)
             hour=0,     # Midnight UTC
+            minute=0,
+            run_at_startup=False
+        ),
+        # Nightly graph enrichment - runs at 3 AM UTC (Phase E25)
+        cron(
+            run_nightly_enrichment,
+            hour=3,     # 3 AM UTC (quiet time)
             minute=0,
             run_at_startup=False
         ),
