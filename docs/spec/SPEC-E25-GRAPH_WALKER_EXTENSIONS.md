@@ -1,8 +1,9 @@
 # Graph Walker Extensions (Phases E25-E29)
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Created:** December 3, 2025
-**Status:** 📋 Proposed
+**Last Updated:** December 4, 2025
+**Status:** 🔄 In Progress (E25 Complete)
 **Type:** Feature Specification (Multi-Phase)
 **Priority:** 🟡 Medium (Research & Narrative Enhancement)
 **Dependencies:** E19 (Graph Walker Agent) ✅
@@ -23,18 +24,15 @@
 > ✅ **Emergence Check Passed:** These extensions follow the "observe first, constrain later" principle. No new Neo4j node types are added—all enhancements work through edge properties, scoring heuristics, and emergent discovery. See [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md).
 
 ---
-
-## Executive Summary
-
 Five extensions to the Graph Walker Agent that deepen the knowledge graph's value:
 
-| Phase | Name | Purpose | Time | Priority |
-|-------|------|---------|------|----------|
-| E25 | Graph Enrichment Agent | Proactively add edges from conversation analysis | 2-3 days | 🟢 High |
-| E26 | Temporal Graph | Weight relationships by evolution over time | 1-2 days | 🟡 Medium |
-| E27 | Multi-Character Walks | Discover shared narrative space between bots | 2-3 days | 🟡 Medium |
-| E28 | User-Facing Graph | Let users explore their own knowledge graph | 2-3 days | ⚪ Low |
-| E29 | Graph-Based Recommendations | "Users like you also discussed..." | 1-2 days | ⚪ Low |
+| Phase | Name | Purpose | Time | Status |
+|-------|------|---------|------|--------|
+| E25 | Graph Enrichment Agent | Proactively add edges from conversation analysis | 2-3 days | ✅ Complete |
+| E26 | Temporal Graph | Weight relationships by evolution over time | 1-2 days | 📋 Proposed |
+| E27 | Multi-Character Walks | Discover shared narrative space between bots | 2-3 days | 📋 Proposed |
+| E28 | User-Facing Graph | Let users explore their own knowledge graph | 2-3 days | 📋 Proposed |
+| E29 | Graph-Based Recommendations | "Users like you also discussed..." | 1-2 days | 📋 Proposed |
 
 **Total Estimated Time:** 8-13 days (non-sequential, can parallelize)
 
@@ -50,7 +48,7 @@ Five extensions to the Graph Walker Agent that deepen the knowledge graph's valu
 ## Phase E25: Graph Enrichment Agent
 
 **Priority:** 🟢 High | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+**Status:** ✅ Complete (December 4, 2025)
 **Dependencies:** E19 ✅, Insight Worker ✅
 
 ### Problem
@@ -138,6 +136,10 @@ class GraphEnrichmentAgent:
     ) -> List[Tuple[Entity, Entity, int]]:
         """
         Find entities that appear within N messages of each other.
+
+**Runtime Integration:** `enqueue_post_conversation_tasks` now enqueues `run_graph_enrichment`
+automatically after session summaries, so real-time enrichment happens without additional
+hooks in bot handlers.
         Returns (entity_a, entity_b, count).
         """
         # Sliding window over message sequence
@@ -164,11 +166,96 @@ class GraphEnrichmentAgent:
 - User-to-user edges only within same server
 - All edges respect existing privacy manager rules
 
+### Implementation Details (Complete)
+
+The Graph Enrichment Agent was implemented on December 4, 2025. Here's what was built:
+
+#### Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `src_v2/knowledge/enrichment.py` | Core `GraphEnrichmentAgent` class (~600 LOC) |
+| `src_v2/workers/tasks/enrichment_tasks.py` | arq task wrappers for background jobs |
+| `src_v2/workers/worker.py` | Task registration + nightly cron (3 AM UTC) |
+| `src_v2/config/settings.py` | Feature flags and configuration |
+| `tests_v2/test_graph_enrichment.py` | Unit tests (all passing) |
+
+#### Configuration Options
+
+```python
+# .env or settings.py
+ENABLE_GRAPH_ENRICHMENT=true           # Master switch (default: true)
+ENRICHMENT_MIN_COOCCURRENCE=2          # Min co-occurrences to create edge
+ENRICHMENT_BATCH_HOURS=24              # Hours of history for batch processing
+```
+
+#### Edge Types Created
+
+| Edge Type | Count (Production) | Description |
+|-----------|-------------------|-------------|
+| `DISCUSSED` | ~5,000 | User → Topic (what users talk about) |
+| `CONNECTED_TO` | ~70 | User ↔ User (interaction in same channels) |
+| `RELATED_TO` | ~30,000 | Topic ↔ Topic (co-occurring topics) |
+| `LINKED_TO` | ~320,000 | Entity ↔ Entity (frequently mentioned together) |
+
+#### How It Works
+
+1. **Topic Extraction**: Heuristic-based keyword extraction (no LLM required)
+   - Filters common stopwords and short words
+   - Extracts nouns, verbs, and named entities from messages
+   
+2. **Co-occurrence Detection**: Sliding window analysis
+   - Topics appearing in same message → related
+   - Entities mentioned together → linked
+   
+3. **User Interaction Mapping**: Channel-based analysis
+   - Users in same channel → potential connection
+   - Reply chains → stronger connection
+   
+4. **Idempotent Edge Creation**: Neo4j MERGE queries
+   - Creates edge if not exists
+   - Updates weight/count if exists
+   - Timestamp tracking for temporal analysis
+
+#### Triggering Enrichment
+
+```python
+# Real-time (after conversation)
+from src_v2.workers.tasks.enrichment_tasks import run_graph_enrichment
+await run_graph_enrichment(
+    ctx,
+    channel_id=channel_id,
+    server_id=server_id,
+    messages=messages,
+    bot_name="elena"
+)
+
+# Batch (nightly cron - automatic)
+# Runs at 3 AM UTC, processes last 24 hours
+
+# Manual batch trigger
+from src_v2.workers.tasks.enrichment_tasks import run_batch_enrichment
+result = await run_batch_enrichment(ctx, hours=24)
+```
+
+#### Verified Results
+
+Test run on elena bot (December 4, 2025):
+```
+Batch enrichment complete: 40 channels, 407,658 total edges
+- User-Topic edges: 6,030
+- User-User edges: 80  
+- Topic-Topic edges: 32,707
+- Entity-Entity edges: 368,841
+```
+
 ### Files
 
-- `src_v2/knowledge/enrichment.py` — EnrichmentAgent class
-- `src_v2/workers/tasks/enrichment_tasks.py` — Background task
+- `src_v2/knowledge/enrichment.py` — GraphEnrichmentAgent class
+- `src_v2/workers/tasks/enrichment_tasks.py` — Background task wrappers
+- `src_v2/workers/worker.py` — Task registration and cron schedule
 - `src_v2/config/settings.py` — `ENABLE_GRAPH_ENRICHMENT`, `ENRICHMENT_MIN_COOCCURRENCE`
+- `tests_v2/test_graph_enrichment.py` — Unit tests
 
 ---
 

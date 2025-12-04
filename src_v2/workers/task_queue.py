@@ -343,6 +343,42 @@ class TaskQueue:
             event_data=event.to_dict()
         )
 
+    async def enqueue_graph_enrichment(
+        self,
+        channel_id: str,
+        messages: List[Dict[str, Any]],
+        bot_name: str,
+        server_id: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Queue a graph enrichment job for post-conversation processing.
+        
+        Analyzes conversation to discover and create implicit graph edges:
+        - User → Topic relationships
+        - User ↔ User connections  
+        - Topic ↔ Topic co-occurrences
+        - Entity ↔ Entity links
+        
+        Args:
+            channel_id: Discord channel ID where conversation occurred
+            messages: List of message dicts with conversation details
+            bot_name: Bot character name (for logging/segmentation)
+            server_id: Discord server ID or "dm" for direct messages
+            
+        Returns:
+            Job ID if queued, None if queue unavailable or feature disabled
+        """
+        if not settings.ENABLE_GRAPH_ENRICHMENT:
+            return None
+            
+        return await self.enqueue(
+            "run_graph_enrichment",
+            channel_id=channel_id,
+            server_id=server_id or "dm",
+            messages=messages,
+            bot_name=bot_name
+        )
+
 
 # Global instance
 task_queue = TaskQueue()

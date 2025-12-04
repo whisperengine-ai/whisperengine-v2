@@ -2,7 +2,7 @@ import discord
 import asyncio
 import time
 import random
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Dict
 from datetime import datetime, timezone, timedelta
 from loguru import logger
 from zoneinfo import ZoneInfo
@@ -85,7 +85,10 @@ async def enqueue_post_conversation_tasks(
     session_id: str,
     messages: list,
     user_name: str,
-    trigger: str = "session_end"
+    trigger: str = "session_end",
+    channel_id: Optional[str] = None,
+    server_id: Optional[str] = None,
+    enrichment_messages: Optional[List[Dict[str, Any]]] = None
 ) -> None:
     """
     Unified post-conversation processing pipeline.
@@ -100,6 +103,9 @@ async def enqueue_post_conversation_tasks(
         messages: List of message dicts with role/content
         user_name: Display name for diary provenance
         trigger: What triggered this (session_end, cross_bot_session, etc.)
+        channel_id: Discord channel where the conversation occurred
+        server_id: Discord server identifier (if applicable)
+        enrichment_messages: Optional preprocessed messages for graph enrichment
     """
     # Enqueue summarization
     try:
@@ -134,10 +140,78 @@ async def enqueue_post_conversation_tasks(
     except Exception as e:
         logger.debug(f"Could not enqueue {trigger} insight analysis: {e}")
 
+    # Enqueue graph enrichment (Phase E25)
+    if enrichment_messages:
+        try:
+            await task_queue.enqueue_graph_enrichment(
+                channel_id=channel_id or f"dm:{user_id}",
+                messages=enrichment_messages,
+                bot_name=character_name,
+                server_id=server_id or ("dm" if channel_id is None else None)
+            )
+        except Exception as e:
+            logger.debug(f"Could not enqueue {trigger} graph enrichment: {e}")
+
 
 class MessageHandler:
     def __init__(self, bot):
         self.bot = bot
+
+    async def _prepare_enrichment_messages(
+        self,
+        user_id: str,
+        character_name: str,
+        limit: int,
+        channel_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Fetch raw conversation messages for graph enrichment."""
+        if not db_manager.postgres_pool or limit <= 0:
+            return []
+
+        query: str
+        params: Tuple[Any, ...]
+
+        if channel_id:
+            query = """
+                SELECT user_id, user_name, role, content, message_id, channel_id, timestamp
+                FROM v2_chat_history
+                WHERE channel_id = $1 AND character_name = $2
+                ORDER BY timestamp DESC
+                LIMIT $3
+            """
+            params = (str(channel_id), character_name, limit)
+        else:
+            query = """
+                SELECT user_id, user_name, role, content, message_id, channel_id, timestamp
+                FROM v2_chat_history
+                WHERE user_id = $1 AND character_name = $2
+                ORDER BY timestamp DESC
+                LIMIT $3
+            """
+            params = (str(user_id), character_name, limit)
+
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                rows = await conn.fetch(query, *params)
+        except Exception as exc:  # pragma: no cover - database failure logged and ignored
+            logger.debug(f"Failed to load enrichment messages: {exc}")
+            return []
+
+        enrichment_messages: List[Dict[str, Any]] = []
+        for row in reversed(rows):
+            enrichment_messages.append(
+                {
+                    "user_id": row["user_id"],
+                    "user_name": row["user_name"],
+                    "role": row["role"],
+                    "content": row["content"],
+                    "message_id": row["message_id"],
+                    "channel_id": row["channel_id"],
+                    "timestamp": row["timestamp"].isoformat() if row["timestamp"] else None,
+                }
+            )
+
+        return enrichment_messages
 
     async def _should_autonomous_reply(self, message: discord.Message) -> bool:
         """Decide if the bot should autonomously reply to a message."""
@@ -736,7 +810,15 @@ class MessageHandler:
 
                 # 2.5 Check for Summarization
                 if session_id:
-                    self.bot.loop.create_task(self._check_and_summarize(session_id, user_id, message.author.display_name))
+                    self.bot.loop.create_task(
+                        self._check_and_summarize(
+                            session_id,
+                            user_id,
+                            message.author.display_name,
+                            channel_id=channel_id,
+                            server_id=str(message.guild.id) if message.guild else None
+                        )
+                    )
 
                 # 3. Generate response
                 # Get character's timezone for context-aware datetime
@@ -1769,7 +1851,14 @@ Recent channel context:
         except Exception as e:
             logger.error(f"Error in lurk handler: {e}")
 
-    async def _check_and_summarize(self, session_id: str, user_id: str, user_name: str):
+    async def _check_and_summarize(
+        self,
+        session_id: str,
+        user_id: str,
+        user_name: str,
+        channel_id: Optional[str] = None,
+        server_id: Optional[str] = None
+    ):
         """
         Checks if summarization is needed and enqueues it to background worker.
         
@@ -1777,6 +1866,8 @@ Recent channel context:
             session_id: Session ID
             user_id: Discord user ID
             user_name: User's display name (for diary provenance)
+            channel_id: Discord channel identifier for this conversation
+            server_id: Discord server identifier (or None for DM)
         """
         try:
             # 1. Get session start time
@@ -1792,10 +1883,30 @@ Recent channel context:
                 logger.info(f"Session {session_id} reached {message_count} messages. Enqueueing summarization.")
                 
                 # Fetch messages
-                messages = await memory_manager.get_recent_history(user_id, self.bot.character_name, limit=message_count)
+                history_limit = message_count * 2 if channel_id else message_count
+
+                messages = await memory_manager.get_recent_history(
+                    user_id,
+                    self.bot.character_name,
+                    limit=history_limit,
+                    channel_id=channel_id
+                )
                 # Convert to dict format expected by SummaryManager
                 from langchain_core.messages import HumanMessage
-                msg_dicts = [{"role": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content} for m in messages]
+                msg_dicts = [
+                    {
+                        "role": "human" if isinstance(m, HumanMessage) else "ai",
+                        "content": m.content
+                    }
+                    for m in messages
+                ]
+
+                enrichment_messages = await self._prepare_enrichment_messages(
+                    user_id=user_id,
+                    character_name=self.bot.character_name,
+                    limit=history_limit,
+                    channel_id=channel_id
+                )
                 
                 # Unified post-conversation processing
                 await enqueue_post_conversation_tasks(
@@ -1804,7 +1915,10 @@ Recent channel context:
                     session_id=session_id,
                     messages=msg_dicts,
                     user_name=user_name,
-                    trigger="session_end"
+                    trigger="session_end",
+                    channel_id=channel_id,
+                    server_id=server_id,
+                    enrichment_messages=enrichment_messages
                 )
                     
         except Exception as e:

@@ -555,12 +555,11 @@ class GraphEnrichmentAgent:
                 rows = await conn.fetch("""
                     SELECT 
                         channel_id,
-                        server_id,
                         user_id,
                         content,
                         timestamp
-                    FROM chat_history
-                    WHERE timestamp > NOW() - INTERVAL '%s hours'
+                    FROM v2_chat_history
+                    WHERE timestamp > NOW() - make_interval(hours => $1)
                         AND content IS NOT NULL
                         AND LENGTH(content) > 10
                     ORDER BY channel_id, timestamp
@@ -572,20 +571,19 @@ class GraphEnrichmentAgent:
             
             # Group by channel
             channel_messages: Dict[str, List[Dict]] = defaultdict(list)
-            channel_servers: Dict[str, str] = {}
             
             for row in rows:
-                channel_id = str(row['channel_id'])
+                channel_id = str(row['channel_id']) if row['channel_id'] else "DM"
                 channel_messages[channel_id].append({
                     'user_id': str(row['user_id']),
                     'content': row['content'],
                     'timestamp': row['timestamp']
                 })
-                channel_servers[channel_id] = str(row['server_id'] or 'DM')
             
             # Enrich each channel
             for channel_id, messages in channel_messages.items():
-                server_id = channel_servers[channel_id]
+                # We don't store server_id in chat history yet, so use "unknown" or infer
+                server_id = "unknown"
                 
                 channel_result = await self.enrich_from_conversation(
                     messages=messages,

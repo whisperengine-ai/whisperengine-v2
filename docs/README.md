@@ -170,8 +170,8 @@ Character perception emerges from traversing these graphs. We provide six modali
 ### Current Development
 | Spec | Status | Description |
 |------|--------|-------------|
-| [SPEC-E19-GRAPH_WALKER_AGENT](./spec/SPEC-E19-GRAPH_WALKER_AGENT.md) | 🟢 Implementing | Dynamic graph exploration |
-| [SPEC-E25-GRAPH_WALKER_EXTENSIONS](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | 🟡 Design | Graph enrichment, temporal, multi-character |
+| [SPEC-E19-GRAPH_WALKER_AGENT](./spec/SPEC-E19-GRAPH_WALKER_AGENT.md) | ✅ Complete | Dynamic graph exploration |
+| [SPEC-E25-GRAPH_WALKER_EXTENSIONS](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | 🟢 E25 Complete | Graph enrichment, temporal, multi-character |
 | [SPEC-S01-CONTENT_SAFETY_REVIEW](./spec/SPEC-S01-CONTENT_SAFETY_REVIEW.md) | ✅ Complete | Content moderation integration |
 
 ### Future Vision

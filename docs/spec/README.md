@@ -16,7 +16,7 @@
 | [SPEC-E19](./SPEC-E19-GRAPH_WALKER_AGENT.md) | E19 | Graph Walker Agent | ✅ Complete | Dynamic graph exploration |
 | [SPEC-E16](./SPEC-E16-FEEDBACK_LOOP_STABILITY.md) | E16 | Feedback Loop Stability | ✅ Complete | Emergent behavior guardrails |
 | [SPEC-E21](./SPEC-E21-SEMANTIC_ROUTING.md) | E21 | Semantic Routing | 📋 Proposed | Fast-path intent detection |
-| [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | 📋 Proposed | Graph enrichment, temporal, multi-char |
+| [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | 🔄 E25 Complete | Graph enrichment, temporal, multi-char |
 
 ### Archived/On Hold
 
