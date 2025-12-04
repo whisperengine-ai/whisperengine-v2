@@ -2,7 +2,7 @@
 
 **Document Version:** 3.0  
 **Created:** November 24, 2025  
-**Last Updated:** December 4, 2025 (E15: Autonomous Server Activity complete, E25: Graph Enrichment Agent complete)
+**Last Updated:** December 5, 2025 (E26: Temporal Graph complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -80,6 +80,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|------|--------|
 | 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | ✅ Complete (All Phases) |
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | ✅ Complete |
+| 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅, E25 ✅ | ✅ Complete |
 
 #### 📋 Proposed (Ready to Start)
 
@@ -87,7 +88,6 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|------|--------|
 | 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
-| 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅, E25 ✅ | 📋 Proposed |
 | 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | 📋 Proposed |
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
@@ -2073,18 +2073,27 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 ---
 
-### 📋 Phase E26: Temporal Graph
+### ✅ Phase E26: Temporal Graph
 **Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
-**Status:** 📋 Proposed
-**Dependencies:** E19 ✅
+**Status:** ✅ Complete (December 2025)
+**Dependencies:** E19 ✅, E25 ✅
 **Added:** December 2025
 
 **Problem:** The Graph Walker treats all edges equally. But relationships evolve—a topic discussed daily is more salient than one mentioned once a month ago.
 
-**Solution:** Extend `_score_node()` heuristics to weight by relationship evolution using existing `updated_at`, `created_at`, and count fields:
-- **Velocity boost**: Rate of interaction matters (count / days_active)
-- **Trend detection**: Compare recent activity to older activity
-- **Trust trajectory**: Query InfluxDB for trust evolution patterns
+**Solution:** Extended `GraphWalker` with `_score_temporal()` method that weights relationships by evolution over time:
+- **Velocity boost**: High interaction rate (count / days_active) scores higher
+- **Recency decay**: Stale edges decay to 0.3x over 60 days
+- **Trust trajectory**: Query InfluxDB for trust evolution patterns (rising trust = 1.3x, falling = 0.7x)
+- **Edge count trends**: Compare count_30d vs count_60d for momentum detection
+
+**Implementation:**
+- `_score_temporal()` in `src_v2/knowledge/walker.py` — 4 temporal heuristics
+- `get_trust_trajectory()` — InfluxDB Flux query with caching
+- Extended `WalkedEdge` dataclass with `created_at`, `updated_at`, `count` fields
+- Modified `_expand_frontier()` to capture edge temporal properties from Neo4j
+
+**Tests:** 21 unit tests in `tests_v2/test_temporal_scoring.py`
 
 **Emergence Alignment:** Temporal awareness emerges from data patterns, not declared "relationship_phase" labels. No new schema needed.
 

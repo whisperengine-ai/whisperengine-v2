@@ -1,5 +1,5 @@
 """
-Graph Walker (Phase E19)
+Graph Walker (Phase E19 + E26 Temporal Extensions)
 
 Python-first graph traversal with scoring heuristics.
 No LLM calls during traversal — only at interpretation.
@@ -13,6 +13,7 @@ Design Philosophy:
 - Scoring heuristics prioritize "interesting" nodes
 - LLM only called ONCE at the end to interpret findings
 - Serendipity parameter allows random exploration
+- Temporal scoring weights relationships by evolution over time (E26)
 
 See: docs/roadmaps/GRAPH_WALKER_AGENT.md
 """
@@ -49,6 +50,10 @@ class WalkedEdge:
     target_id: str
     edge_type: str
     properties: Dict[str, Any] = field(default_factory=dict)
+    # Temporal properties (E26) - extracted for scoring
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    count: int = 1
 
 
 @dataclass
@@ -93,6 +98,33 @@ class GraphWalker:
             "gabriel": ["history", "tea", "adventure", "outdoors", "nature"],
             "nottaylor": ["music", "songwriting", "emotion", "authenticity"],
         }
+        # Cache for trust trajectories (E26)
+        self._trust_trajectory_cache: Dict[str, List[float]] = {}
+    
+    def _parse_datetime(self, value: Any) -> Optional[datetime]:
+        """
+        Parse a datetime value from various formats.
+        Neo4j can return datetime as native objects, ISO strings, or neo4j.time types.
+        """
+        if value is None:
+            return None
+        
+        try:
+            # Handle neo4j.time.DateTime objects
+            if hasattr(value, 'to_native'):
+                return value.to_native()
+            
+            # Already a datetime
+            if isinstance(value, datetime):
+                return value
+            
+            # ISO format string
+            if isinstance(value, str):
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            
+            return None
+        except (ValueError, TypeError, AttributeError):
+            return None
     
     async def explore(
         self,
@@ -138,6 +170,9 @@ class GraphWalker:
         # Get thematic anchors for this character
         anchors = self.thematic_anchors.get(bot_name.lower(), []) if bot_name else []
         
+        # Cache for trust trajectories (E26)
+        trust_trajectories: Dict[str, List[float]] = {}
+        
         try:
             async with db_manager.neo4j_driver.session() as session:
                 while frontier and depth < max_depth and len(all_nodes) < max_nodes:
@@ -150,22 +185,51 @@ class GraphWalker:
                         limit=max_nodes - len(all_nodes)
                     )
                     
+                    # Build node->edge lookup for temporal scoring
+                    node_to_edge: Dict[str, WalkedEdge] = {}
+                    for edge in new_edges:
+                        node_to_edge[edge.target_id] = edge
+                    
                     # Score and filter nodes
                     new_frontier = []
                     for node in new_nodes:
-                        # Score the node
-                        score = self._score_node(
+                        # Base score from node properties
+                        base_score = self._score_node(
                             node=node,
                             depth=depth,
                             anchors=anchors
                         )
-                        node.score = score
+                        
+                        # Temporal score from edge evolution (E26)
+                        edge = node_to_edge.get(node.id)
+                        
+                        # Fetch trust trajectory for User nodes (cached)
+                        trust_traj = None
+                        if node.label == "User" and bot_name:
+                            cache_key = f"{bot_name}:{node.id}"
+                            if cache_key not in trust_trajectories:
+                                trust_trajectories[cache_key] = await self.get_trust_trajectory(
+                                    user_id=node.id,
+                                    bot_name=bot_name,
+                                    days=30
+                                )
+                            trust_traj = trust_trajectories.get(cache_key)
+                        
+                        temporal_score = self._score_temporal(
+                            node=node,
+                            edge=edge,
+                            trust_trajectory=trust_traj
+                        )
+                        
+                        # Combine scores (temporal modulates base)
+                        final_score = base_score * temporal_score
+                        node.score = round(final_score, 3)
                         node.depth = depth
                         
                         # Keep if above threshold or serendipitous
                         is_serendipitous = random.random() < serendipity
-                        if score >= min_score or is_serendipitous:
-                            node.is_serendipitous = is_serendipitous and score < min_score
+                        if final_score >= min_score or is_serendipitous:
+                            node.is_serendipitous = is_serendipitous and final_score < min_score
                             all_nodes.append(node)
                             all_edges.extend([e for e in new_edges if e.target_id == node.id])
                             new_frontier.append(node.id)
@@ -284,12 +348,16 @@ class GraphWalker:
                 )
                 nodes.append(node)
                 
-                # Create WalkedEdge
+                # Create WalkedEdge with temporal properties (E26)
+                edge_props = record.get("edge_props") or {}
                 edge = WalkedEdge(
                     source_id=record.get("source_id"),
                     target_id=neighbor_id,
                     edge_type=record.get("edge_type", "RELATED"),
-                    properties=record.get("edge_props") or {}
+                    properties=edge_props,
+                    created_at=self._parse_datetime(edge_props.get("created_at") or edge_props.get("first_date")),
+                    updated_at=self._parse_datetime(edge_props.get("updated_at") or edge_props.get("last_date")),
+                    count=int(edge_props.get("count", 1)) if edge_props.get("count") else 1
                 )
                 edges.append(edge)
             
@@ -380,6 +448,154 @@ class GraphWalker:
             score *= 1.1  # Dreams/diaries are interesting
         
         return round(score, 3)
+    
+    def _score_temporal(
+        self,
+        node: WalkedNode,
+        edge: Optional[WalkedEdge] = None,
+        trust_trajectory: Optional[List[float]] = None
+    ) -> float:
+        """
+        Temporal scoring heuristics for graph walking (Phase E26).
+        
+        Weights relationships by their evolution over time, not just static properties.
+        All data from existing edge/node properties—no new schema required.
+        
+        Factors:
+        - Velocity boost: Active relationships (high count/time) score higher
+        - Trend detection: Growing relationships (recent > older activity) score higher
+        - Trust trajectory: Rising trust scores higher than falling
+        
+        Returns:
+            Temporal score multiplier (typically 0.5 - 2.0)
+        """
+        score = 1.0
+        
+        # 1. Velocity boost (rate of change matters)
+        # Active relationships that are frequently updated are more relevant
+        if edge and edge.count > 1 and edge.created_at:
+            try:
+                if edge.created_at.tzinfo is None:
+                    edge_created = edge.created_at.replace(tzinfo=timezone.utc)
+                else:
+                    edge_created = edge.created_at
+                
+                days_active = max(1, (datetime.now(timezone.utc) - edge_created).days)
+                velocity = edge.count / days_active
+                # Cap the velocity boost at 2.0x
+                score *= min(2.0, 1.0 + (velocity * 0.5))
+            except (ValueError, TypeError, AttributeError):
+                pass  # Ignore datetime parsing errors
+        
+        # 2. Recency decay on edges (supplements node-level recency)
+        if edge and edge.updated_at:
+            try:
+                if edge.updated_at.tzinfo is None:
+                    edge_updated = edge.updated_at.replace(tzinfo=timezone.utc)
+                else:
+                    edge_updated = edge.updated_at
+                
+                days_since_update = (datetime.now(timezone.utc) - edge_updated).days
+                # Decay over 60 days to minimum of 0.3x
+                decay = max(0.3, 1.0 - (days_since_update / 60))
+                score *= decay
+            except (ValueError, TypeError, AttributeError):
+                pass
+        
+        # 3. Trust trajectory (was trust rising or falling?)
+        # If we have trust history, compare recent average to older average
+        if trust_trajectory and len(trust_trajectory) >= 5:
+            try:
+                recent_avg = sum(trust_trajectory[-5:]) / 5
+                older_avg = sum(trust_trajectory[:-5]) / max(1, len(trust_trajectory) - 5) if len(trust_trajectory) > 5 else recent_avg
+                
+                # Rising trust = score boost (up to 1.3x)
+                # Falling trust = score penalty (down to 0.7x)
+                if older_avg > 0:
+                    trajectory = recent_avg / older_avg
+                    score *= min(1.3, max(0.7, trajectory))
+            except (ValueError, TypeError, ZeroDivisionError):
+                pass
+        
+        # 4. Edge count trend (if we have historical counts)
+        # Look for count_30d vs older activity in edge properties
+        if edge and edge.properties:
+            count_30d = edge.properties.get("count_30d") or edge.properties.get("recent_count")
+            count_60d = edge.properties.get("count_60d") or edge.properties.get("total_count")
+            
+            if count_30d is not None and count_60d is not None:
+                try:
+                    recent = float(count_30d)
+                    older = float(count_60d) - recent
+                    if older > 0:
+                        trend = recent / max(1, older)
+                        # Growing relationships score up to 1.5x higher
+                        score *= min(1.5, max(0.5, trend))
+                except (ValueError, TypeError):
+                    pass
+        
+        return round(score, 3)
+    
+    async def get_trust_trajectory(
+        self,
+        user_id: str,
+        bot_name: str,
+        days: int = 30
+    ) -> List[float]:
+        """
+        Query InfluxDB for trust score history over time.
+        
+        Used by _score_temporal() to detect rising/falling trust patterns.
+        Falls back gracefully if InfluxDB is unavailable.
+        
+        Args:
+            user_id: Discord user ID
+            bot_name: Character/bot name
+            days: Number of days of history to retrieve
+            
+        Returns:
+            List of trust scores ordered chronologically (oldest first)
+        """
+        if not db_manager.influxdb_client:
+            return []
+        
+        # Check cache first
+        cache_key = f"trust_trajectory:{bot_name}:{user_id}:{days}"
+        cached = await cache_manager.get(cache_key)
+        if cached:
+            return cached
+        
+        try:
+            query_api = db_manager.influxdb_client.query_api()
+            
+            flux_query = f'''
+            from(bucket: "{settings.INFLUXDB_BUCKET}")
+              |> range(start: -{days}d)
+              |> filter(fn: (r) => r["_measurement"] == "trust_update")
+              |> filter(fn: (r) => r["user_id"] == "{user_id}")
+              |> filter(fn: (r) => r["bot_name"] == "{bot_name}")
+              |> filter(fn: (r) => r["_field"] == "trust_score")
+              |> sort(columns: ["_time"], desc: false)
+            '''
+            
+            tables = query_api.query(flux_query)
+            
+            scores = []
+            for table in tables:
+                for record in table.records:
+                    value = record.get_value()
+                    if isinstance(value, (int, float)):
+                        scores.append(float(value))
+            
+            # Cache for 5 minutes
+            if scores:
+                await cache_manager.set(cache_key, scores, ttl=300)
+            
+            return scores
+            
+        except Exception as e:
+            logger.debug(f"Trust trajectory query failed (non-critical): {e}")
+            return []
     
     def _find_clusters(
         self,
