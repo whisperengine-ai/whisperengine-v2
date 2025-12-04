@@ -180,7 +180,7 @@ class WorkerSettings:
     
     # Worker behavior
     max_jobs = 5  # Max concurrent jobs
-    job_timeout = 120  # 2 minutes max per job
+    job_timeout = 300  # 5 minutes max per job (local LLMs need more time)
     keep_result = 3600  # Keep results for 1 hour
     
     # Health check

@@ -6,7 +6,12 @@ from loguru import logger
 from src_v2.config.settings import settings
 
 
-def create_llm(temperature: Optional[float] = None, mode: str = "main", model_name: Optional[str] = None) -> BaseChatModel:
+def create_llm(
+    temperature: Optional[float] = None, 
+    mode: str = "main", 
+    model_name: Optional[str] = None,
+    request_timeout: Optional[float] = None
+) -> BaseChatModel:
     """
     Creates a LangChain Chat Model based on the configuration.
     Supports: openai, openrouter, ollama, lmstudio
@@ -15,6 +20,7 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main", model_na
         temperature: The temperature to use for the model.
         mode: "main" for the character model, "router" for the cognitive router, "reflective" for reflective mode, "utility" for structured tasks.
         model_name: Specific model name to use (overrides settings).
+        request_timeout: Request timeout in seconds. Defaults to 120s for local models, 60s for cloud APIs.
     """
     # Determine which settings to use
     if mode == "reflective" and settings.REFLECTIVE_LLM_PROVIDER:
@@ -50,11 +56,16 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main", model_na
 
     logger.info(f"Initializing LLM ({mode}): {provider} ({_model}) Temp: {temp}")
 
+    # Determine timeout: local models get longer timeout (they're slower)
+    is_local = provider in ["lmstudio", "ollama"]
+    timeout = request_timeout or (180 if is_local else 60)
+
     if provider == "openai":
         return ChatOpenAI(
             api_key=api_key,
             model=_model,
-            temperature=temp
+            temperature=temp,
+            request_timeout=timeout
         )
     
     elif provider == "openrouter":
@@ -69,7 +80,8 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main", model_na
             base_url=base_url or "https://openrouter.ai/api/v1",
             model=_model,
             temperature=temp,
-            default_headers=headers
+            default_headers=headers,
+            request_timeout=timeout
         )
         
     elif provider == "lmstudio":
@@ -78,7 +90,8 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main", model_na
             api_key="lm-studio", # Usually ignored
             base_url=base_url or "http://localhost:1234/v1",
             model=_model, # Usually ignored by local server but good to pass
-            temperature=temp
+            temperature=temp,
+            request_timeout=timeout  # Local models need longer timeout
         )
     
     elif provider == "ollama":
@@ -86,7 +99,8 @@ def create_llm(temperature: Optional[float] = None, mode: str = "main", model_na
         return ChatOllama(
             base_url=base_url or "http://localhost:11434",
             model=_model,
-            temperature=temp
+            temperature=temp,
+            request_timeout=timeout  # Local models need longer timeout
         )
     
     else:
