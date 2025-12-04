@@ -47,6 +47,18 @@
 
 ---
 
+## Origin
+
+> **How did this guide emerge?** Document the provenance—especially for guides born from human-AI collaboration or bot observations.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "User question", "Support pattern", "Bot suggestion", "Feature launch"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)", "Elena observation"] |
+| **Catalyst** | [What triggered the need? e.g., "Repeated user confusion about X"] |
+
+---
+
 ## Overview
 What you'll learn and accomplish in this guide.
 

@@ -1,11 +1,25 @@
 # E22: Absence Tracking (Meta-Memory)
 
-**Status:** 📋 Proposed  
+**Status:** ✅ Complete  
 **Priority:** 🟢 High  
 **Complexity:** Low-Medium  
 **Time Estimate:** 1 day  
 **Dependencies:** E12 (Agentic Dreams) ✅, E23 (Schedule Jitter) ✅  
 **Added:** December 3, 2025
+
+---
+
+## Origin
+
+> This feature emerged from human-AI collaboration—itself a form of emergence worth documenting.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Elevated from backlog during E20/E21 critical review |
+| **Proposed by** | Claude Opus 4.5 (collaborative) |
+| **Catalyst** | Bug fix → "what's next?" → roadmap review → E20/E21 deferrals |
+| **Key insight** | "Absences are behaviors, not declarations" |
+| **Decision factors** | Low cost (~1 day), high vision alignment, character authenticity gain |
 
 ---
 

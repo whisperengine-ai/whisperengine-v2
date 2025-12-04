@@ -43,6 +43,20 @@
 
 ---
 
+## Origin
+
+> **How did this idea emerge?** Document the provenance of ideas—especially those from human-AI collaboration. This is itself a form of emergence worth tracking.
+
+| Field | Value |
+|-------|-------|
+| **Origin** | [e.g., "User request", "Bug investigation", "Roadmap review", "Bot conversation"] |
+| **Proposed by** | [e.g., "Mark", "Claude (collaborative)", "Elena observation"] |
+| **Catalyst** | [What triggered the idea? e.g., "Bug fix → 'what's next?' → critical review"] |
+| **Key insight** | [The core realization, e.g., "Absences are behaviors, not declarations"] |
+| **Decision factors** | [Why now? e.g., "Low cost, high vision alignment, authenticity gain"] |
+
+---
+
 ## Executive Summary
 Brief overview of what this spec covers.
 
