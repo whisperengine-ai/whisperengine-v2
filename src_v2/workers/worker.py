@@ -21,6 +21,7 @@ Or via arq CLI:
 import os
 from typing import Any, Dict
 from loguru import logger
+import arq
 from arq import cron
 
 from src_v2.workers.task_queue import TaskQueue
@@ -102,6 +103,7 @@ class WorkerSettings:
     redis_settings = TaskQueue.get_redis_settings()
     
     # Functions the worker can execute
+    # Note: LangGraph tasks (diary, dream, strategist) have longer timeouts set via func() wrapper
     functions = [
         run_insight_analysis,
         run_summarization,
@@ -110,17 +112,18 @@ class WorkerSettings:
         run_store_observation,
         run_universe_observation,
         run_relationship_update,
-        run_goal_strategist,
+        # LangGraph agents get 10 min timeout (local LLMs + multi-step reasoning)
+        arq.func(run_goal_strategist, timeout=600),
         run_goal_analysis,
         run_preference_extraction,
         run_vision_analysis,
         run_image_generation,
         run_voice_generation,
         run_gossip_dispatch,
-        run_diary_generation,  # Phase E2/E10: Character Diary (agentic)
-        run_agentic_diary_generation,  # Alias for backward compatibility
-        run_dream_generation,  # Phase E3/E10: Nightly Dreams (agentic)
-        run_agentic_dream_generation,  # Alias for backward compatibility
+        arq.func(run_diary_generation, timeout=600),  # Phase E2/E10: Character Diary (agentic)
+        arq.func(run_agentic_diary_generation, timeout=600),  # Alias for backward compatibility
+        arq.func(run_dream_generation, timeout=600),  # Phase E3/E10: Nightly Dreams (agentic)
+        arq.func(run_agentic_dream_generation, timeout=600),  # Alias for backward compatibility
         run_drift_observation,  # Phase E16: Personality drift observation
         run_posting_agent,      # Phase E15: Autonomous Posting
         run_graph_enrichment,   # Phase E25: Graph Enrichment
@@ -179,7 +182,21 @@ class WorkerSettings:
     on_shutdown = shutdown
     
     # Worker behavior
-    max_jobs = 5  # Max concurrent jobs
+    # Auto-detect max_jobs based on LLM provider:
+    # - Local LLMs (lmstudio, ollama): 1 job at a time (single GPU, avoid OOM)
+    # - Cloud LLMs: 5 concurrent jobs (APIs handle parallelism)
+    @staticmethod
+    def _get_max_jobs() -> int:
+        if settings.WORKER_MAX_JOBS is not None:
+            return settings.WORKER_MAX_JOBS
+        # Auto-detect based on router/main LLM provider
+        provider = settings.ROUTER_LLM_PROVIDER or settings.LLM_PROVIDER
+        if provider in ["lmstudio", "ollama"]:
+            logger.info("Local LLM detected - limiting worker to 1 concurrent job")
+            return 1
+        return 5
+    
+    max_jobs = _get_max_jobs()
     job_timeout = 300  # 5 minutes max per job (local LLMs need more time)
     keep_result = 3600  # Keep results for 1 hour
     

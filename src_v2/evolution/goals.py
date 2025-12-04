@@ -211,78 +211,177 @@ class GoalManager:
             logger.info(f"Updated goal '{goal_slug}' for user {user_id}: {status} ({progress*100}%)")
 
 class GoalAnalyzer:
+    # Max goals to analyze in a single LLM call (prevents timeout with local models)
+    MAX_GOALS_PER_BATCH = 3
+    # Max conversation length to send (tokens are ~4 chars)
+    MAX_CONVERSATION_CHARS = 2000
+    # Per-batch timeout (seconds) - fail fast, don't wait for arq to kill us
+    BATCH_TIMEOUT = 90
+    # Retry settings
+    MAX_RETRIES = 2
+    RETRY_DELAY_BASE = 2  # seconds, doubles each retry
+    
     def __init__(self):
         # Use utility LLM for goal analysis (evaluation task)
         self.llm = create_llm(temperature=0.0, mode="utility")
         self.parser = JsonOutputParser()
         
-        self.prompt = ChatPromptTemplate.from_template("""
-        You are an AI Goal Analyst. Your job is to evaluate if a conversation has advanced or completed specific goals.
+        # Simplified prompt for faster inference
+        self.prompt = ChatPromptTemplate.from_template("""Evaluate if this conversation advanced these goals. Be concise.
 
-        ACTIVE GOALS:
-        {goals_context}
+GOALS:
+{goals_context}
 
-        RECENT CONVERSATION:
-        {conversation_text}
+CONVERSATION:
+{conversation_text}
 
-        For each goal, determine:
-        1. Has the success criteria been met? (status: "completed")
-        2. Has significant progress been made? (status: "in_progress")
-        3. Or no change? (status: "no_change")
-
-        Return a JSON object with a list of updates:
-        {{
-            "updates": [
-                {{
-                    "slug": "goal_slug",
-                    "status": "completed" | "in_progress" | "no_change",
-                    "progress_score": 0.0 to 1.0,
-                    "reasoning": "Why this status?",
-                    "extracted_data": {{ "key": "value" }} (optional, e.g. if goal was to learn a name)
-                }}
-            ]
-        }}
-        """)
+Return JSON:
+{{"updates": [{{"slug": "goal-slug", "status": "completed|in_progress|no_change", "progress_score": 0.0-1.0, "reasoning": "brief reason"}}]}}""")
         
         self.chain = self.prompt | self.llm | self.parser
 
-    async def check_goals(self, user_id: str, character_name: str, conversation_text: str):
+    async def _process_batch_with_retry(
+        self, 
+        batch: List[Dict], 
+        truncated_text: str, 
+        batch_num: int
+    ) -> List[Dict]:
+        """Process a single batch with retry logic and timeout."""
+        import asyncio
+        
+        goals_context = "\n".join(
+            f"- {g['slug']}: {g['description']} (Criteria: {g['success_criteria']})"
+            for g in batch
+        )
+        
+        last_error = None
+        for attempt in range(self.MAX_RETRIES + 1):
+            try:
+                # Wrap LLM call in timeout
+                result = await asyncio.wait_for(
+                    self.chain.ainvoke({
+                        "goals_context": goals_context,
+                        "conversation_text": truncated_text
+                    }),
+                    timeout=self.BATCH_TIMEOUT
+                )
+                return result.get("updates", [])
+                
+            except asyncio.TimeoutError:
+                last_error = f"Timeout after {self.BATCH_TIMEOUT}s"
+                logger.warning(f"Goal batch {batch_num} attempt {attempt + 1} timed out")
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"Goal batch {batch_num} attempt {attempt + 1} failed: {e}")
+            
+            # Exponential backoff before retry
+            if attempt < self.MAX_RETRIES:
+                delay = self.RETRY_DELAY_BASE * (2 ** attempt)
+                await asyncio.sleep(delay)
+        
+        # All retries exhausted
+        logger.error(f"Goal batch {batch_num} failed after {self.MAX_RETRIES + 1} attempts: {last_error}")
+        return []
+
+    async def check_goals(self, user_id: str, character_name: str, conversation_text: str) -> Dict[str, Any]:
         """
         Checks active goals against the recent conversation.
+        Batches goals with retry logic.
+        
+        - Local LLMs (lmstudio, ollama): Sequential processing (single GPU)
+        - Cloud LLMs (openai, openrouter): Parallel processing
+        
+        Returns:
+            Dict with processing stats (for observability)
         """
+        import asyncio
+        from src_v2.config.settings import settings
+        
+        # Detect if we're using a local single-threaded LLM
+        # Router LLM is used for utility tasks
+        provider = settings.ROUTER_LLM_PROVIDER or settings.LLM_PROVIDER
+        is_local = provider in ["lmstudio", "ollama"]
+        
+        stats = {
+            "total_goals": 0,
+            "batches_processed": 0,
+            "batches_failed": 0,
+            "goals_updated": 0,
+            "mode": "sequential" if is_local else "parallel",
+        }
+        
         try:
             # 1. Get active goals
             active_goals = await goal_manager.get_active_goals(user_id, character_name)
             if not active_goals:
-                return
-
-            # Format goals for prompt
-            goals_context = ""
-            for g in active_goals:
-                goals_context += f"- Slug: {g['slug']}\n  Description: {g['description']}\n  Criteria: {g['success_criteria']}\n\n"
-
-            # 2. Run LLM Analysis
-            result = await self.chain.ainvoke({
-                "goals_context": goals_context,
-                "conversation_text": conversation_text
-            })
+                return stats
             
-            # 3. Process Updates
-            updates = result.get("updates", [])
-            for update in updates:
-                status = update.get("status")
-                if status in ["completed", "in_progress"]:
-                    await goal_manager.update_goal_progress(
-                        user_id=user_id,
-                        goal_slug=update.get("slug", "unknown"),
-                        character_name=character_name,
-                        status=status,
-                        progress=update.get("progress_score", 0.0),
-                        metadata={"reasoning": update.get("reasoning"), "extracted": update.get("extracted_data")}
-                    )
+            stats["total_goals"] = len(active_goals)
+            
+            # Truncate conversation to avoid massive prompts
+            truncated_text = conversation_text[:self.MAX_CONVERSATION_CHARS]
+            if len(conversation_text) > self.MAX_CONVERSATION_CHARS:
+                truncated_text += "...[truncated]"
+
+            # 2. Create batches
+            batches = [
+                active_goals[i:i + self.MAX_GOALS_PER_BATCH]
+                for i in range(0, len(active_goals), self.MAX_GOALS_PER_BATCH)
+            ]
+            
+            # 3. Process batches - sequential for local LLMs, parallel for cloud
+            if is_local:
+                # Sequential: one batch at a time (single GPU)
+                batch_results = []
+                for i, batch in enumerate(batches):
+                    result = await self._process_batch_with_retry(batch, truncated_text, i + 1)
+                    batch_results.append(result)
+            else:
+                # Parallel: all batches at once (cloud APIs handle concurrency)
+                tasks = [
+                    self._process_batch_with_retry(batch, truncated_text, i + 1)
+                    for i, batch in enumerate(batches)
+                ]
+                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # 4. Process results and update goals
+            for i, result in enumerate(batch_results):
+                if isinstance(result, Exception):
+                    stats["batches_failed"] += 1
+                    logger.error(f"Batch {i + 1} raised exception: {result}")
+                    continue
+                
+                stats["batches_processed"] += 1
+                
+                for update in result:
+                    status = update.get("status")
+                    if status in ["completed", "in_progress"]:
+                        try:
+                            await goal_manager.update_goal_progress(
+                                user_id=user_id,
+                                goal_slug=update.get("slug", "unknown"),
+                                character_name=character_name,
+                                status=status,
+                                progress=update.get("progress_score", 0.0),
+                                metadata={
+                                    "reasoning": update.get("reasoning"), 
+                                    "extracted": update.get("extracted_data")
+                                }
+                            )
+                            stats["goals_updated"] += 1
+                        except Exception as e:
+                            logger.error(f"Failed to update goal {update.get('slug')}: {e}")
+            
+            logger.info(
+                f"Goal analysis complete ({stats['mode']}): {stats['total_goals']} goals, "
+                f"{stats['batches_processed']}/{len(batches)} batches OK, "
+                f"{stats['goals_updated']} updated"
+            )
+            return stats
                     
         except Exception as e:
             logger.error(f"Goal analysis failed: {e}")
+            return stats
 
 goal_manager = GoalManager()
 goal_analyzer = GoalAnalyzer()

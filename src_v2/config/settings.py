@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     ROUTER_LLM_BASE_URL: Optional[str] = None
     ROUTER_LLM_MODEL_NAME: Optional[str] = None
     
+    # --- Worker Configuration ---
+    # For local LLMs (lmstudio, ollama) with single GPU, set to 1 to prevent OOM
+    # For cloud LLMs, higher values (3-5) allow parallel job processing
+    WORKER_MAX_JOBS: Optional[int] = Field(
+        default=None,
+        description="Max concurrent worker jobs. Auto-detects: 1 for local LLMs, 5 for cloud."
+    )
+    
     # --- Discord ---
     DISCORD_TOKEN: Optional[SecretStr] = Field(default=None, validation_alias=AliasChoices("DISCORD_TOKEN", "DISCORD_BOT_TOKEN"))
     STATUS_UPDATE_INTERVAL_SECONDS: int = 300  # 5 minutes
