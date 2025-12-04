@@ -292,14 +292,10 @@ class MessageHandler:
                         user_display_name=message.author.display_name
                     )
                     
-                    # Unified background learning for ALL observed messages
-                    # (bot conversations are rich data sources too!)
-                    await enqueue_background_learning(
-                        user_id=str(message.author.id),
-                        message_content=message.content,
-                        character_name=self.bot.character_name,
-                        context="observation"
-                    )
+                    # NOTE: Background learning (fact/preference extraction) is NOT
+                    # done here for passive observations. It's expensive (LLM calls)
+                    # and should only run for messages the bot is responding to.
+                    # Universe observation tracks topics/interactions without LLM.
             except Exception as e:
                 logger.debug(f"Failed to enqueue universe observation: {e}")
 
