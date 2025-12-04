@@ -257,7 +257,7 @@ class KnowledgeGraphPruner:
                     # Count potential merges
                     query = """
                     MATCH (e:Entity)
-                    WITH toLower(e.name) as normalized, collect(e) as entities
+                    WITH toLower(toString(e.name)) as normalized, collect(e) as entities
                     WHERE size(entities) > 1
                     RETURN sum(size(entities) - 1) as count
                     """
@@ -271,7 +271,7 @@ class KnowledgeGraphPruner:
                     # First, find all duplicates (limit to avoid timeouts)
                     find_query = """
                     MATCH (e:Entity)
-                    WITH toLower(e.name) as normalized, collect(e) as entities
+                    WITH toLower(toString(e.name)) as normalized, collect(e) as entities
                     WHERE size(entities) > 1
                     RETURN normalized, entities
                     LIMIT 50
@@ -304,52 +304,44 @@ class KnowledgeGraphPruner:
                         # Merge others into best
                         for entity in entities:
                             if entity["name"] != best_entity["name"]:
-                                # Robust merge query that preserves properties and handles multiple relationship types
-                                merge_query = """
-                                MATCH (old:Entity {name: $old_name})
-                                MATCH (new:Entity {name: $new_name})
-                                
-                                // 1. Move incoming FACTs (User/Character -> Entity)
-                                WITH old, new
-                                OPTIONAL MATCH (n)-[r:FACT]->(old)
-                                WITH old, new, collect({start: n, rel: r}) as incoming_facts
-                                FOREACH (item IN incoming_facts | 
-                                    CREATE (item.start)-[new_r:FACT]->(new)
-                                    SET new_r = properties(item.rel)
-                                    DELETE item.rel
-                                )
-                                
-                                // 2. Move outgoing IS_A (Entity -> Entity)
-                                WITH old, new
-                                OPTIONAL MATCH (old)-[r:IS_A]->(target)
-                                WITH old, new, collect({end: target, rel: r}) as outgoing_isa
-                                FOREACH (item IN outgoing_isa |
-                                    CREATE (new)-[new_r:IS_A]->(item.end)
-                                    SET new_r = properties(item.rel)
-                                    DELETE item.rel
-                                )
-                                
-                                // 3. Move outgoing BELONGS_TO (Entity -> Entity)
-                                WITH old, new
-                                OPTIONAL MATCH (old)-[r:BELONGS_TO]->(target)
-                                WITH old, new, collect({end: target, rel: r}) as outgoing_belongs
-                                FOREACH (item IN outgoing_belongs |
-                                    CREATE (new)-[new_r:BELONGS_TO]->(item.end)
-                                    SET new_r = properties(item.rel)
-                                    DELETE item.rel
-                                )
-                                
-                                // 4. Delete old node
-                                WITH old
-                                DETACH DELETE old
-                                RETURN 1 as merged
-                                """
+                                # Split into separate queries to avoid complex Cypher issues with CREATE(expr)
                                 try:
-                                    await session.run(
-                                        merge_query,
-                                        old_name=entity["name"],
-                                        new_name=best_entity["name"]
-                                    )
+                                    # 1. Move incoming FACTs
+                                    await session.run("""
+                                        MATCH (old:Entity {name: $old_name})
+                                        MATCH (new:Entity {name: $new_name})
+                                        MATCH (n)-[r:FACT]->(old)
+                                        CREATE (n)-[new_r:FACT]->(new)
+                                        SET new_r = properties(r)
+                                        DELETE r
+                                    """, old_name=entity["name"], new_name=best_entity["name"])
+                                    
+                                    # 2. Move outgoing IS_A
+                                    await session.run("""
+                                        MATCH (old:Entity {name: $old_name})
+                                        MATCH (new:Entity {name: $new_name})
+                                        MATCH (old)-[r:IS_A]->(target)
+                                        CREATE (new)-[new_r:IS_A]->(target)
+                                        SET new_r = properties(r)
+                                        DELETE r
+                                    """, old_name=entity["name"], new_name=best_entity["name"])
+                                    
+                                    # 3. Move outgoing BELONGS_TO
+                                    await session.run("""
+                                        MATCH (old:Entity {name: $old_name})
+                                        MATCH (new:Entity {name: $new_name})
+                                        MATCH (old)-[r:BELONGS_TO]->(target)
+                                        CREATE (new)-[new_r:BELONGS_TO]->(target)
+                                        SET new_r = properties(r)
+                                        DELETE r
+                                    """, old_name=entity["name"], new_name=best_entity["name"])
+                                    
+                                    # 4. Delete old node
+                                    await session.run("""
+                                        MATCH (old:Entity {name: $old_name})
+                                        DETACH DELETE old
+                                    """, old_name=entity["name"])
+                                    
                                     merge_count += 1
                                 except Exception as merge_error:
                                     logger.warning(f"Failed to merge {entity['name']}: {merge_error}")
