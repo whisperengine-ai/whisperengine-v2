@@ -3,6 +3,18 @@
 **Version:** 2.1  
 **Last Updated:** December 2, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Core system architecture |
+| **Proposed by** | Mark (cognitive design) |
+| **Key insight** | Dual-process theory applied to AI: fast intuition + slow reasoning |
+
+---
+
 **Note:** As of December 2025 (Phase E17 Complete), the **Supergraph Architecture** is now the primary execution path. See [`AGENT_GRAPH_SYSTEM.md`](./AGENT_GRAPH_SYSTEM.md) for implementation details. The documentation below describes the conceptual model (Dual Process Theory, Complexity Classification) which remains accurate — only the orchestration layer has changed from manual Python loops to LangGraph StateGraphs.
 
 The **Cognitive Engine** (`src_v2/agents/engine.py`) is the brain of WhisperEngine v2. It orchestrates the flow of information from user input to character response, managing context, memory retrieval, tool execution, and three-tier response generation.

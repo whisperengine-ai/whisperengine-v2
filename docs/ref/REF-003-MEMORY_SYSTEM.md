@@ -3,6 +3,18 @@
 **Version**: 2.3  
 **Last Updated**: December 2, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Core v2 identity design |
+| **Proposed by** | Mark (memory architecture) |
+| **Key insight** | Memory is not a feature — it's fundamental to identity and continuity |
+
+---
+
 ## Overview
 
 Memory is the **Identity and Continuity modality** (🧠) in WhisperEngine v2's multi-modal perception architecture. It's what makes characters **the same being across time**.

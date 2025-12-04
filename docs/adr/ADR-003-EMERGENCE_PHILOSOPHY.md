@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Research philosophy development |
+| **Proposed by** | Mark + Claude (collaborative dialogue) |
+| **Catalyst** | Need for principled approach to emergent behavior |
+
+---
+
 ## Context
 
 WhisperEngine creates recursive feedback loops where AI-generated content feeds back into the system:

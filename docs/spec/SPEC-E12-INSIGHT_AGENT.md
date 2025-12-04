@@ -10,6 +10,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Background processing architecture |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | Need for async pattern detection and epiphany generation |
+| **Key insight** | Insights should emerge in background, not block responses |
+
+---
+
 ## Implementation Status
 
 | Component | Status | File |

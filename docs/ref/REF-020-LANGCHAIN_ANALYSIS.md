@@ -7,6 +7,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Framework evaluation |
+| **Proposed by** | Mark (LangChain analysis) |
+| **Key insight** | Balance between deeper framework adoption vs maintaining custom implementations |
+
+---
+
 ## Executive Summary
 
 This document analyzes WhisperEngine v2's current LangChain integration, identifies opportunities to leverage additional LangChain features, and provides a balanced assessment of the tradeoffs between deeper framework adoption versus maintaining custom implementations.

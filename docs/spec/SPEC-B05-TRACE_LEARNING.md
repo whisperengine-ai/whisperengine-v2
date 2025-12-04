@@ -4,6 +4,19 @@
 **Priority:** High  
 **Dependencies:** Reflective Agent, Qdrant
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Architectural evolution of Reflective Agent |
+| **Proposed by** | Mark (system design) |
+| **Catalyst** | Observation that reasoning traces were being discarded |
+| **Key insight** | Successful reasoning patterns should be retrievable for similar problems |
+
+---
+
 ## Overview
 
 Trace Learning allows agents to "learn from experience" by storing successful reasoning patterns and retrieving them for similar future problems. This creates a self-improving system where the agent gets smarter and more efficient over time without code changes.

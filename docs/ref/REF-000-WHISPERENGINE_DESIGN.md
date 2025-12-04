@@ -4,6 +4,18 @@
 **Last Updated**: December 1, 2025  
 **Status**: Historical design document (implementation complete as of Dec 2025)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | v2 architecture planning |
+| **Proposed by** | Mark (system redesign) |
+| **Key insight** | Simplify v1 complexity, focus on core experience |
+
+---
+
 > **Note:** This is the **original design document** from the v2 planning phase. For current architecture, see:
 > - [AGENT_GRAPH_SYSTEM.md](./AGENT_GRAPH_SYSTEM.md) - LangGraph Supergraph (E17 Complete)
 > - [COGNITIVE_ENGINE.md](./COGNITIVE_ENGINE.md) - Dual-Process architecture

@@ -10,6 +10,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Multi-modal experience vision |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Text-only responses felt limited |
+| **Key insight** | Voice adds emotional depth to character interactions |
+
+---
+
 ## Executive Summary
 
 Enable characters to respond with both **text AND an attached TTS audio file** when triggered. This creates a richer, more immersive experience where users can read the response AND hear the character's voice—similar to voice messages but as a downloadable/playable MP3 attachment.

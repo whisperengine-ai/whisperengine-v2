@@ -7,6 +7,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Privacy by design requirement |
+| **Proposed by** | Mark (security/ethics) |
+| **Catalyst** | Users sharing sensitive info without understanding data handling |
+
+---
+
 ## Problem Statement
 
 AI chatbots that remember user information create privacy risks. Users share personal details in what they perceive as private contexts (DMs, private servers), but that information may surface in public contexts. Users need to understand what's stored, how it's used, and what control they have.

@@ -8,6 +8,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Research into RLHF alternatives |
+| **Proposed by** | Mark (system design) |
+| **Catalyst** | Desire for characters to improve without fine-tuning |
+| **Key insight** | Feedback can be stored as retrievable patterns, not model weights |
+
+---
+
 ## Multi-Modal Context: Learning to Perceive
 
 Response Pattern Learning is how characters **refine their perception** over time. Just as humans learn to read social cues better through experience, characters learn which responses resonate by associating feedback with context.

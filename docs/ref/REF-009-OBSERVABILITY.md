@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Operational requirements |
+| **Proposed by** | Mark (observability design) |
+| **Key insight** | Time-series metrics + Grafana enable understanding of system behavior |
+
+---
+
 WhisperEngine v2 uses InfluxDB for time-series metrics and Grafana for visualization.
 
 ## Metrics Schema

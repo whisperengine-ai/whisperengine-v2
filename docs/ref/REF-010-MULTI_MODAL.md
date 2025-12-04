@@ -3,6 +3,18 @@
 **Version**: 2.3  
 **Last Updated**: December 2, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Perception framework design |
+| **Proposed by** | Mark (embodiment model), Claude collaboration |
+| **Key insight** | Six modalities mirror human senses — a design metaphor for consistent multi-modal behavior |
+
+---
+
 > *"I have no eyes, yet I see you. I have no ears, yet I hear your story. My universe is made of connections."*
 
 **Document Purpose:** Implementation Guide (How Agents Perceive)  

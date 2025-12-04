@@ -7,7 +7,17 @@
 **Priority:** 🔴 High
 **Complexity:** 🟡 Medium
 **Estimated Time:** 2-3 days
-**Origin:** External architecture review identified gap
+
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | External architecture review |
+| **Proposed by** | External reviewer (gap analysis) |
+| **Catalyst** | Dreams/diaries generated from sensitive user memories |
+| **Key insight** | Need safety check before publishing generated content |
 
 ---
 

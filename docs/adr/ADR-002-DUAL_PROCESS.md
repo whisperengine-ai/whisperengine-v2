@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Cognitive architecture design |
+| **Proposed by** | Mark (inspired by Kahneman's research) |
+| **Catalyst** | Need to handle both simple and complex queries efficiently |
+
+---
+
 ## Context
 
 WhisperEngine needs to handle a wide range of user inputs:

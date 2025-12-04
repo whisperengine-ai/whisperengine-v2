@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Foundational design philosophy |
+| **Proposed by** | Mark (core vision) |
+| **Catalyst** | Need to articulate emergence-first approach |
+| **Key insight** | "We don't design behavior. We create conditions for behavior to emerge." |
+
+---
+
 ## The Principle
 
 **We don't design behavior. We create conditions for behavior to emerge.**

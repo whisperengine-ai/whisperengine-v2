@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Cognitive architecture design |
+| **Proposed by** | Mark (dual-process theory) |
+| **Key insight** | ReAct loop for System 2 thinking — deep reasoning for complex queries |
+
+---
+
 ## Overview
 
 Reflective Mode (System 2 thinking) is WhisperEngine v2's deep reasoning engine for complex analytical questions. It implements a ReAct (Reasoning + Acting) loop that breaks down complex queries into multiple reasoning steps.

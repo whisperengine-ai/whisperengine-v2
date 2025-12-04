@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Database schema design |
+| **Proposed by** | Mark (data architecture) |
+| **Key insight** | Four pillars = physical substrate of character perception |
+
+---
+
 ## Multi-Modal Context
 
 The Four Pillars aren't just databases - they're the **physical substrate** of character perception. Each database stores a different aspect of how characters experience reality:

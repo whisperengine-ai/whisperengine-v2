@@ -7,7 +7,17 @@
 **Priority:** 🟡 Medium
 **Complexity:** 🟢 Low
 **Estimated Time:** 1-2 days
-**Origin:** External architecture review identified gap
+
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | External architecture review |
+| **Proposed by** | External reviewer (gap analysis) |
+| **Catalyst** | Proactive messages could reach users at inappropriate times |
+| **Key insight** | Infer timezone from message patterns, respect quiet hours |
 
 ---
 

@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Server engagement vision |
+| **Proposed by** | Mark (strategic product) |
+| **Catalyst** | Empty Discord servers felt dead |
+| **Key insight** | Bots should be proactive participants, not passive responders |
+
+---
+
 ## Executive Summary
 
 Transform passive bots into active server participants that create organic engagement during quiet periods. Rather than waiting for users to initiate, bots will autonomously:

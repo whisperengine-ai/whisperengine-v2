@@ -8,6 +8,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Unified architecture synthesis |
+| **Proposed by** | Mark (system architecture), Claude collaboration |
+| **Key insight** | Graphs pervade every layer — knowledge, orchestration, social relationships, reasoning traces |
+
+---
+
 ## Executive Summary
 
 **This is the core architecture of WhisperEngine v2.** Graphs pervade every layer of the system — from the knowledge representation (Neo4j), to the agent orchestration (LangGraph), to the conceptual model of the universe itself (Social Graph). This document provides a unified view of how different types of graphs are used, how they interact, and how future development should leverage them.

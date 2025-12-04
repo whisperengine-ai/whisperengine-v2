@@ -11,6 +11,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Transparency requirement |
+| **Proposed by** | Mark (design philosophy) |
+| **Catalyst** | Users couldn't tell where character insights came from |
+| **Key insight** | Show the sources that informed each artifact |
+
+---
+
 ## Executive Summary
 
 When bots generate artifacts (dreams, diaries, observations), the source data is already fetched but then discarded. This spec captures **provenance at generation time** - storing the sources alongside the content to show grounding in real data.

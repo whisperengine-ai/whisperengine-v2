@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Memory architecture design |
+| **Proposed by** | Mark (system architecture) |
+| **Catalyst** | Vector search alone couldn't provide precise factual recall |
+
+---
+
 ## Multi-Modal Context: The Semantic Web of Memory
 
 The Knowledge Graph is part of the **Memory modality** (🧠) - specifically the **semantic memory** component. While vector search provides fuzzy episodic recall ("we talked about this"), the graph provides precise factual knowledge ("your dog is named Luna").

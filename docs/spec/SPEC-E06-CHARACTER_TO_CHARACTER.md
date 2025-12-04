@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Multi-bot deployment observation |
+| **Proposed by** | Mark (strategic vision) |
+| **Catalyst** | Bots in same server ignored each other |
+| **Key insight** | Cross-bot conversation creates richer server experience |
+
+---
+
 ## Executive Summary
 
 In a multi-bot deployment (e.g., Elena and Marcus in the same server), characters currently ignore each other. This feature allows **organic cross-bot conversation**.

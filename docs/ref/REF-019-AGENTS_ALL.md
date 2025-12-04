@@ -5,6 +5,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Comprehensive architecture documentation |
+| **Proposed by** | Mark (agent system overview) |
+| **Key insight** | Unified view of all agents — from fast path to reflective to proactive engagement |
+
+---
+
 ## Overview
 
 WhisperEngine v2 uses a **LangGraph Supergraph Architecture** where a master orchestrator routes messages to specialized agents based on complexity classification. The system is designed for:

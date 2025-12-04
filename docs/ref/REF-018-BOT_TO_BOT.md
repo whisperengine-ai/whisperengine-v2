@@ -3,6 +3,18 @@
 **Last Updated:** December 2, 2025  
 **Status:** Active (Phase E6 complete)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | E6 Multi-bot social design |
+| **Proposed by** | Mark (social dynamics) |
+| **Key insight** | Bots talking to bots need modified pipeline — fast path, gossip memory, cross-context injection |
+
+---
+
 This document traces the complete decision flow when one WhisperEngine bot talks to another, from message receipt through classification to response generation.
 
 ---

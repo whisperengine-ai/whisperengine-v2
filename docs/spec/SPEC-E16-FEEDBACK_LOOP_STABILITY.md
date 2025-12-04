@@ -8,6 +8,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Emergence safety research |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | Recursive dream/diary loops needed guardrails |
+| **Key insight** | "Observe first, constrain only what's proven problematic" |
+
+---
+
 ## Overview
 
 Add minimal safety mechanisms and observability for the recursive dream/diary feedback loops. The philosophy is **"observe first, constrain only what's proven problematic."**

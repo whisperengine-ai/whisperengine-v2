@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Memory architecture decision |
+| **Proposed by** | Mark (system architecture) |
+| **Catalyst** | Pure vector or relational insufficient for all query patterns |
+
+---
+
 ## Context
 
 WhisperEngine needs to store and retrieve different types of information:

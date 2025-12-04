@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Core v2 relationship design |
+| **Proposed by** | Mark (relationship mechanics) |
+| **Key insight** | Trust is interoception — the character's gut feeling about relationships |
+
+---
+
 ## Multi-Modal Context
 
 Trust & Evolution is the **Emotion modality** in WhisperEngine v2's multi-modal perception architecture. It's the character's interoceptive sense - how they *feel* about relationships.

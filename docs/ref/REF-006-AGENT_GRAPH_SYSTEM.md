@@ -4,6 +4,18 @@
 **Status:** Production (Primary Architecture)
 **Last Updated:** December 2, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | E17 LangGraph refactor |
+| **Proposed by** | Mark (agentic architecture) |
+| **Key insight** | Paradigm shift from manual loops to StateGraph orchestration enables observability + autonomy |
+
+---
+
 ## Overview
 
 The Agent Graph System represents a paradigm shift from manual Python orchestration loops to **LangGraph StateGraphs**. This architecture provides:

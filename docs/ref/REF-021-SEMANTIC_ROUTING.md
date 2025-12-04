@@ -4,6 +4,18 @@
 **Date:** December 2025
 **Target Phase:** High-Scale Optimization (Post-E15)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Performance optimization proposal |
+| **Proposed by** | Mark (cost/latency reduction) |
+| **Key insight** | Embedding-based routing can bypass LLM classifier for trivial messages |
+
+---
+
 ## The Problem
 Currently, the `ComplexityClassifier` uses an LLM (`gpt-4o-mini`) for *every single user message* to determine if it is `SIMPLE` or `COMPLEX`.
 - **Cost:** Even trivial messages ("Hi", "Stop", "Thanks") incur an LLM call.

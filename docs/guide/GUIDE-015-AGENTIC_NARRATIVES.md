@@ -4,6 +4,18 @@
 **Version**: 2.3  
 **Last Updated**: December 3, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Narrative quality improvement |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | Dreams and diaries were too superficial |
+
+---
+
 **Deep Answers, Cross-Bot Memory, Dream↔Diary Feedback Loop, and the DreamWeaver Agent**
 
 ## Overview

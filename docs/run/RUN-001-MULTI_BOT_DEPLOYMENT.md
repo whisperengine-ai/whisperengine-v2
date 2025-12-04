@@ -1,5 +1,16 @@
 # Multi-Bot Deployment Guide
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | DevOps operations |
+| **Proposed by** | Mark (deployment process) |
+
+---
+
 ## 🎯 Overview
 
 WhisperEngine v2 uses a **unified Docker Compose setup** with profiles for multi-bot management. All 9 character bots share the same infrastructure (PostgreSQL, Qdrant, Neo4j, InfluxDB) while running as isolated containers.

@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Architecture unification |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | Manual Python orchestration became hard to observe and maintain |
+
+---
+
 ## Context
 
 WhisperEngine's cognitive engine grew organically with:

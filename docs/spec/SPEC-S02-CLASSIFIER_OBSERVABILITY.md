@@ -7,7 +7,17 @@
 **Priority:** 🔴 High
 **Complexity:** 🟢 Low
 **Estimated Time:** 1 day
-**Origin:** External architecture review identified gap
+
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | External architecture review |
+| **Proposed by** | External reviewer (gap analysis) |
+| **Catalyst** | Classifier routing decisions invisible |
+| **Key insight** | Need metrics to understand routing patterns |
 
 ---
 

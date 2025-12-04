@@ -8,6 +8,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Multi-modal experience |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Text-only responses limited creative expression |
+
+---
+
 ## Executive Summary
 
 WhisperEngine's image generation capability (via Flux Pro 1.1) has proven to be a **high-engagement feature** that drives extended user sessions. This document captures production learnings from real user interactions to inform future improvements.

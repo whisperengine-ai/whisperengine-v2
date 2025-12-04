@@ -4,6 +4,19 @@
 **Target Phase:** E18
 **Dependencies:** Supergraph Architecture (E17 - Complete)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Background processing architecture |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | Insight generation blocking response pipeline |
+| **Key insight** | Async queue enables parallel cognitive processes |
+
+---
+
 > **Implementation Note:** Phase 1 (Shared Worker) is complete. The system uses a single `insight-worker` container serving all bot instances via the `arq:cognition` queue. See [ref/REF-017-AGENTIC_QUEUE.md](../ref/REF-017-AGENTIC_QUEUE.md) for current implementation.
 
 ## Current Implementation (Dec 2024)

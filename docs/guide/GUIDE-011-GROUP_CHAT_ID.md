@@ -5,6 +5,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Group chat usability |
+| **Proposed by** | Mark (user experience) |
+| **Catalyst** | Bot confused user IDs with display names |
+
+---
+
 ## Problem Statement
 
 ### Current Behavior

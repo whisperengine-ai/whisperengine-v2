@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User education |
+| **Proposed by** | Mark (documentation) |
+| **Catalyst** | Users didn't understand footer metrics |
+
+---
+
 Some responses include a stats footer at the bottom—a quick summary of what's happening behind the scenes. Here's what each part means!
 
 ## Example Footer

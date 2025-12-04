@@ -1,5 +1,16 @@
 # Discord Bot Setup Guide
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Onboarding documentation |
+| **Proposed by** | Mark (setup process) |
+
+---
+
 This guide covers creating a Discord application, configuring permissions, and inviting your WhisperEngine bot to servers.
 
 ## 1. Create Discord Application

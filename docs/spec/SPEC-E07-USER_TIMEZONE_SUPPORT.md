@@ -8,6 +8,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User experience issue |
+| **Proposed by** | Mark (operational observation) |
+| **Catalyst** | Diary generation at 4 AM UTC was wrong for most users |
+| **Key insight** | Time-based features should respect user timezones |
+
+---
+
 ## Problem Statement
 
 The system currently operates entirely in UTC. This creates suboptimal experiences:

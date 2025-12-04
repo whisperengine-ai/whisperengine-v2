@@ -1,5 +1,17 @@
 # Creating New Character Bots
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Developer onboarding |
+| **Proposed by** | Mark (documentation) |
+| **Catalyst** | Need step-by-step guide for creating characters |
+
+---
+
 A step-by-step guide to creating and deploying a new character in WhisperEngine v2.
 
 ---

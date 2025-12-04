@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Knowledge expansion |
+| **Proposed by** | Mark (feature request) |
+| **Catalyst** | Users wanted to share documents with bots |
+
+---
+
 ## Overview
 
 WhisperEngine v2 supports uploading documents (PDF, Word, Text files) that are:

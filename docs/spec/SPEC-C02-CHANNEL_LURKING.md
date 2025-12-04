@@ -10,6 +10,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User experience observation |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Bots felt absent when not directly mentioned |
+| **Key insight** | Characters should be "present" in channels, not just responsive |
+
+---
+
 ## Multi-Modal Context: Universe Awareness
 
 Channel Lurking is a key component of the **Universe modality** (🌌) - the character's spatial and social awareness. When characters lurk in channels, they're not just "monitoring" - they're *present* in that space, aware of conversations happening around them.

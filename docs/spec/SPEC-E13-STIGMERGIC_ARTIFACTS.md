@@ -10,6 +10,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Multi-bot intelligence design |
+| **Proposed by** | Mark (emergence philosophy) |
+| **Catalyst** | Bots couldn't learn from each other's discoveries |
+| **Key insight** | Stigmergy: leave traces others can discover (like ants with pheromones) |
+
+---
+
 ## Executive Summary
 
 Enable **cross-bot discovery** of cognitive artifacts (epiphanies, diaries, dreams) through a shared Qdrant collection. This implements **stigmergic intelligence** - bots leave traces that other bots can discover and build upon, creating emergent collective knowledge without centralized coordination.

@@ -7,6 +7,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Safety and abuse prevention |
+| **Proposed by** | Mark (security requirement) |
+| **Catalyst** | Need to handle manipulation attempts gracefully |
+| **Key insight** | Score-based decay allows for accidental violations while catching persistent abuse |
+
+---
+
 ## Overview
 
 When the classifier detects a `MANIPULATION` attempt, the system should:

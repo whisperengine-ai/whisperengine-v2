@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Cost management requirement |
+| **Proposed by** | Mark (operational necessity) |
+| **Catalyst** | LLM costs could spiral without granular control |
+
+---
+
 ## Context
 
 WhisperEngine uses multiple LLM calls per user message:

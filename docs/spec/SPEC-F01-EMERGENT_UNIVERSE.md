@@ -12,6 +12,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | World-building vision |
+| **Proposed by** | Mark (creative vision) |
+| **Catalyst** | Desire for persistent, emergent world from conversations |
+| **Key insight** | Conversations create shared reality between bots and users |
+
+---
+
 ## The Story of Emergence
 
 Every universe begins with nothing.

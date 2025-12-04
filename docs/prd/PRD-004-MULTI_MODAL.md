@@ -7,6 +7,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Multi-modal experience vision |
+| **Proposed by** | Mark (product expansion) |
+| **Catalyst** | Text-only interactions missed rich context from images and voice |
+
+---
+
 ## Problem Statement
 
 Text-only AI characters miss significant context from images, voice, and other media that users share. They also can't express themselves through creative visual output. This limits the richness of interaction and makes the character feel less capable than modern AI should be.

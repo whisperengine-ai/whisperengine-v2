@@ -4,6 +4,19 @@
 **Target Phase:** E17
 **Dependencies:** LangGraph Implementation (Complete)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Observability and architecture unification |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | LangSmith couldn't see full request lifecycle |
+| **Key insight** | Elevate orchestration from Python code to StateGraph |
+
+---
+
 > **Implementation Note:** The Supergraph (`master_graph.py`) is now the **primary orchestration layer** for all user-context requests. See [AGENT_GRAPH_SYSTEM.md](../architecture/AGENT_GRAPH_SYSTEM.md) for current implementation details.
 
 ## 1. The Vision

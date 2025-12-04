@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Privacy by design |
+| **Proposed by** | Mark (security requirement) |
+| **Catalyst** | Users assuming DMs with bots were private |
+
+---
+
 ## Overview
 
 WhisperEngine v2 includes a strict **Direct Message (DM) Blocking** system enabled by default. This feature is designed to enforce privacy by design, preventing users from assuming that DMs with the bot are private conversations.

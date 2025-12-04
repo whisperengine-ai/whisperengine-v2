@@ -8,6 +8,19 @@
 **Priority:** 🟡 Medium (Narrative Quality Enhancement)  
 **Dependencies:** Neo4j Knowledge Graph (✅ exists), LangGraph (✅ exists)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Graph-first memory architecture |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | Knowledge graph wasn't being used for narrative context |
+| **Key insight** | Python-first traversal with single LLM call at end |
+
+---
+
 > ✅ **Emergence Check Passed:** This design uses Python-first traversal with a single LLM call at the end. This aligns with the emergence philosophy: deterministic exploration, semantic interpretation. See [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md) for principles.
 
 ---

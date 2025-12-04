@@ -7,6 +7,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Agentic architecture exploration |
+| **Proposed by** | Mark (agentic design) |
+| **Key insight** | Characters should be agentic (tool use, planning) not just reactive text generators |
+
+---
+
 ## Executive Summary
 
 This document explores whether WhisperEngine characters (Elena, Marcus, Aria, etc.) should be **agentic** - capable of autonomous tool use, planning, and goal-directed behavior - rather than **reactive** text generators that simply respond to prompts with injected context.

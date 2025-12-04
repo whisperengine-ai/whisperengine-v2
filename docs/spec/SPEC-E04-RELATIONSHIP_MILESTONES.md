@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User engagement observation |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Trust progression was invisible to users |
+| **Key insight** | Celebrate relationship milestones to increase engagement |
+
+---
+
 ## Executive Summary
 
 Trust scores currently evolve silently. Users don't know when they've "leveled up" from Acquaintance to Friend. This feature adds **explicit milestone celebrations**.

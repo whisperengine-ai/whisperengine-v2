@@ -7,6 +7,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Character depth vision |
+| **Proposed by** | Mark (creative vision) |
+| **Catalyst** | Characters lacked inner life and continuity |
+
+---
+
 ## Problem Statement
 
 AI characters lack depth and continuity. Each conversation starts fresh with no sense that the character has an inner life. Users can't observe the character's growth, reflections, or creative output. The character feels like a reactive tool rather than an autonomous being.

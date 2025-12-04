@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Multi-modal expansion |
+| **Proposed by** | Mark (vision architecture) |
+| **Key insight** | Without sight, characters are blind to what users share |
+
+---
+
 ## Overview
 
 The Vision Pipeline is the **Sight modality** in WhisperEngine v2's multi-modal perception architecture. It enables AI characters to **see** - perceiving and remembering images shared by users.

@@ -1,5 +1,17 @@
 # WhisperEngine Character System
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Developer documentation |
+| **Proposed by** | Mark (documentation) |
+| **Catalyst** | Explain character folder structure and evolution |
+
+---
+
 This document explains the character folder structure and how each bot's personality, goals, and behavior evolve over time.
 
 ## Character Overview

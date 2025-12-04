@@ -1,5 +1,17 @@
 # Privacy & Data Segmentation
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User data transparency |
+| **Proposed by** | Mark (privacy design) |
+| **Key insight** | Global user ID creates unified profile — users must understand cross-context data sharing |
+
+---
+
 ## Overview
 
 WhisperEngine v2 maintains your conversation history and learns about you across multiple interactions. Understanding how your data is organized—and what's shared between different conversation contexts—is important for your privacy.

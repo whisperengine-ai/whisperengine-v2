@@ -8,6 +8,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Group chat usability issue |
+| **Proposed by** | Mark (user observation) |
+| **Catalyst** | Bot couldn't distinguish speakers in group chats |
+| **Key insight** | Store Discord display names, not just IDs |
+
+---
+
 ## Executive Summary
 
 This roadmap outlines the implementation plan for improving user identification in group chat contexts by storing Discord display names alongside user IDs in the message history. This will enable the AI to properly reference users by name in multi-user conversations.

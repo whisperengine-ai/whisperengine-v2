@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Platform integration |
+| **Proposed by** | Mark (Discord architecture) |
+| **Key insight** | Discord is the gateway through which all external data flows |
+
+---
+
 ## Multi-Modal Context: Discord as Input System
 
 Discord is the **input interface** through which characters receive all external data. Every message, reaction, voice channel, and image comes through Discord's events.

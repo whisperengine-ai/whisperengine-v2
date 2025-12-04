@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Architecture security review |
+| **Proposed by** | Mark (security analysis) |
+| **Catalyst** | Question: should bots update their own identity from responses? |
+
+---
+
 This document analyzes whether WhisperEngine bots should learn new facts about themselves from their own responses, the security implications, and recommendations.
 
 ## Current Architecture: Static Identity

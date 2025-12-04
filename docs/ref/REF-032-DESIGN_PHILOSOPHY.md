@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Core design philosophy |
+| **Proposed by** | Mark (embodiment model), Claude collaboration |
+| **Key insight** | The character IS the interface — no “AI self” behind the curtain |
+
+---
+
 ## Core Principle: Tools Serve the Role, Not a "Self"
 
 WhisperEngine characters operate on the **"Embodiment Model"** - there is no "AI self" behind the character using tools. Instead, the language model, memory systems, and sensory inputs **manifest AS the character**. The character IS the interface - there's no "behind the curtain."

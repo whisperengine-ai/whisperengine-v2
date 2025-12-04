@@ -10,6 +10,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Agent capability gap |
+| **Proposed by** | Mark (system design) |
+| **Catalyst** | LLM couldn't search Discord for context |
+| **Key insight** | Give agents tools to actively search, not just receive |
+
+---
+
 ## 🎯 Problem Statement
 
 The LLM previously had no way to **actively search Discord** for context. The old approach was wasteful and limited:

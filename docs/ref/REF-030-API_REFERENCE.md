@@ -5,6 +5,18 @@
 **Architecture**: E17 Supergraph (Primary), Legacy orchestration (Fallback)  
 **Base URL**: `http://localhost:{PORT}` (port varies per bot)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | API documentation |
+| **Proposed by** | Mark (developer reference) |
+| **Key insight** | REST API for local integrations — testing, diagnostics, multi-turn conversations |
+
+---
+
 ## Overview
 
 WhisperEngine exposes a REST API for interacting with AI characters. Each bot instance runs on a unique port. This API is designed for **local integrations only** (localhost, Docker internal network).

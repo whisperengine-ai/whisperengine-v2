@@ -1,8 +1,20 @@
 # Stats Footer: V1 vs V2 Comparison
 
-**Status**: \u2705 Implemented  
+**Status**: ✅ Implemented  
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
+
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Documentation for migration |
+| **Proposed by** | Mark (documentation) |
+| **Catalyst** | Users familiar with V1 needed V2 comparison |
+
+---
 
 ## WhisperEngine V1 Footer
 

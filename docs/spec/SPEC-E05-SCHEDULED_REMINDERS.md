@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User request pattern |
+| **Proposed by** | Mark (user feedback) |
+| **Catalyst** | Users asked for reminders but bot couldn't deliver |
+| **Key insight** | AI companions should fulfill basic assistant functions |
+
+---
+
 ## Executive Summary
 
 Users often treat AI companions as assistants. "Remind me to call mom in 2 hours." Currently, the bot agrees but fails to deliver. This feature adds **functional reminders**.

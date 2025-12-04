@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User experience improvement |
+| **Proposed by** | Mark (UX design) |
+| **Catalyst** | Users confused by long pauses without feedback |
+
+---
+
 When you chat with the bot, you might sometimes see status messages appear before the response. These show you what's happening behind the scenes!
 
 **For technical architecture**, see [Cognitive Engine Architecture](../architecture/COGNITIVE_ENGINE.md) which explains how the bot routes requests through Fast Mode, Character Agency, and Reflective Mode.

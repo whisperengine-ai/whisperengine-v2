@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Relationship building feature |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Bots didn't leverage shared interests in conversation |
+
+---
+
 **Common Ground** is the mechanism that helps Elena (or any bot) discover and reference shared interests with the user to build rapport and personalize conversations. This document explains the complete architecture, invocation logic, and system prompt injection.
 
 ## Overview

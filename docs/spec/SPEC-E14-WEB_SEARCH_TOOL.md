@@ -10,6 +10,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Agent capability expansion |
+| **Proposed by** | Mark (feature request) |
+| **Catalyst** | Bots couldn't answer questions about current events |
+| **Key insight** | Web search enables real-time world knowledge |
+
+---
+
 ## 🚀 What Makes This Different
 
 This isn't just "add a search API." We leverage WhisperEngine's unique architecture:

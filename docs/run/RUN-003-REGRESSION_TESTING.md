@@ -1,5 +1,16 @@
 # WhisperEngine Regression Testing Guide
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | QA automation |
+| **Proposed by** | Mark (testing process) |
+
+---
+
 This guide explains how to run automated regression tests across all bots without needing to interact via Discord.
 
 ## Overview

@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Background processing design |
+| **Proposed by** | Mark (distributed architecture) |
+| **Key insight** | Stigmergic queues — work coordination through shared state, not direct messaging |
+
+---
+
 ## Current State Summary
 
 **What's Working:**

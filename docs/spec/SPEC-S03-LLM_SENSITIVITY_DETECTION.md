@@ -7,7 +7,17 @@
 **Priority:** 🟡 Medium
 **Complexity:** 🟡 Medium
 **Estimated Time:** 2-3 days
-**Origin:** External architecture review identified gap
+
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | External architecture review |
+| **Proposed by** | External reviewer (gap analysis) |
+| **Catalyst** | Keyword filtering misses context-dependent sensitivity |
+| **Key insight** | LLM can understand nuanced sensitivity better than keywords |
 
 ---
 

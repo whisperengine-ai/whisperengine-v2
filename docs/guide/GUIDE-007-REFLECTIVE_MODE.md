@@ -1,5 +1,17 @@
 # Reflective Mode: Controls & UX
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Dual-process architecture |
+| **Proposed by** | Mark (cognitive architecture) |
+| **Catalyst** | Complex queries needed deeper reasoning |
+
+---
+
 This document outlines the user-facing controls and user experience features for **Reflective Mode** (System 2 Reasoning).
 
 **For architecture details**, see [Cognitive Engine Architecture](../architecture/COGNITIVE_ENGINE.md#6-reflective-agent) which explains the three-tier system: Fast Mode → Character Agency → Reflective Mode.

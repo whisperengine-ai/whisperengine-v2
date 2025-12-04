@@ -7,6 +7,19 @@
 **Priority:** 🟡 Medium (Research & Narrative Enhancement)
 **Dependencies:** E19 (Graph Walker Agent) ✅
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Graph Walker success follow-up |
+| **Proposed by** | Mark + Claude (collaborative) |
+| **Catalyst** | E19 completion opened new graph capabilities |
+| **Key insight** | Extend graph with enrichment, temporal, and multi-character walks |
+
+---
+
 > ✅ **Emergence Check Passed:** These extensions follow the "observe first, constrain later" principle. No new Neo4j node types are added—all enhancements work through edge properties, scoring heuristics, and emergent discovery. See [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md).
 
 ---

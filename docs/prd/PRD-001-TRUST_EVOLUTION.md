@@ -7,6 +7,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Core product feature |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Static AI characters felt shallow and unrewarding |
+
+---
+
 ## Problem Statement
 
 Static AI characters feel robotic and shallow. Users who invest time building a relationship get the same experience as new users. There's no sense of progress, no reward for continued engagement, and no meaningful connection development.

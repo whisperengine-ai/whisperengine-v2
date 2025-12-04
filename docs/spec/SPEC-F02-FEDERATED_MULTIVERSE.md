@@ -9,6 +9,19 @@
 **Complexity:** 🔴 High  
 **Dependencies:** Emergent Universe (Phase B8), Worker Queues (Sprint 7)
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Long-term architecture vision |
+| **Proposed by** | Mark (future-proofing) |
+| **Catalyst** | Ensure current design doesn't preclude multi-server federation |
+| **Key insight** | Design for federation early, even if implementation is far off |
+
+---
+
 **Related Documents:**
 - [`EMERGENT_UNIVERSE.md`](./EMERGENT_UNIVERSE.md) - The Universe modality that federation extends
 - [`ref/REF-010-MULTI_MODAL.md`](../ref/REF-010-MULTI_MODAL.md) - Philosophy of how characters process multi-modal input

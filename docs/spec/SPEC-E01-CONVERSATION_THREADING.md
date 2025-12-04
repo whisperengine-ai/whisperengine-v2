@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | User experience gap |
+| **Proposed by** | Mark (product observation) |
+| **Catalyst** | Users replying to old messages caused context loss |
+| **Key insight** | Discord's reply metadata is valuable context being ignored |
+
+---
+
 ## Executive Summary
 
 Currently, WhisperEngine treats every message as a standalone input (plus recent history). However, Discord users often use the "Reply" feature to respond to specific past messages. The bot currently ignores this metadata, leading to context loss if the user replies to an older message or if the chat is moving fast.

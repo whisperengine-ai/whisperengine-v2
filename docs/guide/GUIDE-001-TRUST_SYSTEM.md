@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Core product feature |
+| **Proposed by** | Mark (product vision) |
+| **Catalyst** | Need for relationship progression mechanics |
+
+---
+
 The Trust & Evolution system enables Elena (and other bots) to develop **dynamic relationships** with users. As trust builds or declines, the bot's behavior, language, and personality adapt authentically.
 
 **For context injection details**, see [Cognitive Engine Architecture - Dynamic Context Injection](../architecture/COGNITIVE_ENGINE.md#dynamic-context-injection).

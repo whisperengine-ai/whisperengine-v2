@@ -9,6 +9,17 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Bot-to-bot conversation observation |
+| **Proposed by** | Mark (quality observation) |
+| **Catalyst** | Bot conversations felt superficial without shared memory |
+| **Key insight** | Bots should remember cross-bot discussions |
+
+---
+
 ## Executive Summary
 
 Currently, bot-to-bot conversations are intentionally shallow. Bots use `force_fast=True` mode (no tools, no memory retrieval) and only see the last 5 channel messages as context. This makes cross-bot banter feel superficial — bots don't remember what they discussed yesterday.

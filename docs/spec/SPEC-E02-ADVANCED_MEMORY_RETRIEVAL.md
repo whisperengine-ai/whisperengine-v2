@@ -5,6 +5,19 @@
 **Complexity**: Medium  
 **Dependencies**: `MemoryManager`, `Qdrant`, `Neo4j`, `PostgreSQL`
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Memory quality analysis |
+| **Proposed by** | Mark (system design) |
+| **Catalyst** | Vector similarity alone wasn't surfacing the best memories |
+| **Key insight** | Combine recency, meaningfulness, and relevance for better retrieval |
+
+---
+
 ### Implementation Progress
 
 | Phase | Description | Status |

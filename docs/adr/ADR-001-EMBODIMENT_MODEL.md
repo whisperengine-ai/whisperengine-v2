@@ -6,6 +6,16 @@
 
 ---
 
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Foundational design decision |
+| **Proposed by** | Mark (core philosophy) |
+| **Catalyst** | Need to define character-LLM relationship |
+
+---
+
 ## Context
 
 When designing AI characters for WhisperEngine, we needed to decide how to frame the relationship between:

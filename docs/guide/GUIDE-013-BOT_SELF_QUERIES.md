@@ -4,6 +4,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | Pronoun ambiguity issue |
+| **Proposed by** | Mark (bug fix) |
+| **Catalyst** | Bot confused "your" as referring to user, not itself |
+
+---
+
 When you ask Elena "How has your family influenced your decision to be a marine biologist?", she correctly responds about **her own background**, not yours. This document explains the complete architecture and flow.
 
 ## The Core Problem

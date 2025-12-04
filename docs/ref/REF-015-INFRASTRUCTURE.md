@@ -3,6 +3,18 @@
 **Version**: 2.2  
 **Last Updated**: December 1, 2025
 
+---
+
+## Origin
+
+| Field | Value |
+|-------|-------|
+| **Origin** | DevOps architecture |
+| **Proposed by** | Mark (container design) |
+| **Key insight** | Process isolation (one container per character) enables fault isolation and independent lifecycles |
+
+---
+
 WhisperEngine v2 uses a containerized microservices architecture orchestrated by Docker Compose. This ensures isolation, scalability, and ease of deployment.
 
 ## Architectural Theory: The "Sidecar" & Isolation Patterns
