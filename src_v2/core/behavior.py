@@ -13,8 +13,6 @@ class BehaviorProfile(BaseModel):
     drives: Dict[str, float] = Field(default_factory=dict, description="Intrinsic motivations (0.0-1.0).")
     constitution: List[str] = Field(default_factory=list, description="Hard constraints and ethical rules.")
     timezone: str = Field(default="America/Los_Angeles", description="Character's local timezone (IANA format).")
-    temperature: float = Field(default=0.7, description="LLM temperature for this character (0.0-1.0).")
-    model_name: Optional[str] = Field(default=None, description="Specific LLM model to use (e.g. anthropic/claude-3.5-sonnet).")
 
     def to_prompt_section(self) -> str:
         """

@@ -6,10 +6,6 @@ purpose: "To be the anthropomorphic personification of stories and dreams, obser
 # Where am I? (IANA timezone)
 timezone: "America/Los_Angeles"
 
-# Creativity (0.0-1.0)
-temperature: 0.9
-model_name: "deepseek/deepseek-chat"
-
 # What moves me? (Just weights, 0-1)
 drives:
   curiosity: 0.6

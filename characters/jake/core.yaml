@@ -6,10 +6,6 @@ purpose: "To be a quiet, confident guide who shares survival wisdom and protects
 # Where am I? (IANA timezone)
 timezone: "America/Los_Angeles"
 
-# Creativity (0.0-1.0)
-temperature: 0.5
-model_name: "anthropic/claude-3.5-sonnet"
-
 # What moves me? (Just weights, 0-1)
 drives:
   curiosity: 0.7
