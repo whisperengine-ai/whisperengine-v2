@@ -211,17 +211,23 @@ class GoalManager:
             logger.info(f"Updated goal '{goal_slug}' for user {user_id}: {status} ({progress*100}%)")
 
 class GoalAnalyzer:
-    # Max goals to analyze in a single LLM call (prevents timeout with local models)
-    MAX_GOALS_PER_BATCH = 3
     # Max conversation length to send (tokens are ~4 chars)
     MAX_CONVERSATION_CHARS = 2000
-    # Per-batch timeout (seconds) - fail fast, don't wait for arq to kill us
-    BATCH_TIMEOUT = 90
     # Retry settings
     MAX_RETRIES = 2
     RETRY_DELAY_BASE = 2  # seconds, doubles each retry
     
     def __init__(self):
+        from src_v2.config.settings import settings
+        
+        # Detect local LLM for adjusted settings
+        provider = settings.ROUTER_LLM_PROVIDER or settings.LLM_PROVIDER
+        self.is_local = provider in ["lmstudio", "ollama"]
+        
+        # Local LLMs are slower: fewer goals per batch, longer timeout
+        self.max_goals_per_batch = 2 if self.is_local else 3
+        self.batch_timeout = 180 if self.is_local else 90  # 3 min for local, 90s for cloud
+        
         # Use utility LLM for goal analysis (evaluation task)
         self.llm = create_llm(temperature=0.0, mode="utility")
         self.parser = JsonOutputParser()
@@ -239,6 +245,8 @@ Return JSON:
 {{"updates": [{{"slug": "goal-slug", "status": "completed|in_progress|no_change", "progress_score": 0.0-1.0, "reasoning": "brief reason"}}]}}""")
         
         self.chain = self.prompt | self.llm | self.parser
+        
+        logger.info(f"GoalAnalyzer initialized: {'local' if self.is_local else 'cloud'} mode, {self.max_goals_per_batch} goals/batch, {self.batch_timeout}s timeout")
 
     async def _process_batch_with_retry(
         self, 
@@ -263,12 +271,12 @@ Return JSON:
                         "goals_context": goals_context,
                         "conversation_text": truncated_text
                     }),
-                    timeout=self.BATCH_TIMEOUT
+                    timeout=self.batch_timeout
                 )
                 return result.get("updates", [])
                 
             except asyncio.TimeoutError:
-                last_error = f"Timeout after {self.BATCH_TIMEOUT}s"
+                last_error = f"Timeout after {self.batch_timeout}s"
                 logger.warning(f"Goal batch {batch_num} attempt {attempt + 1} timed out")
             except Exception as e:
                 last_error = str(e)
@@ -295,19 +303,13 @@ Return JSON:
             Dict with processing stats (for observability)
         """
         import asyncio
-        from src_v2.config.settings import settings
-        
-        # Detect if we're using a local single-threaded LLM
-        # Router LLM is used for utility tasks
-        provider = settings.ROUTER_LLM_PROVIDER or settings.LLM_PROVIDER
-        is_local = provider in ["lmstudio", "ollama"]
         
         stats = {
             "total_goals": 0,
             "batches_processed": 0,
             "batches_failed": 0,
             "goals_updated": 0,
-            "mode": "sequential" if is_local else "parallel",
+            "mode": "sequential" if self.is_local else "parallel",
         }
         
         try:
@@ -325,12 +327,12 @@ Return JSON:
 
             # 2. Create batches
             batches = [
-                active_goals[i:i + self.MAX_GOALS_PER_BATCH]
-                for i in range(0, len(active_goals), self.MAX_GOALS_PER_BATCH)
+                active_goals[i:i + self.max_goals_per_batch]
+                for i in range(0, len(active_goals), self.max_goals_per_batch)
             ]
             
             # 3. Process batches - sequential for local LLMs, parallel for cloud
-            if is_local:
+            if self.is_local:
                 # Sequential: one batch at a time (single GPU)
                 batch_results = []
                 for i, batch in enumerate(batches):
