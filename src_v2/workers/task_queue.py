@@ -152,6 +152,8 @@ class TaskQueue:
         """
         Convenience method to enqueue an insight analysis task.
         
+        Includes threshold checks to avoid wasteful analysis on insufficient data.
+        
         Args:
             user_id: Discord user ID
             character_name: Bot character name
@@ -159,6 +161,33 @@ class TaskQueue:
             priority: 1-10, lower = higher priority
             recent_context: Optional recent conversation text
         """
+        # Import here to avoid circular dependencies
+        from src_v2.evolution.trust import trust_manager
+        from src_v2.memory.manager import memory_manager
+        import datetime
+        
+        # Check minimum data thresholds to avoid wasteful jobs
+        try:
+            # Get relationship info (includes trust score and message count indicators)
+            relationship = await trust_manager.get_relationship_level(user_id, character_name)
+            trust_score = relationship.get("trust_score", 0)
+            
+            # Count recent messages (last 7 days)
+            seven_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+            message_count = await memory_manager.count_messages_since(user_id, character_name, seven_days_ago)
+            
+            # Skip if insufficient data (unless this is a reflective_completion trace analysis)
+            if trigger != "reflective_completion":
+                if message_count < 10:
+                    logger.debug(f"Skipping insight analysis for {user_id}: only {message_count} messages in last 7 days")
+                    return None
+                if trust_score == 0 and message_count < 20:
+                    logger.debug(f"Skipping insight analysis for {user_id}: trust_score=0 and only {message_count} messages")
+                    return None
+                    
+        except Exception as e:
+            logger.warning(f"Could not check insight thresholds for {user_id}: {e}. Proceeding with enqueue.")
+        
         job_id = f"insight_{user_id}_{character_name}"
         
         return await self.enqueue(
