@@ -84,17 +84,16 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟢 High | **E22** | **Absence Tracking (Meta-Memory)** | **1 day** | E12 ✅, E23 ✅ | 📋 Next |
-| ⚪ Low | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
+| 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | 📋 Next |
 | 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
-| 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅ | 📋 Proposed |
 | 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | 📋 Proposed |
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 | 📋 Proposed |
 | ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
 | ⚪ Low | **O1** | **InfluxDB Analytics Enhancements** | **2-3 hours** | A4 ✅ | 📋 Proposed |
+| 🗄️ Deferred | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
 
 #### ⏸️ On Hold / Deferred
 
@@ -133,14 +132,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 │  E15 (Reactions + Posting + Convo) ✅ ──► Natural Language     │
 │                                           (introspection ✅)    │
 │                                                                 │
-│  E21 (Semantic Routing) ◄─── No deps [Next item]              │
-│                                                                 │
 │  E18 (Queue) ✅ ──────────► E24 (Advanced Queue)               │
 │                                                                 │
 │  Insight Agent ✅ ────────► B5 (Trace Learning)                │
 │                                                                 │
 │  E19 (Graph Walker) ✅ ──► E25 (Enrichment) ──► E29 (Recs)     │
-│                       │                                         │
+│                       │    [Next item]                          │
 │                       ├──► E26 (Temporal) ──► E27 (Multi-Char)  │
 │                       │                                         │
 │                       └──► E28 (User Graph)                     │
@@ -155,7 +152,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 ```
 LangGraph ──► E17 (Supergraph) ──► E18 (Queue) ──► E24 (proposed)
 
-E12 (Dreams) ──► E16 (Feedback Loop) ──► E23 (Jitter) ──► E22 (Absence)
+E12 (Dreams) ──► E16 (Feedback Loop) ──► E23 (Jitter) ──► E22 (Absence) ✅
 
 Neo4j + LangGraph ──► E19 (Graph Walker)
 ```
