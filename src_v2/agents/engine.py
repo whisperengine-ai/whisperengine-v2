@@ -345,7 +345,7 @@ class AgentEngine:
         
         # 4.1 Cognitive Routing (The "Brain")
         routing_start = time.time()
-        await self._run_cognitive_routing(user_id, user_message, chat_history, context_variables)
+        await self._run_cognitive_routing(user_id, user_message, chat_history, context_variables, character.name)
         logger.debug(f"Cognitive routing took {time.time() - routing_start:.2f}s")
         
         # Inject memory context if it exists
@@ -720,7 +720,7 @@ class AgentEngine:
         
         # 4.1 Cognitive Routing (The "Brain")
         routing_start = time.time()
-        await self._run_cognitive_routing(user_id, user_message, chat_history, context_variables)
+        await self._run_cognitive_routing(user_id, user_message, chat_history, context_variables, character.name)
         logger.debug(f"Cognitive routing took {time.time() - routing_start:.2f}s")
         
         # Inject memory context if it exists
@@ -895,7 +895,14 @@ class AgentEngine:
 
     async def _build_system_context(self, character: Character, user_message: str, user_id: Optional[str], context_variables: Dict[str, Any]) -> str:
         """Constructs the full system prompt including evolution, goals, and knowledge."""
-        return await self.context_builder.build_system_context(character, user_message, user_id, context_variables)
+        
+        # Optimization: For cross-bot, suppress heavy context that is already in cross_bot_context
+        # This prevents double-injection of knowledge graph facts
+        prefetched = {}
+        if context_variables.get("is_cross_bot"):
+            prefetched["knowledge"] = ""
+            
+        return await self.context_builder.build_system_context(character, user_message, user_id, context_variables, prefetched_context=prefetched)
 
 
 
@@ -1033,47 +1040,86 @@ Using the information above, formulate a final response to the user in my authen
         user_id: Optional[str], 
         user_message: str, 
         chat_history: List[BaseMessage], 
-        context_variables: Dict[str, Any]
+        context_variables: Dict[str, Any],
+        character_name: Optional[str] = None
     ) -> None:
         """Runs cognitive routing to retrieve relevant memory context.
         
+        This provides memory retrieval for the fast path (force_fast=True),
+        including bot-to-bot conversations which are first-class citizens.
+        
         Args:
-            user_id: Optional Discord user ID
+            user_id: Optional Discord user ID (or bot Discord ID for cross-bot)
             user_message: User's message
             chat_history: Conversation history
             context_variables: Context dict to update with memory (modified in-place)
+            character_name: Character name for context retrieval
         """
-        # Create a copy to avoid race conditions with shared context_variables
-        if user_id and not context_variables.get("memory_context"):
-            try:
-                guild_id = context_variables.get("guild_id")
+        # Skip if no user_id or memory context already exists
+        if not user_id or context_variables.get("memory_context"):
+            return
+
+        # Optimization: If cross_bot_context is provided (from message_handler), use it
+        # This avoids double-fetching and preserves the specialized cross-bot prompt instructions
+        if context_variables.get("cross_bot_context"):
+            logger.info(f"Using pre-fetched cross-bot context for user {user_id}")
+            context_variables["memory_context"] = context_variables["cross_bot_context"]
+            return
+            
+        try:
+            from src_v2.memory.context_builder import context_builder
+            
+            # Use provided character_name, fallback to context_variables, then settings
+            char_name = character_name or context_variables.get("character_name") or settings.DISCORD_BOT_NAME
+            
+            # Fetch context from all sources in parallel
+            ctx = await context_builder.build_context(
+                user_id=user_id,
+                character_name=char_name,
+                query=user_message,
+                limit_history=5,
+                limit_memories=3,
+                limit_summaries=2
+            )
+            
+            # Format memory context
+            memory_parts = []
+            
+            # Add relevant memories
+            if ctx.get("memories"):
+                memory_texts = []
+                for mem in ctx["memories"][:3]:
+                    if isinstance(mem, dict):
+                        memory_texts.append(mem.get("content", str(mem))[:200])
+                    else:
+                        memory_texts.append(str(mem)[:200])
+                if memory_texts:
+                    memory_parts.append("Relevant memories:\n" + "\n".join(f"- {m}" for m in memory_texts))
+            
+            # SKIP: Knowledge graph facts are already injected by _build_system_context (Step 2)
+            # We avoid duplicating them here to save token space and prevent confusion.
+            # if ctx.get("knowledge"): ...
+            
+            # Add summaries (Step 2 usually misses these for regular users as they aren't in context_variables)
+            if ctx.get("summaries"):
+                summary_texts = []
+                for summ in ctx["summaries"][:2]:
+                    if isinstance(summ, dict):
+                        summary_texts.append(summ.get("content", str(summ))[:150])
+                    else:
+                        summary_texts.append(str(summ)[:150])
+                if summary_texts:
+                    memory_parts.append("Past conversation context:\n" + "\n".join(f"- {s}" for s in summary_texts))
+            
+            if memory_parts:
+                memory_context = "\n\n".join(memory_parts)
+                context_variables["memory_context"] = memory_context
+                logger.info(f"Cognitive routing retrieved context for user {user_id} ({len(memory_context)} chars)")
+            else:
+                logger.debug(f"No memory context retrieved for user {user_id}")
                 
-                # Extract channel_id from context variables
-                channel_id = None
-                if "channel" in context_variables:
-                    channel = context_variables["channel"]
-                    if hasattr(channel, "id"):
-                        channel_id = str(channel.id)
-                
-                router_result: Dict[str, Any] = await self.router.route_and_retrieve(
-                    user_id, 
-                    user_message, 
-                    chat_history, 
-                    guild_id=guild_id,
-                    channel_id=channel_id
-                )
-                memory_context: str = router_result.get("context", "")
-                reasoning: str = router_result.get("reasoning", "")
-                
-                if memory_context:
-                    logger.info(f"Injecting memory context. Reasoning: {reasoning}")
-                    # Atomic update to avoid race conditions
-                    context_variables["memory_context"] = memory_context
-                    context_variables["router_reasoning"] = reasoning
-                else:
-                    logger.debug(f"No memory context retrieved. Reasoning: {reasoning}")
-            except Exception as e:
-                logger.error(f"Cognitive Router failed: {e}")
+        except Exception as e:
+            logger.error(f"Cognitive routing failed: {e}")
 
     async def _prepare_input_content(self, user_message: str, image_urls: Optional[List[str]]) -> List[BaseMessage]:
         """Prepares the input message, handling text and optional images."""

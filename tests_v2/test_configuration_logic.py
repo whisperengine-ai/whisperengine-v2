@@ -44,12 +44,8 @@ async def test_agent_engine_verbosity_injection():
         llm_client_dep=mock_llm_client
     )
     
-    # Mock router (it's initialized in __init__ but we can override it or mock its methods if needed)
-    # For this test, we might need to mock the router if it's used.
-    # Looking at engine.py, router is used in step 1.
-    mock_router = MagicMock()
-    mock_router.route_and_retrieve = AsyncMock(return_value={"context": "", "reasoning": ""})
-    engine.router = mock_router
+    # Note: Router is no longer used in legacy path - cognitive routing skipped
+    # Context is handled by supergraph when user_id is provided
 
     # Mock character
     mock_character = MagicMock()

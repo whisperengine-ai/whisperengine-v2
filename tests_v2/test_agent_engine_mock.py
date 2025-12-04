@@ -36,7 +36,7 @@ async def test_agent_engine():
     )
     
     # Mock internal components that are instantiated in __init__
-    engine.router = AsyncMock()
+    # Note: router is no longer used in legacy path (context handled by supergraph)
     engine.classifier = AsyncMock()
     engine.reflective_agent = AsyncMock()
     
@@ -62,8 +62,7 @@ async def test_agent_engine():
     mock_feedback.analyze_user_feedback_patterns = AsyncMock(return_value={})
     mock_goal.get_active_goals = AsyncMock(return_value=[])
     
-    # Mock Router response
-    engine.router.route_and_retrieve = AsyncMock(return_value={"context": "Memory", "reasoning": "Reason"})
+    # Note: Router is no longer used - cognitive routing skipped in legacy path
     
     # Mock LLM response
     mock_response = MagicMock()
@@ -84,9 +83,8 @@ async def test_agent_engine():
         else:
             logger.error(f"❌ Fast mode response failed. Got: {response}")
             
-        # Verify Router was called
-        engine.router.route_and_retrieve.assert_called()
-        logger.info("✅ Router invocation passed.")
+        # Note: Router verification removed - cognitive routing not used in legacy path
+        logger.info("✅ Fast mode test completed.")
 
     # ---------------------------------------------------------
     # 2. Test Reflective Mode
