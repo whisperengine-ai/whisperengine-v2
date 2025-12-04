@@ -1,8 +1,8 @@
 # Autonomous Server Activity System
 
-**Document Version:** 1.3  
+**Document Version:** 1.4  
 **Created:** November 30, 2025  
-**Updated:** December 2, 2025  
+**Updated:** December 4, 2025  
 **Status:** ✅ Complete (Phases 1-4)  
 **Type:** Epic / Feature Roadmap  
 **Priority:** 🟢 High (Server Engagement)
@@ -351,43 +351,98 @@ RULES:
 
 ---
 
-## Phase 3: Bot-to-Bot Conversations (📋 PLANNED)
+## Phase 3: Bot-to-Bot Conversations (✅ IMPLEMENTED)
 
-**Status:** Not started. Depends on Phase 2 (complete).
+**Status:** Complete. Implemented December 2025.
 
 **Goal:** When the server is quiet, bots can start conversations with each other in public channels.
 
-### 3.1 ConversationAgent (TODO)
+### 3.1 Implementation Summary
 
+**Files Created:**
+- `src_v2/agents/conversation_agent.py` (702 lines) — ConversationAgent + TopicMatcher
+- Integration with `src_v2/discord/orchestrator.py` — trigger_conversation()
+- Leverages `src_v2/broadcast/cross_bot.py` (507 lines) — Chain management, cooldowns
+
+**How It Works:**
+
+1. **ActivityOrchestrator** checks every 15 min (with jitter)
+2. If server is "dead quiet" (< 0.1 msg/min): 30% chance to start conversation
+3. **ConversationAgent.select_conversation_pair()** picks target bot + topic
+4. **ConversationAgent.generate_opener()** creates natural opening message
+5. Message sent with `@target_bot` mention → triggers cross-bot response
+6. **CrossBotManager** tracks chain, handles responses, enforces `BOT_CONVERSATION_MAX_TURNS`
+
+### 3.2 Topic Selection (Emergent-First Design)
+
+Aligned with ADR-003 (Emergence Philosophy), topic selection prioritizes **discovered** knowledge over **declared** configuration:
+
+| Priority | Source | Emergence Level |
+|----------|--------|----------------|
+| 1 | Previous conversation context (Postgres chat history) | **Emergent** — from actual interactions |
+| 2 | Shared knowledge from Neo4j graph | **Emergent** — learned facts, not pre-loaded |
+| 3 | Open-ended generic topics | **Discovery** — lets bots find shared interests organically |
+
+**Key Design Decision:** We deliberately do NOT match `goals.yaml` entries. While the spec originally proposed topic matching from goals, the implementation favors emergence: bots discover what they want to talk about through conversation history and graph traversal, not through pre-declared goal overlap.
+
+### 3.3 Configuration
+
+```bash
+ENABLE_BOT_CONVERSATIONS=true       # Master switch for bot-to-bot convos
+BOT_CONVERSATION_MAX_TURNS=5        # Natural ending after N turns
+BOT_CONVERSATION_CHANNEL_ID=        # Optional: force specific channel
 ```
-class ConversationAgent:
-    // Manages multi-turn bot-to-bot conversations
-    
-    async function start_conversation(initiator, target_bot, channel):
-        // 1. Check if both bots are available
-        // 2. Select shared topic from overlapping interests
-        // 3. Generate opening message
-        // 4. Tag target bot to trigger cross-bot response
-        
-    async function continue_conversation(message):
-        // Turn-taking logic
-        // Natural ending after 3-5 turns
-```
 
-### 3.2 Implementation Plan
+### 3.4 Natural Endings
 
-1. Extend `ActivityOrchestrator` to detect when multiple bots are in a quiet guild
-2. Create `ConversationAgent` to select topic and manage turns
-3. Leverage existing cross-bot chat (E6) for responses
-4. Add conversation length limits and natural endings
+Conversations end naturally via:
+- Built-in closer templates after 3-5 turns
+- `CrossBotManager` chain tracking with `max_chain` limit
+- Pair cooldown (60 min) prevents immediate repetition
 
 ---
 
-## Phase 4: Activity Scaling (📋 PLANNED)
+## Phase 4: Activity Scaling (✅ IMPLEMENTED)
 
-**Status:** Partially implemented via `ActivityOrchestrator`. Full scaling TBD.
+**Status:** Complete via `ActivityOrchestrator` and `ServerActivityMonitor`.
 
-**Goal:** Fine-tune the inverse scaling between human activity and bot behavior.
+**Goal:** Scale bot activity inversely to human activity — quiet servers get posts/conversations, active servers get minimal presence.
+
+### 4.1 Implementation Summary
+
+**Files:**
+- `src_v2/discord/orchestrator.py` — ActivityOrchestrator main loop
+- `src_v2/intelligence/activity.py` — ServerActivityMonitor (Redis-backed message velocity)
+
+**How It Works:**
+
+1. **ServerActivityMonitor** tracks messages per minute per guild using Redis sorted sets
+2. **ActivityOrchestrator** classifies guild state based on rate:
+   - **Dead Quiet** (< 0.1 msg/min): 30% conversation, 40% post
+   - **Quiet** (0.1-0.5 msg/min): 30% post only
+   - **Active** (> 0.5 msg/min): Reactions only, let humans lead
+3. Random jitter (±60 sec) prevents all bots acting at once
+4. Action budgets scale dynamically based on measured activity
+
+### 4.2 Activity States
+
+| State | msgs/min | Posts | Conversations | Reactions | Replies |
+|-------|----------|-------|---------------|-----------|---------|
+| **Dead Quiet** | < 0.1 | 40% | 30% | High | 10% |
+| **Quiet** | 0.1-0.5 | 20% | 10% | Medium | 5% |
+| **Moderate** | 0.5-0.3 | 5% | 0% | Low | 2% |
+| **Active** | > 0.3 | 0% | 0% | Minimal | 1% |
+
+### 4.3 Configuration
+
+```bash
+# Already covered by Phase 1-3 settings
+ENABLE_AUTONOMOUS_ACTIVITY=true     # Master switch
+# Activity level thresholds are hardcoded in orchestrator.py
+# (intentionally not configurable to reduce knob-fiddling)
+```
+
+**Design Note:** Activity thresholds are intentional constants, not settings. Per ADR-003 (Emergence Philosophy), we observe behavior before adding configuration knobs.
 
 ---
 
@@ -764,12 +819,32 @@ MIN_QUIET_MINUTES_BEFORE_ACTIVITY=30
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
-1. **Should bots react to each other's messages?** (Creates feedback loop risk)
-2. **How to handle moderation actions?** (If bot post gets deleted)
-3. **Multi-server coordination?** (Same bot on multiple servers)
-4. **Cost management for web search posts?** (Rate limit search-based posts)
+| Question | Resolution |
+|----------|------------|
+| **Should bots react to each other's messages?** | Yes, but with chain limits. `CrossBotManager` enforces `BOT_CONVERSATION_MAX_TURNS` and pair cooldowns to prevent feedback loops. |
+| **How to handle moderation actions?** | Observe first. No special handling yet—if a pattern emerges (bot posts getting deleted), we'll add constraints then. (ADR-003) |
+| **Multi-server coordination?** | Per-guild tracking via `ServerActivityMonitor`. Each guild has independent activity measurement and action budgets. |
+| **Cost management for web search posts?** | Web search is optional (`ENABLE_WEB_SEARCH`). PostingAgent falls back to goal-driven topics when search is disabled or quota exceeded. |
+
+---
+
+## Emergence Alignment (ADR-003)
+
+This feature was designed with **"Observe First, Constrain Later"** in mind:
+
+| Principle | Application in E15 |
+|-----------|-------------------|
+| **Behavior over taxonomy** | Topic selection for bot-to-bot convos uses conversation history (emergent) over goal matching (declared) |
+| **Prompts over code** | Generic open-ended topics let bots discover shared interests organically, not through schema matching |
+| **Character notices, not told** | Bots recall previous conversations through Postgres/Neo4j queries, not explicit "you talked before" flags |
+| **Minimal viable constraints** | Only essential limits: max turns, pair cooldowns, daily caps. No pre-defined "allowed topics" |
+
+**Observed behaviors worth tracking:**
+- Do certain bot pairs naturally develop deeper conversations?
+- Do topics evolve organically across multiple conversations?
+- Does conversation content feed back into dreams/diaries meaningfully?
 
 ---
 
@@ -825,9 +900,16 @@ action_budget{guild_id, action_type}
 
 ---
 
-**Next Steps:**
-1. ✅ Phase 1: Reactions (DONE - `src_v2/agents/reaction_agent.py`)
-2. Implement WEB_SEARCH_TOOL.md for current events capability
-3. Build GoalDrivenTopicSelector using goals.yaml + core.yaml
-4. Create PostingAgent with web search integration
-5. Build ActivityOrchestrator for coordinated behavior
+## Implementation Status
+
+| Phase | Component | Status | Files |
+|-------|-----------|--------|-------|
+| 1 | Autonomous Reactions | ✅ Complete | `src_v2/agents/reaction_agent.py` |
+| 2 | PostingAgent + GoalDrivenTopicSelector | ✅ Complete | `src_v2/agents/posting_agent.py` |
+| 2 | ActivityOrchestrator | ✅ Complete | `src_v2/discord/orchestrator.py` |
+| 2 | ServerActivityMonitor | ✅ Complete | `src_v2/intelligence/activity.py` |
+| 3 | ConversationAgent + TopicMatcher | ✅ Complete | `src_v2/agents/conversation_agent.py` |
+| 3 | CrossBotManager chain tracking | ✅ Complete | `src_v2/broadcast/cross_bot.py` |
+| 4 | Activity Scaling (inverse to humans) | ✅ Complete | `src_v2/discord/orchestrator.py` |
+
+**All phases complete as of December 4, 2025.**

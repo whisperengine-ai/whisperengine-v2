@@ -248,8 +248,11 @@ memories, facts, trust, goals = await asyncio.gather(
 ### Discord Integration
 - `src_v2/discord/bot.py`: Event handlers (`on_message`, `on_reaction_add`), message routing
 - `src_v2/discord/scheduler.py`: Proactive engagement (Phase 13 complete)
+- `src_v2/discord/orchestrator.py`: ActivityOrchestrator for autonomous server activity (E15)
 - `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
-- `src_v2/agents/reaction_agent.py`: Autonomous emoji reactions (Phase E15)
+- `src_v2/agents/reaction_agent.py`: Autonomous emoji reactions (Phase E15.1)
+- `src_v2/agents/posting_agent.py`: Goals-driven autonomous posting (Phase E15.2)
+- `src_v2/agents/conversation_agent.py`: Bot-to-bot conversations (Phase E15.3)
 
 ### API
 - `src_v2/api/app.py`: FastAPI app with Uvicorn
@@ -434,10 +437,11 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - ✅ Background insight agent (reasoning traces, epiphanies, pattern learning)
 
 **Next phases** (from IMPLEMENTATION_ROADMAP_OVERVIEW.md):
-1. E15 Phase 3: Bot-to-Bot Conversations
-2. E15 Phase 4: Full Activity Scaling
-3. Video processing (clip analysis)
-4. Web dashboard (admin UI)
+1. E26: Temporal Graph (time-aware graph traversal)
+2. E27: Multi-Character Walks (graph walks across bot perspectives)
+3. B5: Trace Learning (learn from reasoning traces)
+4. Video processing (clip analysis)
+5. Web dashboard (admin UI)
 
 ## 📞 Key References
 
@@ -453,6 +457,6 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 ---
 
-**Version**: 2.1.0 (Dec 3, 2025 - E15 Phase 2 complete, E18 complete)  
+**Version**: 2.2.0 (Dec 4, 2025 - E15 complete, E25 complete)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

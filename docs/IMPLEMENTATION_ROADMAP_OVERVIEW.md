@@ -1,8 +1,8 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 2.9  
+**Document Version:** 3.0  
 **Created:** November 24, 2025  
-**Last Updated:** December 4, 2025 (E25: Graph Enrichment Agent complete)
+**Last Updated:** December 4, 2025 (E15: Autonomous Server Activity complete, E25: Graph Enrichment Agent complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -74,16 +74,11 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 **Legend:** 🔴 Critical | 🟢 High | 🟡 Medium | ⚪ Low
 
-#### 🔄 Active Work (In Progress)
-
-| Priority | Phase | Description | Time | Deps | Status |
-|----------|-------|-------------|------|------|--------|
-| 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | 🔄 Phase 1 Complete |
-
 #### ✅ Recently Completed
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
+| 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | ✅ Complete (All Phases) |
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | ✅ Complete |
 
 #### 📋 Proposed (Ready to Start)
@@ -111,7 +106,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Phase | Description | Completed |
 |-------|-------------|--------|
-| E15.2-3 | Posting & Conversation Agents | Dec 2025 |
+| E15 | Autonomous Server Activity (all 4 phases) | Dec 2025 |
+| E25 | Graph Enrichment Agent | Dec 2025 |
 | E17 | Supergraph Architecture | Dec 2025 |
 | E18 | Agentic Queue System | Dec 2025 |
 | E19 | Graph Walker Agent | Dec 2025 |
@@ -134,15 +130,14 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 │                    PROPOSED WORK DEPENDENCIES                    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  E15 (Reactions + Posting + Convo) ✅ ──► Natural Language     │
-│                                           (introspection ✅)    │
+│  E15 (Autonomous Server Activity) ✅ ──► COMPLETE              │
 │                                                                 │
 │  E18 (Queue) ✅ ──────────► E24 (Advanced Queue)               │
 │                                                                 │
 │  Insight Agent ✅ ────────► B5 (Trace Learning)                │
 │                                                                 │
-│  E19 (Graph Walker) ✅ ──► E25 (Enrichment) ──► E29 (Recs)     │
-│                       │    [Next item]                          │
+│  E19 (Graph Walker) ✅ ──► E25 (Enrichment) ✅ ──► E29 (Recs)  │
+│                       │                                         │
 │                       ├──► E26 (Temporal) ──► E27 (Multi-Char)  │
 │                       │                                         │
 │                       └──► E28 (User Graph)                     │
@@ -200,7 +195,7 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - ✅ Relationship Milestones (Phase E4)
 - ✅ Bot Broadcast Channel (Phase E8)
 - ✅ Cross-Bot Chat (Phase E6)
-- 🔄 Autonomous Server Activity (Phase E15) - Phase 1-2 ✅, Phases 3-4 📋
+- ✅ Autonomous Server Activity (Phase E15) - All 4 phases complete
 - ✅ Feedback Loop Stability (Phase E16) - Emergent behavior guardrails for agentic systems
 
 **Discord Integration (COMPLETE):**
