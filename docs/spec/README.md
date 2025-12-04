@@ -17,6 +17,7 @@
 | [SPEC-E16](./SPEC-E16-FEEDBACK_LOOP_STABILITY.md) | E16 | Feedback Loop Stability | ✅ Complete | Emergent behavior guardrails |
 | [SPEC-E21](./SPEC-E21-SEMANTIC_ROUTING.md) | E21 | Semantic Routing | 📋 Proposed | Fast-path intent detection |
 | [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | 🔄 E25 Complete | Graph enrichment, temporal, multi-char |
+| [SPEC-E26](./SPEC-E26-DRIVE_WEIGHT_SEMANTICS.md) | E26 | Drive Weight Semantics | 📋 Proposed | Numeric → natural language conversion |
 
 ### Archived/On Hold
 
