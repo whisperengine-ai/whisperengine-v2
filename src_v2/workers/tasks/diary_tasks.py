@@ -184,7 +184,3 @@ async def run_diary_generation(
             "error": str(e),
             "character_name": character_name
         }
-
-
-# Backward compatibility alias
-run_agentic_diary_generation = run_diary_generation

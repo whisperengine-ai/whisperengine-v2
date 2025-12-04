@@ -33,11 +33,10 @@ from src_v2.workers.strategist import run_goal_strategist
 from src_v2.workers.tasks.insight_tasks import run_insight_analysis, run_reflection
 from src_v2.workers.tasks.summary_tasks import run_summarization
 from src_v2.workers.tasks.knowledge_tasks import run_knowledge_extraction
-from src_v2.workers.tasks.diary_tasks import run_diary_generation, run_agentic_diary_generation
-from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_agentic_dream_generation
+from src_v2.workers.tasks.diary_tasks import run_diary_generation
+from src_v2.workers.tasks.dream_tasks import run_dream_generation
 from src_v2.workers.tasks.drift_observation import run_drift_observation
 from src_v2.workers.tasks.social_tasks import (
-    run_store_observation,
     run_universe_observation,
     run_relationship_update,
     run_gossip_dispatch,
@@ -47,7 +46,6 @@ from src_v2.workers.tasks.analysis_tasks import (
     run_preference_extraction
 )
 from src_v2.workers.tasks.vision_tasks import run_vision_analysis
-from src_v2.workers.tasks.media_tasks import run_image_generation, run_voice_generation
 from src_v2.workers.tasks.posting_tasks import run_posting_agent
 from src_v2.workers.tasks.enrichment_tasks import (
     run_graph_enrichment,
@@ -109,7 +107,6 @@ class WorkerSettings:
         run_summarization,
         run_reflection,
         run_knowledge_extraction,
-        run_store_observation,
         run_universe_observation,
         run_relationship_update,
         # LangGraph agents get 10 min timeout (local LLMs + multi-step reasoning)
@@ -117,13 +114,9 @@ class WorkerSettings:
         run_goal_analysis,
         run_preference_extraction,
         run_vision_analysis,
-        run_image_generation,
-        run_voice_generation,
         run_gossip_dispatch,
         arq.func(run_diary_generation, timeout=600),  # Phase E2/E10: Character Diary (agentic)
-        arq.func(run_agentic_diary_generation, timeout=600),  # Alias for backward compatibility
         arq.func(run_dream_generation, timeout=600),  # Phase E3/E10: Nightly Dreams (agentic)
-        arq.func(run_agentic_dream_generation, timeout=600),  # Alias for backward compatibility
         run_drift_observation,  # Phase E16: Personality drift observation
         run_posting_agent,      # Phase E15: Autonomous Posting
         run_graph_enrichment,   # Phase E25: Graph Enrichment

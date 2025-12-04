@@ -2,60 +2,6 @@ from typing import Dict, Any, Optional, List
 from loguru import logger
 from src_v2.config.settings import settings
 
-async def run_store_observation(
-    ctx: Dict[str, Any],
-    observer_bot: str,
-    observation_type: str,
-    subject: str,
-    content: str,
-    metadata: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
-    """
-    Store a stigmergic observation in the knowledge graph.
-    
-    This is part of Phase B9 (Emergent Behavior Architecture).
-    Characters don't communicate directly - they leave traces in the
-    environment that other characters can discover.
-    
-    Args:
-        ctx: arq context
-        observer_bot: Character making the observation
-        observation_type: Category (user_mood, topic_trend, relationship, etc.)
-        subject: Who/what the observation is about
-        content: The observation content
-        metadata: Optional additional data
-        
-    Returns:
-        Dict with success status
-    """
-    logger.info(f"Storing observation: {observer_bot} observed {observation_type} about {subject}")
-    
-    try:
-        from src_v2.knowledge.manager import knowledge_manager
-        
-        success = await knowledge_manager.store_observation(
-            observer_bot=observer_bot,
-            observation_type=observation_type,
-            subject=subject,
-            content=content,
-            metadata=metadata
-        )
-        
-        return {
-            "success": success,
-            "observer_bot": observer_bot,
-            "observation_type": observation_type,
-            "subject": subject
-        }
-        
-    except Exception as e:
-        logger.error(f"Store observation failed: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "observer_bot": observer_bot
-        }
-
 
 async def run_universe_observation(
     ctx: Dict[str, Any],

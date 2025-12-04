@@ -241,7 +241,3 @@ async def run_dream_generation(
             "error": str(e),
             "character_name": character_name
         }
-
-
-# Backward compatibility alias
-run_agentic_dream_generation = run_dream_generation
