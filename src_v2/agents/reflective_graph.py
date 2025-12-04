@@ -12,8 +12,8 @@ from langgraph.graph import StateGraph, END
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.constants import should_use_base64
 from src_v2.tools.memory_tools import (
-    SearchSummariesTool, SearchEpisodesTool, LookupFactsTool, 
-    UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool,
+    SearchSummariesTool, SearchEpisodesTool, LookupFactsTool,
+    UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool, RecallBotConversationTool,
     CreateUserGoalTool, ExploreGraphTool, DiscoverCommonGroundTool,
     CharacterEvolutionTool
 )
@@ -96,6 +96,9 @@ class ReflectiveGraphAgent:
             
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
             SearchMyThoughtsTool(character_name=character_name),
+            
+            # Cross-Bot Memory Recall (what did I talk about with other bots?)
+            RecallBotConversationTool(character_name=character_name),
             
             # User-Requested Goals (help me with X, remind me about Y)
             CreateUserGoalTool(user_id=user_id, character_name=character_name),

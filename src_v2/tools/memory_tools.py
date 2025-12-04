@@ -569,3 +569,117 @@ This means you should behave as a {level_label.lower()} with this user."""
             return output
         except Exception as e:
             return f"Error retrieving evolution state: {e}"
+
+
+# =============================================================================
+# CROSS-BOT MEMORY RECALL - Let bot recall conversations with other bots
+# =============================================================================
+
+class RecallBotConversationInput(BaseModel):
+    bot_name: str = Field(
+        description="The name of the other bot to recall conversations with (e.g., 'aetheris', 'gabriel', 'elena')"
+    )
+    topic: str = Field(
+        default="",
+        description="Optional topic to focus on (e.g., 'consciousness', 'dreams', 'philosophy')"
+    )
+    limit: int = Field(
+        default=5,
+        description="Maximum number of memories to retrieve (1-10)"
+    )
+
+
+class RecallBotConversationTool(BaseTool):
+    """Recall past conversations with another bot character."""
+    name: str = "recall_bot_conversation"
+    description: str = """Recall memories of conversations you've had with another bot.
+
+USE THIS WHEN the user asks:
+- "What did you talk about with Aetheris?"
+- "Do you remember your conversation with Gabriel?"
+- "What does Elena think about X?" (recall what Elena said)
+- "Have you discussed consciousness with any bots?"
+- "Tell me about your chats with other bots"
+
+This searches your memories of past bot-to-bot conversations, stored when you 
+interacted with other AI characters in Discord channels.
+
+IMPORTANT: Only use this for recalling conversations with OTHER BOTS, not humans.
+For human conversations, use the regular memory search tools."""
+    args_schema: Type[BaseModel] = RecallBotConversationInput
+    
+    character_name: str = Field(exclude=True)
+
+    def _run(self, bot_name: str, topic: str = "", limit: int = 5) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, bot_name: str, topic: str = "", limit: int = 5) -> str:
+        try:
+            from src_v2.broadcast.cross_bot import cross_bot_manager
+            
+            # Get known bots
+            known_bots = cross_bot_manager.known_bots
+            
+            if not known_bots:
+                return "I don't have access to other bot information right now. They might not be online."
+            
+            # Normalize bot name for lookup
+            bot_name_lower = bot_name.lower().strip()
+            
+            # Find the bot ID
+            bot_id = None
+            matched_name = None
+            for name, bid in known_bots.items():
+                if name.lower() == bot_name_lower or bot_name_lower in name.lower():
+                    bot_id = bid
+                    matched_name = name
+                    break
+            
+            if not bot_id:
+                available = ", ".join(known_bots.keys())
+                return f"I don't know a bot named '{bot_name}'. Bots I know: {available}"
+            
+            # Search memories under that bot's ID
+            # Cross-bot conversations are stored with user_id = other_bot's discord_id
+            query = topic if topic else f"conversation with {matched_name}"
+            limit = min(max(limit, 1), 10)
+            
+            memories = await memory_manager.search_memories(
+                query=query,
+                user_id=str(bot_id),
+                limit=limit
+            )
+            
+            if not memories:
+                if topic:
+                    return f"I don't recall discussing '{topic}' with {matched_name.title()}. We may not have talked about that, or it was too long ago."
+                else:
+                    return f"I don't have memories of conversations with {matched_name.title()} yet. We may not have interacted, or I haven't stored those conversations."
+            
+            # Format the memories
+            results = []
+            for mem in memories:
+                content = mem.get("content", "")[:400]
+                rel_time = mem.get("relative_time", "some time ago")
+                role = mem.get("role", "unknown")
+                
+                # Format based on role
+                if role == "human":
+                    # This was the other bot speaking
+                    results.append(f"**{matched_name.title()} said** ({rel_time}):\n\"{content}\"")
+                else:
+                    # This was our response
+                    results.append(f"**I replied** ({rel_time}):\n\"{content}\"")
+            
+            intro = f"Recalling my conversations with {matched_name.title()}"
+            if topic:
+                intro += f" about '{topic}'"
+            intro += "...\n\n"
+            
+            return intro + "\n\n".join(results)
+            
+        except ImportError:
+            return "Cross-bot memory system is not available."
+        except (ValueError, KeyError, ConnectionError, TimeoutError) as e:
+            logger.error(f"Error recalling bot conversation: {e}")
+            return f"I had trouble recalling those conversations: {e}"

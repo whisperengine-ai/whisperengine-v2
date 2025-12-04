@@ -4,7 +4,7 @@ from loguru import logger
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
-from src_v2.config.settings import settings
+
 
 class ContextBuilder:
     """
@@ -63,6 +63,7 @@ class ContextBuilder:
                 context[key] = result
                 
         return context
+
 
 # Global instance
 context_builder = ContextBuilder()

@@ -18,7 +18,8 @@ from src_v2.tools.memory_tools import (
     LookupFactsTool, 
     ExploreGraphTool,
     DiscoverCommonGroundTool,
-    CharacterEvolutionTool
+    CharacterEvolutionTool,
+    RecallBotConversationTool
 )
 from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
@@ -181,6 +182,7 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
             ReadDocumentTool(user_id=user_id, character_name=bot_name),
+            RecallBotConversationTool(character_name=bot_name),
         ]
         if channel:
             tools.extend([
