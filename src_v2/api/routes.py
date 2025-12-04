@@ -162,6 +162,24 @@ async def get_diagnostics() -> DiagnosticsResponse:
         "proactive_messaging": settings.ENABLE_PROACTIVE_MESSAGING,
     }
     
+    # Queue depths (pending jobs in each worker queue)
+    queue_depths = {}
+    try:
+        if db_manager.redis_client:
+            # arq uses sorted sets for queues
+            queue_names = [
+                ("cognition", "arq:cognition"),
+                ("sensory", "arq:sensory"),
+                ("action", "arq:action"),
+                ("social", "arq:social"),
+            ]
+            for name, key in queue_names:
+                depth = await db_manager.redis_client.zcard(key)
+                queue_depths[name] = depth or 0
+    except Exception as e:
+        logger.warning(f"Could not fetch queue depths: {e}")
+        queue_depths = {"error": str(e)}
+    
     # Get version
     try:
         with open("VERSION", "r") as f:
@@ -174,6 +192,7 @@ async def get_diagnostics() -> DiagnosticsResponse:
         llm_models=llm_models,
         database_status=db_status,
         feature_flags=feature_flags,
+        queue_depths=queue_depths,
         uptime_seconds=time.time() - _start_time,
         version=version
     )

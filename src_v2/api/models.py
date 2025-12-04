@@ -110,6 +110,10 @@ class DiagnosticsResponse(BaseModel):
         default_factory=dict,
         description="Enabled feature flags"
     )
+    queue_depths: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Number of pending jobs in each worker queue"
+    )
     uptime_seconds: float = Field(0.0, description="Seconds since bot started")
     version: str = Field("unknown", description="Bot version")
 
