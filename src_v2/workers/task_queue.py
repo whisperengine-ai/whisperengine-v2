@@ -206,9 +206,10 @@ class TaskQueue:
         character_name: str,
         interaction_text: str
     ) -> Optional[str]:
-        """Enqueue a goal analysis task."""
+        """Enqueue a goal analysis task (SENSORY queue - fast analysis)."""
         return await self.enqueue(
             "run_goal_analysis",
+            _queue_name=self.QUEUE_SENSORY,
             user_id=user_id,
             character_name=character_name,
             interaction_text=interaction_text
@@ -220,9 +221,10 @@ class TaskQueue:
         character_name: str,
         message_content: str
     ) -> Optional[str]:
-        """Enqueue a preference extraction task."""
+        """Enqueue a preference extraction task (SENSORY queue - fast analysis)."""
         return await self.enqueue(
             "run_preference_extraction",
+            _queue_name=self.QUEUE_SENSORY,
             user_id=user_id,
             character_name=character_name,
             message_content=message_content
@@ -234,9 +236,10 @@ class TaskQueue:
         user_id: str,
         channel_id: str
     ) -> Optional[str]:
-        """Enqueue a vision analysis task."""
+        """Enqueue a vision analysis task (ACTION queue - outbound processing)."""
         return await self.enqueue(
             "run_vision_analysis",
+            _queue_name=self.QUEUE_ACTION,
             image_url=image_url,
             user_id=user_id,
             channel_id=channel_id
@@ -295,7 +298,7 @@ class TaskQueue:
     
     async def enqueue_knowledge_extraction(self, user_id: str, message: str, character_name: str) -> Optional[str]:
         """
-        Queue a job to extract facts from a user message.
+        Queue a job to extract facts from a user message (SENSORY queue - fast analysis).
         
         Args:
             user_id: Discord user ID
@@ -308,6 +311,7 @@ class TaskQueue:
         # No job_id deduplication - each message should be processed
         return await self.enqueue(
             "run_knowledge_extraction",
+            _queue_name=self.QUEUE_SENSORY,
             user_id=user_id,
             message=message,
             character_name=character_name
@@ -322,7 +326,7 @@ class TaskQueue:
         extracted_traits: Optional[List[str]] = None
     ) -> Optional[str]:
         """
-        Queue a job to update the relationship between a character and user.
+        Queue a job to update the relationship between a character and user (SENSORY queue).
         
         Called after each meaningful conversation to build familiarity
         and record learned traits.
@@ -339,6 +343,7 @@ class TaskQueue:
         """
         return await self.enqueue(
             "run_relationship_update",
+            _queue_name=self.QUEUE_SENSORY,
             character_name=character_name,
             user_id=user_id,
             guild_id=guild_id,
@@ -369,6 +374,7 @@ class TaskQueue:
         return await self.enqueue(
             "run_gossip_dispatch",
             _job_id=job_id,
+            _queue_name=self.QUEUE_SENSORY,
             event_data=event.to_dict()
         )
 

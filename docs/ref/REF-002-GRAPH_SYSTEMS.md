@@ -207,11 +207,20 @@ Redis serves as WhisperEngine's **distributed coordination layer** — the "pher
 
 ```python
 # From src_v2/workers/task_queue.py
-QUEUE_COGNITION = "arq:cognition"  # Diaries, Dreams, Reflection (slow, expensive)
-QUEUE_ACTION = "arq:action"        # Image Gen, Voice Gen, Posts (outbound effects)
-QUEUE_SENSORY = "arq:sensory"      # Sentiment, Intent, Facts (fast analysis)
-QUEUE_SOCIAL = "arq:social"        # Gossip, Cross-bot communication
+QUEUE_COGNITION = "arq:cognition"  # Diaries, Dreams, Reflection, Summarization, Insight (slow, expensive)
+QUEUE_ACTION = "arq:action"        # Image Gen, Voice Gen, Posts, Vision Analysis (outbound effects)
+QUEUE_SENSORY = "arq:sensory"      # Knowledge Extraction, Preference Extraction, Goal Analysis, 
+                                   # Universe Observation, Relationship Updates, Gossip (fast, no LLM)
+QUEUE_SOCIAL = "arq:social"        # Reserved for future cross-bot coordination
 ```
+
+**Task Routing (as of Dec 2025):**
+
+| Queue | Worker | Tasks Routed |
+|-------|--------|--------------|
+| `arq:cognition` | worker-cognition (x2) | `run_insight_analysis`, `run_summarization`, `run_reflection`, `run_diary_generation`, `run_dream_generation`, `run_goal_strategist`, `run_drift_observation`, `run_graph_enrichment`, `run_batch_enrichment` |
+| `arq:action` | worker-action | `run_vision_analysis`, `run_posting_agent` |
+| `arq:sensory` | worker-sensory | `run_knowledge_extraction`, `run_preference_extraction`, `run_goal_analysis`, `run_universe_observation`, `run_relationship_update`, `run_gossip_dispatch` |
 
 **Graph Metaphor:** The queue structure is an **event graph** where tasks are nodes and dependencies are edges. The arq worker traverses this graph, executing tasks in priority order.
 

@@ -280,9 +280,12 @@ class MessageHandler:
                 if message.content and len(message.content.strip()) >= 10:
                     # Use message ID as job ID to prevent duplicate processing
                     # if multiple bots observe the same message
+                    # Route to SENSORY queue for fast processing (no LLM required)
+                    from src_v2.workers.task_queue import TaskQueue
                     await task_queue.enqueue(
                         "run_universe_observation",
                         _job_id=f"universe_obs_{message.id}",
+                        _queue_name=TaskQueue.QUEUE_SENSORY,
                         guild_id=str(message.guild.id),
                         channel_id=str(message.channel.id),
                         user_id=str(message.author.id),
