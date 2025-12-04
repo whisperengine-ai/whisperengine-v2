@@ -207,6 +207,10 @@ class MessageHandler:
         Args:
             message: Discord message object
         """
+        # Prevent self-reply loops
+        if self.bot.user and message.author.id == self.bot.user.id:
+            return
+
         # Cross-bot detection (Phase E6) - Handle bot messages differently
         if message.author.bot:
             # Check for cross-bot mentions if enabled
