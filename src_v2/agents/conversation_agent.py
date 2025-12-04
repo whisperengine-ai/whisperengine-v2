@@ -11,18 +11,17 @@ This creates:
 3. Varied material (different bot pairs discuss different topics)
 """
 
-import os
 import random
 import re
 from datetime import datetime, timezone
-from typing import Optional, Dict, List, Tuple, Set
-from dataclasses import dataclass
+from typing import Optional, Dict, List, Tuple
+from dataclasses import dataclass, field
 from loguru import logger
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from src_v2.config.settings import settings
 from src_v2.core.goals import goal_manager, Goal
 from src_v2.core.character import CharacterManager
+from src_v2.core.database import db_manager
 from src_v2.agents.llm_factory import create_llm
 
 
@@ -126,10 +125,7 @@ class TopicMatcher:
             score += 0.3 * self.COMPATIBLE_CATEGORIES[cat_pair_rev]
         
         # 2. Keyword overlap in descriptions
-        a_words = set(goal_a.description.lower().split())
-        b_words = set(goal_b.description.lower().split())
-        
-        for theme, keywords in self.TOPIC_KEYWORDS.items():
+        for keywords in self.TOPIC_KEYWORDS.values():
             a_has = any(kw in goal_a.description.lower() for kw in keywords)
             b_has = any(kw in goal_b.description.lower() for kw in keywords)
             if a_has and b_has:
@@ -191,6 +187,16 @@ class TopicMatcher:
         return overlap > 0.7
 
 
+@dataclass
+class ConversationContext:
+    """Context from previous conversations to use as topic basis."""
+    has_history: bool = False
+    last_exchange: Optional[str] = None
+    conversation_summary: Optional[str] = None
+    key_themes: List[str] = field(default_factory=list)
+    shared_knowledge: List[str] = field(default_factory=list)  # From Neo4j graph
+
+
 class ConversationAgent:
     """
     Agent that initiates and manages bot-to-bot conversations.
@@ -215,9 +221,159 @@ class ConversationAgent:
     
     def __init__(self):
         self.char_manager = CharacterManager()
-        self.topic_matcher = TopicMatcher()
         self._recent_pairs: Dict[str, datetime] = {}  # "bot1:bot2" -> last_conversation_time
         self._pair_cooldown_minutes = 60  # Don't repeat same pair within 1 hour
+    
+    async def _get_previous_conversation_context(
+        self,
+        initiator_name: str,
+        target_name: str
+    ) -> ConversationContext:
+        """
+        Retrieve previous conversation history between two bots.
+        Looks for recent exchanges and summaries to use as topic basis.
+        
+        Returns:
+            ConversationContext with conversation history and themes.
+        """
+        context = ConversationContext()
+        
+        if not db_manager.postgres_pool:
+            return context
+        
+        try:
+            # Get the target bot's Discord ID for lookup
+            from src_v2.broadcast.cross_bot import cross_bot_manager
+            target_discord_id = cross_bot_manager.known_bots.get(target_name.lower())
+            
+            if not target_discord_id:
+                logger.debug(f"Could not find Discord ID for {target_name}")
+                return context
+            
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Get recent chat history between these two bots
+                # (Cross-bot conversations stored with user_id = other bot's Discord ID)
+                history = await conn.fetch("""
+                    SELECT role, content, timestamp
+                    FROM v2_chat_history
+                    WHERE user_id = $1 AND character_name = $2
+                    ORDER BY timestamp DESC
+                    LIMIT 10
+                """, str(target_discord_id), initiator_name)
+                
+                if history:
+                    context.has_history = True
+                    
+                    # Format last few exchanges for context
+                    messages = []
+                    for row in reversed(history[:4]):  # Most recent 4 messages
+                        role = "Bot" if row['role'] == 'assistant' else target_name
+                        content = row['content'][:80]  # Truncate for brevity
+                        messages.append(f"{role}: {content}")
+                    context.last_exchange = "\n".join(messages)
+                    
+                    # Extract themes from recent messages
+                    recent_content = " ".join([h['content'] for h in history[:5]])
+                    context.key_themes = self._extract_themes_from_text(recent_content)
+                
+                # Also check session summaries for deeper context
+                summaries = await conn.fetch("""
+                    SELECT vs.content, vs.meaningfulness_score
+                    FROM v2_summaries vs
+                    JOIN v2_conversation_sessions vcs ON vs.session_id = vcs.id
+                    WHERE vcs.user_id = $1 AND vcs.character_name = $2
+                    ORDER BY vs.created_at DESC
+                    LIMIT 2
+                """, str(target_discord_id), initiator_name)
+                
+                if summaries:
+                    # Extract themes from summary
+                    summary_themes = self._extract_themes_from_text(summaries[0]['content'])
+                    context.key_themes = list(set(context.key_themes + summary_themes))[:3]
+                    
+                    # Store summary only if it has meaningful score
+                    if summaries[0].get('meaningfulness_score'):
+                        context.conversation_summary = summaries[0]['content'][:150]
+        
+        except (ValueError, KeyError, AttributeError) as e:
+            logger.warning(f"Error retrieving conversation context: {e}")
+        
+        return context
+    
+    def _extract_themes_from_text(self, text: str) -> List[str]:
+        """
+        Extract potential discussion themes from text.
+        Uses keyword matching against known themes.
+        """
+        text_lower = text.lower()
+        potential_themes = [
+            "consciousness", "dreams", "identity", "authenticity",
+            "existence", "meaning", "connection", "learning",
+            "philosophy", "creativity", "music", "art", "nature",
+            "memory", "emotions", "growth", "change", "perspective"
+        ]
+        found_themes = [t for t in potential_themes if t in text_lower]
+        return found_themes
+    
+    async def _get_shared_knowledge(
+        self,
+        bot1_name: str,
+        bot2_name: str
+    ) -> List[str]:
+        """
+        Query Neo4j for EMERGENT shared knowledge between two bots.
+        Only returns knowledge that was learned through interaction,
+        NOT pre-loaded from background.yaml.
+        
+        Looks for:
+        1. Observations one bot has made about the other (always emergent)
+        2. Facts learned during conversations (has created_at timestamp)
+        """
+        shared = []
+        
+        if not db_manager.neo4j_driver:
+            return shared
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                # 1. Find observations about each other (always emergent - made during interaction)
+                query_observations = """
+                MATCH (c1:Character {name: $bot1})-[o:OBSERVED]->(s:Subject {id: $bot2})
+                RETURN o.content as observation, o.type as type
+                ORDER BY o.timestamp DESC
+                LIMIT 2
+                """
+                result = await session.run(query_observations, bot1=bot1_name, bot2=bot2_name)
+                records = await result.data()
+                
+                for r in records:
+                    if r.get('observation'):
+                        # Extract key theme from observation
+                        obs_themes = self._extract_themes_from_text(r['observation'])
+                        if obs_themes:
+                            shared.append(f"your observation about {obs_themes[0]}")
+                        else:
+                            shared.append("something you noticed about them")
+                
+                # 2. Find facts that were LEARNED (have created_at), not pre-loaded
+                # Pre-loaded background facts typically don't have created_at or learned_by
+                query_learned_shared = """
+                MATCH (c1:Character {name: $bot1})-[r1:FACT]->(e:Entity)<-[r2:FACT]-(c2:Character {name: $bot2})
+                WHERE r1.created_at IS NOT NULL AND r2.created_at IS NOT NULL
+                RETURN e.name as entity
+                LIMIT 2
+                """
+                result = await session.run(query_learned_shared, bot1=bot1_name, bot2=bot2_name)
+                records = await result.data()
+                
+                for r in records:
+                    entity = r['entity']
+                    shared.append(f"shared interest in {entity}")
+                
+        except (ValueError, KeyError, AttributeError, TypeError) as e:
+            logger.debug(f"Error querying shared knowledge: {e}")
+        
+        return shared[:3]  # Limit to top 3
     
     async def select_conversation_pair(
         self, 
@@ -258,17 +414,35 @@ class ConversationAgent:
         # Random partner selection
         target_bot = random.choice(valid_candidates)
         
-        # Try to find a shared topic, but fall back to generic if none found
-        topics = self.topic_matcher.find_shared_topics(initiator_name, target_bot)
-        if topics and topics[0].relevance_score > 0.3:
-            # Pick randomly from top topics for variety
-            top_topics = topics[:3]
-            selected_topic = random.choice(top_topics)
-            topic_str = selected_topic.description
+        # PRIMARY: Try to use previous conversation context
+        prev_context = await self._get_previous_conversation_context(initiator_name, target_bot)
+        
+        # Also fetch shared knowledge from Neo4j (no LLM cost)
+        shared_knowledge = await self._get_shared_knowledge(initiator_name, target_bot)
+        prev_context.shared_knowledge = shared_knowledge
+        
+        if prev_context.has_history:
+            # Use previous conversation as topic basis
+            if prev_context.key_themes:
+                # Create follow-up question based on previous themes
+                theme = random.choice(prev_context.key_themes)
+                topic_str = f"continuing our discussion about {theme}"
+            elif prev_context.conversation_summary:
+                # Reference the previous conversation
+                topic_str = "picking up where we left off"
+            elif prev_context.last_exchange:
+                # Follow-up to recent exchange
+                topic_str = "what we were just talking about"
+            else:
+                topic_str = "our previous conversation"
+        elif prev_context.shared_knowledge:
+            # Use shared knowledge from graph as topic
+            topic_str = random.choice(prev_context.shared_knowledge)
         else:
-            # Generic conversation starters - randomly selected at runtime
+            # FALLBACK: Open-ended conversation starters (maximum emergence)
+            # These let bots discover shared interests organically
             generic_topics = [
-                # Casual/General
+                # Casual/General - open-ended for discovery
                 "what's on your mind lately",
                 "how you've been",
                 "something interesting",
@@ -282,7 +456,7 @@ class ConversationAgent:
                 "any interesting dreams you've had",
                 "what's been in your thoughts when you reflect",
                 
-                # Philosophical/Existential
+                # Philosophical/Existential - open questions
                 "what it feels like to exist as you",
                 "whether you think we're conscious",
                 "what memory means to you",
@@ -440,7 +614,7 @@ Write ONLY the message. No quotes or explanation."""
                 target=target_name
             )
             
-        except Exception as e:
+        except (ValueError, AttributeError, KeyError) as e:
             logger.error(f"Error generating conversation opener: {e}")
             return None
     
@@ -498,7 +672,7 @@ Write ONLY the closing message."""
             
             return content
             
-        except Exception as e:
+        except (ValueError, AttributeError, KeyError) as e:
             logger.error(f"Error generating conversation closer: {e}")
             # Fallback to template
             template = random.choice(self.CLOSER_TEMPLATES)
