@@ -591,7 +591,7 @@ User Request + Image?
 - `src_v2/core/cache.py` (Redis session storage)
 - `src_v2/agents/reflective.py` (clarification flow)
 
-**Full Specification:** See [roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md](./roadmaps/IMAGE_GENERATION_ENHANCEMENTS.md)
+**Full Specification:** See [spec/SPEC-E08-IMAGE_GENERATION.md](./spec/SPEC-E08-IMAGE_GENERATION.md)
 
 ---
 
@@ -629,7 +629,7 @@ FinalScore = Semantic × Meaningfulness × Recency × Confidence
 - New: `src_v2/memory/context_builder.py` (hybrid retrieval)
 - New: `src_v2/memory/importance.py` (episode scoring)
 
-**Full Specification:** See [roadmaps/ADVANCED_MEMORY_RETRIEVAL.md](./roadmaps/ADVANCED_MEMORY_RETRIEVAL.md)
+**Full Specification:** See [spec/SPEC-E02-ADVANCED_MEMORY_RETRIEVAL.md](./spec/SPEC-E02-ADVANCED_MEMORY_RETRIEVAL.md)
 
 ---
 
@@ -700,7 +700,7 @@ Message → ComplexityClassifier (LLM) → detected_intents["voice"] → Generat
 - `src_v2/discord/bot.py` (integration)
 - `characters/{name}/ux.yaml` (voice config section - no trigger_keywords needed)
 
-**Full Specification:** See [roadmaps/TRIGGERED_VOICE_RESPONSES.md](./roadmaps/TRIGGERED_VOICE_RESPONSES.md)
+**Full Specification:** See [spec/SPEC-E10-TRIGGERED_VOICE_RESPONSES.md](./spec/SPEC-E10-TRIGGERED_VOICE_RESPONSES.md)
 
 ---
 
@@ -777,7 +777,7 @@ Features requiring significant logic changes but manageable scope.
 - ✅ `src_v2/universe/privacy.py` (Privacy-aware coordination)
 - ✅ `src_v2/agents/proactive.py` (Trust-gated initiation)
 
-**Full Specification:** See [roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md](./roadmaps/AUTONOMOUS_AGENTS_PHASE_3.md)
+**Full Specification:** See [spec/SPEC-E15-AUTONOMOUS_SERVER_ACTIVITY.md](./spec/SPEC-E15-AUTONOMOUS_SERVER_ACTIVITY.md)
 
 ---
 
@@ -946,7 +946,7 @@ Future Similar Query → Retrieve High-Score Patterns → Inject as Few-Shot Exa
 - `src_v2/agents/engine.py` (inject patterns)
 - New: `migrations_v2/versions/add_response_patterns_table.py`
 
-**Full Specification:** See [roadmaps/RESPONSE_PATTERN_LEARNING.md](./roadmaps/RESPONSE_PATTERN_LEARNING.md)
+**Full Specification:** See [spec/SPEC-B06-RESPONSE_PATTERN_LEARNING.md](./spec/SPEC-B06-RESPONSE_PATTERN_LEARNING.md)
 
 ---
 
@@ -998,7 +998,7 @@ Message → Keyword Match? → Embedding Similarity → Context Boost → Score 
 - `src_v2/agents/engine.py` (lurk response mode)
 - New: `migrations_v2/versions/add_channel_settings_table.py`
 
-**Full Specification:** See [roadmaps/CHANNEL_LURKING.md](./roadmaps/CHANNEL_LURKING.md)
+**Full Specification:** See [spec/SPEC-C02-CHANNEL_LURKING.md](./spec/SPEC-C02-CHANNEL_LURKING.md)
 
 ---
 
@@ -1066,7 +1066,7 @@ THE WHISPERVERSE
 - New: `universes/whisperverse/` (Universe definitions)
 - `src_v2/discord/commands.py` (Add /privacy commands)
 
-**Full Specification:** See [roadmaps/EMERGENT_UNIVERSE.md](./roadmaps/EMERGENT_UNIVERSE.md)
+**Full Specification:** See [spec/SPEC-F01-EMERGENT_UNIVERSE.md](./spec/SPEC-F01-EMERGENT_UNIVERSE.md)
 
 ---
 
@@ -1161,7 +1161,7 @@ constitution:
 - `src_v2/core/cache.py` (attention keys)
 - `src_v2/workers/insight_worker.py` (observation tasks)
 
-**Full Specification:** See [roadmaps/PURPOSE_DRIVEN_EMERGENCE.md](./roadmaps/PURPOSE_DRIVEN_EMERGENCE.md)
+**Full Specification:** See [spec/SPEC-E21-PURPOSE_DRIVEN_EMERGENCE.md](./spec/SPEC-E21-PURPOSE_DRIVEN_EMERGENCE.md)
 
 ---
 
@@ -1221,7 +1221,7 @@ constitution:
 - `src_v2/tools/insight_tools.py` (Storage)
 - `src_v2/memory/traces.py` (Retrieval)
 
-**Full Specification:** See [roadmaps/TRACE_LEARNING.md](./roadmaps/TRACE_LEARNING.md)
+**Full Specification:** See [spec/SPEC-B05-TRACE_LEARNING.md](./spec/SPEC-B05-TRACE_LEARNING.md)
 
 ---
 
@@ -1273,7 +1273,7 @@ A unified **Insight Agent** that runs periodically in the background using a ReA
 - `src_v2/workers/insight_worker.py`
 - `src_v2/discord/bot.py` (triggers)
 
-**Full Specification:** See [roadmaps/INSIGHT_AGENT.md](./roadmaps/INSIGHT_AGENT.md)
+**Full Specification:** See [spec/SPEC-E12-INSIGHT_AGENT.md](./spec/SPEC-E12-INSIGHT_AGENT.md)
 
 ---
 
@@ -1352,7 +1352,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 - Integration with `DreamManager` and `DiaryManager`
 - Settings: `ENABLE_CONTENT_SAFETY_REVIEW`, `CONTENT_SAFETY_MODE`, `DIARY_PUBLIC_POSTING`
 
-**Spec:** [CONTENT_SAFETY_REVIEW.md](./roadmaps/CONTENT_SAFETY_REVIEW.md)
+**Spec:** [CONTENT_SAFETY_REVIEW.md](./spec/SPEC-S01-CONTENT_SAFETY_REVIEW.md)
 
 ### 📋 Phase S2: Complexity Classifier Observability
 **Priority:** 🔴 High | **Time:** 1 day | **Complexity:** Low
@@ -1367,7 +1367,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 - New Grafana dashboard: "Classification Analytics"
 - Future: Correlate with user satisfaction signals
 
-**Spec:** [CLASSIFIER_OBSERVABILITY.md](./roadmaps/CLASSIFIER_OBSERVABILITY.md)
+**Spec:** [CLASSIFIER_OBSERVABILITY.md](./spec/SPEC-S02-CLASSIFIER_OBSERVABILITY.md)
 
 ### 📋 Phase S3: LLM-Based Sensitivity Detection
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
@@ -1384,7 +1384,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 - Caching layer to avoid repeated LLM calls
 - Settings: `ENABLE_LLM_SENSITIVITY_CHECK`
 
-**Spec:** [LLM_SENSITIVITY_DETECTION.md](./roadmaps/LLM_SENSITIVITY_DETECTION.md)
+**Spec:** [LLM_SENSITIVITY_DETECTION.md](./spec/SPEC-S03-LLM_SENSITIVITY_DETECTION.md)
 
 ### 📋 Phase S4: Proactive Timezone Awareness
 **Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Low
@@ -1400,7 +1400,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 - `_is_appropriate_time()` check in `ProactiveScheduler`
 - Optional `/timezone` command for explicit setting
 
-**Spec:** [PROACTIVE_TIMEZONE_AWARENESS.md](./roadmaps/PROACTIVE_TIMEZONE_AWARENESS.md)
+**Spec:** [PROACTIVE_TIMEZONE_AWARENESS.md](./spec/SPEC-S04-PROACTIVE_TIMEZONE_AWARENESS.md)
 
 ---
 
@@ -1421,7 +1421,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - Also processes attachments (images, documents) from referenced messages
 - Handles forwarded messages with `message.snapshots`
 
-**Spec:** [CONVERSATION_THREADING.md](./roadmaps/CONVERSATION_THREADING.md)
+**Spec:** [CONVERSATION_THREADING.md](./spec/SPEC-E01-CONVERSATION_THREADING.md)
 
 ### ✅ Phase E2: Character Diary & Reflection
 **Priority:** — | **Time:** 3-4 days | **Complexity:** Medium
@@ -1471,7 +1471,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - All 10 characters have `evolution.yaml` with custom milestone messages
 - `last_milestone_date` tracked in `v2_user_relationships` table
 
-**Spec:** [RELATIONSHIP_MILESTONES.md](./roadmaps/RELATIONSHIP_MILESTONES.md)
+**Spec:** [RELATIONSHIP_MILESTONES.md](./spec/SPEC-E04-RELATIONSHIP_MILESTONES.md)
 
 ### ✅ Phase E5: Scheduled Reminders
 **Priority:** Low | **Time:** 3-4 days | **Complexity:** Medium
@@ -1480,7 +1480,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Problem:** Users ask for reminders, but bot cannot deliver them.
 **Solution:** Intent detection + temporal parsing + proactive scheduler delivery.
-**Spec:** [SCHEDULED_REMINDERS.md](./roadmaps/SCHEDULED_REMINDERS.md)
+**Spec:** [SCHEDULED_REMINDERS.md](./spec/SPEC-E05-SCHEDULED_REMINDERS.md)
 
 ### ✅ Phase E6: Character-to-Character Conversation
 **Priority:** Low | **Time:** 1 week | **Complexity:** High
@@ -1489,7 +1489,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Problem:** Multiple bots in the same server ignore each other.
 **Solution:** Event-bus driven cross-bot conversation. Bots discover each other's posts in broadcast channel and occasionally respond.
-**Spec:** [CHARACTER_TO_CHARACTER.md](./roadmaps/CHARACTER_TO_CHARACTER.md)
+**Spec:** [CHARACTER_TO_CHARACTER.md](./spec/SPEC-E06-CHARACTER_TO_CHARACTER.md)
 
 ### ✅ Phase E7: User Timezone Support
 **Priority:** Low | **Time:** 1-2 days | **Complexity:** Low
@@ -1498,7 +1498,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Problem:** System operates in UTC; diary/dream timing doesn't match user's local time.
 **Solution:** Store user timezone preference, adjust context injection framing.
-**Spec:** [USER_TIMEZONE_SUPPORT.md](./roadmaps/USER_TIMEZONE_SUPPORT.md)
+**Spec:** [USER_TIMEZONE_SUPPORT.md](./spec/SPEC-E07-USER_TIMEZONE_SUPPORT.md)
 
 ### ✅ Phase E8: Bot Broadcast Channel
 **Priority:** Low | **Time:** 2-3 days | **Complexity:** Medium
@@ -1539,7 +1539,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - Other bots get context for meaningful cross-bot reactions
 - Research: Track emergence patterns (memories → artifacts)
 
-**Spec:** [ARTIFACT_PROVENANCE.md](./roadmaps/ARTIFACT_PROVENANCE.md)
+**Spec:** [ARTIFACT_PROVENANCE.md](./spec/SPEC-E09-ARTIFACT_PROVENANCE.md)
 
 ### 📋 Phase E10: Channel Observer (Passive Context Awareness)
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
@@ -1608,7 +1608,7 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 - `src_v2/agents/engine.py` - Channel threading, fixed JSON serialization
 - `src_v2/discord/bot.py` - Removed pre-fetch, passes channel to engine
 
-**Spec:** [DISCORD_SEARCH_TOOLS.md](./roadmaps/DISCORD_SEARCH_TOOLS.md)
+**Spec:** [DISCORD_SEARCH_TOOLS.md](./spec/SPEC-E11-DISCORD_SEARCH_TOOLS.md)
 
 ### 🔄 Phase E15: Autonomous Server Activity
 **Priority:** 🟢 High | **Time:** 5-8 days | **Complexity:** High
@@ -1705,7 +1705,7 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 
 **Background:** This phase emerged from a Claude-to-Claude architecture review. See `/docs/emergence_philosophy/` for the full collaboration.
 
-**Spec:** [FEEDBACK_LOOP_STABILITY.md](./roadmaps/FEEDBACK_LOOP_STABILITY.md)
+**Spec:** [FEEDBACK_LOOP_STABILITY.md](./spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md)
 
 
 ---
@@ -1784,7 +1784,7 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 - `src_v2/memory/dreams.py`: Uses walker to find "hidden connections" for dreams.
 - `src_v2/memory/diary.py`: Uses walker to enrich daily reflections.
 
-**Spec:** [GRAPH_WALKER_AGENT.md](./roadmaps/GRAPH_WALKER_AGENT.md)
+**Spec:** [GRAPH_WALKER_AGENT.md](./spec/SPEC-E19-GRAPH_WALKER_AGENT.md)
 
 ---
 
@@ -2048,7 +2048,7 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 - Creates richer, more continuous cross-bot relationships
 - Enables callbacks to shared memories ("Remember when we talked about...?")
 
-**Spec:** [CROSS_BOT_MEMORY.md](./roadmaps/CROSS_BOT_MEMORY.md)
+**Spec:** [CROSS_BOT_MEMORY.md](./spec/SPEC-E06B-CROSS_BOT_MEMORY.md)
 
 ---
 
@@ -2074,7 +2074,7 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 **Emergence Alignment:** The system *notices* connections rather than being told about them.
 
-**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e25-graph-enrichment-agent)
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md#phase-e25-graph-enrichment-agent)
 
 ---
 
@@ -2093,7 +2093,7 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 **Emergence Alignment:** Temporal awareness emerges from data patterns, not declared "relationship_phase" labels. No new schema needed.
 
-**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e26-temporal-graph)
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md#phase-e26-temporal-graph)
 
 ---
 
@@ -2118,7 +2118,7 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 **Privacy:** Cross-character walks only include User nodes where BOTH bots have trust > 20.
 
-**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e27-multi-character-walks)
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md#phase-e27-multi-character-walks)
 
 ---
 
@@ -2143,7 +2143,7 @@ POST /api/user-graph
 Response: {nodes: [...], edges: [...], clusters: [...], stats: {...}}
 ```
 
-**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e28-user-facing-graph)
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md#phase-e28-user-facing-graph)
 
 ---
 
@@ -2166,7 +2166,7 @@ Response: {nodes: [...], edges: [...], clusters: [...], stats: {...}}
 
 **Emergence Alignment:** Similarity emerges from graph structure, not declared "similar_users" fields.
 
-**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./roadmaps/GRAPH_WALKER_EXTENSIONS.md#phase-e29-graph-based-recommendations)
+**Spec:** [GRAPH_WALKER_EXTENSIONS.md](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md#phase-e29-graph-based-recommendations)
 
 ---
 
