@@ -23,7 +23,7 @@ import asyncio
 
 __all__ = ["DreamContent", "DreamManager", "get_dream_manager"]
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
@@ -73,6 +73,9 @@ class DreamMaterial(BaseModel):
     # Graph Walker integration (Phase E19)
     graph_walk_interpretation: str = Field(default="", description="Interpretation from GraphWalker exploration")
     graph_walk_clusters: List[str] = Field(default_factory=list, description="Thematic clusters discovered by GraphWalker")
+    
+    # First dream detection
+    is_first_dream: bool = Field(default=False, description="True if this is the character's first dream journal entry")
     
     def richness_score(self) -> int:
         """
@@ -132,6 +135,12 @@ class DreamMaterial(BaseModel):
     def to_prompt_text(self) -> str:
         """Format all material for the dream generation prompt."""
         sections = []
+        
+        # First dream context
+        if self.is_first_dream:
+            sections.append("## First Dream Journal Entry")
+            sections.append("This is your very first dream to record. A significant moment - the beginning of your dream journal.")
+            sections.append("")
         
         if self.memories:
             sections.append("## Recent Conversations")
@@ -242,6 +251,12 @@ Create a surreal dream echoing these experiences.""")
         material = DreamMaterial()
         
         try:
+            # Check if this is the first dream
+            existing_dreams = await self.get_recent_dreams(limit=1)
+            material.is_first_dream = len(existing_dreams) == 0
+            if material.is_first_dream:
+                logger.info(f"This will be {self.bot_name}'s first dream journal entry")
+            
             # Gather from multiple sources in parallel
             from src_v2.memory.manager import MemoryManager
             from src_v2.knowledge.manager import knowledge_manager
@@ -281,6 +296,7 @@ Create a surreal dream echoing these experiences.""")
                     # Build seed themes from gathered material
                     memory_themes: List[str] = []
                     recent_users: List[str] = []
+                    other_bots: List[str] = []  # Bot names from cross-bot conversations
                     
                     # Extract themes from memories
                     for mem in material.memories[:3]:
@@ -292,15 +308,23 @@ Create a surreal dream echoing these experiences.""")
                     # Extract themes from diary
                     memory_themes.extend(material.recent_diary_themes[:2])
                     
-                    if memory_themes or recent_users:
+                    # Extract other bot names from gossip (cross-bot conversations)
+                    for gossip in material.gossip[:5]:
+                        source = gossip.get("source_bot")
+                        if source and source != "another character":
+                            other_bots.append(source.lower())
+                    
+                    if memory_themes or recent_users or other_bots:
                         # GraphWalkerAgent uses character_name
                         walker_agent = GraphWalkerAgent(character_name=self.bot_name)
                         # Use first user as primary seed, others as context
+                        # Include other bots as seeds so we explore bot-to-bot relationships
                         primary_user = recent_users[0] if recent_users else self.bot_name
+                        all_seeds = list(set(recent_users[:3] + other_bots[:3]))
                         graph_result = await walker_agent.explore_for_dream(
                             user_id=primary_user,
                             recent_memory_themes=list(set(memory_themes))[:5],
-                            recent_user_ids=list(set(recent_users))[:3]
+                            recent_user_ids=all_seeds
                         )
                         # Store interpretation and clusters in DreamMaterial fields
                         material.graph_walk_interpretation = graph_result.interpretation
@@ -310,7 +334,7 @@ Create a surreal dream echoing these experiences.""")
                         ]
                         logger.info(
                             f"Graph walker found {len(graph_result.nodes)} nodes, "
-                            f"{len(graph_result.clusters)} clusters"
+                            f"{len(graph_result.clusters)} clusters (seeds: {len(all_seeds)} users/bots)"
                         )
                 except Exception as e:
                     logger.warning(f"GraphWalker failed (continuing without): {e}")
@@ -379,14 +403,21 @@ Create a surreal dream echoing these experiences.""")
             return []
     
     async def _get_gossip(self, memory_manager, hours: int) -> List[Dict[str, Any]]:
-        """Get gossip memories from other bots."""
+        """Get gossip memories from other bots.
+        
+        Gossip includes:
+        - Cross-bot conversations (type="gossip" from message_handler)
+        - Universe event gossip (type="gossip" from social_tasks)
+        - Both have source_type="gossip"
+        """
         try:
             if not db_manager.qdrant_client:
                 return []
             
             # Query for gossip-type memories
-            threshold = datetime.now(timezone.utc) - __import__('datetime').timedelta(hours=hours)
+            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
             
+            # Query by type="gossip" (set in metadata by cross-bot and gossip dispatch)
             results = await db_manager.qdrant_client.scroll(
                 collection_name=self.collection_name,
                 scroll_filter=Filter(
@@ -394,7 +425,7 @@ Create a surreal dream echoing these experiences.""")
                         FieldCondition(key="type", match=MatchValue(value="gossip"))
                     ]
                 ),
-                limit=10,
+                limit=20,  # Fetch more since cross-bot convos can be frequent
                 with_payload=True,
                 with_vectors=False
             )
@@ -404,12 +435,18 @@ Create a surreal dream echoing these experiences.""")
                 if point.payload:
                     ts = point.payload.get("timestamp", "")
                     if ts >= threshold.isoformat():
+                        # Handle both cross-bot (source_bot) and universe gossip formats
+                        source = point.payload.get("source_bot")
+                        if not source:
+                            source = "another character"
                         gossip.append({
-                            "source_bot": point.payload.get("source_bot", "another character"),
+                            "source_bot": source,
                             "content": point.payload.get("content", ""),
-                            "topic": point.payload.get("topic", "")
+                            "topic": point.payload.get("topic", ""),
+                            "is_cross_bot": point.payload.get("is_cross_bot", False)
                         })
             
+            logger.debug(f"Found {len(gossip)} gossip items for dream in last {hours} hours")
             return gossip
             
         except Exception as e:

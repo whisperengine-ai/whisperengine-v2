@@ -278,10 +278,30 @@ class BroadcastManager:
         character_name: str,
         provenance: Optional[List[Dict[str, Any]]] = None
     ) -> str:
-        """Format the broadcast message with character name and provenance footer."""
-        # Content already has full header: "🌙 DREAM JOURNAL — December 02, 2024..."
-        # Just prepend character name
-        main_content = f"**{character_name.title()}**\n{content}"
+        """Format the broadcast message with character name, header, and provenance footer."""
+        from datetime import datetime, timezone
+        
+        # Check if content already has a header (e.g., "📝 DIARY ENTRY — December 03, 2025")
+        has_header = any(marker in content[:50] for marker in ["📝", "🌙", "🌑", "✨", "☀️", "🌧️", "💭", "👁️"])
+        
+        if has_header:
+            # Content already formatted with header
+            main_content = f"**{character_name.title()}**\n{content}"
+        else:
+            # Add header based on post type
+            now = datetime.now(timezone.utc)
+            date_str = now.strftime("%B %d, %Y")
+            time_str = now.strftime("%I:%M %p UTC")
+            
+            headers = {
+                PostType.DIARY: "📝 DIARY ENTRY",
+                PostType.DREAM: "🌙 DREAM JOURNAL",
+                PostType.OBSERVATION: "👁️ OBSERVATION",
+                PostType.MUSING: "💭 MUSING",
+            }
+            header = headers.get(post_type, "📝 ENTRY")
+            
+            main_content = f"**{character_name.title()}**\n{header} — {date_str}, {time_str}\n\n{content}"
         
         # Add provenance footer if available
         footer = self._format_provenance_footer(provenance)

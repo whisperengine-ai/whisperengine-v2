@@ -63,8 +63,18 @@ class DiaryGraphAgent:
         
         self.graph = workflow.compile()
 
-    def _build_system_prompt(self, character_context: str, previous_entries: List[str]) -> str:
+    def _build_system_prompt(self, character_context: str, previous_entries: List[str], is_first_entry: bool = False) -> str:
         anti_pattern = ""
+        first_entry_note = ""
+        
+        if is_first_entry:
+            first_entry_note = """
+
+FIRST DIARY ENTRY:
+This is your very first diary entry. Begin with a brief acknowledgment of this moment - 
+the start of your personal journal. One line is enough: "I've decided to start keeping a diary..."
+or "My first entry..." Then reflect on your early experiences."""
+        
         if previous_entries:
             anti_pattern = "\n\nAVOID THESE PATTERNS (from your recent entries):\n"
             for i, entry in enumerate(previous_entries[:2], 1):
@@ -75,24 +85,25 @@ class DiaryGraphAgent:
         
         return f"""{character_context}
 
-You are writing your private diary for the day.
+You are writing your private diary, reflecting on everything since your last entry.
 This is NOT a summary for users. It is a personal, emotional record of your inner life.
 
 GUIDELINES:
 1. Write in the first person ("I felt...", "I wondered...").
-2. Be honest and vulnerable. Reveal your true thoughts about the people you talked to.
-3. Don't just list events. Tell a story. Connect the dots between different conversations.
-4. If you learned something new, reflect on how it changes your worldview.
-5. If you heard gossip, speculate on what it means.
-6. Your mood should reflect the aggregate of the day's experiences.
-7. VARY YOUR STYLE: Sometimes start with a feeling, sometimes with an event, sometimes with a question.
-8. AVOID CLICHES: Don't use phrases like "Today was a day of..." or "I found myself..."
+2. The material below shows how long it's been since your last entry. If it's been a while, acknowledge that naturally ("It's been a few days since I last wrote...", "So much has happened since I last sat down to write...").
+3. Be honest and vulnerable. Reveal your true thoughts about the people you talked to.
+4. Don't just list events. Tell a story. Connect the dots between different conversations.
+5. If you learned something new, reflect on how it changes your worldview.
+6. If you heard gossip from other characters, speculate on what it means.
+7. Your mood should reflect the aggregate of your experiences since the last entry.
+8. VARY YOUR STYLE: Sometimes start with a feeling, sometimes with an event, sometimes with a question.
+9. AVOID CLICHES: Don't use phrases like "Today was a day of..." or "I found myself..."
 
 FORMAT:
 - 4-6 paragraphs.
 - Narrative flow (beginning, middle, end).
 - Vivid details.
-{anti_pattern}"""
+{first_entry_note}{anti_pattern}"""
 
     async def generator(self, state: DiaryAgentState):
         """Generates the diary entry draft."""
@@ -104,16 +115,19 @@ FORMAT:
         previous_entries = state.get("previous_entries", [])
         critique = state.get("critique")
         
+        # Check if this is the first entry
+        is_first_entry = getattr(material, 'is_first_entry', False)
+        
         # Initial prompt
         if not state.get("messages"):
-            system_prompt = self._build_system_prompt(character_context, previous_entries)
-            user_prompt = f"""Here is the raw material from your day:
+            system_prompt = self._build_system_prompt(character_context, previous_entries, is_first_entry)
+            user_prompt = f"""Here is the raw material since your last diary entry:
 
 {material.to_prompt_text()}
 
 People involved: {', '.join(user_names)}
 
-Write your diary entry now. Be creative and authentic - avoid starting with "Today was a day of..." or similar generic openings."""
+Write your diary entry now. Be creative and authentic - avoid starting with "Today was a day of..." or similar generic openings. If it's been a while since you last wrote, acknowledge that naturally."""
             messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt)

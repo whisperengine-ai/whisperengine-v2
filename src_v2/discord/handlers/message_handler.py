@@ -1378,8 +1378,10 @@ Recent channel context:
                 
                 # Store cross-bot conversation to memory for continuity
                 # This allows bots to remember their conversations with each other
+                # AND surfaces in diary/dream generation via gossip retrieval
                 try:
                     # Save the other bot's message (as "human" role from our perspective)
+                    # Include type="gossip" and source_bot so diary/dream _get_gossip() can find it
                     await memory_manager.add_message(
                         user_id=cross_bot_user_id,
                         character_name=self.bot.character_name,
@@ -1387,7 +1389,12 @@ Recent channel context:
                         content=message.content,
                         channel_id=str(message.channel.id),
                         message_id=str(message.id),
-                        source_type=MemorySourceType.GOSSIP
+                        source_type=MemorySourceType.GOSSIP,
+                        metadata={
+                            "type": "gossip",  # Required for diary/dream retrieval
+                            "source_bot": other_bot_name,
+                            "is_cross_bot": True
+                        }
                     )
                     
                     # Save our response
@@ -1398,7 +1405,11 @@ Recent channel context:
                         content=response,
                         channel_id=str(message.channel.id),
                         message_id=str(sent_message.id),
-                        source_type=MemorySourceType.INFERENCE
+                        source_type=MemorySourceType.INFERENCE,
+                        metadata={
+                            "is_cross_bot": True,
+                            "responding_to_bot": other_bot_name
+                        }
                     )
                     logger.debug(f"Saved cross-bot conversation with {other_bot_name} to memory")
                 except Exception as mem_err:

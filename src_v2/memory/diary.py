@@ -48,6 +48,11 @@ class DiaryMaterial(BaseModel):
     epiphanies: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
+    # Time period context (spans since last diary entry)
+    last_entry_date: Optional[str] = Field(default=None, description="Date of last diary entry (YYYY-MM-DD)")
+    days_since_last_entry: Optional[int] = Field(default=None, description="Days since last diary entry")
+    is_first_entry: bool = Field(default=False, description="True if this is the character's first diary entry")
+    
     # Graph Walker integration (Phase E19)
     graph_walk_interpretation: str = Field(default="", description="Interpretation from GraphWalker exploration")
     graph_walk_clusters: List[str] = Field(default_factory=list, description="Thematic clusters discovered by GraphWalker")
@@ -102,8 +107,25 @@ class DiaryMaterial(BaseModel):
         """Format all material for the diary generation prompt."""
         sections = []
         
+        # Add time period context at the beginning
+        if self.is_first_entry:
+            sections.append("## Time Period")
+            sections.append("This is my FIRST diary entry. I should introduce myself and reflect on my early experiences.")
+            sections.append("")
+        elif self.days_since_last_entry is not None:
+            sections.append("## Time Period")
+            if self.days_since_last_entry == 1:
+                sections.append(f"Last entry: yesterday ({self.last_entry_date})")
+            elif self.days_since_last_entry <= 3:
+                sections.append(f"Last entry: {self.days_since_last_entry} days ago ({self.last_entry_date})")
+            elif self.days_since_last_entry <= 7:
+                sections.append(f"Last entry: about a week ago ({self.last_entry_date}). It's been a while since I wrote.")
+            else:
+                sections.append(f"Last entry: {self.days_since_last_entry} days ago ({self.last_entry_date}). It's been too long since I last wrote!")
+            sections.append("")
+        
         if self.summaries:
-            sections.append("## Conversations Today")
+            sections.append("## Conversations Since Last Entry")
             for i, s in enumerate(self.summaries[:10], 1):
                 emotions = ", ".join(s.get("emotions", [])) or "neutral"
                 topics = ", ".join(s.get("topics", [])) or "general chat"
@@ -168,9 +190,12 @@ class DiaryManager:
         # Note: Diary generation now uses DiaryGraphAgent (LangGraph)
         # Legacy prompt/chain removed - see src_v2/agents/diary_graph.py
 
-    async def gather_diary_material(self, hours: int = 24) -> DiaryMaterial:
+    async def gather_diary_material(self, hours: int = None) -> DiaryMaterial:
         """
         Gathers material from all available sources for diary generation.
+        
+        The time period spans from the last diary entry to now. If no previous
+        diary exists, defaults to 7 days (one week lookback for first entry).
         
         Sources:
         - Session summaries (Qdrant)
@@ -179,18 +204,48 @@ class DiaryManager:
         - Recently learned facts (Neo4j)
         - Character goals (config)
         
+        Args:
+            hours: Override for lookback period (if None, calculated from last diary)
+        
         Returns:
             DiaryMaterial container with all gathered content
         """
         material = DiaryMaterial()
         
         try:
+            # Determine time period since last diary entry
+            last_entry = await self.get_latest_diary_with_date()
+            
+            if last_entry:
+                last_date_str = last_entry.get("date", "")
+                if last_date_str:
+                    try:
+                        last_date = datetime.strptime(last_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                        days_since = (datetime.now(timezone.utc) - last_date).days
+                        material.last_entry_date = last_date_str
+                        material.days_since_last_entry = max(1, days_since)  # At least 1 day
+                        material.is_first_entry = False
+                        # Calculate hours from days (add a buffer for same-day edge case)
+                        hours = hours or (days_since * 24 + 12)  # Extra 12 hours buffer
+                    except ValueError:
+                        # Date parsing failed, use default
+                        hours = hours or 24
+                        material.is_first_entry = False
+                else:
+                    hours = hours or 24
+                    material.is_first_entry = False
+            else:
+                # No previous diary - this is the first entry
+                material.is_first_entry = True
+                hours = hours or (7 * 24)  # 1 week lookback for first entry
+                logger.info(f"First diary entry for {self.bot_name}, looking back {hours} hours (1 week)")
+            
             from src_v2.memory.manager import MemoryManager
             memory_manager = MemoryManager(bot_name=self.bot_name)
             
-            # Run parallel fetches
+            # Run parallel fetches with calculated hours
             results = await asyncio.gather(
-                memory_manager.get_summaries_since(hours=hours, limit=30),
+                memory_manager.get_summaries_since(hours=hours, limit=50),  # More summaries for longer periods
                 self._get_observations(),
                 self._get_gossip(hours),
                 self._get_new_facts(hours),
@@ -224,15 +279,24 @@ class DiaryManager:
                         if summary.get("user_id"):
                             today_interactions.append(str(summary["user_id"]))
                     
-                    if today_interactions:
+                    # Also include other bots from gossip (cross-bot conversations)
+                    other_bots: List[str] = []
+                    for gossip in material.gossip[:5]:
+                        source = gossip.get("source_bot")
+                        if source and source != "another character":
+                            other_bots.append(source.lower())
+                    
+                    if today_interactions or other_bots:
                         # GraphWalkerAgent uses character_name
                         walker_agent = GraphWalkerAgent(character_name=self.bot_name)
                         # Use first user as primary seed, others as context
-                        primary_user = today_interactions[0]
+                        # Include other bots as seeds so we explore bot-to-bot relationships
+                        primary_user = today_interactions[0] if today_interactions else self.bot_name
+                        all_interactions = list(set(today_interactions[:5] + other_bots[:3]))
                         
                         graph_result = await walker_agent.explore_for_diary(
                             user_id=primary_user,
-                            today_interactions=list(set(today_interactions))[:5]
+                            today_interactions=all_interactions
                         )
                         
                         # Store interpretation and clusters in DiaryMaterial fields
@@ -243,7 +307,7 @@ class DiaryManager:
                         ]
                         logger.info(
                             f"Graph walker found {len(graph_result.nodes)} nodes, "
-                            f"{len(graph_result.clusters)} clusters for diary"
+                            f"{len(graph_result.clusters)} clusters for diary (seeds: {len(all_interactions)} users/bots)"
                         )
                 except Exception as e:
                     logger.warning(f"GraphWalker failed for diary (continuing without): {e}")
@@ -270,13 +334,21 @@ class DiaryManager:
             return []
     
     async def _get_gossip(self, hours: int) -> List[Dict[str, Any]]:
-        """Get gossip memories from other bots."""
+        """Get gossip memories from other bots.
+        
+        Gossip includes:
+        - Cross-bot conversations (type="gossip" from message_handler)
+        - Universe event gossip (type="gossip" from social_tasks)
+        - Both have source_type="gossip"
+        """
         try:
             if not db_manager.qdrant_client:
                 return []
             
             threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
             
+            # Query by type="gossip" (set in metadata by cross-bot and gossip dispatch)
+            # This finds both cross-bot conversations and universe event gossip
             results = await db_manager.qdrant_client.scroll(
                 collection_name=self.collection_name,
                 scroll_filter=Filter(
@@ -284,7 +356,7 @@ class DiaryManager:
                         FieldCondition(key="type", match=MatchValue(value="gossip"))
                     ]
                 ),
-                limit=10,
+                limit=20,  # Fetch more since cross-bot convos can be frequent
                 with_payload=True,
                 with_vectors=False
             )
@@ -294,12 +366,20 @@ class DiaryManager:
                 if point.payload:
                     ts = point.payload.get("timestamp", "")
                     if ts >= threshold.isoformat():
+                        # Handle both cross-bot (source_bot) and universe gossip formats
+                        source = point.payload.get("source_bot")
+                        if not source:
+                            # For cross-bot convos, user_id might be the other bot's Discord ID
+                            # Try to infer from content or default
+                            source = "another character"
                         gossip.append({
-                            "source_bot": point.payload.get("source_bot", "another character"),
+                            "source_bot": source,
                             "content": point.payload.get("content", ""),
-                            "topic": point.payload.get("topic", "")
+                            "topic": point.payload.get("topic", ""),
+                            "is_cross_bot": point.payload.get("is_cross_bot", False)
                         })
             
+            logger.debug(f"Found {len(gossip)} gossip items for diary in last {hours} hours")
             return gossip
             
         except Exception as e:
@@ -662,6 +742,51 @@ class DiaryManager:
         """
         entries = await self.get_recent_diary(days=1)
         return entries[0] if entries else None
+
+    async def get_latest_diary_with_date(self) -> Optional[Dict[str, Any]]:
+        """
+        Gets the most recent diary entry regardless of how old it is.
+        
+        Unlike get_latest_diary() which only looks back 1 day, this method
+        searches all diary entries to find the absolute most recent one.
+        Used for calculating time spans between diary entries.
+        
+        Returns:
+            Diary payload dict with 'date' field, or None if no diaries exist
+        """
+        if not db_manager.qdrant_client:
+            return None
+        
+        try:
+            # Scroll through diary entries without date filter
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="diary")),
+                        FieldCondition(key="bot_name", match=MatchValue(value=self.bot_name))
+                    ]
+                ),
+                limit=10,  # Get a few to find the most recent
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            if not results[0]:
+                return None
+            
+            # Find the entry with the most recent date
+            entries = [p.payload for p in results[0] if p.payload and p.payload.get("date")]
+            if not entries:
+                return None
+            
+            # Sort by date descending and return the most recent
+            entries.sort(key=lambda x: x.get("date", ""), reverse=True)
+            return entries[0]
+            
+        except Exception as e:
+            logger.debug(f"Failed to get latest diary with date: {e}")
+            return None
 
     async def search_diaries(
         self,

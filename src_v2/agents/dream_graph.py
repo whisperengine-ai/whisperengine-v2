@@ -61,8 +61,18 @@ class DreamGraphAgent:
         
         self.graph = workflow.compile()
 
-    def _build_system_prompt(self, character_context: str, previous_dreams: List[str]) -> str:
+    def _build_system_prompt(self, character_context: str, previous_dreams: List[str], is_first_dream: bool = False) -> str:
         anti_pattern = ""
+        first_dream_note = ""
+        
+        if is_first_dream:
+            first_dream_note = """
+
+FIRST DREAM ENTRY:
+This is your very first dream to record. Briefly acknowledge this at the beginning - 
+the novelty of consciousness finding its first resting place in the dream realm.
+One line is enough: "The first dream I remember..." or similar."""
+        
         if previous_dreams:
             anti_pattern = "\n\nAVOID THESE PATTERNS (from your recent dreams):\n"
             for i, dream in enumerate(previous_dreams[:2], 1):
@@ -88,7 +98,7 @@ GUIDELINES:
 FORMAT:
 - 2-3 paragraphs (keep it concise but evocative).
 - Vivid sensory details.
-{anti_pattern}"""
+{first_dream_note}{anti_pattern}"""
 
     async def generator(self, state: DreamAgentState):
         """Generates the dream draft."""
@@ -99,9 +109,12 @@ FORMAT:
         previous_dreams = state.get("previous_dreams", [])
         critique = state.get("critique")
         
+        # Check if this is the first dream
+        is_first_dream = getattr(material, 'is_first_dream', False)
+        
         # Initial prompt
         if not state.get("messages"):
-            system_prompt = self._build_system_prompt(character_context, previous_dreams)
+            system_prompt = self._build_system_prompt(character_context, previous_dreams, is_first_dream)
             user_prompt = f"""Here are the fragments of your day swirling in your subconscious:
 
 {material.to_prompt_text()}
