@@ -157,6 +157,19 @@ class ContextBuilder:
             # 2.11 Timestamp Instruction (Anti-Hallucination)
             system_content += "\n\n[SYSTEM NOTE]\nChat history messages have relative timestamps at the end (e.g. 'message text (2 mins ago)'). These are for your context only. DO NOT echo these timestamps in your response."
 
+            # 2.12 Final Identity Anchor (Anti-Identity-Bleed)
+            # Place at very end of context where LLMs pay most attention
+            # This guards against memories/diary from other users bleeding into current conversation
+            if context_variables.get("user_name"):
+                current_user = context_variables["user_name"]
+                system_content += f"""
+
+[CURRENT CONVERSATION - IDENTITY ANCHOR]
+You are NOW talking to: {current_user}
+Any memories prefixed with "[With X]:" are from PAST conversations with X, not {current_user}.
+Do NOT address {current_user} by any other name. Do NOT confuse them with people from your memories.
+"""
+
         except Exception as e:
             logger.error(f"Failed to inject evolution/goal state: {e}")
 

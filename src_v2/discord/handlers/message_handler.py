@@ -653,9 +653,15 @@ class MessageHandler:
                             def format_mem(m):
                                 rel = m.get('relative_time', 'unknown time')
                                 content = m.get('content', '')
+                                user_name = m.get('user_name')
+                                
                                 # Truncate very long memories
                                 if len(content) > 500:
                                     content = content[:500] + "..."
+                                    
+                                # Inject user identity if available (prevents identity bleed)
+                                if user_name:
+                                    return f"- [With {user_name}]: {content} ({rel})"
                                 return f"- {content} ({rel})"
                             
                             fmt = "\n".join([format_mem(m) for m in mems])
@@ -1429,6 +1435,10 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                         def format_mem(m):
                             rel = m.get('relative_time', 'unknown time')
                             content = m.get('content', '')
+                            user_name = m.get('user_name')
+                            
+                            if user_name:
+                                return f"- [With {user_name}]: {content} ({rel})"
                             return f"- {content} ({rel})"
                         formatted_memories = "\n".join([format_mem(m) for m in ctx["memories"]])
                     

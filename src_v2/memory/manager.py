@@ -112,7 +112,8 @@ class MemoryManager:
                 message_id=message_id,
                 collection_name=target_collection,
                 importance_score=importance_score,
-                source_type=source_type
+                source_type=source_type,
+                user_name=user_name
             )
             
         except Exception as e:
@@ -158,7 +159,7 @@ class MemoryManager:
 
     @require_db("qdrant")
     @retry_db_operation(max_retries=3)
-    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None):
+    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None, user_name: Optional[str] = None):
         """
         Embeds and saves a memory to Qdrant.
         """
@@ -187,7 +188,8 @@ class MemoryManager:
                 "channel_id": str(channel_id) if channel_id else None,
                 "message_id": str(message_id) if message_id else None,
                 "importance_score": importance_score,
-                "source_type": source_type.value
+                "source_type": source_type.value,
+                "user_name": user_name
             }
             
             # Metadata can override type (e.g., for save_typed_memory)
@@ -359,7 +361,8 @@ class MemoryManager:
                     "source_weight": round(source_weight, 3),
                     "importance_multiplier": round(importance_multiplier, 3),
                     "timestamp": payload.get("timestamp"),
-                    "relative_time": get_relative_time(payload.get("timestamp")) if payload.get("timestamp") else "unknown time"
+                    "relative_time": get_relative_time(payload.get("timestamp")) if payload.get("timestamp") else "unknown time",
+                    "user_name": payload.get("user_name")
                 })
             
             # Re-rank by weighted score
