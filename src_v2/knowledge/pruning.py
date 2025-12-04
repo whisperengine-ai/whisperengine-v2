@@ -159,11 +159,10 @@ class KnowledgeGraphPruner:
         try:
             async with db_manager.neo4j_driver.session() as session:
                 if dry_run:
-                    # Count only
+                    # Count only - check for entities with NO relationships at all
                     query = """
                     MATCH (e:Entity)
-                    WHERE NOT (e)<-[:FACT]-()
-                      AND NOT (e)-[:FACT]->()
+                    WHERE NOT (e)--()
                       AND (e.created_at IS NULL OR e.created_at < $grace_threshold)
                     RETURN count(e) as count
                     """
@@ -171,14 +170,14 @@ class KnowledgeGraphPruner:
                     record = await result.single()
                     return record["count"] if record else 0
                 else:
-                    # Delete and return count
+                    # Delete orphan entities (no relationships at all)
+                    # Use DETACH DELETE for safety in case of race conditions
                     query = """
                     MATCH (e:Entity)
-                    WHERE NOT (e)<-[:FACT]-()
-                      AND NOT (e)-[:FACT]->()
+                    WHERE NOT (e)--()
                       AND (e.created_at IS NULL OR e.created_at < $grace_threshold)
                     WITH e, e.name as name
-                    DELETE e
+                    DETACH DELETE e
                     RETURN count(*) as deleted, collect(name) as names
                     """
                     result = await session.run(query, grace_threshold=grace_str)
