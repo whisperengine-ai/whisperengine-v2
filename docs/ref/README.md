@@ -36,6 +36,7 @@
 | [REF-013](./REF-013-OBSERVABILITY.md) | Observability | Metrics, logging, monitoring |
 | [REF-014](./REF-014-BOT_TO_BOT.md) | Bot-to-Bot Pipeline | Cross-bot communication |
 | [REF-015](./REF-015-CHARACTER_AS_AGENT.md) | Character as Agent | Character system architecture |
+| [REF-016](./REF-016-RECALL_BOT_CONVERSATION_TOOL.md) | Recall Bot Conversation Tool | Cross-bot memory recall |
 
 ### API & External
 
