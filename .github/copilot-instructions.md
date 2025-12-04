@@ -48,6 +48,18 @@ If answers lean toward "need new schema/code/declarations" — reconsider the ap
 - **Weekly summaries** (~20-30 min): Pattern synthesis
 - **Experiments**: Formal hypothesis testing with templates
 
+**Documentation Templates:**
+When creating new documentation, **always follow the template in the `README.md` of each documentation subfolder**:
+- `docs/spec/README.md` — SPEC template (features, implementations)
+- `docs/guide/README.md` — GUIDE template (how-to tutorials)
+- `docs/adr/README.md` — ADR template (architecture decisions)
+- `docs/prd/README.md` — PRD template (product requirements)
+- `docs/ref/README.md` — REF template (system reference docs)
+- `docs/run/README.md` — RUN template (operational runbooks)
+- `docs/research/templates/` — Research templates (experiments, daily logs)
+
+**Important:** All templates include an **Origin** section to track idea provenance (who proposed it, what triggered it, whether it emerged from human-AI collaboration). This is itself a form of emergence tracking.
+
 ## 🤖 Bot Configurations
 
 ### Active Bots & Models
