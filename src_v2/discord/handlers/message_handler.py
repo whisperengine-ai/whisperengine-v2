@@ -18,6 +18,7 @@ from src_v2.knowledge.documents import document_processor
 from src_v2.knowledge.document_context import DocumentContext
 from src_v2.voice.player import play_text
 from src_v2.core.database import db_manager
+from src_v2.intelligence.activity import server_monitor
 from src_v2.core.quota import QuotaExceededError
 from src_v2.evolution.trust import trust_manager
 from src_v2.memory.models import MemorySourceType
@@ -30,6 +31,108 @@ from src_v2.core.behavior import get_character_timezone
 from influxdb_client.client.write.point import Point
 from src_v2.intelligence.activity import server_monitor
 from src_v2.core.goals import goal_manager
+
+
+async def enqueue_background_learning(
+    user_id: str,
+    message_content: str,
+    character_name: str,
+    context: str = "conversation"
+) -> None:
+    """
+    Unified background learning pipeline for ALL message types.
+    
+    A user ID is a user ID - whether human or bot. This function handles:
+    - Knowledge extraction (facts to Neo4j)
+    - Preference extraction (communication style learning)
+    
+    Args:
+        user_id: Discord user ID (human or bot - doesn't matter!)
+        message_content: The message content to learn from
+        character_name: The bot's character name
+        context: Context label for logging (conversation, cross_bot, lurk, etc.)
+    """
+    if not message_content or len(message_content.strip()) < 10:
+        return  # Skip very short messages
+    
+    # Knowledge extraction: Extract facts from the message
+    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+        try:
+            await task_queue.enqueue_knowledge_extraction(
+                user_id=user_id,
+                message=message_content,
+                character_name=character_name
+            )
+        except Exception as e:
+            logger.debug(f"Failed to enqueue {context} knowledge extraction: {e}")
+    
+    # Preference extraction: Learn communication style
+    if settings.ENABLE_PREFERENCE_EXTRACTION:
+        try:
+            await task_queue.enqueue_preference_extraction(
+                user_id=user_id,
+                character_name=character_name,
+                message_content=message_content
+            )
+        except Exception as e:
+            logger.debug(f"Failed to enqueue {context} preference extraction: {e}")
+
+
+async def enqueue_post_conversation_tasks(
+    user_id: str,
+    character_name: str,
+    session_id: str,
+    messages: list,
+    user_name: str,
+    trigger: str = "session_end"
+) -> None:
+    """
+    Unified post-conversation processing pipeline.
+    
+    Handles summarization, reflection, and insight analysis for ALL conversation types.
+    A user ID is a user ID - human or bot, same pipeline!
+    
+    Args:
+        user_id: Discord user ID (human or bot)
+        character_name: Bot's character name
+        session_id: Session identifier
+        messages: List of message dicts with role/content
+        user_name: Display name for diary provenance
+        trigger: What triggered this (session_end, cross_bot_session, etc.)
+    """
+    # Enqueue summarization
+    try:
+        await task_queue.enqueue_summarization(
+            user_id=user_id,
+            character_name=character_name,
+            session_id=session_id,
+            messages=messages,
+            user_name=user_name
+        )
+    except Exception as e:
+        logger.debug(f"Failed to enqueue {trigger} summarization: {e}")
+        return
+    
+    # Enqueue reflection (runs after summarization)
+    try:
+        await task_queue.enqueue_reflection(
+            user_id=user_id,
+            character_name=character_name
+        )
+    except Exception as e:
+        logger.debug(f"Could not enqueue {trigger} reflection: {e}")
+    
+    # Enqueue insight analysis
+    try:
+        await task_queue.enqueue_insight_analysis(
+            user_id=user_id,
+            character_name=character_name,
+            trigger=trigger,
+            priority=5
+        )
+    except Exception as e:
+        logger.debug(f"Could not enqueue {trigger} insight analysis: {e}")
+
 
 class MessageHandler:
     def __init__(self, bot):
@@ -109,11 +212,13 @@ class MessageHandler:
             # Check for cross-bot mentions if enabled
             if settings.ENABLE_CROSS_BOT_CHAT:
                 await self._handle_cross_bot_message(message)
-            return
+            # Continue with normal processing for bot messages too
+            # Bot conversations are valuable data sources for learning and knowledge extraction
+            pass
 
-        # Ignore messages from blocked users
+        # Ignore messages from blocked users (including blocked bots)
         if str(message.author.id) in settings.blocked_user_ids_list:
-            logger.debug(f"Ignoring message from blocked user: {message.author.id}")
+            logger.debug(f"Ignoring message from blocked user/bot: {message.author.id}")
             return
 
         # Universe Presence & Observation
@@ -130,10 +235,10 @@ class MessageHandler:
                 
                 # Enqueue message observation to background worker (Phase 2: Learning to Listen)
                 # This extracts topics, tracks interactions, and learns peak hours
-                mentioned_ids = [str(m.id) for m in message.mentions if not m.bot]
+                mentioned_ids = [str(m.id) for m in message.mentions]
                 reply_to_id = None
                 if message.reference and message.reference.resolved:
-                    if isinstance(message.reference.resolved, discord.Message) and not message.reference.resolved.author.bot:
+                    if isinstance(message.reference.resolved, discord.Message):
                         reply_to_id = str(message.reference.resolved.author.id)
                 
                 # Only enqueue if there's meaningful content to observe
@@ -150,6 +255,15 @@ class MessageHandler:
                         mentioned_user_ids=mentioned_ids,
                         reply_to_user_id=reply_to_id,
                         user_display_name=message.author.display_name
+                    )
+                    
+                    # Unified background learning for ALL observed messages
+                    # (bot conversations are rich data sources too!)
+                    await enqueue_background_learning(
+                        user_id=str(message.author.id),
+                        message_content=message.content,
+                        character_name=self.bot.character_name,
+                        context="observation"
                     )
             except Exception as e:
                 logger.debug(f"Failed to enqueue universe observation: {e}")
@@ -604,28 +718,13 @@ class MessageHandler:
                 except Exception as e:
                     logger.error(f"Failed to save user message to memory: {e}")
 
-                # Fire-and-forget knowledge extraction via background worker
-                # (offloaded from response pipeline for lower latency)
-                if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
-                    try:
-                        await task_queue.enqueue_knowledge_extraction(
-                            user_id=user_id,
-                            message=raw_user_message,
-                            character_name=self.bot.character_name
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to enqueue knowledge extraction: {e}")
-
-                # Fire-and-forget Preference Extraction
-                if settings.ENABLE_PREFERENCE_EXTRACTION:
-                    try:
-                        await task_queue.enqueue_preference_extraction(
-                            user_id=user_id,
-                            character_name=self.bot.character_name,
-                            message_content=raw_user_message
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to enqueue preference extraction: {e}")
+                # Unified background learning pipeline (knowledge + preference extraction)
+                await enqueue_background_learning(
+                    user_id=user_id,
+                    message_content=raw_user_message,
+                    character_name=self.bot.character_name,
+                    context="dm" if is_dm else "guild"
+                )
 
                 # 2.5 Check for Summarization
                 if session_id:
@@ -1370,6 +1469,15 @@ Recent channel context:
                 # Send response as a reply
                 sent_message = await message.reply(response, mention_author=True)
                 
+                # Record activity for cross-bot reply scaling (Phase E15)
+                # This ensures bot replies count toward channel activity levels
+                if message.guild:
+                    try:
+                        await server_monitor.record_message(str(message.guild.id))
+                        logger.debug(f"Recorded activity for cross-bot reply in guild {message.guild.id}")
+                    except Exception as e:
+                        logger.debug(f"Failed to record activity for cross-bot reply: {e}")
+                
                 # Record the response in the chain
                 await cross_bot_manager.record_response(
                     channel_id=str(message.channel.id),
@@ -1415,19 +1523,13 @@ Recent channel context:
                 except Exception as mem_err:
                     logger.warning(f"Failed to save cross-bot conversation to memory: {mem_err}")
                 
-                # Enqueue background processing for cross-bot conversations (same as normal users)
-                # This enables knowledge extraction, summarization, and insight analysis
-                
-                # Knowledge extraction: Extract facts about the other bot
-                if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
-                    try:
-                        await task_queue.enqueue_knowledge_extraction(
-                            user_id=cross_bot_user_id,
-                            message=message.content,
-                            character_name=self.bot.character_name
-                        )
-                    except Exception as e:
-                        logger.debug(f"Failed to enqueue cross-bot knowledge extraction: {e}")
+                # Unified background learning - bot IDs are just user IDs!
+                await enqueue_background_learning(
+                    user_id=cross_bot_user_id,
+                    message_content=message.content,
+                    character_name=self.bot.character_name,
+                    context="cross_bot"
+                )
                 
                 # Summarization: Check if we've accumulated enough messages for a summary
                 # Cross-bot conversations don't use sessions, so we check message count directly
@@ -1583,6 +1685,15 @@ Recent channel context:
                     sent_msg = await message.channel.send(chunk)
                     sent_messages.append(sent_msg)
                     
+                # Record activity for lurk response scaling (Phase E15)
+                # This ensures bot lurk replies count toward channel activity levels
+                if message.guild:
+                    try:
+                        await server_monitor.record_message(str(message.guild.id))
+                        logger.debug(f"Recorded activity for lurk response in guild {message.guild.id}")
+                    except Exception as e:
+                        logger.debug(f"Failed to record activity for lurk response: {e}")
+                
                 # Record the lurk response
                 await self.bot.lurk_detector.record_response(
                     channel_id=channel_id,
@@ -1623,6 +1734,14 @@ Recent channel context:
                         
                 self.bot.loop.create_task(handle_lurk_trust())
                 
+                # Unified background learning - lurk interactions are first class!
+                await enqueue_background_learning(
+                    user_id=user_id,
+                    message_content=message_content,
+                    character_name=self.bot.character_name,
+                    context="lurk"
+                )
+                
                 logger.info(f"Lurk response sent in {processing_time_ms:.0f}ms (confidence={lurk_result.confidence:.2f})")
                 
         except Exception as e:
@@ -1656,38 +1775,15 @@ Recent channel context:
                 from langchain_core.messages import HumanMessage
                 msg_dicts = [{"role": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content} for m in messages]
                 
-                # Enqueue summarization to background worker
-                try:
-                    await task_queue.enqueue_summarization(
-                        user_id=user_id,
-                        character_name=self.bot.character_name,
-                        session_id=session_id,
-                        messages=msg_dicts,
-                        user_name=user_name  # For diary provenance display
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to enqueue summarization: {e}")
-                    return
-                
-                # Enqueue reflection (runs after summarization completes)
-                try:
-                    await task_queue.enqueue_reflection(
-                        user_id=user_id,
-                        character_name=self.bot.character_name
-                    )
-                except Exception as e:
-                    logger.debug(f"Could not enqueue reflection: {e}")
-                    
-                # Enqueue Insight Agent analysis
-                try:
-                    await task_queue.enqueue_insight_analysis(
-                        user_id=user_id,
-                        character_name=self.bot.character_name,
-                        trigger="session_end",
-                        priority=5
-                    )
-                except Exception as e:
-                    logger.debug(f"Could not enqueue insight analysis: {e}")
+                # Unified post-conversation processing
+                await enqueue_post_conversation_tasks(
+                    user_id=user_id,
+                    character_name=self.bot.character_name,
+                    session_id=session_id,
+                    messages=msg_dicts,
+                    user_name=user_name,
+                    trigger="session_end"
+                )
                     
         except Exception as e:
             logger.error(f"Error in _check_and_summarize: {e}")
@@ -1730,27 +1826,15 @@ Recent channel context:
                 # Generate a synthetic session ID for cross-bot conversations
                 cross_bot_session_id = f"crossbot_{bot_user_id}_{self.bot.character_name}"
                 
-                # Enqueue summarization
-                try:
-                    await task_queue.enqueue_summarization(
-                        user_id=bot_user_id,
-                        character_name=self.bot.character_name,
-                        session_id=cross_bot_session_id,
-                        messages=msg_dicts,
-                        user_name=bot_name
-                    )
-                except Exception as e:
-                    logger.debug(f"Failed to enqueue cross-bot summarization: {e}")
-                    return
-                
-                # Enqueue reflection
-                try:
-                    await task_queue.enqueue_reflection(
-                        user_id=bot_user_id,
-                        character_name=self.bot.character_name
-                    )
-                except Exception as e:
-                    logger.debug(f"Could not enqueue cross-bot reflection: {e}")
+                # Unified post-conversation processing - bot user IDs are just user IDs!
+                await enqueue_post_conversation_tasks(
+                    user_id=bot_user_id,
+                    character_name=self.bot.character_name,
+                    session_id=cross_bot_session_id,
+                    messages=msg_dicts,
+                    user_name=bot_name,
+                    trigger="cross_bot_session"
+                )
                     
         except Exception as e:
             logger.debug(f"Error in _check_and_summarize_cross_bot: {e}")

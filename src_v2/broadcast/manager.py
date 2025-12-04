@@ -16,6 +16,7 @@ from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.safety.content_review import content_safety_checker
 from src_v2.discord.utils.message_utils import chunk_message
+from src_v2.intelligence.activity import server_monitor
 
 
 def _redis_key(key: str) -> str:
@@ -177,6 +178,15 @@ class BroadcastManager:
                     await self._store_broadcast(first_message, post_type, character_name, content, provenance)
                     # Store as conversation memory so bot remembers posting it
                     await self._store_broadcast_memory(first_message, post_type, character_name, content)
+                    
+                    # Record activity for autonomous posting scaling (Phase E15)
+                    # This ensures bot posts count toward channel activity levels
+                    if hasattr(first_message, 'guild') and first_message.guild:
+                        try:
+                            await server_monitor.record_message(str(first_message.guild.id))
+                            logger.debug(f"Recorded activity for autonomous post in guild {first_message.guild.id}")
+                        except Exception as e:
+                            logger.debug(f"Failed to record activity for broadcast: {e}")
                 
             except discord.Forbidden:
                 logger.error(f"No permission to post in broadcast channel {channel_id_str}")
@@ -360,6 +370,21 @@ class BroadcastManager:
             )
             
             logger.debug(f"Stored broadcast memory for {character_name}: {post_label}")
+            
+            # Broadcast posts are first-class data for learning!
+            # The bot's own posts might contain insights worth extracting
+            from src_v2.workers.task_queue import task_queue
+            
+            # Enqueue insight analysis to detect patterns in what the bot chooses to share
+            try:
+                await task_queue.enqueue_insight_analysis(
+                    user_id="__broadcast__",
+                    character_name=character_name,
+                    trigger=f"broadcast_{post_type.value}",
+                    priority=6  # Lower priority than user conversations
+                )
+            except Exception as e:
+                logger.debug(f"Failed to enqueue broadcast insight analysis: {e}")
             
         except Exception as e:
             logger.warning(f"Failed to store broadcast memory: {e}")
