@@ -84,12 +84,9 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟢 High | **E15.2** | **Posting Agent** | **2-3 days** | E15.1 ✅ | 📋 Next |
-| 🟢 High | **E15.3** | **Conversation Agent** | **2-3 days** | E15.2 | 📋 Proposed |
-| 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Proposed |
+| 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Next |
 | 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
-| 🟡 Medium | **E20** | **Bot Introspection Tools** | **1-2 days** | E15 🔄, E6 ✅ | 📋 Blocked |
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅ | 📋 Proposed |
 | 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | 📋 Proposed |
@@ -109,6 +106,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Phase | Description | Completed |
 |-------|-------------|--------|
+| E15.2-3 | Posting & Conversation Agents | Dec 2025 |
 | E17 | Supergraph Architecture | Dec 2025 |
 | E18 | Agentic Queue System | Dec 2025 |
 | E19 | Graph Walker Agent | Dec 2025 |
@@ -131,10 +129,10 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 │                    PROPOSED WORK DEPENDENCIES                    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  E15.1 (Reactions) ✅ ──► E15.2 (Posting) ──► E15.3 (Convo)    │
-│                                      │                          │
-│                                      └──► E20 (Introspection)   │
-│                                           [blocked until E15]   │
+│  E15 (Reactions + Posting + Convo) ✅ ──► Natural Language     │
+│                                           (introspection ✅)    │
+│                                                                 │
+│  E21 (Semantic Routing) ◄─── No deps [Next item]              │
 │                                                                 │
 │  E18 (Queue) ✅ ──────────► E24 (Advanced Queue)               │
 │                                                                 │
@@ -146,7 +144,6 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 │                       │                                         │
 │                       └──► E28 (User Graph)                     │
 │                                                                 │
-│  No deps ─────────────────► E21 (Semantic Routing)             │
 │  No deps ─────────────────► Cross-Bot Memory                   │
 │  No deps ─────────────────► O1 (InfluxDB Analytics)            │
 │                                                                 │
@@ -239,10 +236,13 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - 🗄️ Phase A6: Vision-to-Knowledge Fact Extraction (DEFERRED)
 - 🗄️ Phase B5: Audio Processing (DEFERRED)
 - 🗄️ Phase C3: Video Processing (DEFERRED)
+- 🗄️ Phase E20: Bot Introspection Tools (DEFERRED → Handled by Natural Language)
 
 **Status:** Core feature development complete. All major phases done. Phase E (Character Depth) proposed.
 
 > **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
+
+> **Note on E20:** Bot Introspection Tools spec was written assuming bots need dedicated debugging infrastructure. However, introspection works naturally through conversation: users (and other bots) ask "What model are you using?" or "Are you online?" and the system answers via existing tools + shared memory artifacts. No dedicated phase needed. See [SPEC-E20-BOT_INTROSPECTION_TOOLS-DEFERRED.md](../archive/SPEC-E20-BOT_INTROSPECTION_TOOLS-DEFERRED.md) for the original design (useful as reference for future enhancements).
 
 ---
 
