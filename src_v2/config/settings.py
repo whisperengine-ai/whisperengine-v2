@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     GOAL_STRATEGIST_LOCAL_HOUR: int = 23  # Local hour (in character's timezone) when goal strategist runs (11 PM)
     ENABLE_UNIVERSE_EVENTS: bool = False
     ENABLE_SENSITIVITY_CHECK: bool = False  # LLM-based sensitivity check for universe events
-    ENABLE_TRACE_LEARNING: bool = False
+    ENABLE_TRACE_LEARNING: bool = True  # Phase B5: Learn from reasoning traces
     
     # --- Phase E16: Feedback Loop Stability ---
     ENABLE_DRIFT_OBSERVATION: bool = False  # Weekly personality drift observation (observability, not correction)

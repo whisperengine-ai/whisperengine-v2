@@ -1,8 +1,8 @@
-# Trace Learning: Memory of Reasoning (Phase 3.2)
+# Trace Learning: Memory of Reasoning (Phase B5)
 
-**Status:** Planned  
+**Status:** ✅ Complete (December 2025)  
 **Priority:** High  
-**Dependencies:** Reflective Agent, Qdrant
+**Dependencies:** Reflective Agent ✅, Qdrant ✅
 
 ---
 

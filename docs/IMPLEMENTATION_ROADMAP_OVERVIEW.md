@@ -2,7 +2,7 @@
 
 **Document Version:** 3.0  
 **Created:** November 24, 2025  
-**Last Updated:** December 5, 2025 (E26: Temporal Graph complete, E27: Multi-Character Walks complete)
+**Last Updated:** December 5, 2025 (E26, E27, B5 complete)
 **Status:** Active Planning
 
 ### Status Legend
@@ -87,7 +87,6 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
@@ -1190,31 +1189,28 @@ constitution:
 
 ---
 
-### 📋 Phase B5: Trace Learning (Memory of Reasoning)
+### ✅ Phase B5: Trace Learning (Memory of Reasoning)
 **Priority:** 🔴 High | **Time:** 3-4 days | **Complexity:** High  
-**Files:** 4 | **LOC:** ~400 | **Status:** 📋 Planned
+**Files:** 4 | **LOC:** ~400 | **Status:** ✅ Complete (December 2025)
 
 **Problem:** The bot solves complex problems (e.g., multi-step research) but forgets *how* it solved them. It has to re-derive the strategy every time.
 
-**Solution:**
-- **Trace Ingestion:** `AgentEngine` sends successful reasoning traces to background worker
-- **Trace Learner:** `InsightWorker` analyzes traces to extract reusable patterns
-- **Vector Storage:** Store patterns in Qdrant (`reasoning_trace` payload)
-- **Few-Shot Injection:** `ReflectiveAgent` retrieves similar past solutions and injects them into system prompt
+**Solution:** Full pipeline for learning from reasoning traces:
+- **Trace Ingestion:** `AgentEngine` formats traces and enqueues to `InsightAgent` after successful reflective responses
+- **Trace Storage:** `InsightAgent` uses `StoreReasoningTraceTool` to save patterns to Qdrant
+- **Trace Retrieval:** `TraceRetriever` with quality scoring fetches similar past solutions
+- **Few-Shot Injection:** `ReflectiveAgent` retrieves and injects traces into system prompt
 
-**Architecture:**
-- `AgentEngine` -> `TaskQueue` -> `InsightWorker`
-- `StoreReasoningTraceTool` saves to Qdrant
-- `TraceRetriever` fetches relevant traces
-- `ReflectiveAgent` injects few-shot examples
+**Implementation:**
+- `src_v2/agents/engine.py` — `_format_trace_for_storage()` and enqueue logic
+- `src_v2/agents/insight_graph.py` — `reflective_completion` trigger handler
+- `src_v2/tools/insight_tools.py` — `StoreReasoningTraceTool`
+- `src_v2/memory/traces.py` — `TraceRetriever`, `TraceQualityScorer`, `ScoredTrace`
+- `src_v2/agents/reflective_graph.py` — Few-shot injection at line 530+
 
-**Dependencies:** Reflective Agent, Qdrant
+**Feature Flag:** `ENABLE_TRACE_LEARNING=true` (enabled by default)
 
-**Related Files:**
-- `src_v2/agents/engine.py` (Ingestion)
-- `src_v2/agents/insight_agent.py` (Analysis)
-- `src_v2/tools/insight_tools.py` (Storage)
-- `src_v2/memory/traces.py` (Retrieval)
+**Tests:** 12 unit tests in `tests_v2/test_trace_learning.py`
 
 **Full Specification:** See [spec/SPEC-B05-TRACE_LEARNING.md](./spec/SPEC-B05-TRACE_LEARNING.md)
 
