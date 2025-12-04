@@ -135,7 +135,9 @@ class AgentEngine:
             user_message = "[User uploaded an image]"
 
         # --- SUPERGRAPH PATH (Primary) ---
-        if user_id:
+        # IMPORTANT: Respect force_fast to bypass Supergraph when fast mode is explicitly required
+        # (e.g., cross-bot conversations need single response, not reflective two-message flow)
+        if user_id and not force_fast:
             logger.info("Delegating to Master Supergraph")
             response = await master_graph_agent.run(
                 user_input=user_message,

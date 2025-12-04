@@ -271,7 +271,7 @@ class CrossBotManager:
         channel_id = str(message.channel.id)
         mentioning_bot = self.get_bot_name(message.author.id)
         logger.info(f"[CrossBot] Received message from known bot: {mentioning_bot}")
-        
+
         # Check if this is a direct reply to one of our messages FIRST
         # (needed for burst detection logic)
         is_direct_reply = False
