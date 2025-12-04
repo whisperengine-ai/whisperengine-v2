@@ -172,7 +172,9 @@ class ProactiveScheduler:
     async def check_user(self, user_id: str, trust_score: int, last_interaction: Optional[datetime]) -> None:
         """Checks if we should message a specific user based on drives and activity patterns."""
         
-        # 1. Check Feature Flag
+        # 1. Check Feature Flags (master switch + proactive messaging)
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return
         if not settings.ENABLE_PROACTIVE_MESSAGING:
             return
 

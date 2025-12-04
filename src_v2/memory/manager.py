@@ -758,6 +758,7 @@ class MemoryManager:
                     if ts >= threshold_iso:
                         summaries.append({
                             "user_id": payload.get("user_id"),
+                            "user_name": payload.get("user_name"),  # Include for diary provenance
                             "content": payload.get("content", ""),
                             "emotions": payload.get("emotions", []),
                             "topics": payload.get("topics", []),
@@ -842,6 +843,7 @@ class MemoryManager:
                         "topics": payload.get("topics", []),
                         "meaningfulness_score": meaningfulness,
                         "user_id": payload.get("user_id"),
+                        "user_name": payload.get("user_name"),  # Include for dream provenance
                         "timestamp": ts
                     })
             

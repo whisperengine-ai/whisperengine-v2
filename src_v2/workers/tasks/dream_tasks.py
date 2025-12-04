@@ -164,9 +164,39 @@ async def run_dream_generation(
                 "error": "graph_returned_none",
                 "character_name": character_name
             }
+        
+        # Build provenance data - vague/poetic for display, content has explicit names for search
+        provenance_data = []
+        
+        # Memories - vague
+        if material.memories:
+            provenance_data.append({
+                "type": "memory",
+                "description": "traces of the day"
+            })
+        
+        # Observations - vague
+        if material.observations:
+            provenance_data.append({
+                "type": "observation",
+                "description": "things half-noticed"
+            })
+        
+        # Gossip - vague
+        if material.gossip:
+            provenance_data.append({
+                "type": "other_bot",
+                "description": "murmurs from elsewhere"
+            })
+        
+        # Facts - vague
+        if material.facts:
+            provenance_data.append({
+                "type": "knowledge",
+                "description": "what was known"
+            })
             
         # Save
-        provenance_data = [{"type": "mixed", "count": len(material.memories)}]
         point_id = await dream_manager.save_dream(user_id="__character__", dream=dream, provenance=provenance_data)
         
         # Queue Broadcast

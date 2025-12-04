@@ -147,7 +147,12 @@ class DreamMaterial(BaseModel):
             for i, m in enumerate(self.memories[:5], 1):
                 content = m.get("content", m.get("summary", ""))[:200]
                 emotions = ", ".join(m.get("emotions", [])) or "mixed"
-                sections.append(f"- {content} (felt: {emotions})")
+                # Include user name if available for searchability
+                user_name = m.get("user_name")
+                if user_name and user_name != "someone":
+                    sections.append(f"- With {user_name}: {content} (felt: {emotions})")
+                else:
+                    sections.append(f"- {content} (felt: {emotions})")
         else:
             sections.append("## Recent Conversations")
             sections.append("No recent conversations. The world has been quiet.")

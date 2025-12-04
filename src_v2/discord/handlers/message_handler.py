@@ -140,6 +140,9 @@ class MessageHandler:
 
     async def _should_autonomous_reply(self, message: discord.Message) -> bool:
         """Decide if the bot should autonomously reply to a message."""
+        # Master switch must be enabled
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return False
         if not settings.ENABLE_AUTONOMOUS_REPLIES:
             return False
             
@@ -213,12 +216,12 @@ class MessageHandler:
 
         # Cross-bot detection (Phase E6) - Handle bot messages differently
         if message.author.bot:
-            # Check for cross-bot mentions if enabled
-            if settings.ENABLE_CROSS_BOT_CHAT:
+            # Check for cross-bot mentions if enabled (requires master switch)
+            if settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_CROSS_BOT_CHAT:
                 await self._handle_cross_bot_message(message)
-            # Continue with normal processing for bot messages too
-            # Bot conversations are valuable data sources for learning and knowledge extraction
-            pass
+            # Don't respond to other bots unless cross-bot chat is enabled
+            # But still continue to observation/learning below
+            return
 
         # Ignore messages from blocked users (including blocked bots)
         if str(message.author.id) in settings.blocked_user_ids_list:
@@ -1220,7 +1223,8 @@ class MessageHandler:
                 await message.channel.send(error_msg)
 
         # Channel Lurking: Respond to relevant messages without being mentioned
-        elif settings.ENABLE_CHANNEL_LURKING and self.bot.lurk_detector and message.guild:
+        # Requires master switch + lurking flag
+        elif settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_CHANNEL_LURKING and self.bot.lurk_detector and message.guild:
             await self._handle_lurk_response(message, sticker_text)
 
         # Autonomous Reactions: Maybe react with emoji to the message (Phase E12)

@@ -249,6 +249,9 @@ class CrossBotManager:
         
         Returns CrossBotMention if we should potentially respond, None otherwise.
         """
+        # Master switch must be enabled for any autonomous activity
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return None
         if not settings.ENABLE_CROSS_BOT_CHAT:
             return None
         

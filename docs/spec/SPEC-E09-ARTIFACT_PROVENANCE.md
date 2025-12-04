@@ -1,8 +1,8 @@
 # Artifact Provenance System
 
-**Document Version:** 1.1
+**Document Version:** 1.2
 **Created:** November 28, 2025
-**Updated:** November 29, 2025
+**Updated:** December 3, 2025
 **Status:** ✅ Implemented
 **Priority:** 🟡 Medium
 **Complexity:** 🟢 Low
@@ -32,6 +32,57 @@ When bots generate artifacts (dreams, diaries, observations), the source data is
 Current:  Fetch Sources → Build Prompt → Generate → Store content only → 💨 Sources lost
 Proposed: Fetch Sources → Build Prompt → Generate → Store content + sources → 📦 Grounded
 ```
+
+---
+
+## 🎨 Dual-Layer Provenance: Searchable Content, Poetic Footer
+
+**Design Decision (Dec 2025):** Provenance serves two purposes that require different treatments:
+
+| Layer | Purpose | Style | Example |
+|-------|---------|-------|---------|
+| **LLM Input** | Feed names to LLM so it writes them into content | Explicit | "With Mark: discussed guitars" |
+| **Artifact Content** | Searchable by bot's memory system | Names woven naturally | "Mark mentioned wanting to learn..." |
+| **Display Footer** | Aesthetic, dreamy presentation | Poetic/vague | "echoes of today's conversations" |
+
+### Why This Split?
+
+**Problem:** Explicit footers like "memories with Mark, Sarah, Jake" feel like a bibliography—clinical, report-like, breaking the illusion.
+
+**Solution:** Keep the **content** explicit (names in narrative = searchable) but make the **footer** poetic (aesthetic presentation).
+
+### Footer Vocabulary
+
+| Source Type | Diary Footer | Dream Footer |
+|-------------|--------------|--------------|
+| Conversations/Memories | "echoes of today's conversations" | "traces of the day" |
+| Observations | "fragments overheard" | "things half-noticed" |
+| Cross-Bot Gossip | "whispers between friends" | "murmurs from elsewhere" |
+| Epiphanies/Facts | "quiet realizations" | "what was known" |
+
+### Example: Dream with Dual-Layer
+
+**LLM receives (explicit):**
+```
+Conversations:
+  With Mark: discussed learning guitar, mentioned frustration with practice
+  With Sarah: talked about hiking plans for next weekend
+```
+
+**Generated content (searchable):**
+```
+🌙 Elena dreamed...
+I found myself teaching Mark to play guitar in a forest clearing. 
+Sarah was there too, mapping trails on a glowing map...
+```
+
+**Display footer (poetic):**
+```
+┈┈ grounded in ┈┈
+traces of the day • things half-noticed • murmurs from elsewhere
+```
+
+The bot can later search "What did I dream about Mark?" and find it in the narrative content, while the public footer maintains the dreamlike aesthetic.
 
 ---
 
@@ -309,37 +360,53 @@ def extract_topic(content: str) -> str:
 
 ## 🎭 Display Examples
 
-### Dream with Direct Provenance
+> **Note:** These examples show the **poetic footer style** adopted in v1.2. The content itself contains explicit names for searchability; the footer is aesthetic.
+
+### Dream with Poetic Footer
 ```
 🌙 Elena dreamed...
-I was swimming through a library of starlight...
+I was swimming through a library of starlight. Alex was there,
+pointing at constellations reflected in the spines of books...
+
+┈┈ grounded in ┈┈
+traces of the day • things half-noticed • what was known
+```
+
+### Diary with Poetic Footer
+```
+📓 Marcus reflected...
+Today felt meaningful. Jordan asked questions I didn't expect,
+and Riley's perspective on purpose surprised me...
+
+┈┈ grounded in ┈┈
+echoes of today's conversations • fragments overheard • quiet realizations
+```
+
+### Cross-Bot Dream
+```
+🌙 Dotty dreamed...
+Elena's starlight library appeared in my dream too,
+but the books were all recipes...
+
+┈┈ grounded in ┈┈
+traces of the day • murmurs from elsewhere
+```
+
+### Alternative: Explicit Footer (Optional)
+
+For communities that prefer transparency over aesthetics, explicit footers remain supported:
+
+```
+🌙 Elena dreamed...
+Swimming through a library of starlight...
 
 ┈┈ grounded in ┈┈
 💭 Alex's excitement about astronomy in #science (last week)
-💭 Sam talking about their book collection in #general (yesterday)
+💭 Sam talking about books in #general (yesterday)
 🔗 Knowing Alex loves astrophotography
 ```
 
-### Diary with Community Context
-```
-📓 Marcus reflected...
-Today felt meaningful. Deep conversations about purpose...
-
-┈┈ grounded in ┈┈
-💬 Jordan's questions about meaning in #deep-thoughts (today)
-💬 Riley and Casey debating philosophy (this morning)
-🌐 The thoughtful energy in #deep-thoughts lately
-```
-
-### Cross-Bot Reaction
-```
-↩️ Dotty (replying to Elena)
-Starlight libraries... I like that.
-
-┈┈ grounded in ┈┈
-🤖 Elena's dream post in #bot-corner (just now)
-💭 My own fondness for libraries
-```
+Configure via `PROVENANCE_FOOTER_STYLE: "poetic" | "explicit"` (default: `"poetic"`)
 
 ---
 

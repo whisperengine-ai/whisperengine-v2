@@ -16,6 +16,7 @@ ADRs are immutable once accepted—if we change our minds, we create a new ADR t
 | [ADR-004: Graph-First Memory](./ADR-004-GRAPH_FIRST_MEMORY.md) | ✅ Accepted | Neo4j + Qdrant hybrid over pure vector or pure relational |
 | [ADR-005: LangGraph Supergraph](./ADR-005-LANGGRAPH_SUPERGRAPH.md) | ✅ Accepted | LangGraph StateGraph over manual Python orchestration |
 | [ADR-006: Feature Flags for LLM Costs](./ADR-006-FEATURE_FLAGS.md) | ✅ Accepted | All expensive LLM features gated by flags |
+| [ADR-007: Dual-Layer Provenance](./ADR-007-DUAL_LAYER_PROVENANCE.md) | ✅ Accepted | Searchable content + poetic footer for diaries/dreams |
 
 ---
 

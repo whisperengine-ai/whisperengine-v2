@@ -82,10 +82,22 @@ async def run_diary_generation(
         # The diary graph handles sparse days gracefully, and the character
         # should still reflect even on quiet days (emergence philosophy).
         
-        # Count users
-        unique_user_ids = set(s.get("user_id", "unknown") for s in material.summaries)
-        user_count = len(unique_user_ids)
-        user_names = [f"{user_count} different {'people' if user_count > 1 else 'person'}"]
+        # Extract actual user names from summaries for searchability
+        # This allows the diary to mention people by name, making it searchable
+        user_names_set = set()
+        for s in material.summaries:
+            # Prefer display_name > user_name > user_id
+            name = s.get("display_name") or s.get("user_name") or s.get("user_id")
+            if name and name != "unknown":
+                user_names_set.add(name)
+        
+        # Fall back to count if no names available
+        if user_names_set:
+            user_names = list(user_names_set)
+        else:
+            unique_user_ids = set(s.get("user_id", "unknown") for s in material.summaries)
+            user_count = len(unique_user_ids)
+            user_names = [f"{user_count} different {'people' if user_count > 1 else 'person'}"] if user_count > 0 else []
         
         # Run Graph
         entry = await graph_agent.run(
@@ -102,8 +114,38 @@ async def run_diary_generation(
                 "character_name": character_name
             }
             
+        # Build provenance data - vague/poetic for display, content has explicit names for search
+        provenance_data = []
+        
+        # Conversations - vague
+        if material.summaries:
+            provenance_data.append({
+                "type": "conversation",
+                "description": "echoes of today's conversations"
+            })
+        
+        # Observations - vague
+        if material.observations:
+            provenance_data.append({
+                "type": "observation",
+                "description": "fragments overheard"
+            })
+        
+        # Gossip - vague
+        if material.gossip:
+            provenance_data.append({
+                "type": "other_bot",
+                "description": "whispers between friends"
+            })
+        
+        # Epiphanies - vague
+        if material.epiphanies:
+            provenance_data.append({
+                "type": "memory",
+                "description": "quiet realizations"
+            })
+        
         # Save
-        provenance_data = [{"type": "summary", "count": len(material.summaries)}]
         point_id = await diary_manager.save_diary_entry(entry, provenance=provenance_data)
         
         # Queue Broadcast

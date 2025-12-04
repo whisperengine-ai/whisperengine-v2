@@ -63,6 +63,10 @@ class ActivityOrchestrator:
 
     async def check_and_act(self) -> None:
         """Check activity levels and trigger actions if needed."""
+        # Master switch must be enabled for any autonomous activity
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return
+        
         # Skip if neither posting nor conversations are enabled
         if not settings.ENABLE_AUTONOMOUS_POSTING and not settings.ENABLE_BOT_CONVERSATIONS:
             return
