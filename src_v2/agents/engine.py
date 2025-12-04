@@ -160,8 +160,11 @@ class AgentEngine:
             return response
         # ---------------------------------
 
-        # Fallback for no user_id (API calls without user context)
-        logger.warning("No user_id provided, using fast path")
+        # Fast path: either force_fast=True or no user_id
+        if force_fast:
+            logger.info(f"Using fast path (force_fast=True, user_id={user_id or 'None'})")
+        else:
+            logger.warning("No user_id provided, using fast path")
 
         # 1. Classify Intent (Simple vs Complex vs Manipulation)
         classify_start = time.time()
