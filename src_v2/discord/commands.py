@@ -41,15 +41,20 @@ class CharacterCommands(app_commands.Group):
                 await memory_manager.clear_memory(user_id, character_name)
                 messages.append("Conversation memory cleared.")
 
-            # 2. Wipe Facts (Knowledge Graph)
+            # 2. Wipe Facts (Knowledge Graph - GLOBAL across all bots)
             if scope in ["all", "facts"]:
                 await knowledge_manager.clear_user_knowledge(user_id)
-                messages.append("Personal facts cleared.")
+                messages.append("Personal facts cleared (shared across all bots).")
 
-            # 3. Wipe Preferences & Trust (includes relationship level, traits, insights)
-            if scope in ["all", "preferences", "trust"]:
+            # 3. Wipe Preferences (keeps trust/relationship)
+            if scope in ["all", "preferences"]:
                 await trust_manager.clear_user_preferences(user_id, character_name)
-                messages.append("Trust score, relationship level, preferences, and insights cleared.")
+                messages.append("Preferences and insights cleared.")
+            
+            # 4. Wipe Trust/Relationship (keeps preferences)
+            if scope in ["all", "trust"]:
+                await trust_manager.clear_user_trust(user_id, character_name)
+                messages.append("Trust score and relationship level cleared.")
             
             response = f"**Wipe Complete for {character_name}:**\n" + "\n".join([f"✅ {m}" for m in messages])
             await interaction.followup.send(response, ephemeral=True)
@@ -303,6 +308,11 @@ class CharacterCommands(app_commands.Group):
         
         Requires Manage Channels permission.
         """
+        # Check guild first (before defer)
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            return
+        
         await interaction.response.defer(ephemeral=True)
         
         # Check permissions (require Manage Channels)
@@ -375,6 +385,11 @@ class CharacterCommands(app_commands.Group):
         
         Requires Manage Channels permission.
         """
+        # Check guild first (before defer)
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            return
+        
         await interaction.response.defer(ephemeral=True)
         
         if not interaction.guild:
@@ -489,14 +504,14 @@ class SpamCommands(app_commands.Group):
     @app_commands.checks.has_permissions(administrator=True)
     async def enable(self, interaction: discord.Interaction):
         from src_v2.discord.spam_detector import spam_detector
-        spam_detector.enabled = True
+        await spam_detector.set_enabled(True)
         await interaction.response.send_message("✅ Spam detection enabled.", ephemeral=True)
 
     @app_commands.command(name="disable", description="Disable spam detection")
     @app_commands.checks.has_permissions(administrator=True)
     async def disable(self, interaction: discord.Interaction):
         from src_v2.discord.spam_detector import spam_detector
-        spam_detector.enabled = False
+        await spam_detector.set_enabled(False)
         await interaction.response.send_message("❌ Spam detection disabled.", ephemeral=True)
 
     @app_commands.command(name="threshold", description="Set cross-post threshold")
@@ -506,7 +521,7 @@ class SpamCommands(app_commands.Group):
             await interaction.response.send_message("Threshold must be at least 2.", ephemeral=True)
             return
         from src_v2.discord.spam_detector import spam_detector
-        spam_detector.threshold = count
+        await spam_detector.set_threshold(count)
         await interaction.response.send_message(f"✅ Spam threshold set to {count} channels.", ephemeral=True)
 
     @app_commands.command(name="action", description="Set spam action (warn or delete)")
@@ -516,13 +531,19 @@ class SpamCommands(app_commands.Group):
         app_commands.Choice(name="Delete Message", value="delete")
     ])
     async def action(self, interaction: discord.Interaction, action: app_commands.Choice[str]):
+        if action.value not in ["warn", "delete"]:
+            await interaction.response.send_message("Invalid action. Use 'warn' or 'delete'.", ephemeral=True)
+            return
         from src_v2.discord.spam_detector import spam_detector
-        spam_detector.action = action.value
+        await spam_detector.set_action(action.value)
         await interaction.response.send_message(f"✅ Spam action set to: {action.name}", ephemeral=True)
 
     @app_commands.command(name="whitelist", description="Whitelist a role from spam detection")
     @app_commands.checks.has_permissions(administrator=True)
     async def whitelist(self, interaction: discord.Interaction, role: discord.Role):
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            return
         from src_v2.discord.spam_detector import spam_detector
         await spam_detector.add_whitelist(str(role.id), str(interaction.guild_id))
         await interaction.response.send_message(f"✅ Role {role.mention} whitelisted from spam detection.", ephemeral=True)
@@ -530,11 +551,15 @@ class SpamCommands(app_commands.Group):
     @app_commands.command(name="unwhitelist", description="Remove a role from whitelist")
     @app_commands.checks.has_permissions(administrator=True)
     async def unwhitelist(self, interaction: discord.Interaction, role: discord.Role):
+        if not interaction.guild:
+            await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+            return
         from src_v2.discord.spam_detector import spam_detector
         await spam_detector.remove_whitelist(str(role.id), str(interaction.guild_id))
         await interaction.response.send_message(f"❌ Role {role.mention} removed from whitelist.", ephemeral=True)
 
     @app_commands.command(name="stats", description="View spam detection stats")
+    @app_commands.checks.has_permissions(administrator=True)
     async def stats(self, interaction: discord.Interaction):
         from src_v2.discord.spam_detector import spam_detector
         status = "Enabled" if spam_detector.enabled else "Disabled"
@@ -734,6 +759,10 @@ class TimezoneCommands(app_commands.Group):
             
             if not (0 <= start <= 23) or not (0 <= end <= 23):
                 await interaction.followup.send("❌ Hours must be between 0 and 23.", ephemeral=True)
+                return
+            
+            if start == end:
+                await interaction.followup.send("❌ Start and end hours cannot be the same.", ephemeral=True)
                 return
 
             success = await timezone_manager.set_quiet_hours(user_id, character_name, start, end)

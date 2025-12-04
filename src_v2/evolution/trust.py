@@ -196,13 +196,13 @@ class TrustManager:
     @require_db("postgres")
     async def clear_user_preferences(self, user_id: str, character_name: str):
         """
-        Clears user preferences and resets trust score.
+        Clears user preferences only (keeps trust score).
         """
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE v2_user_relationships
-                    SET preferences = '{}'::jsonb, trust_score = 0, unlocked_traits = '[]'::jsonb, insights = '[]'::jsonb
+                    SET preferences = '{}'::jsonb, unlocked_traits = '[]'::jsonb, insights = '[]'::jsonb
                     WHERE user_id = $1 AND character_name = $2
                 """, user_id, character_name)
                 
@@ -211,6 +211,24 @@ class TrustManager:
                 logger.info(f"Cleared preferences for {user_id}")
         except Exception as e:
             logger.error(f"Failed to clear preferences: {e}")
+
+    async def clear_user_trust(self, user_id: str, character_name: str):
+        """
+        Clears user trust score and relationship level (keeps preferences).
+        """
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE v2_user_relationships
+                    SET trust_score = 0
+                    WHERE user_id = $1 AND character_name = $2
+                """, user_id, character_name)
+                
+                # Invalidate cache
+                await cache_manager.delete(f"trust:{character_name}:{user_id}")
+                logger.info(f"Cleared trust for {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to clear trust: {e}")
 
     @require_db("postgres", default_return=None)
     async def update_trust(self, user_id: str, character_name: str, delta: int) -> Optional[str]:

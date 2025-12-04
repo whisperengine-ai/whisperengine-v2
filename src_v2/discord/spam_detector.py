@@ -21,6 +21,49 @@ class SpamDetector:
         # Cache for whitelisted role IDs per guild: {guild_id: {role_id, ...}}
         self._whitelisted_roles: Dict[str, Set[str]] = {} 
         self._whitelist_loaded: Set[str] = set() # Track which guilds have been loaded
+        self._settings_loaded = False
+
+    async def _load_settings(self) -> None:
+        """Load persisted settings from Redis."""
+        if self._settings_loaded or not db_manager.redis_client:
+            return
+        
+        try:
+            enabled_val = await db_manager.redis_client.get("spam:settings:enabled")
+            if enabled_val:
+                self.enabled = enabled_val == "1"
+            
+            threshold_val = await db_manager.redis_client.get("spam:settings:threshold")
+            if threshold_val:
+                self.threshold = int(threshold_val)
+            
+            action_val = await db_manager.redis_client.get("spam:settings:action")
+            if action_val:
+                self.action = action_val
+            
+            self._settings_loaded = True
+        except Exception as e:
+            logger.error(f"Failed to load spam settings from Redis: {e}")
+
+    async def set_enabled(self, enabled: bool) -> None:
+        """Set and persist enabled state."""
+        self.enabled = enabled
+        if db_manager.redis_client:
+            await db_manager.redis_client.set("spam:settings:enabled", "1" if enabled else "0")
+
+    async def set_threshold(self, threshold: int) -> None:
+        """Set and persist threshold."""
+        self.threshold = threshold
+        if db_manager.redis_client:
+            await db_manager.redis_client.set("spam:settings:threshold", str(threshold))
+
+    async def set_action(self, action: str) -> None:
+        """Set and persist action."""
+        if action not in ["warn", "delete"]:
+            raise ValueError(f"Invalid action: {action}")
+        self.action = action
+        if db_manager.redis_client:
+            await db_manager.redis_client.set("spam:settings:action", action)
 
     async def is_whitelisted(self, member_roles: List[Any], guild_id: str) -> bool:
         """Check if user has a whitelisted role."""
@@ -64,6 +107,8 @@ class SpamDetector:
         Check if the user is cross-posting the same files to multiple channels.
         Returns (is_spam, should_warn).
         """
+        await self._load_settings()
+        
         if not self.enabled or not attachments:
             return False, False
             
@@ -83,6 +128,8 @@ class SpamDetector:
         Check if the user is cross-posting the same message to multiple channels.
         Returns (is_spam, should_warn).
         """
+        await self._load_settings()
+        
         if not self.enabled:
             return False, False
             

@@ -565,11 +565,12 @@ class MemoryManager:
             except Exception as e:
                 logger.error(f"Failed to clear Postgres history: {e}")
 
-        # 2. Clear Qdrant
+        # 2. Clear Qdrant (use character-specific collection)
         if db_manager.qdrant_client:
             try:
+                collection_name = f"whisperengine_memory_{character_name}"
                 await db_manager.qdrant_client.delete(
-                    collection_name=self.collection_name,
+                    collection_name=collection_name,
                     points_selector=Filter(
                         must=[
                             FieldCondition(
