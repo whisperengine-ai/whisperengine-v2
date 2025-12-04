@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from src_v2.config.settings import settings
 from src_v2.memory.context_builder import context_builder
 from src_v2.broadcast.cross_bot import cross_bot_manager
+from src_v2.agents.conversation_agent import conversation_agent
 from src_v2.core.character import character_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
@@ -1473,6 +1474,19 @@ Recent channel context:
                     user_id=cross_bot_user_id,
                     force_fast=use_fast_mode
                 )
+                
+                # Check if this is the last turn - if so, append a closing message
+                if cross_bot_manager.is_last_turn(str(message.channel.id)):
+                    try:
+                        closer = await conversation_agent.generate_closer(
+                            speaker_name=self.bot.character_name,
+                            partner_name=other_bot_name
+                        )
+                        if closer:
+                            response = f"{response}\n\n{closer}"
+                            logger.info("Appended closing message to final turn of bot conversation")
+                    except Exception as e:
+                        logger.warning(f"Failed to generate closer: {e}")
                 
                 # Send response as a reply
                 sent_message = await message.reply(response, mention_author=True)

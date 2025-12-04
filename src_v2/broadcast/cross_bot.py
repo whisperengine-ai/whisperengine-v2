@@ -215,7 +215,19 @@ class CrossBotManager:
         if not chain:
             return False
         return not chain.is_expired() and chain.message_count > 0
-    
+
+    def is_last_turn(self, channel_id: str) -> bool:
+        """
+        Check if the next response would be the last turn in the chain.
+        Used to trigger closing message generation.
+        """
+        chain = self._active_chains.get(channel_id)
+        if not chain:
+            return False
+        # After we respond, message_count will be incremented by 1
+        # So if current count + 1 >= max, this is the last turn
+        return (chain.message_count + 1) >= settings.CROSS_BOT_MAX_CHAIN
+
     def _set_cooldown(self, channel_id: str) -> None:
         """Set cooldown for a channel."""
         self._channel_cooldowns[channel_id] = datetime.now(timezone.utc)
