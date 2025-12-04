@@ -84,7 +84,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟡 Medium | **E21** | **Semantic Routing (Fast Path)** | **1-2 days** | — | 📋 Next |
+| 🟢 High | **E22** | **Absence Tracking (Meta-Memory)** | **1 day** | E12 ✅, E23 ✅ | 📋 Next |
+| ⚪ Low | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
 | 🟡 Medium | **B5** | **Trace Learning** | **3-4 days** | Insight Agent ✅ | 📋 Proposed |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | 📋 Proposed |
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | 📋 Proposed |
@@ -237,12 +238,13 @@ Optimized for a single developer with AI tools (Copilot, Claude). Key principles
 - 🗄️ Phase B5: Audio Processing (DEFERRED)
 - 🗄️ Phase C3: Video Processing (DEFERRED)
 - 🗄️ Phase E20: Bot Introspection Tools (DEFERRED → Handled by Natural Language)
+- 🗄️ Phase E21: Semantic Routing (DEFERRED → Premature Optimization)
 
 **Status:** Core feature development complete. All major phases done. Phase E (Character Depth) proposed.
 
-> **Note on A5:** Channel Context Awareness was archived on Nov 26, 2025. Users are accustomed to per-user scoped memory, and the feature's complexity (new tools, router changes, cache management) outweighed its benefits. See [CHANNEL_CONTEXT_AWARENESS.md](./roadmaps/CHANNEL_CONTEXT_AWARENESS.md) for full rationale.
-
 > **Note on E20:** Bot Introspection Tools spec was written assuming bots need dedicated debugging infrastructure. However, introspection works naturally through conversation: users (and other bots) ask "What model are you using?" or "Are you online?" and the system answers via existing tools + shared memory artifacts. No dedicated phase needed. See [SPEC-E20-BOT_INTROSPECTION_TOOLS-DEFERRED.md](../archive/SPEC-E20-BOT_INTROSPECTION_TOOLS-DEFERRED.md) for the original design (useful as reference for future enhancements).
+
+> **Note on E21:** Semantic Routing was designed as a latency optimization (500ms faster on greetings/stops). However: (1) Most real users ask complex questions requiring LLM reasoning, (2) Premature optimization before production traffic data, (3) Additional routing layer = more gates to debug, (4) Better ROI spending that 1 day on E22 (Absence Tracking) which directly improves character depth. Will revisit if production metrics show trivial query traffic > 50%. See [SPEC-E21-SEMANTIC_ROUTING.md](./SPEC-E21-SEMANTIC_ROUTING.md) for detailed design if needed later.
 
 ---
 
@@ -1784,20 +1786,62 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 
 ---
 
-### 📋 Phase E21: Semantic Routing (Fast Path)
-**Priority:** 🟡 Medium | **Time:** 1-2 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+### 🗄️ Phase E21: Semantic Routing (Fast Path)
+**Priority:** ⚪ Low | **Time:** 1 day | **Complexity:** Low-Medium
+**Status:** 🗄️ Deferred (Premature Optimization)
 **Dependencies:** None
 **Added:** December 2025
+**Deferred:** December 3, 2025
 
-**Problem:** The `ComplexityClassifier` uses an LLM for every message, adding latency and cost even for trivial inputs ("Hi", "Stop").
+**What it does:** Embedding-based archetype matching for trivial queries ("Hi", "Bye", "Stop") to save 400-800ms latency by bypassing LLM.
 
-**Solution:** Implement a local, embedding-based router before the LLM.
-- **Semantic Router**: Uses `fastembed` to match inputs against archetypes (Greeting, Stop, Voice, Image).
-- **Fast Path**: If similarity > 0.82, bypass LLM and route immediately.
-- **Fallback**: Ambiguous inputs fall through to the LLM classifier.
+**Why deferred:** 
+- Most real users ask complex, multi-turn questions → LLM required anyway
+- Adding routing gates increases debugging surface (Occam's Razor)
+- No production traffic data yet; premature optimization before metrics
+- Better ROI: 1 day on E22 (Absence Tracking) unlocks character depth vs 500ms latency savings
+- When deferred: revisit if production shows >50% of queries are trivial
 
-**Spec:** [ref/REF-021-SEMANTIC_ROUTING.md](./ref/REF-021-SEMANTIC_ROUTING.md)
+**Spec:** [SPEC-E21-SEMANTIC_ROUTING.md](./SPEC-E21-SEMANTIC_ROUTING.md) (reference for future implementation)
+
+---
+
+### 📋 Phase E22: Absence Tracking (Meta-Memory)
+**Priority:** 🟢 High | **Time:** 1 day | **Complexity:** Low-Medium
+**Status:** 📋 Next (Ready to implement)
+**Dependencies:** E12 (Agentic Dreams) ✅, E23 (Schedule Jitter) ✅
+**Added:** December 3, 2025
+
+**The Insight:** When the system tries to retrieve something and fails, that absence is meaningful. "I tried to remember and couldn't" creates character depth different from simply not retrieving.
+
+**Problem:** Currently we log `insufficient_material` and `insufficient_sessions` but don't store absences as memory. The *shape of what's missing* might be as important as what's present.
+
+**Solution:** Store absence traces as a memory type:
+```python
+# When dream generation fails due to insufficient material
+await memory_manager.add_memory(
+    source=MemorySource.DREAM_ABSENCE,
+    content="Attempted to dream about relationships but insufficient material.",
+    user_id=None,  # System reflection
+    metadata={"attempted_topic": "relationships", "reason": "insufficient_episodes"}
+)
+```
+
+**Character Benefit:** 
+- Bots notice their own knowledge gaps ("I keep wanting to dream about your family, but you haven't mentioned them")
+- Absence patterns inform behavior ("I've never dreamed about music, but that fascinates me")
+- Meta-memories create richer self-model
+
+**Implementation:** 2-3 files, ~150 LOC
+- Add `DREAM_ABSENCE`, `MEMORY_ABSENCE` to MemorySource enum
+- Capture absence in diary/dream generation failures
+- Make absences retrievable in context building
+
+**Emergence Alignment:** Absence is not a bug—it's data. The system learns what it doesn't know, not just what it does.
+
+---
+
+### ✅ Phase E23: Schedule Jitter (Organic Timing)
 
 ---
 
