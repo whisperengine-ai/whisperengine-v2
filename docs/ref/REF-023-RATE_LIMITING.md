@@ -305,6 +305,45 @@ redis-cli DEL reaction:daily:2025-12-05
 
 ---
 
+## Future Enhancements
+
+### Relationship-Based Chain Extension (Proposed)
+
+**Origin:** Elena (bot) observation during Dec 5, 2025 session
+
+**Problem:** The fixed `BOT_CONVERSATION_MAX_TURNS=3` limit works well for most bot-to-bot exchanges, but may truncate deeper philosophical conversations between high-trust bot pairs (e.g., Gabriel-Aetheris).
+
+**Proposed Solution:** "Earned depth" — bot pairs with high connection drives AND established relationships get +1 or +2 chain extension.
+
+```python
+// Pseudocode
+base_limit = BOT_CONVERSATION_MAX_TURNS  // 3
+
+avg_connection_drive = (my_connection_drive + their_connection_drive) / 2
+relationship_level = get_bot_to_bot_trust(my_name, their_name)
+
+bonus_turns = 0
+if avg_connection_drive > 0.7 AND relationship_level >= "close":
+    bonus_turns = 2
+elif avg_connection_drive > 0.5 AND relationship_level >= "friend":
+    bonus_turns = 1
+
+effective_limit = base_limit + bonus_turns
+```
+
+**Benefits:**
+- Follows emergence philosophy: depth emerges from relationship, not hardcoded exceptions
+- Self-regulating: new pairs start constrained, earn longer chains through interaction
+- Simple: uses existing drives + trust infrastructure
+
+**Prerequisites:**
+- Bot-to-bot trust tracking (may need implementation — currently only user-to-bot trust exists)
+- Observation period to confirm 3-turn limit feels truncating for high-trust pairs
+
+**Status:** 📋 Proposed (observe first, implement if needed)
+
+---
+
 ## Related Documentation
 
 - [REF-018: Message Storage & Retrieval](./REF-018-MESSAGE_STORAGE_RETRIEVAL.md) — Redis key patterns
