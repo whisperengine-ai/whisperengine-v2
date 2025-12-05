@@ -101,13 +101,13 @@ async def run_graph_enrichment(
         logger.error(f"Failed to fetch messages for enrichment: {e}")
         return {"success": False, "error": str(e)}
     
-    logger.info(f"Running graph enrichment for channel {channel_id} ({len(messages)} messages)")
+    logger.info(f"Running graph enrichment for channel {channel_id} ({len(messages_dict)} messages)")
     
     try:
         from src_v2.knowledge.enrichment import enrichment_agent
         
         result = await enrichment_agent.enrich_from_conversation(
-            messages=messages,
+            messages=messages_dict,
             channel_id=channel_id,
             server_id=server_id,
             bot_name=bot_name

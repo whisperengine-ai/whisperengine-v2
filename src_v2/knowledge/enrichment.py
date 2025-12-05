@@ -126,6 +126,39 @@ class GraphEnrichmentAgent:
         if not messages:
             return result
         
+        # Normalize messages to dict format (handle both dict and LangChain message objects)
+        normalized_messages = []
+        for m in messages:
+            if isinstance(m, dict):
+                normalized_messages.append(m)
+            else:
+                # Handle LangChain message objects or other objects with attributes
+                try:
+                    user_id = 'unknown'
+                    if hasattr(m, 'additional_kwargs') and isinstance(m.additional_kwargs, dict):
+                        user_id = m.additional_kwargs.get('user_id', 'unknown')
+                    elif hasattr(m, 'user_id'):
+                        user_id = getattr(m, 'user_id', 'unknown')
+                    
+                    content = getattr(m, 'content', str(m))
+                    
+                    timestamp = 'unknown'
+                    if hasattr(m, 'additional_kwargs') and isinstance(m.additional_kwargs, dict):
+                        timestamp = m.additional_kwargs.get('timestamp', datetime.now(timezone.utc).isoformat())
+                    else:
+                        timestamp = datetime.now(timezone.utc).isoformat()
+                    
+                    normalized_messages.append({
+                        "user_id": user_id,
+                        "content": content,
+                        "timestamp": timestamp
+                    })
+                except Exception as obj_e:
+                    logger.warning(f"Could not normalize message object: {obj_e}")
+                    continue
+        
+        messages = normalized_messages
+        
         # Extract participants
         participants = set(m.get('user_id') for m in messages if m.get('user_id'))
         

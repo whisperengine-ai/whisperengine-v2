@@ -180,8 +180,14 @@ class GetMessageContextTool(BaseTool):
             return "Error: No channel context available."
             
         try:
+            # Validate and convert message_id to int
+            try:
+                message_id_int = int(message_id)
+            except (ValueError, TypeError):
+                return f"Error: Invalid message ID format '{message_id}'. Expected a numeric ID."
+            
             # Fetch the target message
-            target_msg = await self.channel.fetch_message(int(message_id)) # type: ignore
+            target_msg = await self.channel.fetch_message(message_id_int) # type: ignore
             
             # Get messages before
             before_msgs = []
