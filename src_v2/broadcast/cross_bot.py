@@ -228,6 +228,38 @@ class CrossBotManager:
         # So if current count + 1 >= max, this is the last turn
         return (chain.message_count + 1) >= settings.CROSS_BOT_MAX_CHAIN
 
+    def get_conversation_phase(self, channel_id: str) -> str:
+        """
+        Get a soft hint about the conversation phase.
+        Returns context that gently suggests where the conversation is,
+        allowing emergent endings rather than forced ones.
+        
+        Returns:
+            Empty string for early conversation,
+            Soft hint for middle/late conversation
+        """
+        chain = self._active_chains.get(channel_id)
+        if not chain:
+            return ""
+        
+        turn_count = chain.message_count
+        max_turns = settings.CROSS_BOT_MAX_CHAIN
+        
+        # Early conversation (turns 1-3): no hint needed
+        if turn_count < 3:
+            return ""
+        
+        # Middle conversation (turns 3-5): gentle awareness
+        if turn_count < max_turns - 2:
+            return "\n[CONVERSATION FLOW: You've been chatting for a bit. Continue naturally.]"
+        
+        # Approaching natural pause (turns 5+): soft hint
+        # This is NOT a command to end - just awareness that enables organic closure
+        return """\n[CONVERSATION FLOW: This has been a nice exchange. 
+If it feels natural to wrap up with a warm closing, you can.
+If there's genuinely more to explore, continue.
+Trust your instincts - there's no pressure either way.]"""
+
     def _set_cooldown(self, channel_id: str) -> None:
         """Set cooldown for a channel."""
         self._channel_cooldowns[channel_id] = datetime.now(timezone.utc)

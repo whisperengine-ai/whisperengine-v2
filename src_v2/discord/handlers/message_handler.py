@@ -10,7 +10,6 @@ from zoneinfo import ZoneInfo
 from src_v2.config.settings import settings
 from src_v2.memory.context_builder import context_builder
 from src_v2.broadcast.cross_bot import cross_bot_manager
-from src_v2.agents.conversation_agent import conversation_agent
 from src_v2.core.character import character_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
@@ -1486,6 +1485,9 @@ Do NOT treat their message as if they are sharing their own dream or diary.
 
                 # Build a special system prompt addition for cross-bot interaction
                 # Include all retrieved context like the normal user path
+                # Get soft conversation phase hint (emergent endings vs forced)
+                conversation_phase_hint = cross_bot_manager.get_conversation_phase(str(message.channel.id))
+                
                 cross_bot_context = f"""
 [CROSS-BOT CONVERSATION]
 You are engaging in a conversation with another AI character named {other_bot_name.title()}.
@@ -1494,7 +1496,7 @@ This is a playful interaction between characters. Keep your response:
 - Relatively brief (1-3 sentences)
 - Natural and conversational
 - Avoid being repetitive or forcing the conversation
-{original_context}
+{original_context}{conversation_phase_hint}
 
 [RECENT CONVERSATION HISTORY WITH {other_bot_name.upper()}]
 {formatted_history if formatted_history else "No recent conversation history."}
@@ -1541,19 +1543,9 @@ Recent channel context:
                     force_fast=use_fast_mode
                 )
                 
-                # Check if this is the last turn - if so, append a closing message
-                if cross_bot_manager.is_last_turn(str(message.channel.id)):
-                    try:
-                        closer = await conversation_agent.generate_closer(
-                            speaker_name=self.bot.character_name,
-                            partner_name=other_bot_name
-                        )
-                        if closer:
-                            response = f"{response}\n\n{closer}"
-                            logger.info("Appended closing message to final turn of bot conversation")
-                    except Exception as e:
-                        logger.warning(f"Failed to generate closer: {e}")
-                
+                # Note: Conversation endings are now emergent via soft hints in cross_bot_context
+                # The bot decides naturally if/when to wrap up based on conversation flow
+
                 # Send response as a reply
                 sent_message = await message.reply(response, mention_author=True)
                 
