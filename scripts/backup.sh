@@ -1,6 +1,14 @@
 #!/bin/bash
 # WhisperEngine v2 - Database Backup Script
 # Backs up PostgreSQL, Qdrant, Neo4j, and InfluxDB to a timestamped directory
+#
+# Usage:
+#   ./scripts/backup.sh                    # Manual backup
+#   BACKUP_DIR=/backups ./scripts/backup.sh # Custom backup location
+#
+# For automated backups, add to crontab:
+#   0 2 * * * cd /path/to/whisperengine-v2 && ./scripts/backup.sh
+#   (Runs backup every day at 2 AM)
 
 set -e
 
@@ -26,6 +34,14 @@ INFLUXDB_CONTAINER="whisperengine-v2-influxdb"
 POSTGRES_USER="whisper"
 POSTGRES_DB="whisperengine_v2"
 
+# Neo4j credentials (from docker-compose.yml)
+NEO4J_USER="neo4j"
+NEO4J_PASSWORD="${NEO4J_PASSWORD:-password}"
+
+# InfluxDB credentials (from docker-compose.yml)
+INFLUXDB_ORG="whisperengine"
+INFLUXDB_TOKEN="${INFLUXDB_TOKEN:-my-super-secret-auth-token}"
+
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  WhisperEngine v2 - Database Backup    ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
@@ -41,10 +57,16 @@ mkdir -p "$BACKUP_DIR"
 # ============================================
 echo -e "${YELLOW}[1/4] Backing up PostgreSQL...${NC}"
 if docker ps --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER}$"; then
-    docker exec "$POSTGRES_CONTAINER" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom > "$BACKUP_DIR/postgres.dump"
-    echo -e "${GREEN}  ✓ PostgreSQL backed up ($(du -h "$BACKUP_DIR/postgres.dump" | cut -f1))${NC}"
+    if docker exec "$POSTGRES_CONTAINER" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom > "$BACKUP_DIR/postgres.dump" 2>/dev/null; then
+        SIZE=$(du -h "$BACKUP_DIR/postgres.dump" | cut -f1)
+        echo -e "${GREEN}  ✓ PostgreSQL backed up ($SIZE)${NC}"
+    else
+        echo -e "${RED}  ✗ PostgreSQL backup failed${NC}"
+        exit 1
+    fi
 else
-    echo -e "${RED}  ✗ PostgreSQL container not running, skipping${NC}"
+    echo -e "${RED}  ✗ PostgreSQL container not running${NC}"
+    exit 1
 fi
 
 # ============================================
@@ -53,21 +75,25 @@ fi
 echo -e "${YELLOW}[2/4] Backing up Qdrant...${NC}"
 if docker ps --format '{{.Names}}' | grep -q "^${QDRANT_CONTAINER}$"; then
     # Create snapshot via API
-    SNAPSHOT_RESPONSE=$(curl -s -X POST "http://localhost:6333/snapshots")
+    SNAPSHOT_RESPONSE=$(curl -s -X POST "http://localhost:6333/snapshots" 2>/dev/null || echo '{}')
     SNAPSHOT_NAME=$(echo "$SNAPSHOT_RESPONSE" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
     
     if [ -n "$SNAPSHOT_NAME" ]; then
         # Download the snapshot
-        curl -s "http://localhost:6333/snapshots/$SNAPSHOT_NAME" -o "$BACKUP_DIR/qdrant_snapshot.tar"
-        echo -e "${GREEN}  ✓ Qdrant backed up ($(du -h "$BACKUP_DIR/qdrant_snapshot.tar" | cut -f1))${NC}"
-        
-        # Clean up remote snapshot
-        curl -s -X DELETE "http://localhost:6333/snapshots/$SNAPSHOT_NAME" > /dev/null
+        if curl -s "http://localhost:6333/snapshots/$SNAPSHOT_NAME" -o "$BACKUP_DIR/qdrant_snapshot.tar" 2>/dev/null; then
+            SIZE=$(du -h "$BACKUP_DIR/qdrant_snapshot.tar" | cut -f1)
+            echo -e "${GREEN}  ✓ Qdrant backed up ($SIZE)${NC}"
+            
+            # Clean up remote snapshot
+            curl -s -X DELETE "http://localhost:6333/snapshots/$SNAPSHOT_NAME" > /dev/null 2>&1 || true
+        else
+            echo -e "${RED}  ✗ Failed to download Qdrant snapshot${NC}"
+        fi
     else
-        echo -e "${RED}  ✗ Failed to create Qdrant snapshot${NC}"
+        echo -e "${YELLOW}  ⚠ Failed to create Qdrant snapshot (no data?)${NC}"
     fi
 else
-    echo -e "${RED}  ✗ Qdrant container not running, skipping${NC}"
+    echo -e "${RED}  ✗ Qdrant container not running${NC}"
 fi
 
 # ============================================
@@ -75,29 +101,36 @@ fi
 # ============================================
 echo -e "${YELLOW}[3/4] Backing up Neo4j...${NC}"
 if docker ps --format '{{.Names}}' | grep -q "^${NEO4J_CONTAINER}$"; then
-    # Use cypher-shell to export all nodes and relationships
-    docker exec "$NEO4J_CONTAINER" cypher-shell -u neo4j -p password \
-        "CALL apoc.export.cypher.all(null, {format: 'plain', stream: true}) YIELD cypherStatements RETURN cypherStatements" \
-        2>/dev/null > "$BACKUP_DIR/neo4j.cypher" || {
-        # Fallback: export nodes as JSON if APOC not available
-        echo -e "${YELLOW}  APOC not available, using basic export...${NC}"
-        docker exec "$NEO4J_CONTAINER" cypher-shell -u neo4j -p password \
-            "MATCH (n) RETURN labels(n) as labels, properties(n) as props" \
-            --format plain > "$BACKUP_DIR/neo4j_nodes.txt" 2>/dev/null
-        docker exec "$NEO4J_CONTAINER" cypher-shell -u neo4j -p password \
-            "MATCH (a)-[r]->(b) RETURN labels(a), id(a), type(r), properties(r), labels(b), id(b)" \
-            --format plain > "$BACKUP_DIR/neo4j_rels.txt" 2>/dev/null
-    }
+    # Check if APOC is available
+    HAS_APOC=$(docker exec "$NEO4J_CONTAINER" cypher-shell -u "$NEO4J_USER" -p "$NEO4J_PASSWORD" \
+        "RETURN apoc.version()" 2>/dev/null | grep -i version | wc -l)
     
-    # Check if we got any output
-    if [ -s "$BACKUP_DIR/neo4j.cypher" ] || [ -s "$BACKUP_DIR/neo4j_nodes.txt" ]; then
-        NEO4J_SIZE=$(du -ch "$BACKUP_DIR"/neo4j* 2>/dev/null | tail -1 | cut -f1)
-        echo -e "${GREEN}  ✓ Neo4j backed up ($NEO4J_SIZE)${NC}"
+    if [ "$HAS_APOC" -gt 0 ]; then
+        # Use APOC to export all nodes and relationships
+        if docker exec "$NEO4J_CONTAINER" cypher-shell -u "$NEO4J_USER" -p "$NEO4J_PASSWORD" \
+            "CALL apoc.export.cypher.all(null, {format: 'plain'}) YIELD cypherStatements RETURN cypherStatements" \
+            > "$BACKUP_DIR/neo4j.cypher" 2>/dev/null; then
+            SIZE=$(du -h "$BACKUP_DIR/neo4j.cypher" | cut -f1)
+            echo -e "${GREEN}  ✓ Neo4j backed up ($SIZE)${NC}"
+        else
+            echo -e "${YELLOW}  ⚠ Neo4j backup may have failed${NC}"
+        fi
     else
-        echo -e "${YELLOW}  ⚠ Neo4j backup may be empty (no data?)${NC}"
+        # Fallback: basic node/relationship export
+        echo -e "${YELLOW}  APOC not available, using basic export...${NC}"
+        docker exec "$NEO4J_CONTAINER" cypher-shell -u "$NEO4J_USER" -p "$NEO4J_PASSWORD" \
+            "MATCH (n) RETURN labels(n) as labels, properties(n) as props" \
+            --format plain > "$BACKUP_DIR/neo4j_nodes.txt" 2>/dev/null || true
+        
+        if [ -s "$BACKUP_DIR/neo4j_nodes.txt" ]; then
+            SIZE=$(du -h "$BACKUP_DIR/neo4j_nodes.txt" | cut -f1)
+            echo -e "${GREEN}  ✓ Neo4j nodes backed up ($SIZE - basic format)${NC}"
+        else
+            echo -e "${YELLOW}  ⚠ Neo4j backup is empty (no data?)${NC}"
+        fi
     fi
 else
-    echo -e "${RED}  ✗ Neo4j container not running, skipping${NC}"
+    echo -e "${RED}  ✗ Neo4j container not running${NC}"
 fi
 
 # ============================================
@@ -105,22 +138,26 @@ fi
 # ============================================
 echo -e "${YELLOW}[4/4] Backing up InfluxDB...${NC}"
 if docker ps --format '{{.Names}}' | grep -q "^${INFLUXDB_CONTAINER}$"; then
-    # Use influx CLI to backup
-    docker exec "$INFLUXDB_CONTAINER" influx backup /tmp/influx_backup \
-        --org whisperengine \
-        --token my-super-secret-auth-token \
-        2>/dev/null
-    
-    # Copy backup out of container
-    docker cp "$INFLUXDB_CONTAINER:/tmp/influx_backup" "$BACKUP_DIR/influxdb"
-    
-    # Cleanup inside container
-    docker exec "$INFLUXDB_CONTAINER" rm -rf /tmp/influx_backup
-    
-    INFLUX_SIZE=$(du -sh "$BACKUP_DIR/influxdb" 2>/dev/null | cut -f1)
-    echo -e "${GREEN}  ✓ InfluxDB backed up ($INFLUX_SIZE)${NC}"
+    if docker exec "$INFLUXDB_CONTAINER" influx backup /tmp/influx_backup \
+        --org "$INFLUXDB_ORG" \
+        --token "$INFLUXDB_TOKEN" \
+        2>/dev/null; then
+        
+        # Copy backup out of container
+        if docker cp "$INFLUXDB_CONTAINER:/tmp/influx_backup" "$BACKUP_DIR/influxdb" 2>/dev/null; then
+            SIZE=$(du -sh "$BACKUP_DIR/influxdb" 2>/dev/null | cut -f1)
+            echo -e "${GREEN}  ✓ InfluxDB backed up ($SIZE)${NC}"
+            
+            # Cleanup inside container
+            docker exec "$INFLUXDB_CONTAINER" rm -rf /tmp/influx_backup 2>/dev/null || true
+        else
+            echo -e "${RED}  ✗ Failed to copy InfluxDB backup${NC}"
+        fi
+    else
+        echo -e "${YELLOW}  ⚠ InfluxDB backup failed or empty${NC}"
+    fi
 else
-    echo -e "${RED}  ✗ InfluxDB container not running, skipping${NC}"
+    echo -e "${RED}  ✗ InfluxDB container not running${NC}"
 fi
 
 # ============================================
@@ -137,3 +174,4 @@ echo "Contents:"
 ls -lh "$BACKUP_DIR"
 echo ""
 echo -e "${BLUE}To restore: ${NC}./scripts/restore.sh $BACKUP_DIR"
+echo ""
