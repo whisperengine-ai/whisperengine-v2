@@ -360,11 +360,16 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 **Location**: `src_v2/config/settings.py` (Pydantic BaseSettings)
 
-**Critical flags**:
-- `ENABLE_REFLECTIVE_MODE` (default: false): ReAct reasoning loop (~$0.02-0.03 per complex query)
-- `ENABLE_RUNTIME_FACT_EXTRACTION` (default: true): Extract facts to Neo4j ($0.001 per message)
+**Critical flags** (most now default to true since Phase 1 is complete):
+- `ENABLE_REFLECTIVE_MODE` (default: true): ReAct reasoning loop for complex queries
+- `ENABLE_RUNTIME_FACT_EXTRACTION` (default: true): Extract facts to Neo4j
 - `ENABLE_PREFERENCE_EXTRACTION` (default: true): Detect "be concise" style hints
-- `ENABLE_AUTONOMOUS_ACTIVITY` (default: false): Master switch for all social presence (lurking, reacting, posting)
+- `ENABLE_AUTONOMOUS_DRIVES` (default: true): Social Battery, Concern, Curiosity
+- `ENABLE_GOAL_STRATEGIST` (default: true): Nightly goal analysis
+- `ENABLE_UNIVERSE_EVENTS` (default: true): Cross-bot gossip system
+- `ENABLE_GRAPH_ENRICHMENT` (default: true): Proactive graph edge creation
+- `ENABLE_GRAPH_PRUNING` (default: true): Graph cleanup
+- `ENABLE_AUTONOMOUS_ACTIVITY` (default: false): Master switch for social presence (per-bot decision)
 - `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
 - `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
 
@@ -457,6 +462,6 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 ---
 
-**Version**: 2.2.0 (Dec 4, 2025 - E15 complete, E25 complete)  
+**Version**: 2.2.0 (Dec 4, 2025 - Phase 1 Complete, Feature Frozen)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

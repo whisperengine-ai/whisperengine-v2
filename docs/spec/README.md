@@ -6,25 +6,49 @@
 
 ## Document Index
 
-### Active Specifications
+### Complete Specifications
 
 | SPEC | Phase | Name | Status | Description |
 |------|-------|------|--------|-------------|
-| [SPEC-E15](./SPEC-E15-AUTONOMOUS_SERVER_ACTIVITY.md) | E15 | Autonomous Server Activity | 🔄 In Progress | Bot-initiated server engagement |
-| [SPEC-E17](./SPEC-E17-SUPERGRAPH_ARCHITECTURE.md) | E17 | Supergraph Architecture | ✅ Complete | LangGraph orchestration layer |
+| [SPEC-E01](./SPEC-E01-CONVERSATION_THREADING.md) | E1 | Conversation Threading | ✅ Complete | Multi-turn conversation context |
+| [SPEC-E02](./SPEC-E02-ADVANCED_MEMORY_RETRIEVAL.md) | E2 | Advanced Memory Retrieval | ✅ Complete | Hybrid memory search |
+| [SPEC-E03](./SPEC-E03-USER_IDENTIFICATION.md) | E3 | User Identification | ✅ Complete | Display name storage |
+| [SPEC-E04](./SPEC-E04-RELATIONSHIP_MILESTONES.md) | E4 | Relationship Milestones | ✅ Complete | Trust level transitions |
+| [SPEC-E05](./SPEC-E05-SCHEDULED_REMINDERS.md) | E5 | Scheduled Reminders | ✅ Complete | User reminder system |
+| [SPEC-E06](./SPEC-E06-CHARACTER_TO_CHARACTER.md) | E6 | Character-to-Character | ✅ Complete | Cross-bot conversations |
+| [SPEC-E06B](./SPEC-E06B-CROSS_BOT_MEMORY.md) | E6B | Cross-Bot Memory | ✅ Complete | Shared memory artifacts |
+| [SPEC-E07](./SPEC-E07-USER_TIMEZONE_SUPPORT.md) | E7 | User Timezone Support | ✅ Complete | Timezone-aware scheduling |
+| [SPEC-E08](./SPEC-E08-IMAGE_GENERATION.md) | E8 | Image Generation | ✅ Complete | Flux Pro integration |
+| [SPEC-E09](./SPEC-E09-ARTIFACT_PROVENANCE.md) | E9 | Artifact Provenance | ✅ Complete | Source attribution |
+| [SPEC-E10](./SPEC-E10-TRIGGERED_VOICE_RESPONSES.md) | E10 | Triggered Voice Responses | ✅ Complete | ElevenLabs TTS |
+| [SPEC-E11](./SPEC-E11-DISCORD_SEARCH_TOOLS.md) | E11 | Discord Search Tools | ✅ Complete | Channel/message search |
+| [SPEC-E12](./SPEC-E12-INSIGHT_AGENT.md) | E12 | Insight Agent | ✅ Complete | Pattern detection |
+| [SPEC-E13](./SPEC-E13-STIGMERGIC_ARTIFACTS.md) | E13 | Stigmergic Artifacts | ✅ Complete | Cross-bot discovery |
+| [SPEC-E14](./SPEC-E14-WEB_SEARCH_TOOL.md) | E14 | Web Search Tool | ✅ Complete | DuckDuckGo integration |
+| [SPEC-E15](./SPEC-E15-AUTONOMOUS_SERVER_ACTIVITY.md) | E15 | Autonomous Server Activity | ✅ Complete | Bot-initiated engagement |
+| [SPEC-E16](./SPEC-E16-FEEDBACK_LOOP_STABILITY.md) | E16 | Feedback Loop Stability | ✅ Complete | Personality drift observation |
+| [SPEC-E17](./SPEC-E17-SUPERGRAPH_ARCHITECTURE.md) | E17 | Supergraph Architecture | ✅ Complete | LangGraph orchestration |
 | [SPEC-E18](./SPEC-E18-AGENTIC_QUEUE_SYSTEM.md) | E18 | Agentic Queue System | ✅ Complete | Background task processing |
 | [SPEC-E19](./SPEC-E19-GRAPH_WALKER_AGENT.md) | E19 | Graph Walker Agent | ✅ Complete | Dynamic graph exploration |
-| [SPEC-E16](./SPEC-E16-FEEDBACK_LOOP_STABILITY.md) | E16 | Feedback Loop Stability | ✅ Complete | Emergent behavior guardrails |
-| [SPEC-E21](./SPEC-E21-SEMANTIC_ROUTING.md) | E21 | Semantic Routing | 📋 Proposed | Fast-path intent detection |
-| [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | 🔄 E25 Complete | Graph enrichment, temporal, multi-char |
-| [SPEC-E26](./SPEC-E26-DRIVE_WEIGHT_SEMANTICS.md) | E26 | Drive Weight Semantics | 📋 Proposed | Numeric → natural language conversion |
+| [SPEC-E22](./SPEC-E22-ABSENCE_TRACKING.md) | E22 | Absence Tracking | ✅ Complete | Memory decay patterns |
+| [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | ✅ Complete | Enrichment, temporal, user-facing |
+| [SPEC-B05](./SPEC-B05-TRACE_LEARNING.md) | B5 | Trace Learning | ✅ Complete | Few-shot injection |
+| [SPEC-C02](./SPEC-C02-CHANNEL_LURKING.md) | C2 | Channel Lurking | ✅ Complete | Passive engagement |
+| [SPEC-S01](./SPEC-S01-CONTENT_SAFETY_REVIEW.md) | S1 | Content Safety Review | ✅ Complete | Output safety checks |
+| [SPEC-S02](./SPEC-S02-CLASSIFIER_OBSERVABILITY.md) | S2 | Classifier Observability | ✅ Complete | Classification metrics |
+| [SPEC-S03](./SPEC-S03-LLM_SENSITIVITY_DETECTION.md) | S3 | LLM Sensitivity Detection | ✅ Complete | Universe event filtering |
+| [SPEC-S04](./SPEC-S04-PROACTIVE_TIMEZONE_AWARENESS.md) | S4 | Proactive Timezone Awareness | ✅ Complete | Time-aware messages |
+| [SPEC-S05](./SPEC-S05-MANIPULATION_TIMEOUT.md) | S5 | Manipulation Timeout | ✅ Complete | Jailbreak protection |
 
-### Archived/On Hold
+### Deferred/Future Specifications
 
 | SPEC | Phase | Name | Status | Reason |
 |------|-------|------|--------|--------|
-| [SPEC-A00](./archive/SPEC-A00-EMBEDDING_UPGRADE.md) | A0 | Embedding Upgrade 768D | ⏸️ On Hold | Performance concerns |
-| [SPEC-A05](./archive/SPEC-A05-CHANNEL_CONTEXT.md) | A5 | Channel Context Awareness | 🗄️ Archived | Complexity vs value |
+| [SPEC-E21](./SPEC-E21-PURPOSE_DRIVEN_EMERGENCE.md) | E21 | Semantic Routing | 🗄️ Deferred | Premature optimization |
+| [SPEC-E26](./SPEC-E26-DRIVE_WEIGHT_SEMANTICS.md) | E26 | Drive Weight Semantics | 📋 Future | Natural language drives |
+| [SPEC-B06](./SPEC-B06-RESPONSE_PATTERN_LEARNING.md) | B6 | Response Pattern Learning | 📋 Future | Style adaptation |
+| [SPEC-F01](./SPEC-F01-EMERGENT_UNIVERSE.md) | F1 | Emergent Universe | 📋 Future | Multi-bot ecosystem |
+| [SPEC-F02](./SPEC-F02-FEDERATED_MULTIVERSE.md) | F2 | Federated Multiverse | 📋 Future | Cross-server federation |
 
 ---
 

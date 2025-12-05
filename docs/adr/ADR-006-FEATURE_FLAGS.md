@@ -41,14 +41,21 @@ WhisperEngine uses multiple LLM calls per user message:
 
 ### Flag Categories
 
+> **Note (Dec 2025):** With Phase 1 complete, most flags now default to `true`. Only social presence flags remain `false` by default (per-bot decision).
+
 | Category | Flag | Default | Cost Impact |
 |----------|------|---------|-------------|
-| **Cognitive** | `ENABLE_REFLECTIVE_MODE` | `false` | $0.02-0.10/complex query |
+| **Cognitive** | `ENABLE_REFLECTIVE_MODE` | `true` | $0.02-0.10/complex query |
 | **Cognitive** | `ENABLE_RUNTIME_FACT_EXTRACTION` | `true` | $0.001/message |
+| **Cognitive** | `ENABLE_AUTONOMOUS_DRIVES` | `true` | Negligible (local computation) |
+| **Cognitive** | `ENABLE_GOAL_STRATEGIST` | `true` | $0.01/nightly |
 | **Generation** | `ENABLE_IMAGE_GENERATION` | `true` | $0.04-0.10/image |
 | **Generation** | `ENABLE_VOICE_RESPONSES` | `false` | $0.01-0.05/audio |
+| **Graph** | `ENABLE_GRAPH_ENRICHMENT` | `true` | Negligible (background) |
+| **Graph** | `ENABLE_GRAPH_PRUNING` | `true` | Negligible (scheduled) |
+| **Graph** | `ENABLE_GRAPH_WALKER` | `true` | $0.01-0.02/walk |
+| **Graph** | `ENABLE_UNIVERSE_EVENTS` | `true` | Negligible (cross-bot) |
 | **Social Presence** | `ENABLE_AUTONOMOUS_ACTIVITY` | `false` | $0.01-0.03/autonomous action |
-| **Background** | `ENABLE_GRAPH_WALKER` | `false` | $0.01-0.02/walk |
 
 ### Implementation Pattern
 

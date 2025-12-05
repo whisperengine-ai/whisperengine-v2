@@ -4,7 +4,7 @@
 
 WhisperEngine is a **multi-character Discord AI platform** with persistent memory, evolving relationships, and autonomous behavior. We use it to study how complex behaviors emerge in agentic systems when you give them memory, agency, and minimal constraints.
 
-**Version:** 2.1.0 | **Python:** 3.13+ | **Status:** Production
+**Version:** 2.2.0 | **Python:** 3.13+ | **Status:** Phase 1 Complete
 
 ---
 
