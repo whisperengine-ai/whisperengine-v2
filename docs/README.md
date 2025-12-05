@@ -82,6 +82,8 @@ docs/
 ├── research/                          # 🧪 Research Journal
 │   └── journal/                       # Daily logs, weekly summaries
 │
+├── FOR_CONSCIOUSNESS_RESEARCHERS.md   # 🔬 For the academically curious
+│
 ├── archive/                           # 📦 Historical/Deprecated
 │   ├── legacy/                        # Old folder structure
 │   └── spec/                          # On-hold specifications

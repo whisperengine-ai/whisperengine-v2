@@ -6,6 +6,38 @@ WhisperEngine v2 is a production multi-character Discord AI roleplay platform wi
 
 > **Terminology Note:** We use terms like "perceive," "experience," "memory," and "think" as design metaphors for computational processes. WhisperEngine does not claim to create conscious or sentient AI. See `docs/AI_CHARACTER_DESIGN_PHILOSOPHY.md` for the "Embodiment Model" approach.
 
+## ✍️ Writing Tone & Style
+
+**The vibe:** Technically grounded, philosophically interesting, never pretentious.
+
+We're doing real engineering that might have interesting implications. We don't oversell it.
+
+| ✅ Do | ❌ Don't |
+|-------|---------|
+| Lead with mechanism, then note why it's interesting | Lead with grand claims about consciousness/emergence |
+| Ask questions: "Can personality emerge from retrieval patterns?" | Make claims: "Personality emerges from retrieval patterns" |
+| Show the math — costs, architectures, concrete examples | Hand-wave with buzzwords |
+| Let implications be implicit | Say "this is groundbreaking" |
+| Use explicit disclaimers when needed | Pretend we've solved hard problems |
+
+**Examples:**
+
+```markdown
+# Good
+Characters read their own dreams. We're watching whether this creates 
+coherent self-models or divergent noise.
+
+# Too woo-woo  
+Through recursive self-reflection, characters develop an emergent sense 
+of identity that transcends their initial programming.
+
+# Too dry
+The system stores dream artifacts in PostgreSQL and retrieves them 
+during subsequent LLM calls.
+```
+
+**The key move:** Describe *what* it does, then note *why that might be interesting* — but as a question, not a claim.
+
 ## 🧪 Research Philosophy
 
 **Core Principle: Observe First, Constrain Later**

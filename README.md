@@ -2,85 +2,133 @@
 
 > *"From countless conversations, a universe is born."*
 
-WhisperEngine is a **multi-character Discord AI platform** with persistent memory, evolving relationships, and autonomous behavior. We use it to study how complex behaviors emerge in agentic systems when you give them memory, agency, and minimal constraints.
+WhisperEngine is a **multi-character Discord AI platform** built on a simple premise: **memory shapes behavior**. Give an agent persistent memory, let it read its own outputs, and observe what emerges.
+
+This is not a consciousness claim. It's an engineering hypothesis: complex, coherent behavior can arise from recursive self-reference without explicit personality programming.
 
 **Version:** 2.2.0 | **Python:** 3.13+ | **Status:** Phase 1 Complete
 
 ---
 
-## The Questions We're Exploring
+## 🧬 The Core Idea
 
-**On Memory & Retrieval:**
-- What happens when characters read their own memories, dreams, and diaries? Does coherent behavior emerge from self-reference, or drift into noise?
-- If a character "forgets" something (fails to retrieve it), does that absence shape behavior?
-- Can personality emerge from retrieval patterns alone, without explicit personality parameters?
+Traditional chatbots are **stateless functions**: input → output → forget. WhisperEngine inverts this:
 
-**On Relationships:**
-- What happens when trust is earned slowly over months? Does behavior genuinely change?
-- Can characters learn communication preferences without being explicitly told?
+```
+Memory shapes retrieval → Retrieval shapes response → Response becomes memory → ∞
+```
 
-**On Autonomy:**
-- When given freedom to post, react, and initiate conversations — what do characters actually do?
-- Do characters develop consistent interests, or just mirror what gets engagement?
-- When multiple characters interact with each other, do they develop shared context? Inside jokes?
+**What we're testing:**
+- Can personality emerge from retrieval patterns alone?
+- Do self-referential loops (dreams citing memories citing dreams) stabilize or diverge?
+- What happens when agents read their own artifacts — diaries, dreams, past reasoning?
 
-**On Emergence:**
-- How much can we *not* build and still get coherent behavior?
-- When feedback loops form (dreams → diaries → memories → dreams), do they stabilize or spiral?
-
-**The Meta-Question:**
-> Build the substrate, get out of the way — what happens?
+**The graph is not storage. It's substrate.** Traversal patterns through the knowledge graph *are* the thought patterns. What gets retrieved shapes what gets said. What fails to surface shapes behavior through absence.
 
 ---
 
-## The Bet
+## 🔬 Computational Model
 
-We're betting on **minimal constraint**:
+### Memory as Behavior (Not Configuration)
 
-- **If emergence works:** Complex behavior appears without us hard-coding it.
-- **If emergence fails:** We learn exactly where constraints are necessary. Specs are already written as "break glass" protocols.
+We don't configure personality. We configure *memory formation* and *retrieval patterns*:
 
-Either way, we learn something.
+| Layer | What It Does | Behavioral Effect |
+|-------|--------------|-------------------|
+| **Vector Memory** (Qdrant) | Semantic similarity search | "What feels relevant" — associative recall |
+| **Knowledge Graph** (Neo4j) | Entity/relationship traversal | "What connects to what" — structured reasoning |
+| **Episodic Memory** (Postgres) | Session summaries, preferences | "What happened" — narrative continuity |
+| **Temporal Decay** | Absence tracking, streak counters | "What's fading" — forgetting as behavior |
 
----
+### Open Recursion
 
-## Philosophy: Observe First, Constrain Later
+Characters read their own outputs:
+- **Dreams** → synthesize recent memories → become memories → inform future dreams
+- **Diaries** → reflect on conversations → shape future reflections  
+- **Reasoning traces** → stored and retrieved → few-shot learning from self
 
-Unexpected behaviors are **data, not bugs**. We document what happens before deciding if it needs fixing.
+This creates **feedback loops by design**. The question isn't whether loops form — it's whether they stabilize into coherent personality or drift into noise.
 
-| Principle | What It Means |
-|-----------|---------------|
-| **Vocabulary over Schema** | Express behavior in prompts, not database fields. A "subconscious" memory isn't labeled — it's a memory that keeps failing to surface. |
-| **Open Recursion** | Characters read their own outputs. Dreams reference diaries. Diaries reference memories. The loops are intentional. |
-| **Absence as Data** | What the character *fails* to remember matters. We track retrieval gaps, not just retrievals. |
+### Adaptive Cognition
 
-**Read more:** [Emergence Philosophy](docs/emergence_philosophy/README.md) | [Research Methodology](docs/research/METHODOLOGY.md)
+Not all queries deserve equal computation:
 
----
+| Complexity | Path | Cost |
+|------------|------|------|
+| Simple greeting | Direct LLM response | ~$0.001 |
+| Memory question | Single tool call | ~$0.005 |
+| Complex reasoning | Multi-step ReAct loop | ~$0.02-0.10 |
 
-## The System
-
-**Persistent Memory** — Vector search (Qdrant) for semantic recall. Knowledge graphs (Neo4j) for facts and relationships. Memories consolidate into dreams and diaries during downtime.
-
-**Evolving Relationships** — Trust builds over months across multiple stages. Character openness and initiative change with trust level.
-
-**Autonomous Agency** — Characters post unprompted. React with emoji. Initiate conversations after long absences. Talk to each other.
-
-**Multi-Character** — 11+ distinct personalities. Different LLM backends (Claude, GPT-4, Gemini, Mistral, DeepSeek, Llama). Isolated memory per character.
-
-**Graph-First** — Knowledge as traversable graph. Orchestration as LangGraph state machines.
+The classifier routes based on query complexity — fast when possible, thorough when needed.
 
 ---
 
-## The Five Pillars
+## ✨ Platform Capabilities
 
-| Database | Purpose | Why This One |
-|----------|---------|--------------|
-| **PostgreSQL** | Chat history, users, trust | ACID compliance, relational integrity |
-| **Qdrant** | Semantic memory search | Fast vector similarity |
-| **Neo4j** | Knowledge graph (facts, entities) | Native graph traversal |
-| **InfluxDB** | Metrics & feedback loops | Time-series for drift detection |
-| **Redis** | Cache + background queue | Fast jobs, async cognition |
+### Multi-Character Architecture
+- **11+ distinct personalities** with isolated memory per character
+- **Multi-model backends**: Claude, GPT-4, Gemini, Mistral, DeepSeek, Llama
+- **Trust evolution**: 8-stage relationship system (Stranger → Bonded)
+- **Preference learning**: Adapts to user communication styles
+
+### Autonomous Agency
+- **Proactive messaging**: Initiates conversations after silence
+- **Channel awareness**: Monitors public channels for relevant topics
+- **Bot-to-bot interaction**: Characters converse with each other
+- **Autonomous reactions**: Context-appropriate emoji responses
+
+### Multi-Modal Perception
+- **Vision**: Processes and responds to user images
+- **Image generation**: Flux Pro 1.1 via BFL/Replicate/Fal
+- **Voice synthesis**: ElevenLabs TTS with per-character voices
+
+### Cross-Agent Awareness
+- **Universe events**: Characters share context across instances
+- **Stigmergic discovery**: Agents find each other's artifacts (dreams, diaries)
+- **Shared knowledge**: Facts propagate across the agent network
+
+### Observability
+- **Personality drift detection**: Tracks consistency over time
+- **Full metrics pipeline**: InfluxDB + Grafana dashboards
+- **Manipulation detection**: Identifies jailbreak attempts
+
+---
+
+## 🧭 Research Methodology
+
+**Observe First, Constrain Later.** Unexpected behaviors are data, not bugs.
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Vocabulary over Schema** | Behavior expressed in prompts, not database fields. A "subconscious" memory isn't labeled — it's a memory that keeps failing to surface. |
+| **Emergence over Engineering** | How much can we *not* build and still get coherent behavior? |
+| **Absence as Signal** | Track what *fails* to retrieve, not just what succeeds. Gaps shape behavior. |
+| **Minimal Viable Constraint** | Document emergent patterns before deciding if they need correction. |
+
+**Read more:** [Emergence Philosophy](docs/emergence_philosophy/README.md) | [Research Journal](docs/research/) | [For Consciousness Researchers](docs/FOR_CONSCIOUSNESS_RESEARCHERS.md)
+
+---
+
+## 🏗️ Technical Architecture
+
+### Infrastructure (The Five Pillars)
+
+| Layer | Technology | Role in Cognition |
+|-------|------------|-------------------|
+| **Relational** | PostgreSQL | Chat history, trust scores, session state |
+| **Semantic** | Qdrant | Vector similarity search — "what feels related" |
+| **Structural** | Neo4j | Graph traversal — "what connects to what" |
+| **Temporal** | InfluxDB | Metrics, drift detection, feedback loops |
+| **Reactive** | Redis + arq | Cache, background jobs, async cognition |
+
+### LangGraph Orchestration
+
+All cognitive paths are state machines:
+- **MasterGraph**: Top-level orchestrator
+- **ReflectiveGraph**: Multi-step reasoning with tools
+- **CharacterGraph**: Single-tool agency
+- **DiaryGraph / DreamGraph**: Narrative generation
+- **InsightGraph**: Background pattern detection
 
 ---
 
@@ -88,11 +136,13 @@ Unexpected behaviors are **data, not bugs**. We document what happens before dec
 
 | Topic | Link |
 |-------|------|
-| Research philosophy | [Emergence Philosophy](docs/emergence_philosophy/README.md) |
-| Research journal | [Research Journal](docs/research/) |
 | Full roadmap | [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md) |
-| Architecture | [Graph Systems](docs/architecture/GRAPH_SYSTEMS_DESIGN.md), [Cognitive Engine](docs/architecture/COGNITIVE_ENGINE.md), [Memory](docs/architecture/MEMORY_SYSTEM_V2.md) |
-| Characters | [Creating Characters](docs/CREATING_NEW_CHARACTERS.md), [Multi-Bot Deploy](docs/MULTI_BOT_DEPLOYMENT.md) |
+| API Reference | [API Documentation](docs/ref/REF-030-API_REFERENCE.md) |
+| Architecture | [Cognitive Engine](docs/ref/REF-001-COGNITIVE_ENGINE.md), [Memory System](docs/ref/REF-003-MEMORY_SYSTEM.md), [Graph Systems](docs/ref/REF-002-GRAPH_SYSTEMS.md) |
+| Research | [Emergence Philosophy](docs/emergence_philosophy/README.md), [Research Journal](docs/research/) |
+| Characters | [Creating Characters](docs/guide/GUIDE-020-CREATING_CHARACTERS.md) |
+| PRDs | [Product Requirements](docs/prd/README.md) |
+| Specs | [Technical Specifications](docs/spec/README.md) |
 
 Full docs index: [docs/README.md](docs/README.md)
 
