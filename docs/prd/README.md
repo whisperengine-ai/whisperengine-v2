@@ -19,6 +19,9 @@ PRDs focus on:
 | [PRD-002: Privacy & Data Handling](./PRD-002-PRIVACY.md) | ✅ Implemented | How user data is stored, segmented, and protected |
 | [PRD-003: Character Experience](./PRD-003-CHARACTER_EXPERIENCE.md) | ✅ Implemented | Dreams, diaries, artifacts, and character depth |
 | [PRD-004: Multi-Modal Perception](./PRD-004-MULTI_MODAL.md) | 🔄 Partial | Vision, voice, and multi-sensory interactions |
+| [PRD-005: Autonomous Agency](./PRD-005-AUTONOMOUS_AGENCY.md) | ✅ Implemented | Lurking, reacting, and autonomous posting |
+| [PRD-006: Knowledge Graph Evolution](./PRD-006-KNOWLEDGE_GRAPH_EVOLUTION.md) | 🔄 In Progress | Enrichment, temporal graph, and user transparency |
+| [PRD-007: System Scalability](./PRD-007-SYSTEM_SCALABILITY.md) | ✅ Implemented | Advanced queues, metrics, and observability |
 
 ---
 
