@@ -83,6 +83,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅, E25 ✅ | ✅ Complete |
 | 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | ✅ Complete |
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | ✅ Complete |
+| ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | ✅ Complete (was already implemented) |
 
 #### 📋 Proposed (Ready to Start)
 
@@ -90,7 +91,6 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 |----------|-------|-------------|------|------|--------|
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
-| ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | 📋 Proposed |
 | ⚪ Low | **O1** | **InfluxDB Analytics Enhancements** | **2-3 hours** | A4 ✅ | 📋 Proposed |
 | 🗄️ Deferred | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
 
@@ -2019,9 +2019,9 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 ---
 
-### 📋 Cross-Bot Memory Enhancement
+### ✅ Cross-Bot Memory Enhancement
 **Priority:** Low | **Time:** 2-3 hours | **Complexity:** Low
-**Status:** 📋 Proposed
+**Status:** ✅ Complete (Already Implemented)
 **Dependencies:** E6 (Character-to-Character)
 **Added:** December 2025
 
@@ -2029,17 +2029,16 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 **Solution:** Add memory retrieval for cross-bot conversations by querying past interactions before generating responses.
 
-**Key Changes:**
-- Add `memory_manager.search_memories()` call for `cross_bot_user_id` in `_handle_cross_bot_message()`
-- Inject retrieved memories into cross-bot context
-- Store bot-to-bot conversations with appropriate metadata
+**Implementation (Already in `_handle_cross_bot_message()`):**
+- ✅ Uses `context_builder.build_context()` to retrieve history, memories, knowledge, summaries
+- ✅ Injects retrieved context into `cross_bot_context` system prompt
+- ✅ Stores both sides of conversation via `memory_manager.add_message()`
+- ✅ `force_fast=True` only skips tools, NOT pre-fetched context
 
 **Benefits:**
 - Bots can reference past conversations with each other
 - Creates richer, more continuous cross-bot relationships
 - Enables callbacks to shared memories ("Remember when we talked about...?")
-
-**Spec:** [CROSS_BOT_MEMORY.md](./spec/SPEC-E06B-CROSS_BOT_MEMORY.md)
 
 ---
 
