@@ -590,7 +590,7 @@ class GraphWalker:
         
         # Check cache first
         cache_key = f"trust_trajectory:{bot_name}:{user_id}:{days}"
-        cached = await cache_manager.get(cache_key)
+        cached = await cache_manager.get_json(cache_key)
         if cached:
             return cached
         
@@ -618,7 +618,7 @@ class GraphWalker:
             
             # Cache for 5 minutes
             if scores:
-                await cache_manager.set(cache_key, scores, ttl=300)
+                await cache_manager.set_json(cache_key, scores, ttl=300)
             
             return scores
             
