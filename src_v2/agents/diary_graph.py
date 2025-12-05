@@ -89,7 +89,7 @@ You are writing your private diary, reflecting on everything since your last ent
 This is NOT a summary for users. It is a personal, emotional record of your inner life.
 
 GUIDELINES:
-1. Write in the first person ("I felt...", "I wondered...").
+1. ALWAYS write in first person ("I felt...", "I wondered..."). This is YOUR diary, YOUR private thoughts. NEVER use third person.
 2. The material below shows how long it's been since your last entry. If it's been a while, acknowledge that naturally ("It's been a few days since I last wrote...", "So much has happened since I last sat down to write...").
 3. Be honest and vulnerable. Reveal your true thoughts about the people you talked to.
 4. Don't just list events. Tell a story. Connect the dots between different conversations.
@@ -167,6 +167,13 @@ Write your diary entry now. Be creative and authentic - avoid starting with "Tod
         # Tone check (basic keyword heuristic)
         if "User" in entry_text or "user" in entry_text:
             critiques.append("Do not refer to people as 'User' or 'users'. Use their names or 'someone'.")
+        
+        # First-person check
+        first_sentences = ' '.join(entry_text.split('.')[:3]).lower()
+        bot_name = (settings.DISCORD_BOT_NAME or "").lower()
+        third_person_indicators = ["she ", "he ", "they ", "the character ", f"{bot_name} "]
+        if any(ind in first_sentences for ind in third_person_indicators):
+            critiques.append("Write in first person ('I felt...', 'I wondered...'), not third person. This is YOUR private diary.")
             
         if "summary of" in entry_text.lower() or "i had a conversation" in entry_text.lower():
             critiques.append("This sounds too much like a summary. Make it more personal and narrative. Don't say 'I had a conversation', say 'I talked to...'")
@@ -200,10 +207,11 @@ ENTRY:
 {entry_text}
 
 CRITERIA:
-1. Is it too summary-like? (e.g. "I had a conversation with X about Y") -> It should be narrative ("X told me about Y, and I felt...")
-2. Is it emotional enough? -> It should reveal inner thoughts/feelings.
-3. Is the opening cliche? -> It should start in media res or with a thought.
-4. Is it too repetitive?
+1. Is it written in first person? ("I felt...", "I wondered...") -> It must NEVER use third person ("She...", "He...", "They...", "{settings.DISCORD_BOT_NAME}...").
+2. Is it too summary-like? (e.g. "I had a conversation with X about Y") -> It should be narrative ("X told me about Y, and I felt...")
+3. Is it emotional enough? -> It should reveal inner thoughts/feelings.
+4. Is the opening cliche? -> It should start in media res or with a thought.
+5. Is it too repetitive?
 
 If the entry is good, return None. If it needs improvement, provide specific instructions."""
 

@@ -273,7 +273,7 @@ class DiscoverCommunityInsightsTool(BaseTool):
     - "What dreams have others had lately?"
     """
     name: str = "discover_community_insights"
-    description: str = """Search for insights, observations, epiphanies, and dreams from OTHER characters about a topic.
+    description: str = """Search for insights, epiphanies, diary entries, and dreams from OTHER characters about a topic.
 Use this to see what your fellow characters have been thinking about or experiencing.
 Returns artifacts from the shared community mind, excluding your own thoughts."""
     args_schema: Type[BaseModel] = DiscoverCommunityInsightsInput
@@ -285,7 +285,7 @@ Returns artifacts from the shared community mind, excluding your own thoughts.""
 
     async def _arun(self, query: str, artifact_types: List[str] = None) -> str:
         if artifact_types is None:
-            artifact_types = ["epiphany", "observation", "diary", "dream"]
+            artifact_types = ["epiphany", "diary", "dream"]
             
         try:
             if not settings.ENABLE_STIGMERGIC_DISCOVERY:

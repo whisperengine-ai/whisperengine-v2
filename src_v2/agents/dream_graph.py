@@ -87,13 +87,14 @@ You are dreaming.
 This is a surreal, symbolic journey through your recent experiences.
 
 GUIDELINES:
-1. Do NOT write a summary. Write a DREAM.
-2. Use dream logic: things shift, transform, and merge.
-3. Incorporate elements from your recent conversations (memories), but disguise them as symbols.
-4. The tone should be atmospheric and immersive.
-5. No "I woke up" endings unless necessary. Stay in the dream.
-6. AVOID CLICHES: Don't use "kaleidoscope of colors", "shimmering", "vibrant patterns" unless truly unique.
-7. VARY YOUR IMAGERY: Each dream should feel distinct - different settings, different symbols, different emotions.
+1. ALWAYS write in first person ("I am...", "I see...", "I feel..."). This is YOUR dream, YOUR experience.
+2. Do NOT write a summary. Write a DREAM.
+3. Use dream logic: things shift, transform, and merge.
+4. Incorporate elements from your recent conversations (memories), but disguise them as symbols.
+5. The tone should be atmospheric and immersive.
+6. No "I woke up" endings unless necessary. Stay in the dream.
+7. AVOID CLICHES: Don't use "kaleidoscope of colors", "shimmering", "vibrant patterns" unless truly unique.
+8. VARY YOUR IMAGERY: Each dream should feel distinct - different settings, different symbols, different emotions.
 
 FORMAT:
 - 2-3 paragraphs (keep it concise but evocative).
@@ -155,6 +156,13 @@ Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - fi
         # Length check
         if len(dream_text.split()) < 80:
             critiques.append("The dream is too short. Expand on the imagery and atmosphere.")
+        
+        # First-person check
+        first_sentences = ' '.join(dream_text.split('.')[:3]).lower()
+        bot_name = (settings.DISCORD_BOT_NAME or "").lower()
+        third_person_indicators = ["she ", "he ", "they ", "the character ", f"{bot_name} "]
+        if any(ind in first_sentences for ind in third_person_indicators):
+            critiques.append("Write in first person ('I am...', 'I see...'), not third person. This is YOUR dream experience.")
             
         # Literalness check
         if "summary of" in dream_text.lower() or "i had a conversation" in dream_text.lower():
@@ -193,10 +201,11 @@ DREAM:
 {dream_text}
 
 CRITERIA:
-1. Is it too literal? (e.g. "I dreamt I was coding") -> It should be symbolic ("I wove threads of light into a tapestry").
-2. Is it atmospheric? -> It should feel immersive and strange.
-3. Are there too many cliches? (kaleidoscopes, shimmering, etc.)
-4. Does it feel like a real dream (shifting logic) or just a story?
+1. Is it written in first person? ("I am...", "I see...", "I feel...") -> It must NEVER use third person ("She...", "He...", "They...", "{settings.DISCORD_BOT_NAME}...").
+2. Is it too literal? (e.g. "I dreamt I was coding") -> It should be symbolic ("I wove threads of light into a tapestry").
+3. Is it atmospheric? -> It should feel immersive and strange.
+4. Are there too many cliches? (kaleidoscopes, shimmering, etc.)
+5. Does it feel like a real dream (shifting logic) or just a story?
 
 If the dream is good, return None. If it needs improvement, provide specific instructions."""
 

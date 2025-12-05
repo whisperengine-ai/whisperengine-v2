@@ -39,7 +39,6 @@ class SharedArtifactManager:
                 "user_id": user_id,
                 "confidence": confidence,
                 "created_at": datetime.now(timezone.utc).isoformat(),
-                "discovered_by": [],
                 **metadata
             }
 

@@ -16,7 +16,7 @@ from src_v2.config.settings import settings
 # =============================================================================
 
 class SearchMyThoughtsInput(BaseModel):
-    thought_type: Literal["diary", "dream", "observation", "gossip", "epiphany", "any"] = Field(
+    thought_type: Literal["diary", "dream", "gossip", "epiphany", "any"] = Field(
         default="any",
         description="Type of thought to search. IMPORTANT: Use 'any' if the user asks for multiple types (e.g. 'diaries and dreams') or general thoughts."
     )
@@ -67,7 +67,7 @@ This gives users a "peek behind the curtain" into my inner life."""
             
             # Determine which types to search
             if thought_type == "any":
-                types_to_search = ["diary", "dream", "observation", "gossip", "epiphany"]
+                types_to_search = ["diary", "dream", "gossip", "epiphany"]
             else:
                 types_to_search = [thought_type]
             

@@ -87,7 +87,7 @@ class ContextBuilder:
                 from src_v2.memory.shared_artifacts import shared_artifact_manager
                 other_bot_insights = await shared_artifact_manager.discover_artifacts(
                     query=user_message,
-                    artifact_types=["epiphany", "observation"],
+                    artifact_types=["epiphany", "diary", "dream"],
                     exclude_bot=character.name,
                     user_id=user_id,
                     limit=settings.STIGMERGIC_DISCOVERY_LIMIT
