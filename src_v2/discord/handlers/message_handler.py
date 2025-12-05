@@ -1190,7 +1190,8 @@ class MessageHandler:
                             'ai', 
                             response, 
                             channel_id=channel_id, 
-                            message_id=str(sent_messages[-1].id)
+                            message_id=str(sent_messages[-1].id),
+                            user_name=message.author.display_name
                         )
                     
                     # 4.5 Goal Analysis (Fire-and-forget)
@@ -1584,6 +1585,7 @@ Recent channel context:
                         content=message.content,
                         channel_id=str(message.channel.id),
                         message_id=str(message.id),
+                        user_name=other_bot_name,
                         source_type=MemorySourceType.GOSSIP,
                         metadata={
                             "type": "gossip",  # Required for diary/dream retrieval
@@ -1600,6 +1602,7 @@ Recent channel context:
                         content=response,
                         channel_id=str(message.channel.id),
                         message_id=str(sent_message.id),
+                        user_name=other_bot_name,
                         source_type=MemorySourceType.INFERENCE,
                         metadata={
                             "is_cross_bot": True,
@@ -1808,7 +1811,8 @@ Recent channel context:
                         'ai',
                         response,
                         channel_id=channel_id,
-                        message_id=str(sent_messages[-1].id)
+                        message_id=str(sent_messages[-1].id),
+                        user_name=message.author.display_name
                     )
                     
                 # Trust update (smaller for lurk responses)

@@ -305,7 +305,8 @@ class ProactiveScheduler:
                     role='ai',
                     content=opener,
                     channel_id=str(sent_msg.channel.id),
-                    message_id=str(sent_msg.id)
+                    message_id=str(sent_msg.id),
+                    user_name=user.name
                 )
                 
                 # 6. Update Session Activity (Prevent duplicate triggers)
