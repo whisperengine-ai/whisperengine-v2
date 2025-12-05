@@ -105,6 +105,15 @@ class WhisperBot(commands.Bot):
         """Handle reaction removals."""
         await self.event_handler.on_reaction_remove(reaction, user)
 
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
+        """Handle command errors silently for CommandNotFound (user typos/unavailable commands)."""
+        # Silently ignore CommandNotFound errors (users typing unavailable commands)
+        if isinstance(error, commands.CommandNotFound):
+            return  # Don't log or respond - just ignore
+        
+        # Log other command errors for debugging
+        logger.warning(f"Command error in {ctx.command}: {error}")
+
     async def close(self) -> None:
         """Override close to cancel background tasks first."""
         logger.info("Closing WhisperBot...")
