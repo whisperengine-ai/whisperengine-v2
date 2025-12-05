@@ -198,3 +198,77 @@ class ClearUserDataResponse(BaseModel):
     memories_cleared: int = 0
     trust_reset: bool = False
     knowledge_cleared: int = 0
+
+
+# ============================================================================
+# User-Facing Graph (E28)
+# ============================================================================
+
+class UserGraphRequest(BaseModel):
+    """Request for user knowledge graph visualization."""
+    
+    user_id: str = Field(..., description="User ID to get graph for")
+    depth: int = Field(
+        default=2,
+        description="Max depth to traverse from user node (1-4)",
+        ge=1,
+        le=4
+    )
+    include_other_users: bool = Field(
+        default=False,
+        description="Include other users connected through shared entities"
+    )
+    max_nodes: int = Field(
+        default=50,
+        description="Maximum nodes to return (10-100)",
+        ge=10,
+        le=100
+    )
+
+
+class GraphNode(BaseModel):
+    """A node in the user graph visualization."""
+    
+    id: str = Field(..., description="Unique node ID")
+    label: str = Field(..., description="Node type (User, Entity, Character, Topic)")
+    name: str = Field(..., description="Display name")
+    score: float = Field(0.0, description="Relevance score from graph walk")
+    properties: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional node properties"
+    )
+
+
+class GraphEdge(BaseModel):
+    """An edge in the user graph visualization."""
+    
+    source: str = Field(..., description="Source node ID")
+    target: str = Field(..., description="Target node ID")
+    edge_type: str = Field(..., description="Relationship type (FACT, KNOWS, MENTIONED, etc.)")
+    properties: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Edge properties (predicate, count, etc.)"
+    )
+
+
+class GraphCluster(BaseModel):
+    """A thematic cluster of related nodes."""
+    
+    theme: str = Field(..., description="Cluster theme/topic")
+    node_ids: List[str] = Field(..., description="Node IDs in this cluster")
+    cohesion_score: float = Field(0.0, description="How tightly connected the cluster is")
+
+
+class UserGraphResponse(BaseModel):
+    """Response with user's knowledge graph subgraph for D3.js visualization."""
+    
+    success: bool
+    user_id: str
+    bot_name: str
+    nodes: List[GraphNode] = Field(default_factory=list, description="Graph nodes")
+    edges: List[GraphEdge] = Field(default_factory=list, description="Graph edges")
+    clusters: List[GraphCluster] = Field(default_factory=list, description="Thematic clusters")
+    stats: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Graph statistics (node_count, edge_count, depth, etc.)"
+    )

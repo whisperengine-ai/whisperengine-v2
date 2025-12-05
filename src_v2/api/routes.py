@@ -9,7 +9,8 @@ from src_v2.api.models import (
     ChatRequest, ChatResponse, HealthResponse,
     DiagnosticsResponse, UserStateRequest, UserStateResponse,
     ConversationRequest, ConversationResponse, ConversationTurn,
-    ClearUserDataRequest, ClearUserDataResponse
+    ClearUserDataRequest, ClearUserDataResponse,
+    UserGraphRequest, UserGraphResponse, GraphNode, GraphEdge, GraphCluster
 )
 from src_v2.agents.engine import AgentEngine
 from src_v2.config.settings import settings
@@ -18,6 +19,7 @@ from src_v2.core.database import db_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.knowledge.manager import knowledge_manager
+from src_v2.knowledge.walker import GraphWalker
 from datetime import datetime
 import time
 import asyncio
@@ -369,3 +371,124 @@ async def clear_user_data(request: ClearUserDataRequest) -> ClearUserDataRespons
         trust_reset=trust_reset,
         knowledge_cleared=knowledge_cleared
     )
+
+
+@router.post(
+    "/api/user-graph",
+    response_model=UserGraphResponse,
+    summary="Get user's knowledge graph for visualization",
+    description="""
+    Returns the user's knowledge graph subgraph in a D3.js-compatible format.
+    
+    The graph walks from the user node, discovering connected entities, topics,
+    and relationships. Use this for:
+    - Visualizing what the bot knows about a user
+    - Debugging knowledge graph content
+    - Building interactive graph UIs
+    
+    **Performance**: Graph walk typically takes 200-500ms for depth 2, 
+    500-1500ms for depth 3-4.
+    """,
+    tags=["diagnostics"]
+)
+async def get_user_graph(request: UserGraphRequest) -> UserGraphResponse:
+    """Get user's knowledge graph for visualization."""
+    bot_name = settings.DISCORD_BOT_NAME
+    user_id = request.user_id
+    
+    # Check if Neo4j is available
+    if not db_manager.neo4j_driver:
+        raise HTTPException(
+            status_code=503,
+            detail="Knowledge graph (Neo4j) is not available"
+        )
+    
+    try:
+        start_time = time.time()
+        
+        # Use GraphWalker to explore from the user's node
+        walker = GraphWalker()
+        result = await walker.explore(
+            seed_ids=[user_id],
+            user_id=user_id,
+            bot_name=bot_name,
+            max_depth=request.depth,
+            max_nodes=request.max_nodes,
+            serendipity=0.05,  # Low serendipity for user-facing view
+            min_score=0.2
+        )
+        
+        # Filter out other users if requested
+        nodes_to_include = result.nodes
+        if not request.include_other_users:
+            nodes_to_include = [
+                n for n in result.nodes 
+                if n.label != "User" or n.id == user_id
+            ]
+        
+        # Build node ID set for edge filtering
+        included_ids = {n.id for n in nodes_to_include}
+        
+        # Filter edges to only include nodes we're keeping
+        edges_to_include = [
+            e for e in result.edges
+            if e.source_id in included_ids and e.target_id in included_ids
+        ]
+        
+        # Convert to API response format
+        api_nodes = [
+            GraphNode(
+                id=n.id,
+                label=n.label,
+                name=n.name,
+                score=n.score,
+                properties=n.properties
+            )
+            for n in nodes_to_include
+        ]
+        
+        api_edges = [
+            GraphEdge(
+                source=e.source_id,
+                target=e.target_id,
+                edge_type=e.edge_type,
+                properties=e.properties
+            )
+            for e in edges_to_include
+        ]
+        
+        api_clusters = [
+            GraphCluster(
+                theme=c.theme,
+                node_ids=[n.id for n in c.nodes if n.id in included_ids],
+                cohesion_score=c.cohesion_score
+            )
+            for c in result.clusters
+            if any(n.id in included_ids for n in c.nodes)
+        ]
+        
+        processing_time = (time.time() - start_time) * 1000
+        
+        return UserGraphResponse(
+            success=True,
+            user_id=user_id,
+            bot_name=bot_name,
+            nodes=api_nodes,
+            edges=api_edges,
+            clusters=api_clusters,
+            stats={
+                "node_count": len(api_nodes),
+                "edge_count": len(api_edges),
+                "cluster_count": len(api_clusters),
+                "max_depth": request.depth,
+                "processing_time_ms": round(processing_time, 2),
+                "walk_stats": result.walk_stats
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to get user graph for {user_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve user graph: {str(e)}"
+        )

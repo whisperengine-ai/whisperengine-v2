@@ -7,6 +7,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.core.character import character_manager
 from src_v2.core.database import db_manager
 from src_v2.knowledge.manager import knowledge_manager
+from src_v2.knowledge.walker import GraphWalker
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
 from src_v2.universe.privacy import privacy_manager
@@ -493,6 +494,142 @@ class CharacterCommands(app_commands.Group):
         except Exception as e:
             logger.error(f"Error in test_proactive command: {e}")
             await interaction.followup.send(f"Error: {e}")
+
+    @app_commands.command(name="my_graph", description="See your knowledge graph - what the bot remembers about you")
+    @app_commands.describe(
+        depth="How deep to explore (1-3). Higher = more connections",
+        display_format="Display format: summary or detailed"
+    )
+    @app_commands.choices(depth=[
+        app_commands.Choice(name="Shallow (direct connections)", value=1),
+        app_commands.Choice(name="Normal (2 hops)", value=2),
+        app_commands.Choice(name="Deep (3 hops)", value=3)
+    ])
+    @app_commands.choices(display_format=[
+        app_commands.Choice(name="Summary", value="summary"),
+        app_commands.Choice(name="Detailed", value="detailed")
+    ])
+    async def my_graph(
+        self, 
+        interaction: discord.Interaction, 
+        depth: int = 2,
+        display_format: str = "summary"
+    ):
+        """
+        Show the user their knowledge graph - topics, entities, and connections
+        that the bot has learned about them.
+        """
+        await interaction.response.defer(ephemeral=True)
+        
+        user_id = str(interaction.user.id)
+        character_name = settings.DISCORD_BOT_NAME or "default"
+        
+        # Check if Neo4j is available
+        if not db_manager.neo4j_driver:
+            await interaction.followup.send(
+                "⚠️ Knowledge graph is not currently available.", 
+                ephemeral=True
+            )
+            return
+        
+        try:
+            # Use GraphWalker to explore from the user's node
+            walker = GraphWalker()
+            result = await walker.explore(
+                seed_ids=[user_id],
+                user_id=user_id,
+                bot_name=character_name,
+                max_depth=depth,
+                max_nodes=50,
+                serendipity=0.05,
+                min_score=0.2
+            )
+            
+            # Filter out other users from the results
+            user_nodes = [n for n in result.nodes if n.label != "User" or n.id == user_id]
+            
+            if not user_nodes or len(user_nodes) <= 1:
+                await interaction.followup.send(
+                    "🔍 I don't have any connections in your knowledge graph yet. "
+                    "Chat with me more and I'll start building a map of things you mention!",
+                    ephemeral=True
+                )
+                return
+            
+            # Build the embed
+            embed = discord.Embed(
+                title=f"🕸️ Your Knowledge Graph",
+                description=f"Here's what I've learned about you, {interaction.user.display_name}:",
+                color=0x7289da
+            )
+            
+            # Categorize nodes by type
+            entities = [n for n in user_nodes if n.label == "Entity"]
+            topics = [n for n in user_nodes if n.label == "Topic"]
+            characters = [n for n in user_nodes if n.label == "Character"]
+            artifacts = [n for n in user_nodes if n.label == "Artifact"]
+            
+            # Entities (things you've mentioned)
+            if entities:
+                if display_format == "summary":
+                    # Just show top 10 by score
+                    sorted_entities = sorted(entities, key=lambda n: n.score, reverse=True)[:10]
+                    entity_text = ", ".join([n.name for n in sorted_entities])
+                else:
+                    # Show all with scores
+                    sorted_entities = sorted(entities, key=lambda n: n.score, reverse=True)[:15]
+                    entity_text = "\n".join([f"• {n.name} ({n.score:.2f})" for n in sorted_entities])
+                
+                if len(entities) > len(sorted_entities):
+                    entity_text += f"\n... and {len(entities) - len(sorted_entities)} more"
+                embed.add_field(name="🏷️ Topics & Entities", value=entity_text or "None", inline=False)
+            
+            # Topics (thematic clusters)
+            if topics:
+                sorted_topics = sorted(topics, key=lambda n: n.score, reverse=True)[:5]
+                topic_text = ", ".join([n.name for n in sorted_topics])
+                embed.add_field(name="📚 Themes", value=topic_text or "None", inline=True)
+            
+            # Characters (bots you've interacted with)
+            if characters:
+                char_text = ", ".join([n.name for n in characters])
+                embed.add_field(name="🤖 Characters", value=char_text, inline=True)
+            
+            # Clusters (if available and detailed mode)
+            if result.clusters and display_format == "detailed":
+                cluster_text = "\n".join([
+                    f"• **{c.theme}** ({len(c.nodes)} nodes)"
+                    for c in result.clusters[:5]
+                ])
+                if cluster_text:
+                    embed.add_field(name="🔗 Thematic Clusters", value=cluster_text, inline=False)
+            
+            # Stats footer
+            stats = result.walk_stats
+            node_count = len(user_nodes)
+            edge_count = len([e for e in result.edges 
+                            if e.source_id in {n.id for n in user_nodes} 
+                            and e.target_id in {n.id for n in user_nodes}])
+            
+            embed.set_footer(text=f"Depth: {depth} | Nodes: {node_count} | Connections: {edge_count}")
+            
+            # Add API hint for visualization
+            if display_format == "detailed":
+                embed.add_field(
+                    name="💡 Visualization", 
+                    value=f"For full graph visualization, use the API:\n`POST /api/user-graph`",
+                    inline=False
+                )
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error getting user graph for {user_id}: {e}")
+            await interaction.followup.send(
+                "Failed to retrieve your knowledge graph. Please try again later.",
+                ephemeral=True
+            )
+
 
 class SpamCommands(app_commands.Group):
     """Commands for managing spam detection."""

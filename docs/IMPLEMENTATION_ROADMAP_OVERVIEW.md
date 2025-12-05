@@ -90,7 +90,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | 📋 Proposed |
+| ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
 | 🗄️ Deferred | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
 
@@ -2129,9 +2129,9 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 ---
 
-### 📋 Phase E28: User-Facing Graph
+### ✅ Phase E28: User-Facing Graph
 **Priority:** ⚪ Low | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
+**Status:** ✅ Complete (December 2025)
 **Dependencies:** E19 ✅
 **Added:** December 2025
 
@@ -2142,12 +2142,31 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 - Thematic clusters
 - Privacy filtering (hides other users by default)
 
+**Implementation:**
+- **API Endpoint:** `POST /api/user-graph` in `src_v2/api/routes.py`
+  - Uses `GraphWalker.explore()` to traverse from user node
+  - Returns `UserGraphResponse` with nodes, edges, clusters, stats
+  - Filters other users by default (`include_other_users=false`)
+- **Discord Command:** `/my_graph` in `src_v2/discord/commands.py`
+  - Ephemeral embed showing topics, entities, themes
+  - Options for depth (1-3) and display format (summary/detailed)
+- **Pydantic Models:** `UserGraphRequest`, `UserGraphResponse`, `GraphNode`, `GraphEdge`, `GraphCluster` in `src_v2/api/models.py`
+- **Tests:** `tests_v2/test_e28_user_graph.py` (9 tests)
+
 **API:**
 ```
 POST /api/user-graph
-{user_id: "123", depth: 2, include_other_users: false}
+{user_id: "123", depth: 2, include_other_users: false, max_nodes: 50}
 
-Response: {nodes: [...], edges: [...], clusters: [...], stats: {...}}
+Response: {
+  success: true,
+  user_id: "123",
+  bot_name: "elena",
+  nodes: [{id, label, name, score, properties}, ...],
+  edges: [{source, target, edge_type, properties}, ...],
+  clusters: [{theme, node_ids, cohesion_score}, ...],
+  stats: {node_count, edge_count, cluster_count, processing_time_ms}
+}
 ```
 
 **Spec:** [GRAPH_WALKER_EXTENSIONS.md](./spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md#phase-e28-user-facing-graph)
