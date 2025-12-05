@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     
     # --- Reflective Mode Configuration ---
-    ENABLE_REFLECTIVE_MODE: bool = False
+    ENABLE_REFLECTIVE_MODE: bool = True
     REFLECTIVE_STATUS_VERBOSITY: Literal["none", "minimal", "detailed"] = "detailed"  # How much reasoning to show in Discord
     # Note: LangGraph agents are now the default and only path. Legacy flags removed.
     # Phase A7: Tier 2 Tool Usage (Character Agency) is now always enabled.
@@ -101,10 +101,10 @@ class Settings(BaseSettings):
     # Note: Max steps are now dynamically set by complexity level (10 for MID, 15 for HIGH)
 
     # --- Autonomous Agents (Phase 3) ---
-    ENABLE_AUTONOMOUS_DRIVES: bool = False
-    ENABLE_GOAL_STRATEGIST: bool = False
+    ENABLE_AUTONOMOUS_DRIVES: bool = True
+    ENABLE_GOAL_STRATEGIST: bool = True
     GOAL_STRATEGIST_LOCAL_HOUR: int = 23  # Local hour (in character's timezone) when goal strategist runs (11 PM)
-    ENABLE_UNIVERSE_EVENTS: bool = False
+    ENABLE_UNIVERSE_EVENTS: bool = True
     ENABLE_SENSITIVITY_CHECK: bool = False  # LLM-based sensitivity check for universe events
     ENABLE_TRACE_LEARNING: bool = True  # Phase B5: Learn from reasoning traces
     
@@ -146,7 +146,7 @@ class Settings(BaseSettings):
     ENABLE_RUNTIME_FACT_EXTRACTION: bool = True
     
     # --- Graph Enrichment (Phase E25) ---
-    ENABLE_GRAPH_ENRICHMENT: bool = False  # Proactive graph enrichment from conversations
+    ENABLE_GRAPH_ENRICHMENT: bool = True  # Proactive graph enrichment from conversations
     ENRICHMENT_MIN_TOPIC_MENTIONS: int = 2  # User mentions topic N times before DISCUSSED edge
     ENRICHMENT_MIN_COOCCURRENCE: int = 2    # Entities appear together N times before RELATED_TO edge
     ENRICHMENT_MIN_INTERACTION: int = 1     # Users interact N times before CONNECTED_TO edge
@@ -288,7 +288,7 @@ class Settings(BaseSettings):
     GRAPH_WALKER_SERENDIPITY: float = 0.1  # Probability of exploring random low-score paths (0.0-0.5)
 
     # --- Knowledge Graph Pruning (Phase E24) ---
-    ENABLE_GRAPH_PRUNING: bool = False  # Enable scheduled graph cleanup
+    ENABLE_GRAPH_PRUNING: bool = True  # Enable scheduled graph cleanup
     GRAPH_PRUNE_ORPHAN_GRACE_DAYS: int = 7  # Days before orphan entities are pruned
     GRAPH_PRUNE_STALE_FACT_DAYS: int = 90  # Days before stale facts are considered for pruning
     GRAPH_PRUNE_MIN_ACCESS_COUNT: int = 1  # Min access count to preserve a stale fact
