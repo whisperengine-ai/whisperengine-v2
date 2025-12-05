@@ -30,6 +30,7 @@ from src_v2.core.database import db_manager
 from src_v2.core.cache import cache_manager
 from src_v2.agents.llm_factory import create_llm
 from src_v2.evolution.trust import TrustManager
+from src_v2.knowledge.recommendations import recommendation_engine, SimilarUser
 
 
 @dataclass
@@ -184,6 +185,100 @@ class GraphWalker:
         
         # Cache for trust trajectories (E26)
         trust_trajectories: Dict[str, List[float]] = {}
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                while frontier and depth < max_depth and len(all_nodes) < max_nodes:
+                    # Get neighbors of all frontier nodes in one query
+                    new_nodes, new_edges = await self._expand_frontier(
+                        session=session,
+                        frontier=frontier,
+                        visited=visited,
+                        user_id=user_id,
+                        limit=max_nodes - len(all_nodes)
+                    )
+                    
+                    # Build node->edge lookup for temporal scoring
+                    node_edge_map = {}
+                    for edge in new_edges:
+                        if edge.target_id not in node_edge_map:
+                            node_edge_map[edge.target_id] = []
+                        node_edge_map[edge.target_id].append(edge)
+                    
+                    # Score and filter nodes
+                    scored_nodes = []
+                    for node in new_nodes:
+                        # Get edges connecting to this node
+                        edges_to_node = node_edge_map.get(node.id, [])
+                        
+                        # Calculate score
+                        score = self._calculate_score(
+                            node=node,
+                            edges=edges_to_node,
+                            anchors=anchors,
+                            depth=depth,
+                            trust_trajectories=trust_trajectories
+                        )
+                        node.score = score
+                        node.depth = depth
+                        
+                        # Filter
+                        keep = False
+                        if score >= min_score:
+                            keep = True
+                        elif random.random() < serendipity:
+                            keep = True
+                            node.is_serendipitous = True
+                            
+                        if keep:
+                            scored_nodes.append(node)
+                            visited.add(node.id)
+                    
+                    # Add to results
+                    all_nodes.extend(scored_nodes)
+                    
+                    # Add edges that connect to kept nodes
+                    kept_ids = {n.id for n in scored_nodes}
+                    kept_edges = [e for e in new_edges if e.target_id in kept_ids]
+                    all_edges.extend(kept_edges)
+                    
+                    # Update frontier
+                    frontier = [n.id for n in scored_nodes]
+                    depth += 1
+            
+            # Identify clusters
+            clusters = self._identify_clusters(all_nodes, all_edges)
+            
+            return GraphWalkResult(
+                nodes=all_nodes,
+                edges=all_edges,
+                clusters=clusters,
+                walk_stats={
+                    "depth": depth,
+                    "visited": len(visited),
+                    "serendipitous": len([n for n in all_nodes if n.is_serendipitous])
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Graph walk failed: {e}")
+            return GraphWalkResult(nodes=[], edges=[], clusters=[])
+
+    async def find_similar_users(
+        self,
+        user_id: str,
+        server_id: Optional[str] = None,
+        limit: int = 5
+    ) -> List[SimilarUser]:
+        """
+        Find users with overlapping topic interests.
+        Delegates to RecommendationEngine (E29).
+        """
+        return await recommendation_engine.find_similar_users(
+            user_id=user_id,
+            server_id=server_id,
+            limit=limit
+        )
         
         try:
             async with db_manager.neo4j_driver.session() as session:

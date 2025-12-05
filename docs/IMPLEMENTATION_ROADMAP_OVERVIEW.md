@@ -85,13 +85,13 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟡 Medium | **E24** | **Advanced Queue Operations** | **3-4 days** | E18 ✅ | ✅ Complete |
 | ⚪ Low | — | **Cross-Bot Memory Enhancement** | **2-3 hours** | E6 ✅ | ✅ Complete (was already implemented) |
 | ⚪ Low | **O1** | **InfluxDB Analytics** | **2-3 hours** | A4 ✅ | ✅ Complete (was already implemented) |
+| ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
+| ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | ✅ Complete |
 
 #### 📋 Proposed (Ready to Start)
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
-| ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | 📋 Proposed |
 | 🗄️ Deferred | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
 
 #### ⏸️ On Hold / Deferred
