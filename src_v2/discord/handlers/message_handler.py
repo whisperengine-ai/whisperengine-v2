@@ -565,12 +565,16 @@ class MessageHandler:
                                 # when they're actually commenting on the bot's content (e.g., bot's dream)
                                 is_reply_to_bot = ref_msg.author.id == (self.bot.user.id if self.bot.user else None)
                                 
+                                # Get the current user's display name for clear attribution
+                                current_user_name = message.author.display_name
+                                
                                 if is_reply_to_bot:
                                     # Make it VERY clear that user is commenting on BOT's content
+                                    # IMPORTANT: Include user's name so bot knows WHO is replying (not just "User")
                                     if ref_text:
-                                        user_message = f"[CONTEXT: User is replying to YOUR previous message. They are commenting on what YOU wrote.]\n[Your original message was{image_marker}: \"{ref_text}\"]\n[User's response]: {user_message}"
+                                        user_message = f"[CONTEXT: {current_user_name} is replying to YOUR previous message. They are commenting on what YOU wrote.]\n[Your original message was{image_marker}: \"{ref_text}\"]\n[{current_user_name}'s response]: {user_message}"
                                     else:
-                                        user_message = f"[CONTEXT: User is replying to YOUR previous image/post. They are commenting on what YOU shared.]\n[User's response]: {user_message}"
+                                        user_message = f"[CONTEXT: {current_user_name} is replying to YOUR previous image/post. They are commenting on what YOU shared.]\n[{current_user_name}'s response]: {user_message}"
                                     logger.info(f"Injected self-reply context (user commenting on bot's message)")
                                 else:
                                     # Standard reply to another user's message
