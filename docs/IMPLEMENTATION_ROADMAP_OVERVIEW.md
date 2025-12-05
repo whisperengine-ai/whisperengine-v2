@@ -134,7 +134,7 @@ All proposed roadmap items have been implemented. The system is feature-complete
 | E5-E8 | Reminders, Timezone, Broadcast, Bot-to-Bot | Nov 2025 |
 | E12 | Agentic Dreams (DreamWeaver) | Nov 2025 |
 | E1-E4 | Threading, Diary, Dreams, Milestones | Nov 2025 |
-| E10 | Channel Observer | ⏭️ Skipped |
+| E10 | Channel Observer | ⏭️ Permanently Skipped (Dec 2025) |
 
 **Active Dependency Chain:**
 ```
@@ -1545,38 +1545,37 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [ARTIFACT_PROVENANCE.md](./spec/SPEC-E09-ARTIFACT_PROVENANCE.md)
 
-### 📋 Phase E10: Channel Observer (Passive Context Awareness)
+### ⏭️ Phase E10: Channel Observer (Passive Context Awareness)
 **Priority:** 🟡 Medium | **Time:** 2-3 days | **Complexity:** Medium
-**Status:** 📋 Proposed
-**Dependencies:** None (foundational for E9, E8)
+**Status:** ⏭️ Permanently Skipped (December 2025)
+**Dependencies:** None
 
-**Problem:** Bots only "see" messages when directly pinged. They miss the ambient activity in channels—topics being discussed, community energy, who's active.
+**Original Problem:** Bots only "see" messages when directly pinged. They miss the ambient activity in channels—topics being discussed, community energy, who's active.
 
-**Solution:** Lightweight passive observer that buffers recent channel activity (Redis, 24hr TTL) for artifact generation without permanently storing messages.
+**Why Permanently Skipped:**
 
-**Key Insight:** Bots are *present* in channels. They should observe the world around them, not just direct interactions.
+1. **E11 (Discord Search Tools) covers 80% of use cases** — On-demand search via `search_channel_messages`, `get_recent_messages` lets bots look up what happened without passive buffering.
 
-**What Gets Captured:**
-- Topics/keywords extracted (not verbatim content)
-- Sentiment/energy per channel ("lively", "quiet", "buzzing")
-- Who was active and what they discussed
-- Channel vibes aggregated into snapshots
-- **Energy level** (0.0-1.0) for dynamic artifact modulation
+2. **Privacy concerns** — Passive buffering of all messages (even extracted topics) raises privacy questions. On-demand search is more transparent.
 
-**Unlocks (Built-In Features):**
+3. **Marginal value for artifacts** — Dreams and diaries already pull from user memories and graph walks. Adding "server vibe" is nice-to-have, not essential.
 
-| Feature | Description |
-|---------|-------------|
-| **Dynamic Dream Temperature** | High server energy → wild/surreal dreams (temp 1.0+); Quiet day → gentle/coherent dreams (temp 0.5) |
-| **Dynamic Diary Tone** | Server mood shapes diary emotion: buzzing+excited → joyful; quiet+curious → contemplative; tense → processing |
-| **Richer Provenance** | "Overheard excitement about X in #channel" |
-| **Proactive Triggers** | "Server seems excited, maybe I should comment" (future) |
+4. **Complexity cost** — Redis buffering, topic extraction, sentiment analysis, TTL management adds maintenance burden for limited benefit.
 
-**Benefits:**
-- Dreams include ambient observations ("the server was buzzing about...")
-- Diaries reflect community energy, not just direct conversations
-- Artifacts feel emotionally responsive to environment
-- Bots have "peripheral vision" of the community
+**What We Lose:**
+- Automatic "ambient awareness" in dreams/diaries ("the server was buzzing about X")
+- Dynamic temperature modulation based on server energy
+- Proactive triggers from channel mood
+
+**Alternatives If Needed Later:**
+
+| Alternative | Effort | What It Provides |
+|-------------|--------|------------------|
+| **Lightweight Energy Tracker** | 1 day | Just track message counts per channel per hour. No topic extraction. Gives energy level (0-1) for dream temperature. |
+| **Pre-Artifact Search** | 0.5 day | Before generating diary/dream, use E11 tools to search recent activity. More expensive but no new infrastructure. |
+| **User-Triggered Context** | 0 days | Let users tell bots what's happening: "The server was excited about the meteor shower." Already works via normal conversation. |
+
+**Decision:** The observation infrastructure (Neo4j `store_observation`, `get_observations_about`) was removed in December 2025 cleanup since it had no writer without E10.
 
 **Spec:** [CHANNEL_OBSERVER.md](./roadmaps/CHANNEL_OBSERVER.md)
 

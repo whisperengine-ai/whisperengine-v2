@@ -46,7 +46,9 @@ Current AI characters are passive. They wait for a user to mention them or DM th
 
 ## Technical Components (Mapped to Roadmap)
 - **E15:** Autonomous Server Activity (The core implementation of all above features)
-- **E10:** Channel Observer (Precursor, now integrated)
+- **E11:** Discord Search Tools (On-demand channel context when needed)
+
+> **Note:** E10 (Channel Observer) was originally planned as a precursor but was permanently skipped. E11's on-demand search covers most use cases without the privacy concerns of passive buffering. See roadmap for full reasoning.
 
 ## Success Metrics
 - **Engagement Rate:** % of bot-initiated interactions that receive a user reply.

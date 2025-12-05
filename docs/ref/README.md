@@ -37,6 +37,11 @@
 | [REF-014](./REF-014-BOT_TO_BOT.md) | Bot-to-Bot Pipeline | Cross-bot communication |
 | [REF-015](./REF-015-CHARACTER_AS_AGENT.md) | Character as Agent | Character system architecture |
 | [REF-016](./REF-016-RECALL_BOT_CONVERSATION_TOOL.md) | Recall Bot Conversation Tool | Cross-bot memory recall |
+| [REF-017](./REF-017-CONVERSATION_SESSIONS.md) | Conversation Sessions | Session lifecycle, summarization triggers |
+| [REF-018](./REF-018-MESSAGE_STORAGE_RETRIEVAL.md) | Message Storage & Retrieval | Five databases and data flow |
+| [REF-022](./REF-022-BACKGROUND_WORKERS.md) | Background Workers | Task queue, async jobs, arq |
+| [REF-023](./REF-023-RATE_LIMITING.md) | Rate Limiting & Cooldowns | Throttling, daily limits, cooldowns |
+| [REF-024](./REF-024-INTER_BOT_COMMUNICATION.md) | Inter-Bot Communication | Stigmergy, gossip protocol, cross-bot chat |
 
 ### API & External
 

@@ -3,11 +3,29 @@
 **Phase**: E10 (Evolution)  
 **Priority**: 🟡 Medium  
 **Effort**: 2-3 days  
-**Status**: ⏭️ Skipped (Will Not Implement)  
-**Reason**: Superseded by Discord Search Tools (E11). On-demand message access via `search_channel_messages`, `get_recent_messages` provides equivalent functionality without privacy concerns of passive buffering.  
+**Status**: ⏭️ Permanently Skipped (December 2025)  
 **Dependencies**: Dreams (E3), Diaries (E4), Artifact Provenance (E9)
 
 ---
+
+## Why Permanently Skipped
+
+**Primary Reason:** Superseded by Discord Search Tools (E11). On-demand message access via `search_channel_messages`, `get_recent_messages` provides equivalent functionality without privacy concerns of passive buffering.
+
+**Secondary Reasons:**
+1. **Marginal value** — Dreams/diaries already work well from user memories + graph walks. "Ambient awareness" is nice-to-have.
+2. **Privacy concerns** — Even extracted topics from passive buffering feels more invasive than on-demand search.
+3. **Complexity cost** — Redis buffering, topic extraction, sentiment analysis adds maintenance burden.
+4. **Dead infrastructure removed** — The Neo4j observation methods (`store_observation`, `get_observations_about`) were removed in December 2025 cleanup since they had no writer without E10.
+
+**Alternatives If Needed:**
+- **Lightweight Energy Tracker** (1 day): Just track message counts per hour for energy level (0-1).
+- **Pre-Artifact Search** (0.5 day): Use E11 tools before generating diary/dream.
+- **User-Triggered Context** (0 days): Users tell bots what's happening via conversation.
+
+---
+
+## Original Design (Archived for Reference)
 
 ## 🎯 Problem Statement
 
