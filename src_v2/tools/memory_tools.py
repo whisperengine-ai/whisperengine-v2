@@ -321,7 +321,15 @@ class SearchEpisodesInput(BaseModel):
 
 class SearchEpisodesTool(BaseTool):
     name: str = "search_specific_memories"
-    description: str = "Searches for specific details, quotes, or moments in conversation history. Use this for specific questions like 'What was that boat name?'."
+    description: str = """Search YOUR semantic memory for past conversations with this user - including DMs, channels, and all contexts.
+
+USE THIS WHEN:
+- User references something you discussed before ("remember when...", "you said earlier...", "our conversation about...")
+- User mentions feedback, suggestions, or ideas they shared with you
+- Looking for specific details, quotes, or moments from ANY past conversation
+- User asks "do you remember X?" about something they told you
+
+This searches your actual memories, not just the current channel. If user mentioned something in DMs and now asks about it in a channel, you'll find it here."""
     args_schema: Type[BaseModel] = SearchEpisodesInput
     user_id: str = Field(exclude=True)
 
@@ -330,8 +338,22 @@ class SearchEpisodesTool(BaseTool):
 
     async def _arun(self, query: str) -> str:
         try:
+            logger.info(f"[SearchEpisodesTool] Query: '{query}' for user {self.user_id}")
+            
             # Use standard memory search (episodes)
             results = await memory_manager.search_memories(query, self.user_id)
+            
+            # Log raw results for debugging
+            if results:
+                logger.debug(f"[SearchEpisodesTool] Raw results: {len(results)} memories found")
+                for i, r in enumerate(results[:3]):  # Log top 3
+                    score = r.get('score', 'N/A')
+                    channel = r.get('channel_id', 'N/A')
+                    content_preview = (r.get('content', '') or '')[:80]
+                    logger.debug(f"[SearchEpisodesTool] Result {i+1}: score={score}, channel={channel}, content='{content_preview}...'")
+            else:
+                logger.info(f"[SearchEpisodesTool] No results for query: '{query}'")
+            
             if not results:
                 return "No specific memories found."
             
@@ -357,15 +379,38 @@ class SearchEpisodesTool(BaseTool):
                     filtered_results.append(r)
             
             if not filtered_results:
+                logger.info(f"[SearchEpisodesTool] All {len(results)} results filtered out (meta-questions or too short)")
                 return "No substantive memories found matching your query."
             
             # Limit results for Reflective Mode to reduce token bloat
             limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
             filtered_results = filtered_results[:limit]
             
-            formatted = "\n".join([f"- {r['content']}" for r in filtered_results])
-            return f"Found {len(filtered_results)} Episodes (top matches):\n{formatted}"
+            logger.info(f"[SearchEpisodesTool] Returning {len(filtered_results)} memories (limit={limit})")
+            
+            # Include relative time to help identify recent vs old memories
+            formatted_lines = []
+            for r in filtered_results:
+                relative_time = r.get('relative_time', 'unknown time')
+                content = r.get('content', '')
+                
+                # Add fragment indicator
+                if r.get('is_chunk'):
+                    idx = r.get('chunk_index', 0) + 1
+                    total = r.get('chunk_total', '?')
+                    content = f"[Fragment {idx}/{total}] {content}"
+                    
+                    # Add hint about reading full content
+                    msg_id = r.get('parent_message_id') or r.get('message_id')
+                    if msg_id:
+                        content += f" (ID: {msg_id})"
+                
+                formatted_lines.append(f"- ({relative_time}) {content}")
+            
+            formatted = "\n".join(formatted_lines)
+            return f"Found {len(filtered_results)} memories:\n{formatted}"
         except Exception as e:
+            logger.error(f"[SearchEpisodesTool] Error: {e}")
             return f"Error searching episodes: {e}"
 
 class LookupFactsInput(BaseModel):
@@ -683,3 +728,25 @@ For human conversations, use the regular memory search tools."""
         except (ValueError, KeyError, ConnectionError, TimeoutError) as e:
             logger.error(f"Error recalling bot conversation: {e}")
             return f"I had trouble recalling those conversations: {e}"
+
+
+class ReadFullMemoryInput(BaseModel):
+    message_id: str = Field(description="The Discord message ID of the memory to read in full.")
+
+class ReadFullMemoryTool(BaseTool):
+    name: str = "read_full_memory"
+    description: str = "Reads the complete content of a memory that was stored as a fragment/chunk. Use this when you see a [Fragment X/Y] indicator and need the full context."
+    args_schema: Type[BaseModel] = ReadFullMemoryInput
+    
+    def _run(self, message_id: str) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, message_id: str) -> str:
+        try:
+            content = await memory_manager.get_full_message_by_discord_id(message_id)
+            if content:
+                return f"Full content for message {message_id}:\n\n{content}"
+            else:
+                return f"Could not find full content for message {message_id}."
+        except Exception as e:
+            return f"Error reading memory: {e}"

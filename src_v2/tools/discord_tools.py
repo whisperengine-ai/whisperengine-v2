@@ -54,7 +54,12 @@ class SearchChannelMessagesInput(BaseModel):
 
 class SearchChannelMessagesTool(BaseTool):
     name: str = "search_channel_messages"
-    description: str = "Search recent channel messages by keyword/topic. Scans last 200 messages. Use when user asks 'what did I say about X?', 'what happened earlier?', or references recent conversation."
+    description: str = """Search the CURRENT CHANNEL's recent Discord messages by keyword. Only scans last 200 messages in THIS channel.
+
+USE THIS FOR: "what did I say earlier?" (in this channel), "what happened in chat?", recent channel-specific context.
+DO NOT USE FOR: Memories from DMs, past conversations from other channels, or long-term memory recall.
+
+For memories across all contexts (DMs, other channels), use search_specific_memories instead."""
     args_schema: Type[BaseModel] = SearchChannelMessagesInput
     
     # Injected at runtime

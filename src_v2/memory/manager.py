@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import uuid
 import datetime
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -12,6 +12,61 @@ from src_v2.memory.models import MemorySourceType
 from src_v2.memory import scoring
 from influxdb_client import Point
 import time
+
+# Chunking constants for long message handling
+CHUNK_THRESHOLD = 1000  # Chunk messages longer than this (chars)
+CHUNK_SIZE = 500  # Target chunk size
+CHUNK_OVERLAP = 50  # Overlap between chunks for context continuity
+
+
+def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> List[Tuple[str, int]]:
+    """
+    Split long text into overlapping chunks for better semantic search.
+    
+    Args:
+        text: The text to chunk
+        chunk_size: Target size for each chunk
+        overlap: Number of characters to overlap between chunks
+    
+    Returns:
+        List of (chunk_text, chunk_index) tuples
+    """
+    if len(text) <= chunk_size:
+        return [(text, 0)]
+    
+    chunks = []
+    start = 0
+    chunk_idx = 0
+    
+    while start < len(text):
+        # Calculate end position
+        end = start + chunk_size
+        
+        # If not at the end, try to break at a sentence boundary
+        if end < len(text):
+            # Look for sentence endings within the last 100 chars of the chunk
+            search_start = max(end - 100, start)
+            best_break = end
+            
+            for i in range(end, search_start, -1):
+                if i < len(text) and text[i-1] in '.!?\n':
+                    best_break = i
+                    break
+            
+            end = best_break
+        else:
+            end = len(text)
+        
+        chunk = text[start:end].strip()
+        if chunk:  # Don't add empty chunks
+            chunks.append((chunk, chunk_idx))
+            chunk_idx += 1
+        
+        # Move start position, accounting for overlap
+        start = end - overlap if end < len(text) else len(text)
+    
+    return chunks
+
 
 class MemoryManager:
     def __init__(self, bot_name: Optional[str] = None):
@@ -162,6 +217,10 @@ class MemoryManager:
     async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None, user_name: Optional[str] = None):
         """
         Embeds and saves a memory to Qdrant.
+        
+        For long messages (>CHUNK_THRESHOLD chars), splits into overlapping chunks
+        so that each chunk's embedding accurately represents its specific content.
+        This improves semantic search for phrases buried in long documents.
         """
         start_time = time.time()
         
@@ -175,43 +234,99 @@ class MemoryManager:
                 else:
                     source_type = MemorySourceType.INFERENCE  # Default for other types
             
-            # Generate embedding
-            embedding = await self.embedding_service.embed_query_async(content)
-            
-            # Prepare payload
-            payload = {
-                "type": "conversation",  # Default type for chat messages
-                "user_id": str(user_id),
-                "role": role,
-                "content": content,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "channel_id": str(channel_id) if channel_id else None,
-                "message_id": str(message_id) if message_id else None,
-                "importance_score": importance_score,
-                "source_type": source_type.value,
-                "user_name": user_name
-            }
-            
-            # Metadata can override type (e.g., for save_typed_memory)
-            # But preserve source_type - it should not be overwritten by metadata
-            if metadata:
-                preserved_source_type = payload["source_type"]
-                payload.update(metadata)
-                payload["source_type"] = preserved_source_type  # Restore after update
-            
-            # Upsert to Qdrant
             target_collection = collection_name or self.collection_name
             
-            await db_manager.qdrant_client.upsert(
-                collection_name=target_collection,
-                points=[
-                    PointStruct(
-                        id=str(uuid.uuid4()),
-                        vector=embedding,
-                        payload=payload
+            # Check if we need to chunk this content
+            if len(content) > CHUNK_THRESHOLD:
+                chunks = chunk_text(content)
+                logger.debug(f"Chunking long message ({len(content)} chars) into {len(chunks)} chunks")
+                
+                # Ensure we have a parent ID for grouping chunks (use message_id or generate new UUID)
+                chunk_group_id = str(message_id) if message_id else str(uuid.uuid4())
+                
+                points_to_upsert = []
+                for chunk_content, chunk_idx in chunks:
+                    # Generate embedding for this chunk
+                    embedding = await self.embedding_service.embed_query_async(chunk_content)
+                    
+                    # Prepare payload with chunk metadata
+                    payload = {
+                        "type": "conversation",
+                        "user_id": str(user_id),
+                        "role": role,
+                        "content": chunk_content,
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "channel_id": str(channel_id) if channel_id else None,
+                        "message_id": str(message_id) if message_id else None,
+                        "importance_score": importance_score,
+                        "source_type": source_type.value,
+                        "user_name": user_name,
+                        # Chunk-specific metadata
+                        "is_chunk": True,
+                        "chunk_index": chunk_idx,
+                        "chunk_total": len(chunks),
+                        "parent_message_id": chunk_group_id,
+                        "original_length": len(content)
+                    }
+                    
+                    if metadata:
+                        preserved_source_type = payload["source_type"]
+                        preserved_chunk_fields = {k: payload[k] for k in ["is_chunk", "chunk_index", "chunk_total", "parent_message_id", "original_length"]}
+                        payload.update(metadata)
+                        payload["source_type"] = preserved_source_type
+                        payload.update(preserved_chunk_fields)
+                    
+                    points_to_upsert.append(
+                        PointStruct(
+                            id=str(uuid.uuid4()),
+                            vector=embedding,
+                            payload=payload
+                        )
                     )
-                ]
-            )
+                
+                # Batch upsert all chunks
+                await db_manager.qdrant_client.upsert(
+                    collection_name=target_collection,
+                    points=points_to_upsert
+                )
+                
+            else:
+                # Original path for short messages
+                # Generate embedding
+                embedding = await self.embedding_service.embed_query_async(content)
+                
+                # Prepare payload
+                payload = {
+                    "type": "conversation",  # Default type for chat messages
+                    "user_id": str(user_id),
+                    "role": role,
+                    "content": content,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "channel_id": str(channel_id) if channel_id else None,
+                    "message_id": str(message_id) if message_id else None,
+                    "importance_score": importance_score,
+                    "source_type": source_type.value,
+                    "user_name": user_name
+                }
+                
+                # Metadata can override type (e.g., for save_typed_memory)
+                # But preserve source_type - it should not be overwritten by metadata
+                if metadata:
+                    preserved_source_type = payload["source_type"]
+                    payload.update(metadata)
+                    payload["source_type"] = preserved_source_type  # Restore after update
+                
+                # Upsert to Qdrant
+                await db_manager.qdrant_client.upsert(
+                    collection_name=target_collection,
+                    points=[
+                        PointStruct(
+                            id=str(uuid.uuid4()),
+                            vector=embedding,
+                            payload=payload
+                        )
+                    ]
+                )
             
             # Log metrics
             if db_manager.influxdb_write_api:
@@ -362,11 +477,36 @@ class MemoryManager:
                     "importance_multiplier": round(importance_multiplier, 3),
                     "timestamp": payload.get("timestamp"),
                     "relative_time": get_relative_time(payload.get("timestamp")) if payload.get("timestamp") else "unknown time",
-                    "user_name": payload.get("user_name")
+                    "user_name": payload.get("user_name"),
+                    "channel_id": payload.get("channel_id"),
+                    "message_id": payload.get("message_id"),
+                    # Chunk metadata for hydration
+                    "is_chunk": payload.get("is_chunk", False),
+                    "chunk_index": payload.get("chunk_index"),
+                    "chunk_total": payload.get("chunk_total"),
+                    "original_length": payload.get("original_length"),
+                    "parent_message_id": payload.get("parent_message_id")
                 })
             
             # Re-rank by weighted score
             results.sort(key=lambda x: x["score"], reverse=True)
+            
+            # Deduplicate by parent_message_id (keep highest scoring chunk)
+            deduplicated = []
+            seen_parents = set()
+            
+            for res in results:
+                # Use parent_message_id for chunks, or message_id for regular messages
+                # If neither exists (legacy), use ID
+                unique_key = res.get("parent_message_id") or res.get("message_id") or res["id"]
+                
+                if unique_key not in seen_parents:
+                    deduplicated.append(res)
+                    seen_parents.add(unique_key)
+            
+            # Log deduplication stats
+            if len(results) > len(deduplicated):
+                logger.debug(f"Deduplicated {len(results) - len(deduplicated)} chunk duplicates from {len(results)} results")
             
             # Log metrics
             if db_manager.influxdb_write_api:
@@ -376,7 +516,7 @@ class MemoryManager:
                         .tag("user_id", user_id) \
                         .tag("operation", "read") \
                         .field("duration_ms", duration_ms) \
-                        .field("result_count", len(results)) \
+                        .field("result_count", len(deduplicated)) \
                         .time(datetime.datetime.utcnow())
                     
                     db_manager.influxdb_write_api.write(
@@ -387,11 +527,40 @@ class MemoryManager:
                 except Exception as e:
                     logger.error(f"Failed to log memory search metrics: {e}")
 
-            return results[:limit]
+            return deduplicated[:limit]
             
         except Exception as e:
             logger.error(f"Failed to search memories: {e}")
             return []
+
+    async def get_full_message_by_discord_id(self, message_id: str) -> Optional[str]:
+        """
+        Fetch the full message content from Postgres by Discord message_id.
+        
+        Use this to hydrate chunked memories back to their full original content.
+        When a memory search returns a chunk (is_chunk=True), you can use the
+        message_id to fetch the complete original message.
+        
+        Args:
+            message_id: Discord message snowflake ID (stored in both Qdrant and Postgres)
+        
+        Returns:
+            Full message content, or None if not found
+        """
+        if not db_manager.postgres_pool:
+            logger.warning("Postgres pool not available for get_full_message_by_discord_id")
+            return None
+        
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                result = await conn.fetchval(
+                    "SELECT content FROM v2_chat_history WHERE message_id = $1",
+                    str(message_id)
+                )
+                return result
+        except Exception as e:
+            logger.error(f"Failed to fetch full message for {message_id}: {e}")
+            return None
 
     async def search_memories_advanced(
         self,

@@ -15,7 +15,7 @@ from src_v2.tools.memory_tools import (
     SearchSummariesTool, SearchEpisodesTool, LookupFactsTool,
     UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool, RecallBotConversationTool,
     CreateUserGoalTool, ExploreGraphTool, DiscoverCommonGroundTool,
-    CharacterEvolutionTool
+    CharacterEvolutionTool, ReadFullMemoryTool
 )
 from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
@@ -93,6 +93,7 @@ class ReflectiveGraphAgent:
             
             # Document Tool
             ReadDocumentTool(user_id=user_id, character_name=character_name),
+            ReadFullMemoryTool(),
             
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
             SearchMyThoughtsTool(character_name=character_name),

@@ -678,6 +678,12 @@ class MessageHandler:
                                 # Truncate very long memories
                                 if len(content) > 500:
                                     content = content[:500] + "..."
+                                
+                                # Add fragment indicator
+                                if m.get('is_chunk'):
+                                    idx = m.get('chunk_index', 0) + 1
+                                    total = m.get('chunk_total', '?')
+                                    content = f"[Fragment {idx}/{total}] {content}"
                                     
                                 # Inject user identity if available (prevents identity bleed)
                                 if user_name:
