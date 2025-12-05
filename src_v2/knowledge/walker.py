@@ -807,14 +807,22 @@ class GraphWalker:
                 # Find central node (highest score)
                 central = max(component, key=lambda n: n.score)
                 
-                # Generate theme from node names
+                # Generate theme from node names (skip User nodes - use their display_name or skip entirely)
                 theme_words = []
                 for n in component[:5]:
-                    name_str = str(n.name).lower() if n.name else ""
+                    # Skip User nodes when generating theme (their IDs aren't meaningful)
+                    if n.label == "User":
+                        # Use display_name if available, otherwise skip
+                        if hasattr(n, 'properties') and n.properties.get('display_name'):
+                            name_str = str(n.properties['display_name']).lower()
+                        else:
+                            continue
+                    else:
+                        name_str = str(n.name).lower() if n.name else ""
                     if name_str:
                         theme_words.extend(name_str.split()[:2])
                 unique_words = list(set(theme_words))[:3]
-                theme = " + ".join(unique_words)
+                theme = " + ".join(unique_words) if unique_words else f"Cluster ({len(component)} nodes)"
                 
                 clusters.append(ThematicCluster(
                     theme=theme,
