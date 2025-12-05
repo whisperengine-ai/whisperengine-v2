@@ -1,9 +1,9 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 3.0  
+**Document Version:** 3.1  
 **Created:** November 24, 2025  
-**Last Updated:** December 5, 2025 (E26, E27, B5 complete)
-**Status:** Active Planning
+**Last Updated:** December 4, 2025 (E28, E29 complete — Phase 1 Complete)
+**Status:** Phase 1 Complete
 
 ### Status Legend
 | Icon | Meaning |
@@ -88,11 +88,24 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | ✅ Complete |
 
-#### 📋 Proposed (Ready to Start)
+---
 
-| Priority | Phase | Description | Time | Deps | Status |
-|----------|-------|-------------|------|------|--------|
-| 🗄️ Deferred | **E21** | **Semantic Routing (Fast Path)** | **1 day** | — | 🗄️ Deferred |
+### 🎉 Phase 1 Complete (December 4, 2025)
+
+All proposed roadmap items have been implemented. The system is feature-complete for:
+- **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
+- **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks)
+- **Autonomous Agency** (Lurking, reactions, posting, bot-to-bot conversations)
+- **LangGraph Orchestration** (Supergraph, specialized workers, advanced queues)
+- **Safety & Observability** (Content safety, classifier metrics, InfluxDB analytics)
+- **User Transparency** (User-facing graph, recommendations)
+
+**Next Phase Planning:** No active proposed work. Consider:
+- Production deployment and stability monitoring
+- User feedback collection
+- New feature ideation based on emergent behavior observations
+
+---
 
 #### ⏸️ On Hold / Deferred
 
@@ -2173,10 +2186,10 @@ Response: {
 
 ---
 
-### 📋 Phase E29: Graph-Based Recommendations
+### ✅ Phase E29: Graph-Based Recommendations
 **Priority:** ⚪ Low | **Time:** 1-2 days | **Complexity:** Low-Medium
-**Status:** 📋 Proposed
-**Dependencies:** E25 (Enrichment)
+**Status:** ✅ Complete (December 2025)
+**Dependencies:** E25 (Enrichment) ✅
 **Added:** December 2025
 
 **Problem:** Bots don't leverage the social graph for recommendations. With enough users and topics, the graph can surface interesting connections.
