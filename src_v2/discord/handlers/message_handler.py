@@ -560,11 +560,25 @@ class MessageHandler:
                                 # Add image marker for refinement detection
                                 image_marker = " [with image]" if ref_has_images else ""
                                 
-                                if ref_text:
-                                    user_message = f"[Replying to {ref_author}{image_marker}: \"{ref_text}\"]\n{user_message}"
+                                # CRITICAL: Check if user is replying to the bot's own message
+                                # This prevents the bot from thinking the user is sharing their own content
+                                # when they're actually commenting on the bot's content (e.g., bot's dream)
+                                is_reply_to_bot = ref_msg.author.id == (self.bot.user.id if self.bot.user else None)
+                                
+                                if is_reply_to_bot:
+                                    # Make it VERY clear that user is commenting on BOT's content
+                                    if ref_text:
+                                        user_message = f"[CONTEXT: User is replying to YOUR previous message. They are commenting on what YOU wrote.]\n[Your original message was{image_marker}: \"{ref_text}\"]\n[User's response]: {user_message}"
+                                    else:
+                                        user_message = f"[CONTEXT: User is replying to YOUR previous image/post. They are commenting on what YOU shared.]\n[User's response]: {user_message}"
+                                    logger.info(f"Injected self-reply context (user commenting on bot's message)")
                                 else:
-                                    user_message = f"[Replying to {ref_author}'s image{image_marker}]\n{user_message}"
-                                logger.info(f"Injected reply context: {user_message}")
+                                    # Standard reply to another user's message
+                                    if ref_text:
+                                        user_message = f"[Replying to {ref_author}{image_marker}: \"{ref_text}\"]\n{user_message}"
+                                    else:
+                                        user_message = f"[Replying to {ref_author}'s image{image_marker}]\n{user_message}"
+                                    logger.info(f"Injected reply context: {user_message}")
                             
                             # 2. Attachments (Images & Documents)
                             if ref_msg.attachments:
@@ -1398,8 +1412,11 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                             continue
                         author_name = msg.author.display_name
                         if msg.author.bot:
-                            # Mark bot messages
+                            # Mark bot messages clearly
                             author_name = f"[Bot: {author_name}]"
+                        else:
+                            # Mark human messages clearly (important when humans join bot conversations)
+                            author_name = f"[Human: {author_name}]"
                         history_messages.append(f"{author_name}: {msg.content[:200]}")
                     history_messages.reverse()
                 except Exception as e:
