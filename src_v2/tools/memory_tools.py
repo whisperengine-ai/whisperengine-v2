@@ -735,7 +735,14 @@ class ReadFullMemoryInput(BaseModel):
 
 class ReadFullMemoryTool(BaseTool):
     name: str = "read_full_memory"
-    description: str = "Reads the complete content of a memory that was stored as a fragment/chunk. Use this when you see a [Fragment X/Y] indicator and need the full context."
+    description: str = """Fetches the COMPLETE, untruncated content of a memory fragment.
+
+USE THIS WHEN:
+- Search results show [Fragment X/Y] and the user asks for "full text", "exact words", "complete message", or "all the details"
+- A memory fragment appears cut off mid-sentence or mid-thought
+- The user explicitly asks you to "read the full memory" or "get the rest"
+
+Pass the message ID shown in the search result (e.g., "1234567890")."""
     args_schema: Type[BaseModel] = ReadFullMemoryInput
     
     def _run(self, message_id: str) -> str:

@@ -163,7 +163,7 @@ class ReflectiveGraphAgent:
         
         # Build tool categories list
         tool_categories = [
-            "1. Memory & Knowledge: search_archived_summaries, search_specific_memories, lookup_user_facts, update_user_facts, analyze_topic, read_document",
+            "1. Memory & Knowledge: search_archived_summaries, search_specific_memories, read_full_memory, lookup_user_facts, update_user_facts, analyze_topic, read_document",
             "2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)",
             "3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution",
             "4. Introspection: analyze_conversation_patterns, detect_recurring_themes",
@@ -184,6 +184,7 @@ class ReflectiveGraphAgent:
         tool_guide_entries = [
             # Memory tools
             ("read_document", "Read the full content of an attached file. Use this when the user says 'check this out' or asks about a file."),
+            ("read_full_memory", "Fetch the COMPLETE content of a fragmented memory. ALWAYS use this when: (1) you see [Fragment X/Y] in search results and the user asks for 'full text', 'exact words', or 'complete message', OR (2) the fragment seems cut off mid-sentence. Pass the message ID shown in parentheses."),
             ("search_specific_memories", "Search the USER's past conversations, quotes, or things they mentioned."),
             ("search_archived_summaries", "Search summarized conversation history for broader context."),
             ("lookup_user_facts", "Look up stored facts about the user (preferences, background, etc.)."),
@@ -249,7 +250,8 @@ IMPORTANT NOTES:
 - When calling generate_image, copy ALL visual details into the prompt. The tool cannot see your reasoning.
 - If image_type='other', describe the subject only - do NOT include your own appearance.
 - When asked to search/explore/analyze, call the tool immediately. Don't just describe what you'll do.
-- If the user shares a document, you'll see a PREVIEW. Use read_document to get full content."""
+- If the user shares a document, you'll see a PREVIEW. Use read_document to get full content.
+- MEMORY FRAGMENTS: When search results show [Fragment X/Y], that memory was split into Y parts. If the user asks for 'full text', 'exact details', or 'complete message', you MUST call read_full_memory with the ID shown in parentheses to retrieve the complete content."""
 
         return f"""You are a reflective AI agent designed to answer complex questions through careful reasoning and tool use.
 
@@ -423,6 +425,51 @@ TOOL USAGE GUIDE:
                     "If the user asked for audio, just respond naturally - voice will be synthesized automatically."
                 )
         
+        # --- Check 3: Fragment expansion detection ---
+        # If we found a fragment but didn't expand it, and the user asked for full text
+        found_fragment = False
+        expanded_fragment = False
+        
+        # Scan tool outputs for fragments
+        for msg in reversed(messages):
+            if isinstance(msg, ToolMessage):
+                if "[Fragment" in str(msg.content):
+                    found_fragment = True
+                if msg.name == "read_full_memory":
+                    expanded_fragment = True
+            elif isinstance(msg, HumanMessage):
+                # Stop scanning at the last user message
+                break
+        
+        if found_fragment and not expanded_fragment:
+            # 1. Check if user explicitly asked for full text (Strong Signal)
+            user_wants_full_text = False
+            for msg in reversed(messages):
+                if isinstance(msg, HumanMessage) and not str(msg.content).startswith("[SYSTEM NOTE:"):
+                    user_text = str(msg.content).lower()
+                    if any(p in user_text for p in ["full text", "complete message", "exact words", "whole thing", "rest of the message", "read the full"]):
+                        user_wants_full_text = True
+                    break
+            
+            # 2. Check if agent expressed uncertainty (Weak Signal)
+            agent_uncertain = False
+            if last_ai_message and last_ai_message.content:
+                content_lower = str(last_ai_message.content).lower()
+                uncertainty_phrases = [
+                    "incomplete", "fragmented", "missing sections", "cut off", "truncated", 
+                    "don't have the full", "fragments", "uncertain", "hitting a wall", "partial",
+                    "can't see the whole", "can't read the whole", "pieces"
+                ]
+                if any(phrase in content_lower for phrase in uncertainty_phrases):
+                    agent_uncertain = True
+
+            if user_wants_full_text or agent_uncertain:
+                hints.append(
+                    "You found a memory fragment (marked [Fragment X/Y]) but did not read the full content. "
+                    "The user wants the full text OR you expressed uncertainty. "
+                    "You MUST call 'read_full_memory' with the ID from the fragment (e.g. ID: 12345) to retrieve the complete message."
+                )
+
         # --- Check 2: Tool failure detection (original logic) ---
         tool_messages = []
         for msg in reversed(messages):
