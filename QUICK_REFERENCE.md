@@ -4,6 +4,10 @@
 
 ## 🎯 Most Common Commands
 
+Syntax: `./bot.sh [command] [target]`
+
+**Targets:** `all` | `infra` | `bots` | `workers` | `<name>`
+
 ```bash
 # Start everything
 ./bot.sh up all
@@ -20,8 +24,11 @@
 # Restart after code changes
 ./bot.sh restart elena
 
+# Restart all bots (not infra/workers)
+./bot.sh restart bots
+
 # Stop everything
-./bot.sh down
+./bot.sh down all
 
 # Ingest Character Backgrounds (New)
 DISCORD_BOT_NAME=elena python scripts/ingest_character_facts.py
@@ -32,13 +39,14 @@ DISCORD_BOT_NAME=elena python scripts/ingest_character_facts.py
 ### Pattern 1: Development (Primary - Docker)
 ```bash
 ./bot.sh up elena       # Start bot in Docker
-./bot.sh logs elena -f  # Monitor logs
+./bot.sh logs elena     # Monitor logs
 ./bot.sh restart elena  # After code changes
+./bot.sh restart bots   # Restart all bots only
 ```
 
 ### Pattern 2: Development (Local Python - Debugging Only)
 ```bash
-./bot.sh infra up           # Infrastructure only
+./bot.sh up infra           # Infrastructure only
 source .venv/bin/activate
 python run_v2.py elena      # For debugger breakpoints
 ```

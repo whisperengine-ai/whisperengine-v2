@@ -3,8 +3,6 @@
 
 set -e
 
-COMPOSE_FILE="docker-compose.yml"
-
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,210 +12,181 @@ NC='\033[0m'
 
 INFRA_SERVICES="postgres qdrant neo4j influxdb redis"
 BOT_SERVICES="elena ryan dotty aria dream jake sophia marcus nottaylor gabriel aethys aetheris"
+WORKER_SERVICES="worker-cognition worker-action worker-sensory worker-social"
 
 show_help() {
     echo -e "${BLUE}WhisperEngine v2 - Bot Management${NC}"
     echo ""
-    echo "Usage: ./bot.sh [command]"
+    echo "Usage: ./bot.sh [command] [target]"
+    echo ""
+    echo "Targets:"
+    echo "  all          Everything (default)"
+    echo "  infra        Infrastructure (databases)"
+    echo "  bots         All bot containers"
+    echo "  workers      All background workers"
+    echo "  <name>       Specific service (e.g., elena, postgres)"
     echo ""
     echo "Commands:"
-    echo "  infra [up|down]       Start or stop infrastructure services"
-    echo "  up [bot|all]          Start infrastructure + bot(s) (builds images)"
-    echo "  down [bot|all]        Stop and remove containers"
-    echo "  start [bot|all|bots]  Start existing containers (no build)"
-    echo "  stop [bot|all|bots]   Stop running containers"
-    echo "  restart [bot|all|bots] Restart containers"
-    echo "  logs [bot|all]        Show logs"
-    echo "  ps                    Show status of all containers"
-    echo "  build                 Rebuild bot images"
-    echo "  backup                Backup all databases"
-    echo "  restore <dir>         Restore databases from backup"
+    echo "  up           Start/Update containers (builds if needed)"
+    echo "  down         Stop and remove containers"
+    echo "  start        Start existing containers"
+    echo "  stop         Stop running containers"
+    echo "  restart      Restart containers"
+    echo "  logs         View logs"
+    echo "  ps           Show status"
+    echo "  build        Rebuild images"
+    echo "  backup       Backup databases"
+    echo "  restore      Restore databases"
     echo ""
     echo "Examples:"
-    echo "  ./bot.sh infra up     # Start just databases"
-    echo "  ./bot.sh up elena     # Start infrastructure + Elena"
-    echo "  ./bot.sh up all       # Start everything"
-    echo "  ./bot.sh stop elena   # Stop Elena"
-    echo "  ./bot.sh start elena  # Start Elena"
-    echo "  ./bot.sh restart bots # Restart all bots (no infra/workers)"
-    echo "  ./bot.sh logs elena   # Watch Elena's logs"
-    echo "  ./bot.sh restart elena # Restart Elena"
-    echo "  ./bot.sh backup       # Backup all databases"
-    echo "  ./bot.sh restore ./backups/20251126_120000  # Restore from backup"
+    echo "  ./bot.sh up infra       # Start databases"
+    echo "  ./bot.sh up elena       # Start Elena"
+    echo "  ./bot.sh restart bots   # Restart all bots"
+    echo "  ./bot.sh logs workers   # View worker logs"
     echo ""
 }
 
-case "$1" in
-    infra)
-        if [ "$2" = "up" ]; then
-            echo -e "${YELLOW}Starting infrastructure...${NC}"
-            docker compose up -d $INFRA_SERVICES
-            echo -e "${GREEN}✓ Infrastructure started${NC}"
-            docker compose ps
-        elif [ "$2" = "down" ]; then
-            echo -e "${YELLOW}Stopping infrastructure...${NC}"
-            docker compose stop $INFRA_SERVICES
-            docker compose rm -f $INFRA_SERVICES
-            echo -e "${GREEN}✓ Infrastructure stopped${NC}"
-        else
-            echo -e "${RED}Error: Specify action${NC}"
-            echo "Usage: ./bot.sh infra [up|down]"
-            exit 1
-        fi
-        ;;
-    
-    up)
-        if [ "$2" = "all" ]; then
-            echo -e "${YELLOW}Starting all bots...${NC}"
-            docker compose --profile all up -d --build
-        elif [ -n "$2" ]; then
-            echo -e "${YELLOW}Starting $2...${NC}"
-            docker compose --profile "$2" up -d --build
-        else
-            echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh up [bot|all]"
-            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
-            exit 1
-        fi
-        echo -e "${GREEN}✓ Deployment complete${NC}"
-        sleep 5
-        docker ps --filter "name=whisperengine-v2-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-        ;;
-    
-    down)
-        if [ -z "$2" ]; then
-            echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh down [bot|all]"
-            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
-            exit 1
-        fi
+# Helper: Check if target is a single bot (needs --profile for 'up')
+is_bot() {
+    local target=$1
+    for bot in $BOT_SERVICES; do
+        [ "$target" = "$bot" ] && return 0
+    done
+    return 1
+}
 
-        if [ "$2" = "all" ]; then
-            echo -e "${YELLOW}Stopping all containers...${NC}"
-            docker compose --profile all down
-            echo -e "${GREEN}✓ All containers stopped${NC}"
-        else
-            echo -e "${YELLOW}Stopping and removing $2...${NC}"
-            docker compose stop "$2"
-            docker compose rm -f "$2"
-            echo -e "${GREEN}✓ $2 removed${NC}"
-        fi
-        ;;
-    
-    stop)
-        TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory worker-social"; fi
-        if [ "$TARGET" = "bots" ]; then TARGET="$BOT_SERVICES"; fi
+# Helper: Resolve target alias to service names
+resolve_target() {
+    local target=$1
+    case "$target" in
+        all|"")      echo "ALL" ;;
+        infra)       echo "$INFRA_SERVICES" ;;
+        bots)        echo "$BOT_SERVICES" ;;
+        workers)     echo "$WORKER_SERVICES" ;;
+        worker)      echo "$WORKER_SERVICES" ;; # Alias
+        *)           echo "$target" ;;
+    esac
+}
 
+# Main Command Handler
+CMD=$1
+TARGET=$2
+
+# Handle commands that don't take a target or have specific handling
+case "$CMD" in
+    ps)
+        docker compose ps
+        exit 0
+        ;;
+    build)
+        echo -e "${YELLOW}Building images...${NC}"
+        docker compose build
+        echo -e "${GREEN}✓ Build complete${NC}"
+        exit 0
+        ;;
+    backup)
+        ./scripts/backup.sh
+        exit 0
+        ;;
+    restore)
         if [ -z "$TARGET" ]; then
-            echo -e "${RED}Error: Specify bot name, 'bots', or 'all'${NC}"
-            echo "Usage: ./bot.sh stop [bot|all|bots]"
-            echo "Bots: $BOT_SERVICES"
+            echo -e "${RED}Error: Please specify backup directory${NC}"
             exit 1
         fi
+        ./scripts/restore.sh "$TARGET"
+        exit 0
+        ;;
+    help|--help|-h|"")
+        show_help
+        exit 0
+        ;;
+esac
 
-        if [ "$TARGET" = "all" ]; then
-            echo -e "${YELLOW}Stopping all bots...${NC}"
-            docker compose --profile all stop
+# Resolve services for lifecycle commands
+SERVICES=$(resolve_target "$TARGET")
+
+if [ -z "$SERVICES" ]; then
+    echo -e "${RED}Error: Unknown target '$TARGET'${NC}"
+    exit 1
+fi
+
+case "$CMD" in
+    up)
+        if [ "$SERVICES" = "ALL" ]; then
+            echo -e "${YELLOW}Starting everything...${NC}"
+            docker compose --profile all up -d --build
+        elif is_bot "$TARGET"; then
+            # Single bot requires --profile since bots use Docker profiles
+            echo -e "${YELLOW}Starting $TARGET...${NC}"
+            docker compose --profile "$TARGET" up -d --build
+        else
+            echo -e "${YELLOW}Starting $TARGET...${NC}"
+            docker compose up -d --build $SERVICES
+        fi
+        echo -e "${GREEN}✓ Up complete${NC}"
+        ;;
+
+    down)
+        if [ "$SERVICES" = "ALL" ]; then
+            echo -e "${YELLOW}Stopping everything...${NC}"
+            docker compose --profile all down
         else
             echo -e "${YELLOW}Stopping $TARGET...${NC}"
-            docker compose stop $TARGET
+            docker compose stop $SERVICES
+            docker compose rm -f $SERVICES
         fi
-        echo -e "${GREEN}✓ Stopped${NC}"
+        echo -e "${GREEN}✓ Down complete${NC}"
         ;;
 
     start)
-        TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory worker-social"; fi
-        if [ "$TARGET" = "bots" ]; then TARGET="$BOT_SERVICES"; fi
-
-        if [ -z "$TARGET" ]; then
-            echo -e "${RED}Error: Specify bot name, 'bots', or 'all'${NC}"
-            echo "Usage: ./bot.sh start [bot|all|bots]"
-            echo "Bots: $BOT_SERVICES"
-            exit 1
-        fi
-
-        if [ "$TARGET" = "all" ]; then
-            echo -e "${YELLOW}Starting all bots...${NC}"
-            # Neo4j workaround: Force recreate to prevent restart loops
+        if [ "$SERVICES" = "ALL" ]; then
+            echo -e "${YELLOW}Starting everything...${NC}"
+            # Neo4j workaround
             docker compose stop neo4j >/dev/null 2>&1 || true
             docker compose rm -f neo4j >/dev/null 2>&1 || true
             docker compose --profile all up -d --no-build
         else
             echo -e "${YELLOW}Starting $TARGET...${NC}"
-            docker compose up -d --no-build $TARGET
+            docker compose up -d --no-build $SERVICES
         fi
         echo -e "${GREEN}✓ Started${NC}"
         ;;
-    
-    restart)
-        TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory worker-social"; fi
-        if [ "$TARGET" = "bots" ]; then TARGET="$BOT_SERVICES"; fi
 
-        if [ -z "$TARGET" ]; then
-            echo -e "${RED}Error: Specify bot name, 'bots', or 'all'${NC}"
-            echo "Usage: ./bot.sh restart [bot|all|bots]"
-            echo "Bots: $BOT_SERVICES"
-            exit 1
+    stop)
+        if [ "$SERVICES" = "ALL" ]; then
+            echo -e "${YELLOW}Stopping everything...${NC}"
+            docker compose --profile all stop
+        else
+            echo -e "${YELLOW}Stopping $TARGET...${NC}"
+            docker compose stop $SERVICES
         fi
+        echo -e "${GREEN}✓ Stopped${NC}"
+        ;;
 
-        if [ "$TARGET" = "all" ]; then
-            echo -e "${YELLOW}Restarting all bots...${NC}"
+    restart)
+        if [ "$SERVICES" = "ALL" ]; then
+            echo -e "${YELLOW}Restarting everything...${NC}"
             docker compose --profile all restart
         else
             echo -e "${YELLOW}Restarting $TARGET...${NC}"
-            docker compose restart $TARGET
+            docker compose restart $SERVICES
         fi
         echo -e "${GREEN}✓ Restarted${NC}"
         ;;
-    
-    logs)
-        TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
 
-        if [ "$TARGET" = "all" ] || [ -z "$TARGET" ]; then
+    logs)
+        if [ "$SERVICES" = "ALL" ]; then
             docker compose --profile all logs -f
         else
-            docker compose logs -f $TARGET
+            docker compose logs -f $SERVICES
         fi
         ;;
-    
-    ps)
-        docker compose ps
-        ;;
-    
-    build)
-        echo -e "${YELLOW}Building bot images...${NC}"
-        docker compose build
-        echo -e "${GREEN}✓ Build complete${NC}"
-        ;;
-    
-    backup)
-        ./scripts/backup.sh
-        ;;
-    
-    restore)
-        if [ -z "$2" ]; then
-            echo -e "${RED}Error: Please specify backup directory${NC}"
-            echo "Usage: ./bot.sh restore <backup_directory>"
-            echo ""
-            echo "Available backups:"
-            ls -d ./backups/*/ 2>/dev/null || echo "  No backups found"
-            exit 1
-        fi
-        ./scripts/restore.sh "$2"
-        ;;
-    
-    help|--help|-h|"")
-        show_help
-        ;;
-    
+
     *)
-        echo -e "${RED}Unknown command: $1${NC}"
-        echo ""
+        echo -e "${RED}Unknown command: $CMD${NC}"
         show_help
         exit 1
         ;;
 esac
+
+exit 0

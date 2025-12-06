@@ -186,15 +186,16 @@ The Five Pillars (PostgreSQL, Qdrant, Neo4j, InfluxDB, Redis):
 
 **Docker (Primary - Recommended):**
 ```bash
-./bot.sh up elena      # Single bot
-./bot.sh up all        # All bots
-./bot.sh logs elena -f # View logs
-./bot.sh restart elena # After code changes
+./bot.sh up elena       # Single bot (includes infra)
+./bot.sh up all         # All bots + workers
+./bot.sh logs elena     # View logs
+./bot.sh restart elena  # After code changes
+./bot.sh restart bots   # Restart all bots only
 ```
 
 **Local Python (Debugging only):**
 ```bash
-./bot.sh infra up          # Start infrastructure only
+./bot.sh up infra          # Start infrastructure only
 source .venv/bin/activate
 python run_v2.py elena     # For debugger breakpoints
 ```
@@ -206,7 +207,7 @@ python run_v2.py elena     # For debugger breakpoints
 ./bot.sh ps
 
 # View logs
-./bot.sh logs elena -f
+./bot.sh logs elena
 
 # Test the API
 curl -X POST http://localhost:8000/api/chat \
@@ -266,13 +267,18 @@ cp .env.example .env.newcharacter
 
 ### Bot Management
 
+Syntax: `./bot.sh [command] [target]`
+
+**Targets:** `all`, `infra`, `bots`, `workers`, or specific service name (e.g., `elena`)
+
 ```bash
 ./bot.sh help             # All available commands
 ./bot.sh ps               # Container status
-./bot.sh logs elena -f    # Stream logs
+./bot.sh logs elena       # Stream logs
 ./bot.sh restart elena    # Restart after code changes
+./bot.sh restart bots     # Restart all bots (not infra/workers)
 ./bot.sh down all         # Stop all containers
-./bot.sh infra up         # Start databases only
+./bot.sh up infra         # Start databases only
 ```
 
 ### Database Migrations

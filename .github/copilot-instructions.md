@@ -383,16 +383,21 @@ source .venv/bin/activate
 ```
 
 ### Running Bots (Docker is Primary)
+
+Syntax: `./bot.sh [command] [target]`
+
+**Targets:** `all` | `infra` | `bots` | `workers` | `<name>` (e.g., `elena`, `postgres`)
+
 ```bash
 ./bot.sh up elena         # Start bot in Docker (recommended, even for dev)
-./bot.sh up all           # Start all bots
-./bot.sh logs elena -f    # Stream logs
-./bot.sh restart elena    # Restart a single bot (only takes ONE bot name)
-./bot.sh infra up         # Infrastructure only (for local Python debugging)
+./bot.sh up all           # Start all bots + workers
+./bot.sh logs elena       # Stream logs
+./bot.sh restart elena    # Restart a single bot
+./bot.sh restart bots     # Restart all bots (not infra/workers)
+./bot.sh restart workers  # Restart all workers
+./bot.sh up infra         # Infrastructure only (for local Python debugging)
 python run_v2.py elena    # Local Python run (only for debugging, requires infra up)
 ```
-
-**Note**: `./bot.sh restart` only accepts a single bot name. To restart multiple bots, run the command multiple times.
 
 ## ⚙️ Settings & Feature Flags
 
@@ -423,7 +428,7 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 ```bash
 ./bot.sh up elena        # Start elena (uses --profile elena)
 ./bot.sh up all          # Start all bots (uses --profile all)
-./bot.sh infra up        # Infrastructure only
+./bot.sh up infra        # Infrastructure only
 ```
 
 **Key pattern**: `docker-compose.yml` uses profiles. Infrastructure (postgres, qdrant, neo4j, influxdb, redis) has NO profile (always up). Each bot has profile `[name, "all"]`. The shared `insight-worker` has profile `["workers", "all"]`.

@@ -21,7 +21,7 @@ Usage:
 
 Requirements:
     - All bots must be running: ./bot.sh up all
-    - Infrastructure must be up: ./bot.sh infra up
+    - Infrastructure must be up: ./bot.sh up infra
 """
 
 import pytest
