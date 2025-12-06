@@ -98,20 +98,20 @@ When creating new documentation, **always follow the template in the `README.md`
 
 | Bot | Port | Status | Main Model | Temp | Reflective Model | Router |
 |-----|------|--------|------------|------|------------------|--------|
-| elena | 8000 | **Dev Primary** | `anthropic/claude-haiku-4.5` | 0.76 | `anthropic/claude-sonnet-4` | gpt-4o-mini |
-| nottaylor | 8008 | Production | `mistralai/mistral-medium-3.1` | 0.85 | `openai/gpt-4o` | gpt-4o-mini |
-| dotty | 8002 | Personal | `anthropic/claude-haiku-4.5` | 0.8 | `anthropic/claude-sonnet-4` | gpt-4o-mini |
-| aria | 8003 | Test | `google/gemini-2.5-flash` | 0.8 | `google/gemini-2.5-pro` | gemini-flash-lite |
-| dream | 8004 | Test | `x-ai/grok-3` | 0.85 | `x-ai/grok-4` | gpt-4o-mini |
-| jake | 8005 | Test | `mistralai/mistral-small-3.1-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gpt-4o-mini |
+| elena | 8000 | **Dev Primary** | `anthropic/claude-3.5-haiku` | 0.76 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
+| nottaylor | 8008 | Production | `mistralai/mistral-medium-3.1` | 0.85 | `mistralai/mistral-large-2512` | gemini-flash-lite |
+| dotty | 8002 | Personal | `anthropic/claude-3.5-haiku` | 0.8 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
+| aria | 8003 | Test | `google/gemini-2.5-flash` | 0.65 | `google/gemini-2.5-pro` | gemini-flash-lite |
+| dream | 8004 | Test | `x-ai/grok-4.1-fast` | 0.85 | `x-ai/grok-4` | gemini-flash-lite |
+| jake | 8005 | Test | `x-ai/grok-4.1-fast` | 0.7 | `x-ai/grok-4` | gemini-flash-lite |
 | marcus | 8007 | Test | `google/gemini-2.5-flash` | 0.5 | `google/gemini-2.5-pro` | gemini-flash-lite |
 | ryan | 8001 | Test | `google/gemini-2.5-flash` | 0.6 | `google/gemini-2.5-pro` | gemini-flash-lite |
-| sophia | 8006 | Test | `google/gemini-2.5-flash` | 0.4 | `google/gemini-2.5-pro` | gemini-flash-lite |
-| gabriel | 8009 | Personal | `mistralai/mistral-small-3.1-24b-instruct` | 0.75 | `mistralai/mistral-medium-3.1` | gpt-4o-mini |
-| aethys | 8010 | Test | `mistralai/mistral-medium-3.1` | 0.8 | `openai/gpt-4o` | gpt-4o-mini |
-| aetheris | 8011 | Personal | `anthropic/claude-3.5-haiku` | 0.7 | `anthropic/claude-sonnet-4` | gpt-4o-mini |
+| sophia | 8006 | Test | `x-ai/grok-4.1-fast` | 0.4 | `x-ai/grok-4` | gemini-flash-lite |
+| gabriel | 8009 | Personal | `mistralai/mistral-small-3.1-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
+| aethys | 8010 | Test | `mistralai/mistral-medium-3.1` | 0.8 | `mistralai/mistral-large-2512` | gemini-flash-lite |
+| aetheris | 8011 | Personal | `anthropic/claude-3.5-haiku` | 0.7 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
 
-**Router models**: Most bots use `openai/gpt-4o-mini`. Google bots use `google/gemini-2.5-flash-lite` to stay in-ecosystem.
+**Router models**: All bots use `google/gemini-2.5-flash-lite` for fast, cost-efficient routing ($0.10/$0.40 per M tokens, 1M context).
 
 ### Bot Roles
 
@@ -127,9 +127,9 @@ When creating new documentation, **always follow the template in the `README.md`
 
 **Model coverage by provider**:
 - **Anthropic** (3): elena, dotty, aetheris
-- **Google** (4): aria, marcus, ryan, sophia  
-- **Mistral** (4): nottaylor, jake, gabriel, aethys
-- **Grok/xAI** (1): dream
+- **Google** (3): aria, marcus, ryan
+- **Mistral** (3): nottaylor, gabriel, aethys
+- **Grok/xAI** (3): dream, sophia, jake
 
 ## ⚡ Quick Architecture
 

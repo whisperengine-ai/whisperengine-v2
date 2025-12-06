@@ -41,27 +41,28 @@ class BotConfig:
 
 # Bot configurations with their expected models (synced Dec 5, 2025)
 # Pattern: Fast main model → Smart reflective model
+# Distribution: 3 Anthropic, 3 Google, 3 Mistral, 3 Grok
 BOT_CONFIGS = [
-    # Anthropic bots
+    # Anthropic bots (fast haiku → smart sonnet)
     BotConfig(
         name="elena",
         port=8000,
-        main_model="anthropic/claude-haiku-4.5",
-        reflective_model="anthropic/claude-sonnet-4"
+        main_model="anthropic/claude-3.5-haiku",
+        reflective_model="anthropic/claude-sonnet-4.5"
     ),
     BotConfig(
         name="dotty",
         port=8002,
-        main_model="anthropic/claude-haiku-4.5",
-        reflective_model="anthropic/claude-sonnet-4"
+        main_model="anthropic/claude-3.5-haiku",
+        reflective_model="anthropic/claude-sonnet-4.5"
     ),
     BotConfig(
         name="aetheris",
         port=8011,
         main_model="anthropic/claude-3.5-haiku",
-        reflective_model="anthropic/claude-sonnet-4"
+        reflective_model="anthropic/claude-sonnet-4.5"
     ),
-    # Google bots
+    # Google bots (fast flash → smart pro)
     BotConfig(
         name="aria",
         port=8003,
@@ -80,25 +81,13 @@ BOT_CONFIGS = [
         main_model="google/gemini-2.5-flash",
         reflective_model="google/gemini-2.5-pro"
     ),
-    BotConfig(
-        name="sophia",
-        port=8006,
-        main_model="google/gemini-2.5-flash",
-        reflective_model="google/gemini-2.5-pro"
-    ),
-    # Mistral bots
+    # Mistral bots (small/medium → medium/large)
     BotConfig(
         name="nottaylor",
         port=8008,
         main_model="mistralai/mistral-medium-3.1",
-        reflective_model="openai/gpt-4o",
+        reflective_model="mistralai/mistral-large-2512",
         is_production=True
-    ),
-    BotConfig(
-        name="jake",
-        port=8005,
-        main_model="mistralai/mistral-small-3.1-24b-instruct",
-        reflective_model="mistralai/mistral-medium-3.1"
     ),
     BotConfig(
         name="gabriel",
@@ -110,13 +99,25 @@ BOT_CONFIGS = [
         name="aethys",
         port=8010,
         main_model="mistralai/mistral-medium-3.1",
-        reflective_model="openai/gpt-4o"
+        reflective_model="mistralai/mistral-large-2512"
     ),
-    # Grok bots
+    # Grok bots (fast → reasoning)
     BotConfig(
         name="dream",
         port=8004,
-        main_model="x-ai/grok-3",
+        main_model="x-ai/grok-4.1-fast",
+        reflective_model="x-ai/grok-4"
+    ),
+    BotConfig(
+        name="jake",
+        port=8005,
+        main_model="x-ai/grok-4.1-fast",
+        reflective_model="x-ai/grok-4"
+    ),
+    BotConfig(
+        name="sophia",
+        port=8006,
+        main_model="x-ai/grok-4.1-fast",
         reflective_model="x-ai/grok-4"
     ),
 ]

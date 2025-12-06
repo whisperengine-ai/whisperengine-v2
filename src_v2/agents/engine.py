@@ -116,6 +116,10 @@ class AgentEngine:
         chat_history = chat_history or []
         context_variables = context_variables or {}
         
+        # Populate context variables if missing (used for template substitution)
+        if "user_name" not in context_variables and user_id:
+            context_variables["user_name"] = user_id
+        
         # Defensive validation (engine-level, more lenient than Discord)
         # This catches issues from non-Discord entry points (API, tests, etc.)
         try:

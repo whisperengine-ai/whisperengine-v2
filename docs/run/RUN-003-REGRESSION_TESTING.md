@@ -144,30 +144,30 @@ python tests_v2/run_regression.py --cov
 
 | Bot | Port | Main Model | Temp | Reflective Model | Router | Status |
 |-----|------|------------|------|------------------|--------|--------|
-| elena | 8000 | anthropic/claude-haiku-4.5 | 0.76 | anthropic/claude-sonnet-4 | gpt-4o-mini | Dev Primary |
+| elena | 8000 | anthropic/claude-3.5-haiku | 0.76 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Dev Primary |
 | ryan | 8001 | google/gemini-2.5-flash | 0.6 | google/gemini-2.5-pro | gemini-flash-lite | Test |
-| dotty | 8002 | anthropic/claude-haiku-4.5 | 0.8 | anthropic/claude-sonnet-4 | gpt-4o-mini | Personal |
-| aria | 8003 | google/gemini-2.5-flash | 0.8 | google/gemini-2.5-pro | gemini-flash-lite | Test |
-| dream | 8004 | x-ai/grok-3 | 0.85 | x-ai/grok-4 | gpt-4o-mini | Test |
-| jake | 8005 | mistralai/mistral-small-3.1-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gpt-4o-mini | Test |
-| sophia | 8006 | google/gemini-2.5-flash | 0.4 | google/gemini-2.5-pro | gemini-flash-lite | Test |
+| dotty | 8002 | anthropic/claude-3.5-haiku | 0.8 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Personal |
+| aria | 8003 | google/gemini-2.5-flash | 0.65 | google/gemini-2.5-pro | gemini-flash-lite | Test |
+| dream | 8004 | x-ai/grok-4.1-fast | 0.85 | x-ai/grok-4 | gemini-flash-lite | Test |
+| jake | 8005 | x-ai/grok-4.1-fast | 0.7 | x-ai/grok-4 | gemini-flash-lite | Test |
+| sophia | 8006 | x-ai/grok-4.1-fast | 0.4 | x-ai/grok-4 | gemini-flash-lite | Test |
 | marcus | 8007 | google/gemini-2.5-flash | 0.5 | google/gemini-2.5-pro | gemini-flash-lite | Test |
-| nottaylor | 8008 | mistralai/mistral-medium-3.1 | 0.85 | openai/gpt-4o | gpt-4o-mini | Production |
-| gabriel | 8009 | mistralai/mistral-small-3.1-24b-instruct | 0.75 | mistralai/mistral-medium-3.1 | gpt-4o-mini | Personal |
-| aethys | 8010 | mistralai/mistral-medium-3.1 | 0.8 | openai/gpt-4o | gpt-4o-mini | Test |
-| aetheris | 8011 | anthropic/claude-3.5-haiku | 0.7 | anthropic/claude-sonnet-4 | gpt-4o-mini | Personal |
+| nottaylor | 8008 | mistralai/mistral-medium-3.1 | 0.85 | mistralai/mistral-large-2512 | gemini-flash-lite | Production |
+| gabriel | 8009 | mistralai/mistral-small-3.1-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Personal |
+| aethys | 8010 | mistralai/mistral-medium-3.1 | 0.8 | mistralai/mistral-large-2512 | gemini-flash-lite | Test |
+| aetheris | 8011 | anthropic/claude-3.5-haiku | 0.7 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Personal |
 
 ### Model Coverage by Provider
 
 - **Anthropic** (3 bots): elena, dotty, aetheris
-- **Google** (4 bots): aria, marcus, ryan, sophia
-- **Mistral** (4 bots): nottaylor, jake, gabriel, aethys
-- **Grok/xAI** (1 bot): dream
+- **Google** (3 bots): aria, marcus, ryan
+- **Mistral** (3 bots): nottaylor, gabriel, aethys
+- **Grok/xAI** (3 bots): dream, jake, sophia
 
 ### Model Tiering Pattern
 
 All bots follow the recommended tiering:
-- **Router**: Smallest/fastest (gpt-4o-mini or gemini-flash-lite)
+- **Router**: All bots use `google/gemini-2.5-flash-lite` ($0.10/$0.40, 1M context)
 - **Main**: Fast + good (handles 70% of requests)
 - **Reflective**: Smart + slower (handles complex 30% of requests)
 
