@@ -1359,6 +1359,13 @@ class MessageHandler:
         """
         Handle messages from other bots for cross-bot conversation (Phase E6).
         
+        Uses the SAME pipeline as human users:
+        - Session creation for proper backend processing
+        - Streaming response with reflective mode callback
+        - Full memory, knowledge, and summarization pipeline
+        
+        A user ID is a user ID - bot or human, same treatment.
+        
         Args:
             message: Discord message from another bot
         """
@@ -1379,34 +1386,35 @@ class MessageHandler:
             delay = random.uniform(2.0, 5.0)
             await asyncio.sleep(delay)
             
-            # Show typing indicator
-            async with message.channel.typing():
-                # Get character
-                character = character_manager.get_character(self.bot.character_name)
-                if not character:
-                    logger.error(f"Character '{self.bot.character_name}' not loaded for cross-bot response")
-                    return
-                
-                # Build context for the response
-                # Use the mentioning bot as "user" for context purposes
-                other_bot_name = mention.mentioning_bot or "another character"
-                
-                # Check if this message is a reply to one of our messages
-                # This is critical context - if Dream replies to Ryan's dream, Ryan needs to know
-                # that Dream was commenting on HIS content, not sharing their own dream
-                original_context = ""
-                is_reply_to_us = False
-                if message.reference and message.reference.message_id:
-                    try:
-                        ref_msg = message.reference.resolved
-                        if not ref_msg:
-                            ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                        
-                        if ref_msg and ref_msg.author.id == (self.bot.user.id if self.bot.user else None):
-                            is_reply_to_us = True
-                            # Include our original message for context
-                            our_content = ref_msg.content[:500] if ref_msg.content else "(no text)"
-                            original_context = f"""
+            # Get character
+            character = character_manager.get_character(self.bot.character_name)
+            if not character:
+                logger.error(f"Character '{self.bot.character_name}' not loaded for cross-bot response")
+                return
+            
+            # Build context for the response
+            # Use the mentioning bot as "user" for context purposes
+            other_bot_name = mention.mentioning_bot or "another character"
+            cross_bot_user_id = str(message.author.id)
+            
+            # Session Management - SAME AS HUMAN USERS
+            # This ensures proper backend processing (summarization, reflection, etc.)
+            session_id = await session_manager.get_active_session(cross_bot_user_id, self.bot.character_name)
+            if not session_id:
+                session_id = await session_manager.create_session(cross_bot_user_id, self.bot.character_name)
+                logger.debug(f"Created session {session_id} for cross-bot user {other_bot_name}")
+            
+            # Check if this message is a reply to one of our messages
+            original_context = ""
+            if message.reference and message.reference.message_id:
+                try:
+                    ref_msg = message.reference.resolved
+                    if not ref_msg:
+                        ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                    
+                    if ref_msg and ref_msg.author.id == (self.bot.user.id if self.bot.user else None):
+                        our_content = ref_msg.content[:500] if ref_msg.content else "(no text)"
+                        original_context = f"""
 [IMPORTANT CONTEXT]
 {other_bot_name.title()} is REPLYING to YOUR previous message. They are commenting on what YOU wrote.
 Your original message was: "{our_content}"
@@ -1415,172 +1423,234 @@ Your original message was: "{our_content}"
 When you respond, acknowledge that they are commenting on YOUR content (your dream, diary, or message).
 Do NOT treat their message as if they are sharing their own dream or diary.
 """
-                            logger.debug(f"Cross-bot message is a reply to our message: {ref_msg.id}")
-                    except Exception as e:
-                        logger.debug(f"Failed to fetch referenced message: {e}")
-                
-                # Retrieve past conversations using the shared context builder
-                # This uses the SAME path as normal users: Postgres + Qdrant + Neo4j
-                # A user ID is a user ID - bot or human, same treatment
-                cross_bot_user_id = str(message.author.id)
-                
-                # Context containers - initialized empty for safety
-                prefetched_memories = []
-                prefetched_knowledge = ""
-                formatted_summaries = ""
-                chat_history = []
-                
-                try:
-                    ctx = await context_builder.build_context(
-                        user_id=cross_bot_user_id,
-                        character_name=self.bot.character_name,
-                        query=message.content,
-                        limit_history=10,
-                        limit_memories=5,
-                        limit_summaries=2
-                    )
-                    
-                    # Extract context for prefetch injection
-                    if ctx.get("memories"):
-                        prefetched_memories = ctx["memories"]
-                    if ctx.get("knowledge"):
-                        prefetched_knowledge = ctx["knowledge"]
-                    if ctx.get("history"):
-                        chat_history = ctx["history"]
-                    if ctx.get("summaries"):
-                        formatted_summaries = "\n".join([
-                            f"- {s['content'][:150]} ({s.get('relative_time', 'unknown time')})" 
-                            for s in ctx["summaries"]
-                        ])
-                    
-                    logger.debug(f"Retrieved context for chat with {other_bot_name}")
-                    
+                        logger.debug(f"Cross-bot message is a reply to our message: {ref_msg.id}")
                 except Exception as e:
-                    logger.warning(f"Failed to retrieve context: {e}")
-
-                # Minimal context injection - let behavior emerge naturally
-                # The character should DISCOVER this is another AI through:
-                # - The display name (e.g., "Dream", "Sophia")
-                # - Past memories ("I remember talking to Dream before...")
-                # - Conversation style and patterns
-                # We don't *tell* them "this is a bot" - they figure it out.
-                conversation_phase_hint = cross_bot_manager.get_conversation_phase(str(message.channel.id))
-                
-                # Only inject critical context that can't be inferred:
-                # - Reply context (if they're responding to OUR message)
-                # - Soft conversation phase hints (emergent endings)
-                additional_context = f"{original_context}{conversation_phase_hint}".strip()
-                
-                # Generate response using the FULL pipeline
-                # Bots get tools, goals, agency - same as human users
-                logger.info("Cross-bot: Using full Supergraph (same as human users)")
-
-                response = await self.bot.agent_engine.generate_response(
-                    character=character,
-                    user_message=message.content,  # No artificial prefix - just the message
-                    chat_history=chat_history,
-                    context_variables={
-                        "user_name": other_bot_name.title(),
-                        "channel_name": getattr(message.channel, 'name', 'DM'),
-                        "is_cross_bot": True,  # Flag for metrics/logging only
-                        "additional_context": additional_context if additional_context else None,
-                        "prefetched_memories": prefetched_memories,
-                        "prefetched_knowledge": prefetched_knowledge,
-                        "past_summaries": formatted_summaries
-                    },
+                    logger.debug(f"Failed to fetch referenced message: {e}")
+            
+            # Retrieve context using the shared context builder (same as human users)
+            prefetched_memories = []
+            prefetched_knowledge = ""
+            formatted_summaries = ""
+            chat_history = []
+            
+            try:
+                ctx = await context_builder.build_context(
                     user_id=cross_bot_user_id,
-                    force_fast=False  # Full pipeline with tools
+                    character_name=self.bot.character_name,
+                    query=message.content,
+                    limit_history=10,
+                    limit_memories=5,
+                    limit_summaries=2
                 )
                 
-                # Note: Conversation endings are now emergent via soft hints in cross_bot_context
-                # The bot decides naturally if/when to wrap up based on conversation flow
+                if ctx.get("memories"):
+                    prefetched_memories = ctx["memories"]
+                if ctx.get("knowledge"):
+                    prefetched_knowledge = ctx["knowledge"]
+                if ctx.get("history"):
+                    chat_history = ctx["history"]
+                if ctx.get("summaries"):
+                    formatted_summaries = "\n".join([
+                        f"- {s['content'][:150]} ({s.get('relative_time', 'unknown time')})" 
+                        for s in ctx["summaries"]
+                    ])
+                
+                logger.debug(f"Retrieved context for chat with {other_bot_name}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to retrieve context: {e}")
 
-                # Validate response before sending (Discord rejects empty/None content)
-                if not response or not response.strip():
-                    logger.warning(f"Empty response generated for cross-bot message from {other_bot_name}")
+            # Soft conversation phase hints for emergent endings
+            conversation_phase_hint = cross_bot_manager.get_conversation_phase(str(message.channel.id))
+            additional_context = f"{original_context}{conversation_phase_hint}".strip()
+            
+            context_vars = {
+                "user_name": other_bot_name.title(),
+                "channel_name": getattr(message.channel, 'name', 'DM'),
+                "is_cross_bot": True,
+                "additional_context": additional_context if additional_context else None,
+                "prefetched_memories": prefetched_memories,
+                "prefetched_knowledge": prefetched_knowledge,
+                "past_summaries": formatted_summaries
+            }
+            
+            # Reflective Mode Callback - SAME AS HUMAN USERS
+            # This shows thinking steps in Discord for complex queries
+            status_message: Optional[discord.Message] = None
+            status_lines: List[str] = []
+            status_lock = asyncio.Lock()
+            last_status_update = 0.0
+            status_debounce_interval = 1.0
+            pending_update = False
+            
+            async def reflective_callback(text: str):
+                """Callback for reflective agent status updates (same as human users)."""
+                nonlocal status_message, status_lines, last_status_update, pending_update
+                
+                if settings.REFLECTIVE_STATUS_VERBOSITY == "none":
                     return
                 
-                # Discord has a 2000 character limit for messages
-                if len(response) > 2000:
-                    response = response[:1997] + "..."
-                
-                # Send response as a reply
-                sent_message = await message.reply(response, mention_author=True)
-                
-                # Record activity for cross-bot reply scaling (Phase E15)
-                # This ensures bot replies count toward channel activity levels
-                if message.guild:
-                    try:
-                        await server_monitor.record_message(str(message.guild.id))
-                        logger.debug(f"Recorded activity for cross-bot reply in guild {message.guild.id}")
-                    except Exception as e:
-                        logger.debug(f"Failed to record activity for cross-bot reply: {e}")
-                
-                # Record the response in the chain
-                await cross_bot_manager.record_response(
-                    channel_id=str(message.channel.id),
-                    message_id=str(sent_message.id)
-                )
-                
-                # Store cross-bot conversation to memory for continuity
-                # This allows bots to remember their conversations with each other
-                # AND surfaces in diary/dream generation via gossip retrieval
-                try:
-                    # Save the other bot's message (as "human" role from our perspective)
-                    # Include type="gossip" and source_bot so diary/dream _get_gossip() can find it
-                    await memory_manager.add_message(
-                        user_id=cross_bot_user_id,
-                        character_name=self.bot.character_name,
-                        role="human",
-                        content=message.content,
-                        channel_id=str(message.channel.id),
-                        message_id=str(message.id),
-                        user_name=other_bot_name,
-                        source_type=MemorySourceType.GOSSIP,
-                        metadata={
-                            "type": "gossip",  # Required for diary/dream retrieval
-                            "source_bot": other_bot_name,
-                            "is_cross_bot": True
-                        }
-                    )
+                async with status_lock:
+                    clean_text = text.strip()
+                    if not clean_text:
+                        return
                     
-                    # Save our response
-                    await memory_manager.add_message(
-                        user_id=cross_bot_user_id,
-                        character_name=self.bot.character_name,
-                        role="ai",
-                        content=response,
-                        channel_id=str(message.channel.id),
-                        message_id=str(sent_message.id),
-                        user_name=other_bot_name,
-                        source_type=MemorySourceType.INFERENCE,
-                        metadata={
-                            "is_cross_bot": True,
-                            "responding_to_bot": other_bot_name
-                        }
-                    )
-                    logger.debug(f"Saved cross-bot conversation with {other_bot_name} to memory")
-                except Exception as mem_err:
-                    logger.warning(f"Failed to save cross-bot conversation to memory: {mem_err}")
-                
-                # Unified background learning - bot IDs are just user IDs!
-                await enqueue_background_learning(
+                    if clean_text.startswith("HEADER:"):
+                        header = clean_text.replace("HEADER:", "").strip()
+                        status_lines = [f"**{header}**"] + status_lines[1:] if status_lines else [f"**{header}**"]
+                        pending_update = True
+                    elif clean_text.startswith("TOOLS:"):
+                        content = clean_text.replace("TOOLS:", "").strip()
+                        status_lines.append(content)
+                        pending_update = True
+                    elif clean_text.startswith("RESULT:"):
+                        content = clean_text.replace("RESULT:", "").strip()
+                        status_lines.append(content)
+                        pending_update = True
+                    elif clean_text.startswith("💭"):
+                        if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+                            formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
+                            status_lines.append(formatted)
+                            pending_update = True
+                    else:
+                        if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
+                            formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
+                            status_lines.append(formatted)
+                            pending_update = True
+                    
+                    if not pending_update or not status_lines:
+                        return
+                    
+                    if not status_lines[0].startswith("**"):
+                        status_lines.insert(0, "**🧠 Thinking...**")
+                    
+                    full_content = "\n".join(status_lines)
+                    if len(full_content) > 1900:
+                        full_content = full_content[:1900] + "\n... *(truncated)*"
+                    
+                    now = time.time()
+                    is_first_message = status_message is None
+                    time_since_last = now - last_status_update
+                    
+                    if is_first_message or time_since_last >= status_debounce_interval:
+                        try:
+                            if status_message:
+                                await status_message.edit(content=full_content)
+                            else:
+                                status_message = await message.reply(full_content, mention_author=False)
+                            last_status_update = now
+                            pending_update = False
+                        except discord.HTTPException as e:
+                            logger.warning(f"Failed to update reflective status: {e}")
+
+            # Generate response using STREAMING pipeline (same as human users)
+            # This enables reflective mode visibility and full backend processing
+            logger.info("Cross-bot: Using full Supergraph with streaming (same as human users)")
+            
+            full_response_text = ""
+            async with message.channel.typing():
+                async for chunk in self.bot.agent_engine.generate_response_stream(
+                    character=character,
+                    user_message=message.content,
+                    chat_history=chat_history,
+                    context_variables=context_vars,
                     user_id=cross_bot_user_id,
-                    message_content=message.content,
+                    callback=reflective_callback,
+                    force_fast=False  # Full pipeline with tools
+                ):
+                    full_response_text += chunk
+            
+            response = full_response_text
+            
+            # Validate response
+            if not response or not response.strip():
+                logger.warning(f"Empty response generated for cross-bot message from {other_bot_name}")
+                return
+            
+            # Discord character limit
+            if len(response) > 2000:
+                response = response[:1997] + "..."
+            
+            # Send response (or edit status message if we have one)
+            if status_message:
+                # Append response to status message if it fits
+                current_status = "\n".join(status_lines)
+                combined = f"{current_status}\n\n{response}"
+                if len(combined) < 2000:
+                    await status_message.edit(content=combined)
+                    sent_message = status_message
+                else:
+                    # Too long, send as new message
+                    sent_message = await message.reply(response, mention_author=True)
+            else:
+                sent_message = await message.reply(response, mention_author=True)
+            
+            # Record activity for cross-bot reply scaling (Phase E15)
+            if message.guild:
+                try:
+                    await server_monitor.record_message(str(message.guild.id))
+                except Exception as e:
+                    logger.debug(f"Failed to record activity for cross-bot reply: {e}")
+            
+            # Record the response in the chain (for loop prevention)
+            await cross_bot_manager.record_response(
+                channel_id=str(message.channel.id),
+                message_id=str(sent_message.id)
+            )
+            
+            # Store cross-bot conversation to memory (with gossip metadata for diary/dreams)
+            try:
+                await memory_manager.add_message(
+                    user_id=cross_bot_user_id,
                     character_name=self.bot.character_name,
-                    context="cross_bot"
+                    role="human",
+                    content=message.content,
+                    channel_id=str(message.channel.id),
+                    message_id=str(message.id),
+                    user_name=other_bot_name,
+                    source_type=MemorySourceType.GOSSIP,
+                    metadata={
+                        "type": "gossip",
+                        "source_bot": other_bot_name,
+                        "is_cross_bot": True
+                    }
                 )
                 
-                # Summarization: Check if we've accumulated enough messages for a summary
-                # Cross-bot conversations don't use sessions, so we check message count directly
-                self.bot.loop.create_task(
-                    self._check_and_summarize_cross_bot(
-                        cross_bot_user_id, 
-                        other_bot_name.title()
-                    )
+                await memory_manager.add_message(
+                    user_id=cross_bot_user_id,
+                    character_name=self.bot.character_name,
+                    role="ai",
+                    content=response,
+                    channel_id=str(message.channel.id),
+                    message_id=str(sent_message.id),
+                    user_name=other_bot_name,
+                    source_type=MemorySourceType.INFERENCE,
+                    metadata={
+                        "is_cross_bot": True,
+                        "responding_to_bot": other_bot_name
+                    }
                 )
-                
-                logger.info(f"Sent cross-bot response to {other_bot_name}")
+                logger.debug(f"Saved cross-bot conversation with {other_bot_name} to memory")
+            except Exception as mem_err:
+                logger.warning(f"Failed to save cross-bot conversation to memory: {mem_err}")
+            
+            # Background learning - bot IDs are just user IDs!
+            await enqueue_background_learning(
+                user_id=cross_bot_user_id,
+                message_content=message.content,
+                character_name=self.bot.character_name,
+                context="cross_bot"
+            )
+            
+            # Summarization check (sessions now handle this via timeout, but keep backup)
+            self.bot.loop.create_task(
+                self._check_and_summarize_cross_bot(
+                    cross_bot_user_id, 
+                    other_bot_name.title()
+                )
+            )
+            
+            logger.info(f"Sent cross-bot response to {other_bot_name}")
                 
         except Exception as e:
             logger.error(f"Failed to handle cross-bot message: {e}")
