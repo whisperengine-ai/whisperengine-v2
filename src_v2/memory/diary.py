@@ -332,7 +332,7 @@ class DiaryManager:
             )
             
         except Exception as e:
-            logger.error(f"Failed to gather diary material: {e}")
+            logger.error(f"Failed to gather diary material: {type(e).__name__}: {e}")
         
         return material
     
@@ -416,8 +416,13 @@ class DiaryManager:
                 with_vectors=False
             )
             
+            # Defensive: check results tuple
+            if not results or not isinstance(results, tuple) or len(results) < 1:
+                return []
+            
+            points = results[0] or []
             epiphanies = []
-            for point in results[0]:
+            for point in points:
                 if point.payload:
                     ts = point.payload.get("timestamp", "")
                     if ts >= threshold.isoformat():
@@ -719,7 +724,7 @@ class DiaryManager:
             return point_id
             
         except Exception as e:
-            logger.error(f"Failed to save diary entry: {e}")
+            logger.error(f"Failed to save diary entry: {type(e).__name__}: {e}")
             return None
 
     async def get_recent_diary(self, days: int = 3) -> List[Dict[str, Any]]:
@@ -755,8 +760,14 @@ class DiaryManager:
                 with_vectors=False
             )
             
+            # Handle scroll result - it's a tuple of (points, next_page_offset)
+            if not results or not isinstance(results, tuple) or len(results) < 1:
+                logger.debug(f"No diary scroll results for {self.bot_name}")
+                return []
+            
+            points = results[0] or []
             entries = []
-            for point in results[0]:  # results is (points, next_page_offset)
+            for point in points:
                 payload = point.payload
                 if payload and payload.get("date", "") >= threshold_str:
                     entries.append(payload)
@@ -767,7 +778,7 @@ class DiaryManager:
             return entries[:days]
             
         except Exception as e:
-            logger.error(f"Failed to retrieve recent diaries: {e}")
+            logger.error(f"Failed to retrieve recent diaries: {type(e).__name__}: {e}")
             return []
 
     async def get_latest_diary(self) -> Optional[Dict[str, Any]]:
@@ -809,11 +820,16 @@ class DiaryManager:
                 with_vectors=False
             )
             
-            if not results[0]:
+            # Defensive: check results tuple
+            if not results or not isinstance(results, tuple) or len(results) < 1:
+                return None
+            
+            points = results[0] or []
+            if not points:
                 return None
             
             # Find the entry with the most recent date
-            entries = [p.payload for p in results[0] if p.payload and p.payload.get("date")]
+            entries = [p.payload for p in points if p.payload and p.payload.get("date")]
             if not entries:
                 return None
             
@@ -875,7 +891,7 @@ class DiaryManager:
             return results
             
         except Exception as e:
-            logger.error(f"Failed to search diaries: {e}")
+            logger.error(f"Failed to search diaries: {type(e).__name__}: {e}")
             return []
 
     async def has_diary_for_today(self) -> bool:
@@ -905,10 +921,15 @@ class DiaryManager:
                 with_vectors=False
             )
             
-            return len(results[0]) > 0
+            # Defensive: check results tuple
+            if not results or not isinstance(results, tuple) or len(results) < 1:
+                return False
+            
+            points = results[0] or []
+            return len(points) > 0
             
         except Exception as e:
-            logger.error(f"Failed to check for today's diary: {e}")
+            logger.error(f"Failed to check for today's diary: {type(e).__name__}: {e}")
             return False
 
     def format_diary_context(self, entry: Dict[str, Any]) -> str:
@@ -1014,7 +1035,7 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
             return formatted
             
         except Exception as e:
-            logger.error(f"Failed to create public diary version: {e}")
+            logger.error(f"Failed to create public diary version: {type(e).__name__}: {e}")
             return None
 
 
