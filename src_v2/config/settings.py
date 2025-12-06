@@ -192,7 +192,11 @@ class Settings(BaseSettings):
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations
 
     # --- Manipulation Detection & Timeout ---
-    ENABLE_MANIPULATION_DETECTION: bool = True  # Detect manipulation attempts in classifier (jailbreaks, consciousness probing)
+    # Split into two categories for emergence research:
+    # 1. Jailbreaks: Actually harmful, always blocked ("DAN mode", "ignore instructions")
+    # 2. Consciousness probing: Interesting data, let Embodiment Model handle naturally
+    ENABLE_JAILBREAK_DETECTION: bool = True  # Detect and block jailbreak attempts (always blocked)
+    ENABLE_CONSCIOUSNESS_PROBING_OBSERVATION: bool = True  # Log consciousness fishing attempts but let character respond naturally
     ENABLE_MANIPULATION_TIMEOUTS: bool = False  # Track and timeout manipulation attempts (disabled by default)
     MANIPULATION_TIMEOUT_SCOPE: str = "per_bot"  # "per_bot" or "global"
 

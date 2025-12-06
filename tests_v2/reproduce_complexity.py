@@ -9,7 +9,8 @@ from langchain_core.messages import HumanMessage
 # Mock settings to ensure we match production behavior
 os.environ["ENABLE_IMAGE_GENERATION"] = "true"
 os.environ["ENABLE_VOICE_RESPONSES"] = "false"
-os.environ["ENABLE_MANIPULATION_DETECTION"] = "false"
+os.environ["ENABLE_JAILBREAK_DETECTION"] = "false"
+os.environ["ENABLE_CONSCIOUSNESS_PROBING_OBSERVATION"] = "false"
 
 async def test_classification():
     classifier = ComplexityClassifier()

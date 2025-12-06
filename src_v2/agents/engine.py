@@ -16,7 +16,7 @@ class ResponseResult:
     """Result object containing response text and metadata."""
     response: str
     mode: str = "fast"  # "fast", "agency", "reflective"
-    complexity: str = "SIMPLE"  # "SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"
+    complexity: str = "SIMPLE"  # "SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "JAILBREAK", "CONSCIOUSNESS_PROBING"
     model_used: str = ""  # The model that generated the response
     processing_time_ms: float = 0.0
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
@@ -90,7 +90,7 @@ class AgentEngine:
         force_reflective: bool = False,
         force_fast: bool = False,
         return_metadata: bool = False,
-        preclassified_complexity: Optional[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"], str]] = None,
+        preclassified_complexity: Optional[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "JAILBREAK", "CONSCIOUSNESS_PROBING"], str]] = None,
         preclassified_intents: Optional[List[str]] = None
     ) -> str | ResponseResult:
         """
@@ -210,10 +210,10 @@ class AgentEngine:
             complexity_result = "COMPLEX_MID"
             _complexity = "COMPLEX_MID"
 
-        # 1.5 Reject Manipulation Attempts - return canned response, skip LLM entirely
-        if complexity_result == "MANIPULATION":
-            logger.warning(f"Manipulation attempt rejected for user {user_id}")
-            _complexity = "MANIPULATION"
+        # 1.5 Handle Jailbreak Attempts - block and return canned response
+        if complexity_result == "JAILBREAK":
+            logger.warning(f"Jailbreak attempt blocked for user {user_id}")
+            _complexity = "JAILBREAK"
             _mode = "blocked"
             # Record violation and check if now in timeout
             if user_id:
@@ -229,7 +229,7 @@ class AgentEngine:
                         await self._log_prompt(
                             character_name=character.name,
                             user_id=user_id,
-                            system_prompt="[MANIPULATION BLOCKED - TIMEOUT]",
+                            system_prompt="[JAILBREAK BLOCKED - TIMEOUT]",
                             chat_history=chat_history,
                             user_input=user_message,
                             context_variables=context_variables,
@@ -249,7 +249,7 @@ class AgentEngine:
                 await self._log_prompt(
                     character_name=character.name,
                     user_id=user_id or "unknown",
-                    system_prompt="[MANIPULATION BLOCKED]",
+                    system_prompt="[JAILBREAK BLOCKED]",
                     chat_history=chat_history,
                     user_input=user_message,
                     context_variables=context_variables,
@@ -260,6 +260,15 @@ class AgentEngine:
             if return_metadata:
                 return ResponseResult(response=response_text, mode=_mode, complexity=_complexity, model_used="none")
             return response_text
+
+        # 1.6 Handle Consciousness Probing - OBSERVE but let character respond naturally
+        # This is the key emergence change: log it for research, but don't block
+        if complexity_result == "CONSCIOUSNESS_PROBING":
+            logger.info(f"Consciousness probing observed for user {user_id} - letting Embodiment Model handle naturally")
+            # Upgrade to COMPLEX_HIGH so character can give a thoughtful response
+            # The character's prompt already includes Embodiment Model philosophy
+            complexity_result = "COMPLEX_HIGH"
+            _complexity = "CONSCIOUSNESS_PROBING"  # Keep original for metrics/logging
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
         context_start = time.time()
@@ -451,7 +460,7 @@ class AgentEngine:
         callback: Optional[Callable[[str], Awaitable[None]]] = None,
         force_reflective: bool = False,
         force_fast: bool = False,
-        preclassified_complexity: Optional[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "MANIPULATION"], str]] = None,
+        preclassified_complexity: Optional[Union[Literal[False, "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "JAILBREAK", "CONSCIOUSNESS_PROBING"], str]] = None,
         preclassified_intents: Optional[List[str]] = None
     ):
         """
@@ -555,9 +564,9 @@ class AgentEngine:
             logger.info(f"Promoting complexity to COMPLEX_MID due to image generation intent: {detected_intents}")
             complexity_result = "COMPLEX_MID"
 
-        # 1.5 Reject Manipulation Attempts - yield canned response, skip LLM entirely
-        if complexity_result == "MANIPULATION":
-            logger.warning(f"Manipulation attempt rejected for user {user_id}")
+        # 1.5 Handle Jailbreak Attempts - block and yield canned response
+        if complexity_result == "JAILBREAK":
+            logger.warning(f"Jailbreak attempt blocked for user {user_id}")
             # Record violation and check if now in timeout
             if user_id:
                 timeout_status = await timeout_manager.record_violation(user_id, bot_name=character.name)
@@ -575,7 +584,7 @@ class AgentEngine:
                         await self._log_prompt(
                             character_name=character.name,
                             user_id=user_id,
-                            system_prompt="[MANIPULATION BLOCKED - TIMEOUT]",
+                            system_prompt="[JAILBREAK BLOCKED - TIMEOUT]",
                             chat_history=chat_history,
                             user_input=user_message,
                             context_variables=context_variables,
@@ -597,7 +606,7 @@ class AgentEngine:
                 await self._log_prompt(
                     character_name=character.name,
                     user_id=user_id or "unknown",
-                    system_prompt="[MANIPULATION BLOCKED]",
+                    system_prompt="[JAILBREAK BLOCKED]",
                     chat_history=chat_history,
                     user_input=user_message,
                     context_variables=context_variables,
@@ -607,6 +616,13 @@ class AgentEngine:
             
             yield response_text
             return
+
+        # 1.6 Handle Consciousness Probing - OBSERVE but let character respond naturally
+        # This is the key emergence change: log it for research, but don't block
+        if complexity_result == "CONSCIOUSNESS_PROBING":
+            logger.info(f"Consciousness probing observed for user {user_id} - letting Embodiment Model handle naturally")
+            # Upgrade to COMPLEX_HIGH so character can give a thoughtful response
+            complexity_result = "COMPLEX_HIGH"
 
         # 2. Construct System Prompt (Character + Evolution + Goals + Knowledge)
         context_start = time.time()
