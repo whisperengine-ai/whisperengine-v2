@@ -39,66 +39,85 @@ class BotConfig:
     is_production: bool = False  # Production bots (nottaylor, dotty) use GPT-4o
 
 
-# Bot configurations with their expected models
-# Production bots kept on GPT-4o, test bots use various models
+# Bot configurations with their expected models (synced Dec 5, 2025)
+# Pattern: Fast main model → Smart reflective model
 BOT_CONFIGS = [
-    # Production bots (baseline)
+    # Anthropic bots
     BotConfig(
-        name="nottaylor",
-        port=8008,
-        main_model="openai/gpt-4o",
-        reflective_model="openai/gpt-4o",
-        is_production=True
+        name="elena",
+        port=8000,
+        main_model="anthropic/claude-haiku-4.5",
+        reflective_model="anthropic/claude-sonnet-4"
     ),
     BotConfig(
         name="dotty",
         port=8002,
-        main_model="openai/gpt-4o",
-        reflective_model="openai/gpt-4o",
-        is_production=True
+        main_model="anthropic/claude-haiku-4.5",
+        reflective_model="anthropic/claude-sonnet-4"
     ),
-    # Test bots with model variety
+    BotConfig(
+        name="aetheris",
+        port=8011,
+        main_model="anthropic/claude-3.5-haiku",
+        reflective_model="anthropic/claude-sonnet-4"
+    ),
+    # Google bots
     BotConfig(
         name="aria",
         port=8003,
         main_model="google/gemini-2.5-flash",
-        reflective_model="anthropic/claude-3.5-sonnet"
-    ),
-    BotConfig(
-        name="dream",
-        port=8004,
-        main_model="deepseek/deepseek-r1",
-        reflective_model="google/gemini-2.5-flash"
-    ),
-    BotConfig(
-        name="jake",
-        port=8005,
-        main_model="anthropic/claude-3.5-sonnet",
-        reflective_model="meta-llama/llama-3.3-70b-instruct"
+        reflective_model="google/gemini-2.5-pro"
     ),
     BotConfig(
         name="marcus",
         port=8007,
-        main_model="mistralai/mistral-large",
-        reflective_model="deepseek/deepseek-r1"
+        main_model="google/gemini-2.5-flash",
+        reflective_model="google/gemini-2.5-pro"
     ),
     BotConfig(
         name="ryan",
         port=8001,
-        main_model="meta-llama/llama-3.3-70b-instruct",
-        reflective_model="mistralai/mistral-large"
+        main_model="google/gemini-2.5-flash",
+        reflective_model="google/gemini-2.5-pro"
     ),
     BotConfig(
         name="sophia",
         port=8006,
-        main_model="google/gemini-2.5-pro",
-        reflective_model="openai/gpt-4o"
+        main_model="google/gemini-2.5-flash",
+        reflective_model="google/gemini-2.5-pro"
+    ),
+    # Mistral bots
+    BotConfig(
+        name="nottaylor",
+        port=8008,
+        main_model="mistralai/mistral-medium-3.1",
+        reflective_model="openai/gpt-4o",
+        is_production=True
     ),
     BotConfig(
-        name="elena",
-        port=8000,
-        main_model="openai/gpt-4o",
+        name="jake",
+        port=8005,
+        main_model="mistralai/mistral-small-3.1-24b-instruct",
+        reflective_model="mistralai/mistral-medium-3.1"
+    ),
+    BotConfig(
+        name="gabriel",
+        port=8009,
+        main_model="mistralai/mistral-small-3.1-24b-instruct",
+        reflective_model="mistralai/mistral-medium-3.1"
+    ),
+    BotConfig(
+        name="aethys",
+        port=8010,
+        main_model="mistralai/mistral-medium-3.1",
         reflective_model="openai/gpt-4o"
+    ),
+    # Grok bots
+    BotConfig(
+        name="dream",
+        port=8004,
+        main_model="x-ai/grok-3",
+        reflective_model="x-ai/grok-4"
     ),
 ]
 

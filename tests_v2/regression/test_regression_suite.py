@@ -44,20 +44,20 @@ class BotConfig:
     is_production: bool = False
 
 
-# All bot configurations (synced with actual .env.* files as of Dec 3, 2025)
+# All bot configurations (synced with actual .env.* files as of Dec 5, 2025)
 BOT_CONFIGS = [
-    BotConfig("elena", 8000, "anthropic/claude-sonnet-4.5", "anthropic/claude-sonnet-4.5"),
-    BotConfig("ryan", 8001, "meta-llama/llama-3.3-70b-instruct", "anthropic/claude-sonnet-4.5"),
-    BotConfig("dotty", 8002, "anthropic/claude-3.7-sonnet", "openai/gpt-4o"),
-    BotConfig("aria", 8003, "anthropic/claude-3.5-sonnet", "anthropic/claude-sonnet-4.5"),
-    BotConfig("dream", 8004, "deepseek/deepseek-chat", "mistralai/mistral-large"),
-    BotConfig("jake", 8005, "anthropic/claude-3.5-sonnet", "deepseek/deepseek-r1"),
-    BotConfig("sophia", 8006, "google/gemini-2.5-pro", "anthropic/claude-sonnet-4.5"),
-    BotConfig("marcus", 8007, "mistralai/mistral-large", "anthropic/claude-sonnet-4.5"),
-    BotConfig("nottaylor", 8008, "openai/gpt-4o", "anthropic/claude-sonnet-4.5", is_production=True),
-    BotConfig("gabriel", 8009, "mistralai/mistral-medium-3.1", "anthropic/claude-3.5-sonnet"),
-    BotConfig("aetheris", 8011, "anthropic/claude-sonnet-4.5", "openai/gpt-4o"),
-    BotConfig("aethys", 8010, "mistralai/mistral-medium-3.1", "anthropic/claude-3.5-sonnet"),
+    BotConfig("elena", 8000, "anthropic/claude-haiku-4.5", "anthropic/claude-sonnet-4"),
+    BotConfig("ryan", 8001, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
+    BotConfig("dotty", 8002, "anthropic/claude-haiku-4.5", "anthropic/claude-sonnet-4"),
+    BotConfig("aria", 8003, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
+    BotConfig("dream", 8004, "x-ai/grok-3", "x-ai/grok-4"),
+    BotConfig("jake", 8005, "mistralai/mistral-small-3.1-24b-instruct", "mistralai/mistral-medium-3.1"),
+    BotConfig("sophia", 8006, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
+    BotConfig("marcus", 8007, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
+    BotConfig("nottaylor", 8008, "mistralai/mistral-medium-3.1", "openai/gpt-4o", is_production=True),
+    BotConfig("gabriel", 8009, "mistralai/mistral-small-3.1-24b-instruct", "mistralai/mistral-medium-3.1"),
+    BotConfig("aethys", 8010, "mistralai/mistral-medium-3.1", "openai/gpt-4o"),
+    BotConfig("aetheris", 8011, "anthropic/claude-3.5-haiku", "anthropic/claude-sonnet-4"),
 ]
 
 # Test user prefix to avoid polluting real user data
