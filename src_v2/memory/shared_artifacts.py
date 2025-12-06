@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from loguru import logger
 from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue, MatchAny, Range
 
@@ -121,6 +121,102 @@ class SharedArtifactManager:
         except Exception as e:
             logger.error(f"Failed to discover shared artifacts: {e}")
             return []
+
+    async def get_gossip_for_bot(self, bot_name: str, hours: int) -> List[Dict[str, Any]]:
+        """
+        Get gossip relevant to a specific bot from both shared and private sources.
+        
+        Aggregates:
+        1. Universe Gossip (Shared Collection):
+           - Must be type="gossip"
+           - Must NOT be from self
+           - Must have bot_name in "eligible_recipients" (Privacy Check)
+           
+        2. Cross-Bot Chat (Per-Bot Collection):
+           - Must be type="gossip" AND is_cross_bot=True
+           
+        Args:
+            bot_name: The bot requesting gossip
+            hours: Look back window in hours
+            
+        Returns:
+            List of gossip items
+        """
+        gossip = []
+        threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
+        threshold_iso = threshold.isoformat()
+        
+        if not db_manager.qdrant_client:
+            return []
+            
+        # 1. Query Shared Artifacts (Universe Gossip)
+        try:
+            shared_results = await db_manager.qdrant_client.scroll(
+                collection_name=self.COLLECTION_NAME,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="gossip")),
+                        # PRIVACY CHECK: Only show if this bot was eligible to receive it
+                        FieldCondition(key="eligible_recipients", match=MatchValue(value=bot_name))
+                    ],
+                    must_not=[
+                        # Don't show own gossip
+                        FieldCondition(key="source_bot", match=MatchValue(value=bot_name))
+                    ]
+                ),
+                limit=10,
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            for point in shared_results[0]:
+                if point.payload:
+                    ts = point.payload.get("created_at", "")
+                    if ts >= threshold_iso:
+                        gossip.append({
+                            "source_bot": point.payload.get("source_bot", "another character"),
+                            "content": point.payload.get("content", ""),
+                            "topic": point.payload.get("topic", ""),
+                            "is_cross_bot": False,
+                            "source": "universe"
+                        })
+        except Exception as e:
+            logger.warning(f"Failed to fetch shared gossip for {bot_name}: {e}")
+
+        # 2. Query Per-Bot Collection (Cross-Bot Chat)
+        try:
+            # Per-bot collection name convention
+            bot_collection = f"whisperengine_memory_{bot_name}"
+            
+            crossbot_results = await db_manager.qdrant_client.scroll(
+                collection_name=bot_collection,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="gossip")),
+                        FieldCondition(key="is_cross_bot", match=MatchValue(value=True))
+                    ]
+                ),
+                limit=10,
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            for point in crossbot_results[0]:
+                if point.payload:
+                    ts = point.payload.get("timestamp", "")
+                    if ts >= threshold_iso:
+                        gossip.append({
+                            "source_bot": point.payload.get("source_bot", "another character"),
+                            "content": point.payload.get("content", ""),
+                            "topic": point.payload.get("topic", ""),
+                            "is_cross_bot": True,
+                            "source": "direct_chat"
+                        })
+        except Exception as e:
+            # It's okay if collection doesn't exist yet
+            logger.debug(f"Failed to fetch cross-bot gossip for {bot_name}: {e}")
+            
+        return gossip
 
 # Global singleton
 shared_artifact_manager = SharedArtifactManager()

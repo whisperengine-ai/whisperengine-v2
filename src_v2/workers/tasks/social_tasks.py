@@ -169,14 +169,14 @@ async def run_gossip_dispatch(
     
     try:
         from src_v2.universe.bus import UniverseEvent, event_bus
-        from src_v2.memory.manager import memory_manager
+        from src_v2.memory.shared_artifacts import shared_artifact_manager
         
         # Deserialize event
         event = UniverseEvent.from_dict(event_data)
         
         logger.info(f"Processing gossip: {event.event_type.value} from {event.source_bot} about user {event.user_id}")
         
-        # Get eligible recipients
+        # Get eligible recipients (used for logging/metrics, but gossip is stored once in shared pool)
         recipients = await event_bus.get_eligible_recipients(event)
         
         if not recipients:
@@ -187,41 +187,35 @@ async def run_gossip_dispatch(
                 "reason": "no_eligible_recipients"
             }
         
-        # Inject gossip memory into each recipient
-        injected = []
-        for bot_name in recipients:
-            try:
-                # Format as a natural "I heard" memory
-                gossip_content = (
-                    f"[Gossip from {event.source_bot}] "
-                    f"I heard that {event.summary}"
-                )
-                
-                # Store as a special "gossip" memory type
-                await memory_manager.add_message(
-                    user_id=event.user_id,
-                    character_name=bot_name,
-                    role="system",  # System role for gossip memories
-                    content=gossip_content,
-                    metadata={
-                        "type": "gossip",
-                        "source_bot": event.source_bot,
-                        "event_type": event.event_type.value,
-                        "topic": event.topic,
-                        "propagation_depth": event.propagation_depth + 1
-                    }
-                )
-                
-                injected.append(bot_name)
-                logger.info(f"Injected gossip memory into {bot_name} about user {event.user_id}")
-                
-            except Exception as e:
-                logger.warning(f"Failed to inject gossip into {bot_name}: {e}")
+        # Store gossip ONCE in shared artifacts collection (not per-bot)
+        # All bots can discover it via semantic search when generating diaries/dreams
+        gossip_content = (
+            f"[Gossip from {event.source_bot}] "
+            f"I heard that {event.summary}"
+        )
+        
+        artifact_id = await shared_artifact_manager.store_artifact(
+            artifact_type="gossip",
+            content=gossip_content,
+            source_bot=event.source_bot,
+            user_id=event.user_id,
+            confidence=0.9,  # Gossip is high-confidence (it happened)
+            metadata={
+                "event_type": event.event_type.value,
+                "topic": event.topic,
+                "propagation_depth": event.propagation_depth + 1,
+                "eligible_recipients": recipients  # Track who could see this
+            }
+        )
+        
+        if artifact_id:
+            logger.info(f"Stored gossip artifact {artifact_id} from {event.source_bot} about user {event.user_id} (eligible: {len(recipients)} bots)")
         
         return {
-            "success": True,
+            "success": bool(artifact_id),
             "source_bot": event.source_bot,
-            "recipients": injected,
+            "artifact_id": artifact_id,
+            "eligible_recipients": recipients,
             "event_type": event.event_type.value
         }
         

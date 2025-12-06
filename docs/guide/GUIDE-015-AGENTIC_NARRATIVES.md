@@ -397,16 +397,17 @@ When `ENABLE_STIGMERGIC_DISCOVERY=true`, dreams and diaries are stored in TWO pl
             Returns: Elena's dream about coral reefs
 ```
 
-### Cross-Bot Discovery vs Gossip
+### Cross-Bot Discovery via Shared Artifacts
 
-| System | Scope | Mechanism | Use Case |
-|--------|-------|-----------|----------|
-| **Gossip** (`search_by_memory_type('gossip')`) | Per-bot | Explicit push via broadcast | Curated, intentional sharing |
-| **Shared Artifacts** (`discover_other_bot_artifacts`) | Global | Semantic search | Emergent discovery, serendipity |
+All cross-bot content (gossip, diaries, dreams, epiphanies) is stored in a single shared Qdrant collection (`whisperengine_shared_artifacts`). This enables:
 
-**When to use each:**
-- Use **gossip** when you want to find content another bot explicitly shared with the community
-- Use **shared artifacts** when you want to discover thematically similar content across all bots
+| Content Type | How It's Stored | How It's Discovered |
+|--------------|-----------------|---------------------|
+| **Gossip** | Single copy via `store_artifact(type="gossip")` | `scroll()` by type, excluding own bot |
+| **Diaries/Dreams** | Single copy via `store_artifact()` | Semantic search via `discover_artifacts()` |
+| **Epiphanies** | Single copy via `store_artifact()` | Semantic search via `discover_artifacts()` |
+
+**Key benefit:** No duplication. One gossip event = one vector point, discoverable by all bots.
 
 ### Configuration
 

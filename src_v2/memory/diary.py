@@ -336,54 +336,15 @@ class DiaryManager:
             return []
     
     async def _get_gossip(self, hours: int) -> List[Dict[str, Any]]:
-        """Get gossip memories from other bots.
+        """Get gossip from both shared artifacts and per-bot collection.
         
-        Gossip includes:
-        - Cross-bot conversations (type="gossip" from message_handler)
-        - Universe event gossip (type="gossip" from social_tasks)
-        - Both have source_type="gossip"
+        Delegates to SharedArtifactManager.get_gossip_for_bot() which handles:
+        1. Universe event gossip (shared artifacts) with privacy checks
+        2. Cross-bot conversations (per-bot collection)
         """
         try:
-            if not db_manager.qdrant_client:
-                return []
-            
-            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
-            
-            # Query by type="gossip" (set in metadata by cross-bot and gossip dispatch)
-            # This finds both cross-bot conversations and universe event gossip
-            results = await db_manager.qdrant_client.scroll(
-                collection_name=self.collection_name,
-                scroll_filter=Filter(
-                    must=[
-                        FieldCondition(key="type", match=MatchValue(value="gossip"))
-                    ]
-                ),
-                limit=20,  # Fetch more since cross-bot convos can be frequent
-                with_payload=True,
-                with_vectors=False
-            )
-            
-            gossip = []
-            for point in results[0]:
-                if point.payload:
-                    ts = point.payload.get("timestamp", "")
-                    if ts >= threshold.isoformat():
-                        # Handle both cross-bot (source_bot) and universe gossip formats
-                        source = point.payload.get("source_bot")
-                        if not source:
-                            # For cross-bot convos, user_id might be the other bot's Discord ID
-                            # Try to infer from content or default
-                            source = "another character"
-                        gossip.append({
-                            "source_bot": source,
-                            "content": point.payload.get("content", ""),
-                            "topic": point.payload.get("topic", ""),
-                            "is_cross_bot": point.payload.get("is_cross_bot", False)
-                        })
-            
-            logger.debug(f"Found {len(gossip)} gossip items for diary in last {hours} hours")
-            return gossip
-            
+            from src_v2.memory.shared_artifacts import shared_artifact_manager
+            return await shared_artifact_manager.get_gossip_for_bot(self.bot_name, hours)
         except Exception as e:
             logger.debug(f"Failed to get gossip for diary: {e}")
             return []

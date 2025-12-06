@@ -23,9 +23,9 @@
 
 ## Executive Summary
 
-Enable **cross-bot discovery** of cognitive artifacts (epiphanies, diaries, dreams) through a shared Qdrant collection. This implements **stigmergic intelligence** - bots leave traces that other bots can discover and build upon, creating emergent collective knowledge without centralized coordination.
+Enable **cross-bot discovery** of cognitive artifacts (epiphanies, diaries, dreams, gossip) through a shared Qdrant collection. This implements **stigmergic intelligence** - bots leave traces that other bots can discover and build upon, creating emergent collective knowledge without centralized coordination.
 
-> **Design Decision (Nov 30, 2025):** Observations and gossip remain in Neo4j (already cross-bot queryable). Reasoning traces and response patterns stay per-bot (user-specific learning data). Only epiphanies, diaries, and dreams go to the shared Qdrant pool.
+> **Design Decision (Dec 6, 2025):** Observations remain in Neo4j (graph structure needed). Gossip now uses shared Qdrant pool (single copy, all bots discover via semantic search). Reasoning traces and response patterns stay per-bot (user-specific learning data). Epiphanies, diaries, dreams, and gossip go to the shared Qdrant pool.
 
 ---
 
@@ -97,7 +97,7 @@ Stigmergy is indirect coordination through environmental traces. Ants leave pher
 | Diary | DiaryManager | No (bot's day) | ✅ Yes | ✅ Yes (public version) | |
 | Dream | DreamManager | No (bot's dreams) | ✅ Yes | ✅ Yes | |
 | Observation | KnowledgeManager | Yes (about a user) | ❌ Neo4j | ✅ Yes | Cross-bot via `get_observations_about()` |
-| Gossip | Worker | Yes (about a user) | ❌ Neo4j | ❌ No | Cross-bot via Neo4j queries |
+| Gossip | Worker | Yes (about a user) | ✅ Yes | ❌ No | Single copy in shared pool, discovered by all bots |
 | Reasoning Trace | InsightAgent | Yes (user query) | ❌ Per-bot | ❌ No | User-specific learning, not shared |
 | Response Pattern | InsightAgent | Yes (user prefs) | ❌ Per-bot | ❌ No | User-specific learning, not shared |
 | Summary | Summarizer | Yes (conversation) | ❌ No | ❌ No | |
