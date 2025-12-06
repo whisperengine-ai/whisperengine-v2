@@ -112,13 +112,30 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
                 logger.warning(f"Chunk count mismatch: found {len(chunks)}, expected {expected_total}")
                 # Continue anyway - partial reconstruction is better than nothing
             
-            # Reconstruct content
-            # Note: Chunks have 50-char overlap, so we need to deduplicate
-            # For simplicity, we concatenate directly - the overlap is minimal
-            # and won't significantly affect document reading
-            reconstructed = ""
-            for chunk in chunks:
-                reconstructed += chunk["content"] + "\n"
+            # Reconstruct content with overlap handling
+            # Chunks have ~50 char overlap. We try to deduplicate.
+            reconstructed = chunks[0]["content"]
+            
+            for i in range(1, len(chunks)):
+                prev = chunks[i-1]["content"]
+                curr = chunks[i]["content"]
+                
+                # Simple overlap detection: check if the end of prev matches start of curr
+                # We check the last 100 chars (overlap is usually 50)
+                overlap_size = 0
+                check_len = min(len(prev), len(curr), 100)
+                
+                for j in range(check_len, 10, -1):  # Minimum 10 char overlap to be safe
+                    if prev.endswith(curr[:j]):
+                        overlap_size = j
+                        break
+                
+                if overlap_size > 0:
+                    reconstructed += curr[overlap_size:]
+                else:
+                    # Fallback: just append with a space if no clear overlap found
+                    # (Better than newline which might break sentences, but safer than direct concat)
+                    reconstructed += " " + curr
             
             logger.info(f"Reconstructed document from {len(chunks)} chunks ({len(reconstructed)} chars)")
             return reconstructed.strip()
