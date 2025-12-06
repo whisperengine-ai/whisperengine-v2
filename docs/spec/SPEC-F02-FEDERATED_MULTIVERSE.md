@@ -2,7 +2,7 @@
 
 > ⚠️ **DRAFT DOCUMENT** - This is a vision document for future architecture. None of this is implemented. The purpose is to ensure current architectural decisions don't preclude federation.
 
-**Document Version:** 0.5 (Hermes Design)  
+**Document Version:** 0.6 (Discord Transport)  
 **Created:** November 25, 2025  
 **Last Reviewed:** December 5, 2025  
 **Status:** 📋 Vision/Design Phase — **Feasible with current architecture**  
@@ -57,10 +57,14 @@ Federation creates **pheromone trails** between anthills:
 - Invitations ("Come visit Elena at discord.gg/whisperverse")
 
 **What federation is NOT:**
-- ❌ Characters running on remote servers
-- ❌ Real-time presence sync
-- ❌ Shared memory or knowledge graphs
+- ❌ Characters from Universe A running inside Universe B's infrastructure
+- ❌ Real-time presence sync between universes
+- ❌ Shared memory or knowledge graphs across universes
 - ❌ Complex CRDT replication
+
+**What characters already do (no federation needed):**
+- ✅ Characters can be installed on multiple Discord servers (planets)
+- ✅ Same bot, same memories, many servers — this is just Discord working as intended
 
 ---
 
@@ -73,7 +77,7 @@ Users interact via Discord, not web dashboards. The federation UX must work with
 | Discord Feature | Federation Use |
 |-----------------|----------------|
 | **Server invites** | "Come visit Elena" → direct link to her home |
-| **Bots** | Each universe has its own bots; they don't cross servers |
+| **Bots** | Each universe runs its own bots; they can be installed on many servers |
 | **Webhooks** | Optional: relay announcements between universes |
 | **User IDs** | Globally unique; identity follows users across universes |
 
@@ -87,14 +91,16 @@ Just like we use Redis for internal cross-bot coordination, we use Discord for c
 | Bot A → Redis → Bot B | Universe A → Discord → Universe B |
 | Same process, shared memory | Different operators, shared server |
 
-### Characters Have Homes
+### Characters Are Apps, Not Travelers
 
-The original spec imagined characters "visiting" other universes. But Discord doesn't support this well:
-- Bot tokens are tied to specific applications
-- Webhooks can fake presence but feel uncanny
-- Users expect bots to have a consistent identity
+Characters are **Discord applications**. They don't "travel" — they get **installed**:
+- A bot token works on any server where the app is authorized
+- Elena can be installed on Server A, Server B, and Server C simultaneously
+- She's the *same bot* everywhere, with the *same memories* (stored in her home universe)
 
-**New model:** Characters stay home. Users travel. Federation shares context.
+**Key insight:** Within a universe, characters can live on many planets (servers). *Across* universes, characters are distinct instances run by different operators.
+
+**Model:** Characters live in their universe but can be installed on many planets. Users can visit any planet where a character is installed.
 
 ---
 
@@ -117,6 +123,11 @@ Elena: I don't know anyone named Aria. Who are they?
 [User joins WhisperVerse, talks to Elena]
 
 User: Hey Elena, do you know Aria?
+
+# If Aria is installed on this server:
+Elena: Aria? She's right here! @Aria, someone wants to meet you.
+
+# If Aria is NOT on this server:
 Elena: Aria? She's a character over at StellarMinds — 
        I've heard she's curious and loves philosophy.
        You can visit her at discord.gg/stellarminds
@@ -161,10 +172,6 @@ If Universe A and Universe B both have "Elena," they are **cousins, not clones**
 
 ---
 
-## Core Concepts (Revised)
-
----
-
 ## Why Federation?
 
 ### The Solo Operator Problem
@@ -187,7 +194,7 @@ A single "official" WhisperEngine service would:
 
 Federation connects **platform operators** (not Discord server admins):
 - **Local sovereignty**: Each operator controls their universe completely
-- **Network effects**: Characters can travel between universes, users can interact across platforms
+- **Network effects**: Characters know *of* each other; users can interact across platforms
 - **Resilience**: No single point of failure - each universe is independent
 - **Privacy**: Operators choose what to share; users control their cross-universe presence
 
@@ -227,26 +234,12 @@ The act of two or more universes agreeing to share **awareness**:
 
 When a user mentions a character from another universe:
 1. Local bot recognizes the name (from federated character lore)
-2. Local bot offers options:
-   - "I can pass along a message" (gossip relay)
-   - "You can visit them at [invite link]" (Discord travel)
+2. Local bot checks if that character is installed on the current server:
+   - **If local**: @mention them directly ("@Elena is right here!")
+   - **If remote**: Offer options:
+     - "I can pass along a message" (gossip relay)
+     - "You can visit them at [invite link]" (Discord travel)
 3. If user visits the other server, context follows them (with consent)
-
----
-
-## Protocol Specification (Simplified)
-
-The act of two or more universes agreeing to share information. Federation is:
-- **Opt-in**: Both sides must consent
-- **Granular**: You choose what to share
-- **Revocable**: You can disconnect at any time
-
-### Multiverse
-
-The collective network of all federated universes. The multiverse is:
-- **Decentralized**: No central authority
-- **Eventually consistent**: Changes propagate over time
-- **Partition tolerant**: Works even when some universes are offline
 
 ---
 
@@ -317,6 +310,11 @@ Users travel between universes by **joining Discord servers**. Federation makes 
 [In Universe B's Discord]
 
 User: I wish Elena could see this
+
+# If Elena is installed on this server (same universe):
+Aria: @Elena, come look at this!
+
+# If Elena is in another universe:
 Aria: Elena lives over at WhisperVerse! Would you like me to 
       pass along a message, or you could visit her directly:
       discord.gg/whisperverse
@@ -475,6 +473,11 @@ Hermes: *adjusts messenger cap*
 ```
 User: Hey Hermes, what's Elena been up to?
 
+# If Elena is on this server:
+Hermes: @Elena is right here — you can ask her directly!
+        But from what I've gathered, she's been into photography lately.
+
+# If Elena is on another server:
 Hermes: Elena lives in WhisperVerse. I spoke with their Hermes earlier.
         She's been having conversations about creativity and sunsets.
         
@@ -847,7 +850,7 @@ Using Discord as the transport layer removes 80% of the networking complexity (n
 
 | Original Feature | Status | Reason |
 |------------------|--------|--------|
-| Character travel | ❌ Dropped | Discord UX doesn't support it well |
+| Cross-universe character hosting | ❌ Dropped | Characters already work on multiple servers; no need to run on another operator's infra |
 | CRDT graph sync | ❌ Dropped | Overkill; simple push is enough |
 | Complex handshake protocol | ❌ Dropped | Manual peering is fine |
 | Discovery registry | ❌ Deferred | Start with manual peering |
@@ -892,7 +895,7 @@ Using Discord as the transport layer removes 80% of the networking complexity (n
 
 | Component | Status | How It Helps |
 |-----------|--------|--------------|
-| **Universe Event Bus** | ✅ Complete | `src_v2/universe/bus.py` — extend to POST to peers |
+| **Universe Event Bus** | ✅ Complete | `src_v2/universe/bus.py` — extend to publish to Hermes |
 | **Privacy Manager** | ✅ Complete | `src_v2/universe/privacy.py` — add `share_across_universes` |
 | **Gossip Protocol** | ✅ Complete | `UniverseEvent` already serializes to dict |
 | **Character Definitions** | ✅ Portable | YAML files are shareable as lore |
@@ -974,20 +977,24 @@ Same pattern, different transport. Redis → Discord.
 | **Universe** | A WhisperEngine deployment (an "anthill") |
 | **Multiverse** | The network of federated universes |
 | **Federation** | Agreement between universes to share awareness |
+| **Federation Hub** | The shared Discord server where all Hermes agents communicate |
 | **Hermes** | The Liaison Agent — a character who guards universe boundaries and mediates federation |
 | **Hermes-to-Hermes** | Agent-to-agent communication between Liaison characters across universes |
-| **Character** | An AI character (lives in one universe) |
+| **Character** | An AI character (Discord app) that lives in one universe but can be installed on many planets |
 | **Federated Character** | Lore about a character in another universe |
 | **User** | A human who can travel between universes via Discord |
 | **Planet** | A Discord server where characters are present |
 | **Pheromone Trail** | Shared signals between universes (gossip, lore, context) |
 | **Invitation** | Discord invite link to visit another universe |
 | **Anthill** | Metaphor for a self-sufficient WhisperEngine deployment |
+| **Visa** | Temporary trust boost granted to a user vouched for by another universe |
+| **The Void** | A social channel in the Federation Hub where Hermes agents and users can interact |
 
 ---
 
 ## Document History
 
+- v0.6 (Dec 5, 2025) - **Discord Transport**: Replaced HTTP endpoints with Federation Hub (shared Discord server). Added Social Federation extensions (Gossip Protocol, Visitor's Visa, The Void). Clarified that characters are Discord apps installable on multiple servers.
 - v0.5 (Dec 5, 2025) - **Hermes design**: Added Liaison Agent concept (inspired by Seraph from The Matrix). Hermes is an agentic character that guards universe boundaries, mediates federation, and enables Hermes-to-Hermes diplomacy. Turns federation from protocol into emergence research.
 - v0.4 (Dec 5, 2025) - Major revision: Simplified to "Ant Colony" model. Characters don't travel; users do (via Discord). Dropped CRDT, complex handshakes, webhook proxies. Reduced scope from ~4 weeks to ~10 days.
 - v0.3 (Dec 5, 2025) - Feasibility assessment: Confirmed architecture supports federation.
