@@ -13,7 +13,7 @@ from langsmith import traceable
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.graph import StateGraph, END
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.core.database import db_manager
@@ -36,9 +36,21 @@ class NewGoal(BaseModel):
     slug: str = Field(description="Unique snake_case identifier")
     description: str = Field(description="What the character wants to accomplish")
     success_criteria: str = Field(description="Specific observable outcome")
-    priority: int = Field(ge=1, le=10, description="Priority 1-10")
+    priority: int = Field(ge=1, le=10, description="Priority 1-10 (1=highest, 10=lowest)")
     category: str = Field(description="community_growth, personal_growth, or investigation")
     reasoning: str = Field(description="Why this goal fits now")
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def clamp_priority(cls, v: Any) -> int:
+        """Clamp priority to valid range 1-10, handling LLM edge cases."""
+        if v is None:
+            return 5  # Default to medium priority
+        try:
+            val = int(v)
+            return max(1, min(10, val))  # Clamp to 1-10
+        except (ValueError, TypeError):
+            return 5
 
 
 class StrategistOutput(BaseModel):
