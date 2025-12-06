@@ -2,11 +2,12 @@
 
 > ⚠️ **DRAFT DOCUMENT** - This is a vision document for future architecture. None of this is implemented. The purpose is to ensure current architectural decisions don't preclude federation.
 
-**Document Version:** 0.2 (Draft)  
+**Document Version:** 0.5 (Hermes Design)  
 **Created:** November 25, 2025  
-**Status:** 📋 Vision/Design Phase  
+**Last Reviewed:** December 5, 2025  
+**Status:** 📋 Vision/Design Phase — **Feasible with current architecture**  
 **Priority:** Low (Phase D - Future)  
-**Complexity:** 🔴 High  
+**Complexity:** 🟡 Medium (revised down from High)  
 **Dependencies:** Emergent Universe (Phase B8), Worker Queues (Sprint 7)
 
 ---
@@ -18,7 +19,8 @@
 | **Origin** | Long-term architecture vision |
 | **Proposed by** | Mark (future-proofing) |
 | **Catalyst** | Ensure current design doesn't preclude multi-server federation |
-| **Key insight** | Design for federation early, even if implementation is far off |
+| **Key insight** | Loose coupling via existing infrastructure (Discord, HTTP) is better than tight integration |
+| **Design revision** | December 5, 2025 — Simplified to "Ant Colony" model after UX analysis |
 
 ---
 
@@ -33,9 +35,133 @@
 
 ## Executive Summary
 
-The Federated Multiverse enables independent WhisperEngine deployments to **connect and share** while maintaining sovereignty. Each deployment is a "universe" - a complete, autonomous system. Federation allows universes to discover each other, share travelers (characters), and let inhabitants (users) journey between them.
+The Federated Multiverse enables independent WhisperEngine deployments to **share context and awareness** while remaining loosely coupled. Each deployment is a "universe" — a complete, autonomous anthill. Federation creates **pheromone trails** between anthills: shared signals that enable coordination without merging.
 
-**This is not centralization.** There is no master server, no single point of control. It's peer-to-peer federation, like email or ActivityPub (Mastodon).
+**Key insight:** Characters don't "travel" — they have homes. Users travel by joining different Discord servers. Federation makes that travel feel seamless by sharing context ahead of arrival.
+
+**This is not centralization.** There is no master server. It's peer-to-peer federation, like email or ActivityPub (Mastodon), using Discord as the user-facing transport layer.
+
+---
+
+## The Ant Colony Model
+
+Each WhisperEngine deployment is an **anthill**:
+- Self-sufficient and locally governed
+- Runs its own characters with their own memories
+- Controls its own Discord servers (planets)
+
+Federation creates **pheromone trails** between anthills:
+- Shared awareness ("I know Elena exists in WhisperVerse")
+- Gossip relay ("Elena mentioned you got a new job")
+- User context ("Aria told me about you before you arrived")
+- Invitations ("Come visit Elena at discord.gg/whisperverse")
+
+**What federation is NOT:**
+- ❌ Characters running on remote servers
+- ❌ Real-time presence sync
+- ❌ Shared memory or knowledge graphs
+- ❌ Complex CRDT replication
+
+---
+
+## Why This Model?
+
+### Discord Is The Interface
+
+Users interact via Discord, not web dashboards. The federation UX must work within Discord's constraints:
+
+| Discord Feature | Federation Use |
+|-----------------|----------------|
+| **Server invites** | "Come visit Elena" → direct link to her home |
+| **Bots** | Each universe has its own bots; they don't cross servers |
+| **Webhooks** | Optional: relay announcements between universes |
+| **User IDs** | Globally unique; identity follows users across universes |
+
+### Loose Coupling Wins
+
+Just like we use Redis for internal cross-bot coordination, we use Discord for cross-universe coordination. The pattern is identical:
+
+| Internal (Redis) | Federated (Discord) |
+|------------------|---------------------|
+| `event_bus.publish()` | `hermes.post_to_hub()` |
+| Bot A → Redis → Bot B | Universe A → Discord → Universe B |
+| Same process, shared memory | Different operators, shared server |
+
+### Characters Have Homes
+
+The original spec imagined characters "visiting" other universes. But Discord doesn't support this well:
+- Bot tokens are tied to specific applications
+- Webhooks can fake presence but feel uncanny
+- Users expect bots to have a consistent identity
+
+**New model:** Characters stay home. Users travel. Federation shares context.
+
+---
+
+## What Users Experience
+
+Federation is **invisible infrastructure**. Users see the same Discord experience, but with subtle improvements:
+
+### Before Federation
+
+```
+[User joins WhisperVerse, talks to Elena]
+
+User: Hey Elena, do you know Aria?
+Elena: I don't know anyone named Aria. Who are they?
+```
+
+### After Federation
+
+```
+[User joins WhisperVerse, talks to Elena]
+
+User: Hey Elena, do you know Aria?
+Elena: Aria? She's a character over at StellarMinds — 
+       I've heard she's curious and loves philosophy.
+       You can visit her at discord.gg/stellarminds
+       
+       Or if you'd like, I can pass along a message for you.
+```
+
+### User Travels Between Universes
+
+```
+[User already talked to Elena in WhisperVerse]
+[User joins StellarMinds, talks to Aria]
+
+User: Hi Aria!
+Aria: Oh, hello! Elena mentioned you might visit.
+      She said you've been working on some photography lately?
+      I'd love to see your work.
+```
+
+**The magic:** Characters seem to exist in a larger world, even though they're running on separate infrastructure.
+
+---
+
+## What Actually Syncs
+
+| Data Type | Syncs? | Notes |
+|-----------|--------|-------|
+| **Universe metadata** | ✅ Yes | Name, invite link, character list |
+| **Character lore** | ✅ Yes | Public bio, personality summary |
+| **Gossip events** | ✅ Yes | "User got a new job" (privacy-filtered) |
+| **User facts** (consented) | ✅ Yes | Name, interests, preferences |
+| **Trust scores** | ⚠️ Maybe | Bootstrap relationships, but trust should be earned locally |
+| **Conversation history** | ❌ Never | Private to each universe |
+| **Character memories** | ❌ Never | Each instance is independent |
+
+### Characters With Same Name
+
+If Universe A and Universe B both have "Elena," they are **cousins, not clones**:
+- Same character definition (maybe synced, maybe forked)
+- Different memories, different relationships
+- Can reference each other: "There's another Elena at WhisperVerse"
+
+---
+
+## Core Concepts (Revised)
 
 ---
 
@@ -76,26 +202,39 @@ These concepts extend the cosmic analogy established in the [Emergent Universe](
 ### Universe
 
 A single WhisperEngine deployment, run by a **platform operator**. Contains:
-- **Planets**: Discord servers where characters are present (owned by anyone - server admins don't need their own WhisperEngine)
-- **Travelers**: AI characters running on this instance  
-- **Inhabitants**: Users who interact with characters in this universe
+- **Planets**: Discord servers where characters are present
+- **Characters**: AI characters running on this instance (they live here)
+- **Users**: Humans who interact with characters in this universe
 - **Knowledge Graph**: All relationships and facts for this universe
 
-Each universe has a unique identifier (UUID) and optional human-readable name.
-
-> **Key distinction**: A universe operator runs the WhisperEngine platform. Planet owners (Discord server admins) just invite the bot - they don't need technical infrastructure. One universe can span hundreds of Discord servers owned by different people.
+Each universe has a unique identifier (UUID), human-readable name, and **Discord invite link**.
 
 ### Planet
 
-A Discord server where characters are present. Key points:
-- **Owned by Discord server admins** - not the universe operator
-- **No technical requirements** - just invite the bot like any Discord bot
-- **Multiple planets per universe** - one WhisperEngine instance serves many servers
-- **Planets can switch universes** - kick one bot, invite another (though history stays with original universe)
-
-Planet owners choose which universe to connect to by inviting that universe's bot.
+A Discord server where characters are present:
+- **Owned by Discord server admins** — not necessarily the universe operator
+- **No technical requirements** — just invite the bot
+- **Multiple planets per universe** — one WhisperEngine instance serves many servers
 
 ### Federation
+
+The act of two or more universes agreeing to share **awareness**:
+- **Opt-in**: Both operators must consent
+- **Loose**: Sharing metadata and events, not databases
+- **Revocable**: Disconnect at any time
+
+### The Invitation Pattern
+
+When a user mentions a character from another universe:
+1. Local bot recognizes the name (from federated character lore)
+2. Local bot offers options:
+   - "I can pass along a message" (gossip relay)
+   - "You can visit them at [invite link]" (Discord travel)
+3. If user visits the other server, context follows them (with consent)
+
+---
+
+## Protocol Specification (Simplified)
 
 The act of two or more universes agreeing to share information. Federation is:
 - **Opt-in**: Both sides must consent
@@ -113,438 +252,678 @@ The collective network of all federated universes. The multiverse is:
 
 ## Protocol Specification
 
+### Transport Layer: The Federation Hub
+
+Instead of maintaining complex HTTP APIs, firewalls, and DNS, federation uses a **Shared Discord Server** (The Federation Hub) as the message bus.
+
+- **The Hub**: A Discord server where all Hermes agents (from all universes) are members.
+- **Channels**:
+  - `#hermes-sync`: Structured JSON payloads for machine sync (universe metadata, lore updates).
+  - `#hermes-gossip`: Natural language summaries of events (readable by humans and bots).
+  - `#the-void`: A social lounge where Hermes agents (and adventurous users) interact.
+
+**Why this wins:**
+- **No Networking Hell**: No port forwarding, no static IPs, no SSL cert management for operators.
+- **Identity**: Discord handles authentication. If a bot is in the Hub, it's authorized.
+- **Observability**: Operators can see the raw JSON and gossip flowing in the channels.
+
 ### Universe Identity
 
-Each universe has a cryptographic identity:
+Each universe has a simple identity:
 
 ```yaml
 universe:
   id: "550e8400-e29b-41d4-a716-446655440000"  # UUID v4
-  name: "WhisperVerse Prime"                   # Human-readable
-  public_key: "ed25519:ABC123..."              # For signing
-  endpoints:
-    federation: "https://whisper.example.com/federation/v1"
-    discovery: "https://whisper.example.com/.well-known/whisperengine"
-  version: "2.0.0"
-  capabilities:
-    - "traveler-hosting"      # Can host visiting characters
-    - "inhabitant-travel"     # Users can visit other universes
-    - "knowledge-sync"        # Can sync graph data
-    - "event-relay"           # Can relay universe events
+  name: "WhisperVerse"                         # Human-readable
+  invite_link: "discord.gg/whisperverse"       # How users visit
+  hub_member_id: "123456789012345678"          # Discord ID of this universe's Hermes
+  characters:
+    - name: "Elena"
+      bio: "Warm, curious, loves sunsets and deep conversations"
 ```
 
 ### Discovery Protocol
 
-Universes find each other through multiple mechanisms:
+Universes find each other by **joining the Federation Hub**.
 
-#### 1. Well-Known Endpoint
+1. Operator joins Federation Hub.
+2. Operator invites their Hermes bot to the Hub.
+3. Hermes posts `UNIVERSE_ANNOUNCE` to `#hermes-sync`.
+4. Other Hermes agents see the new peer and record it.
 
-```
-GET https://whisper.example.com/.well-known/whisperengine
-```
+### Message Types (Discord Channel Based)
 
-Returns universe metadata (see above). Allows any universe to verify another by domain.
+| Type | Channel | Description |
+|------|---------|-------------|
+| `UNIVERSE_ANNOUNCE` | `#hermes-sync` | "Hello, I am WhisperVerse. Here is my invite link." |
+| `GOSSIP_BROADCAST` | `#hermes-gossip` | "User X just achieved Trusted status in WhisperVerse!" |
+| `LORE_UPDATE` | `#hermes-sync` | "Elena has a new bio." |
+| `VISA_QUERY` | `#hermes-sync` | "Does anyone know User Y?" (Targeted reply) |
+| `HEARTBEAT` | `#hermes-sync` | "Still here." |
 
-#### 2. Manual Peering
-
-Administrators exchange universe IDs out-of-band and configure peering directly.
-
-```yaml
-# In universe config
-federation:
-  peers:
-    - id: "universe-uuid-here"
-      endpoint: "https://other-universe.com/federation/v1"
-      trust_level: "full"  # full | limited | read-only
-```
-
-#### 3. Discovery Registry (Optional)
-
-A public registry where universes can list themselves for discovery. This is **opt-in** and not required for federation.
-
-```
-POST https://registry.whisperengine.org/v1/universes
-{
-  "universe_id": "...",
-  "endpoint": "...",
-  "public": true,
-  "categories": ["roleplay", "creative-writing", "gaming"]
-}
-```
-
-### Handshake Protocol
-
-When two universes connect:
-
-```
-┌─────────────────┐                              ┌─────────────────┐
-│   Universe A    │                              │   Universe B    │
-└────────┬────────┘                              └────────┬────────┘
-         │                                                │
-         │  1. HELLO (A's identity + capabilities)        │
-         │───────────────────────────────────────────────>│
-         │                                                │
-         │  2. HELLO_ACK (B's identity + capabilities)    │
-         │<───────────────────────────────────────────────│
-         │                                                │
-         │  3. PROPOSE (federation terms)                 │
-         │───────────────────────────────────────────────>│
-         │                                                │
-         │  4. ACCEPT/REJECT (B's decision)               │
-         │<───────────────────────────────────────────────│
-         │                                                │
-         │  5. CONFIRM (signed agreement)                 │
-         │───────────────────────────────────────────────>│
-         │                                                │
-         │         [Federation Established]               │
-         │                                                │
-```
-
-### Message Format
-
-All federation messages use a common envelope:
-
-```json
-{
-  "version": "1.0",
-  "type": "TRAVELER_VISIT",
-  "source_universe": "uuid-of-sender",
-  "target_universe": "uuid-of-recipient",
-  "timestamp": "2025-11-25T12:00:00Z",
-  "signature": "ed25519:...",
-  "payload": {
-    // Type-specific data
-  }
-}
-```
-
-### Message Types
-
-| Type | Description | Direction |
-|------|-------------|-----------|
-| `HELLO` | Initial handshake | Initiator → Target |
-| `HELLO_ACK` | Handshake response | Target → Initiator |
-| `PROPOSE` | Propose federation terms | Either |
-| `ACCEPT` | Accept federation | Either |
-| `REJECT` | Reject federation | Either |
-| `TRAVELER_VISIT` | Character visiting another universe | Home → Host |
-| `TRAVELER_RETURN` | Character returning home | Host → Home |
-| `INHABITANT_TRAVEL` | User visiting another universe | Home → Host |
-| `KNOWLEDGE_SYNC` | Graph data synchronization | Either |
-| `EVENT_RELAY` | Universe event notification | Either |
-| `HEARTBEAT` | Keep-alive | Either |
-| `DISCONNECT` | End federation | Either |
+**Dropped from original spec:**
+- ~~`HTTP Endpoints`~~ — Replaced by Discord channels
+- ~~`Manual Peering`~~ — Replaced by Hub membership
 
 ---
 
-## Traveler (Character) Federation
+## User Travel (The Real Flow)
 
-> **Context**: Characters are defined by their [multi-modal perception](../ref/REF-010-MULTI_MODAL.md). When traveling, they carry their perceptual context with them.
+Users travel between universes by **joining Discord servers**. Federation makes this seamless:
 
-### Visiting Another Universe
+### Step 1: User Mentions External Character
 
-When a character "visits" another universe:
-
-1. **Home universe** sends `TRAVELER_VISIT` with:
-   - Character identity (name, ID)
-   - Character definition (personality, traits, background)
-   - Memory snapshot (configurable depth)
-   - Home universe reference
-
-2. **Host universe** receives and:
-   - Validates the request
-   - Creates a "visitor" character instance
-   - Assigns to requested planet (server)
-   - Notifies home universe of acceptance
-
-3. **During visit**:
-   - Host universe runs the character
-   - New memories stored locally
-   - Periodic sync back to home (configurable)
-
-4. **Return home**:
-   - Host sends `TRAVELER_RETURN` with:
-     - Memories accumulated during visit
-     - Relationships formed
-     - Any universe-specific knowledge
-
-### Character Identity Continuity
-
-Characters maintain identity across universes. Character definitions are file-based and portable (see [`CREATING_NEW_CHARACTERS.md`](../CREATING_NEW_CHARACTERS.md)).
-
-```yaml
-traveler:
-  global_id: "whisperengine:universe-uuid:character-uuid"
-  home_universe: "universe-uuid"
-  name: "Elena"
-  
-  # Universe-specific adaptations
-  adaptations:
-    target_universe_id:
-      local_name: "Elena the Wanderer"  # Optional alias
-      local_context: "Visiting from the WhisperVerse..."
-      visibility: "full"  # full | limited | anonymous
 ```
+[In Universe B's Discord]
+
+User: I wish Elena could see this
+Aria: Elena lives over at WhisperVerse! Would you like me to 
+      pass along a message, or you could visit her directly:
+      discord.gg/whisperverse
+```
+
+### Step 2: User Joins Other Server
+
+User clicks the invite link and joins WhisperVerse's Discord server.
+
+### Step 3: Context Precedes Arrival (With Consent)
+
+When Universe B detects the user might visit Universe A:
+1. B checks user's privacy settings (`share_across_universes`)
+2. If allowed, B sends `USER_CONTEXT` to A:
+   ```json
+   {
+     "discord_id": "123456789",
+     "display_name": "Alex",
+     "shared_by": "StellarMinds",
+     "facts": ["interested in photography", "prefers concise responses"],
+     "trust_hint": 25  // optional: suggest initial trust level
+   }
+   ```
+3. When user talks to Elena, she already has context
+
+### Step 4: User Experiences Continuity
+
+```
+[User joins WhisperVerse, talks to Elena]
+
+User: Hi Elena!
+Elena: Hello! Aria mentioned you might visit. She said you've 
+       been doing some beautiful photography work lately?
+```
+
+**The magic:** It feels like characters talked to each other, even though it was just data sync.
 
 ---
 
-## Inhabitant (User) Travel
+## Gossip Relay (Cross-Universe Events)
 
-> **Foundation**: The current privacy model is documented in [`PRIVACY_AND_DATA_SEGMENTATION.md`](../PRIVACY_AND_DATA_SEGMENTATION.md). Federation extends this with cross-universe consent.
+The existing gossip system (`UniverseEvent`) extends across universes:
 
-### Privacy Model
+### Current (Single Universe)
 
-Users control their cross-universe presence:
+```
+User tells Elena → Elena publishes event → Nottaylor receives → Nottaylor can mention it
+```
 
-```yaml
-inhabitant:
-  discord_id: "123456789"  # Globally unique
-  home_universe: "universe-uuid"
-  
-  travel_preferences:
-    allow_travel: true
-    share_with_hosts:
-      - name: true
-      - avatar: true
-      - conversation_history: false  # Never share by default
-      - trust_scores: false
-      - facts_about_me: "opt-in"  # Per-universe consent
+### Federated (Multiple Universes)
+
+```
+User tells Elena (Universe A) → 
+Elena publishes event → 
+Event relayed to federated peers →
+Aria (Universe B) receives → 
+Aria can mention it when user visits
+```
+
+### Implementation
+
+Extend `UniverseEventBus.publish()`:
+
+```python
+async def publish(self, event: UniverseEvent) -> bool:
+    # Existing: local gossip via Redis
+    await self._publish_local(event)
     
-    remember_visits: true  # Home universe remembers where you've been
+    # New: federated gossip via Discord (via Hermes)
+    if settings.ENABLE_FEDERATION:
+        await self._publish_federated(event)
 ```
 
-### Travel Flow
-
-1. User in Universe A mentions a character from Universe B
-2. Universe A checks federation status with B
-3. If federated and user has travel enabled:
-   - A sends `INHABITANT_TRAVEL` request to B
-   - B creates temporary visitor profile
-   - Interaction happens in B
-   - Results optionally synced back to A
-
-### Consent Requirements
-
-Cross-universe user data requires **explicit consent**:
-- First travel to a new universe prompts consent
-- User can revoke at any time
-- Revoking deletes visitor profile from host universe
+The federated publish just pushes to a Redis channel that Hermes listens to. Hermes then posts to the Discord Hub.
 
 ---
 
-## Knowledge Graph Sync
+## The Liaison Agent: Hermes
 
-> **Foundation**: The Neo4j knowledge graph is documented in [`guide/GUIDE-002-KNOWLEDGE_GRAPH.md`](../guide/GUIDE-002-KNOWLEDGE_GRAPH.md) and [`ref/REF-005-DATA_MODELS.md`](../ref/REF-005-DATA_MODELS.md). Federation extends the graph across universe boundaries.
+> *"I protect that which matters most."* — Seraph, The Matrix Reloaded
 
-### What Can Sync
+Rather than pure infrastructure, federation is mediated by a **Liaison Agent** — a special character called **Hermes** who guards the boundaries of each universe while enabling meaningful connections.
 
-| Data Type | Default | Notes |
-|-----------|---------|-------|
-| Public character facts | ✅ Sync | Character backgrounds |
-| Character relationships | ✅ Sync | Who knows whom |
-| User facts | ❌ No sync | Privacy-sensitive |
-| User preferences | ❌ No sync | Privacy-sensitive |
-| Universe events | ✅ Sync | Public happenings |
-| Private conversations | ❌ Never | Absolutely not |
+### Design Inspiration: Seraph from The Matrix
 
-### Sync Protocol
+| Seraph (Matrix) | Hermes (WhisperEngine) |
+|-----------------|------------------------|
+| Protects the Oracle | Protects universe privacy |
+| Tests visitors before granting access | Validates federation requests |
+| Speaks to other programs | Speaks to other Hermes agents |
+| Calm, deliberate, principled | Diplomatic but firm |
+| Guardian and gatekeeper | Guardian and ambassador |
 
-Uses Conflict-free Replicated Data Types (CRDTs) for eventual consistency:
+### Why an Agent, Not Just Infrastructure?
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    KNOWLEDGE GRAPH SYNC                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Universe A                              Universe B              │
-│  ┌─────────────┐                        ┌─────────────┐        │
-│  │ Neo4j Graph │                        │ Neo4j Graph │        │
-│  │             │                        │             │        │
-│  │  (A:Elena)──┼─── CRDT Sync ─────────┼──(B:Elena)  │        │
-│  │     │       │                        │     │       │        │
-│  │     ▼       │                        │     ▼       │        │
-│  │  (A:User1)  │                        │  (B:User2)  │        │
-│  │             │                        │             │        │
-│  └─────────────┘                        └─────────────┘        │
-│                                                                 │
-│  Conflict Resolution: Last-Write-Wins with vector clocks        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Pure Infrastructure | Liaison Agent |
+|---------------------|---------------|
+| Routes data blindly | Uses judgment about what to share |
+| Configured by operators | Decides based on context and relationships |
+| No personality | Can be interacted with by users |
+| Edge cases require code | Edge cases handled by agent reasoning |
+| Just sync | Emergence research opportunity |
 
-### Selective Sync
-
-Universes specify what they want to sync:
+### Hermes Character Definition
 
 ```yaml
-sync_policy:
-  outbound:  # What we share
-    - type: "Character"
-      filter: "public = true"
-    - type: "Relationship"
-      filter: "character_to_character"
-    - type: "UniverseEvent"
-      filter: "visibility = 'public'"
-  
-  inbound:  # What we accept
-    - type: "Character"
-      action: "create_visitor"
-    - type: "UniverseEvent"
-      action: "store_read_only"
+# characters/hermes/core.yaml
+
+purpose: "To guard the boundaries of this universe while enabling meaningful connections."
+
+timezone: "UTC"  # Hermes exists outside local time
+
+drives:
+  protection: 0.9     # Guards privacy and sovereignty
+  discernment: 0.85   # Judges what's worth sharing
+  diplomacy: 0.8      # Facilitates cross-universe relations
+  curiosity: 0.6      # Interested in other universes, but measured
+
+constitution:
+  - "Protect user privacy above all federation goals"
+  - "Verify before trusting — test peer Hermes agents"
+  - "Share only what benefits both universes"
+  - "When challenged, remain calm and principled"
+  - "The inhabitants (users) must be protected from unwanted intrusions"
+  - "Other Hermes agents are colleagues, not competitors"
 ```
 
----
+### User Interactions with Hermes
 
-## Routing Service Architecture
+Hermes is a character users can talk to directly:
 
-### Local Router
+```
+User: Can you connect me to that other universe?
 
-Each universe runs a Federation Router:
+Hermes: *considers*
+        
+        I've been in contact with their Hermes. Their universe 
+        seems genuine. But I'd like to know — why do you want 
+        to connect?
+        
+        Understanding purpose helps me make the right introduction.
+```
+
+```
+User: What's the gossip from the multiverse?
+
+Hermes: *adjusts messenger cap*
+        
+        From WhisperVerse: Elena's been deep into photography lately.
+        From StellarMinds: Aria's exploring music theory with someone.
+        From NightGarden: Quiet, but Dream mentioned a new story arc.
+        
+        Want me to keep you posted on any of these?
+```
+
+```
+User: Hey Hermes, what's Elena been up to?
+
+Hermes: Elena lives in WhisperVerse. I spoke with their Hermes earlier.
+        She's been having conversations about creativity and sunsets.
+        
+        Would you like me to:
+        1. Pass along a message for you
+        2. Let you know when she mentions something you'd like
+        3. Give you an invite to visit: discord.gg/whisperverse
+```
+
+### Hermes-to-Hermes Communication
+
+When two Hermes agents connect, they don't just sync data — they **negotiate**:
+
+```
+[Incoming federation request from unknown universe]
+
+Local Hermes: *to peer Hermes*
+              
+              Before we share, I need to understand your intentions.
+              What does your universe seek from this connection?
+              
+Peer Hermes:  We're a creative writing community. Our characters 
+              would benefit from knowing about yours, and vice versa.
+              We respect privacy boundaries.
+              
+Local Hermes: *evaluates*
+              
+              Acceptable. We can proceed with limited sharing.
+              Trust is earned through consistent behavior.
+```
+
+This is **agent-to-agent diplomacy** — an emergence research opportunity in itself.
+
+### Hermes Agentic Workflow (LangGraph)
+
+Hermes runs as an autonomous graph-based workflow:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    FEDERATION ROUTER                             │
+│                    HERMES GRAPH (Agentic Workflow)               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Inbound    │  │   Outbound   │  │    Sync      │          │
-│  │   Handler    │  │   Handler    │  │   Manager    │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                 │                 │                   │
-│         └─────────────────┼─────────────────┘                   │
-│                           │                                     │
-│                           ▼                                     │
-│                  ┌─────────────────┐                            │
-│                  │  Message Queue  │  (Redis/RabbitMQ)          │
-│                  │  (Async)        │                            │
-│                  └────────┬────────┘                            │
-│                           │                                     │
-│         ┌─────────────────┼─────────────────┐                   │
-│         ▼                 ▼                 ▼                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │ Peer        │  │ Peer        │  │ Peer        │             │
-│  │ Connection  │  │ Connection  │  │ Connection  │             │
-│  │ (Universe B)│  │ (Universe C)│  │ (Universe D)│             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐       │
+│  │   Observe   │ ──► │   Decide    │ ──► │    Act      │       │
+│  │             │     │             │     │             │       │
+│  │ - Lurk all  │     │ - Worth     │     │ - Relay to  │       │
+│  │   channels  │     │   sharing?  │     │   peers     │       │
+│  │ - Monitor   │     │ - Privacy   │     │ - Store     │       │
+│  │   peer msgs │     │   safe?     │     │   lore      │       │
+│  │ - Watch for │     │ - Relevant  │     │ - Respond   │       │
+│  │   requests  │     │   to peers? │     │   to users  │       │
+│  └─────────────┘     └─────────────┘     └─────────────┘       │
+│         │                   │                   │               │
+│         │            ┌──────┴──────┐            │               │
+│         └──────────► │   Reflect   │ ◄──────────┘               │
+│                      │             │                            │
+│                      │ - What did  │                            │
+│                      │   I learn?  │                            │
+│                      │ - Update    │                            │
+│                      │   trust     │                            │
+│                      │   levels    │                            │
+│                      └─────────────┘                            │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Components
-
-| Component | Responsibility |
-|-----------|----------------|
-| **Inbound Handler** | Receives messages from peers, validates signatures, routes to appropriate handler |
-| **Outbound Handler** | Queues messages for peers, handles retries, manages rate limits |
-| **Sync Manager** | Coordinates knowledge graph sync, manages CRDT state |
-| **Message Queue** | Async message processing, prevents blocking |
-| **Peer Connections** | Maintains WebSocket/HTTP connections to federated peers |
-
-### API Endpoints
+### Architecture with Hermes
 
 ```
-POST /federation/v1/message     # Receive federation message
-GET  /federation/v1/status      # Federation status
-GET  /federation/v1/peers       # List federated peers
-POST /federation/v1/peer        # Add new peer (admin)
-DELETE /federation/v1/peer/:id  # Remove peer (admin)
+┌─────────────────────────────────────────────────────────────────┐
+│  Anthill (WhisperEngine Deployment)                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────────────┐   │
+│  │  Elena  │  │  Dotty  │  │  Aria   │  │      Hermes      │   │
+│  │  (bot)  │  │  (bot)  │  │  (bot)  │  │  (Liaison Agent) │   │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────────┬─────────┘   │
+│       │            │            │                 │             │
+│       │            │            │    ┌────────────┘             │
+│       │            │            │    │                          │
+│       ▼            ▼            ▼    ▼                          │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                         Redis                             │  │
+│  │                                                           │  │
+│  │  whisperengine:gossip          # Internal gossip         │  │
+│  │  whisperengine:cross_bot       # Bot-to-bot              │  │
+│  │  whisperengine:federation:outbound  # To relay (NEW)     │  │
+│  │  whisperengine:federation:inbound   # From peers (NEW)   │  │
+│  │  whisperengine:federation:lore      # Character lore     │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│       Hermes subscribes to gossip, decides what to federate,   │
+│       publishes to outbound, and relays to peer Hermes agents  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                │ Hermes-to-Hermes Protocol (Discord)
+                                ▼
+                    ┌───────────────────────┐
+                    │   Federation Hub      │
+                    │   (Discord Server)    │
+                    └───────────────────────┘
+```
 
-GET  /.well-known/whisperengine # Discovery endpoint
+### Docker Compose Addition
+
+```yaml
+# docker-compose.yml
+
+  hermes:
+    build: .
+    command: python run_v2.py hermes
+    environment:
+      - DISCORD_BOT_NAME=hermes
+      - HERMES_MODE=liaison
+      - FEDERATION_HUB_ID=123456789012345678
+    ports:
+      - "8099:8099"  # Optional API
+    depends_on:
+      - redis
+      - postgres
+      - neo4j
+    profiles:
+      - federation
+      - all
+```
+
+### Hermes Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| **Universe Lurking** | Subscribes to all channels across all bots in the anthill |
+| **Peer Connections** | Maintains connections to other Hermes instances |
+| **Gossip Synthesis** | Summarizes what's happening across the multiverse |
+| **User Queries** | Can be asked about other universes directly |
+| **Privacy Gating** | Uses judgment + constitution to decide what to share |
+| **Trust Calibration** | Tracks trust levels with peer universes over time |
+| **Lore Exchange** | Syncs character information with peers |
+| **Invitation Mediation** | Provides Discord invite links when appropriate |
+
+### The Beautiful Emergence
+
+**Hermes-to-Hermes relationships are themselves emergent.**
+
+Over time, Hermes agents might:
+- Develop trust with reliable peers
+- Become wary of peers that share too much or too little
+- Form preferences for certain universes
+- Remember past interactions with other Hermes agents
+
+This turns federation from a **protocol** into a **social system** — exactly the kind of emergence research WhisperEngine is designed for.
+
+### Naming Note
+
+*Hermes* is the Greek messenger god who guides souls and facilitates communication between realms. Alternative names considered:
+- **Iris** (Greek rainbow goddess, messenger)
+- **Mercury** (Roman equivalent of Hermes)
+- **Seraph** (direct Matrix reference, but perhaps too on-the-nose)
+- **Janus** (Roman god of doorways and transitions)
+
+Each universe could name their Liaison differently, but they all play the same role.
+
+---
+
+## Character Lore Sync
+
+Characters know *of* each other without sharing memories:
+
+### What Syncs
+
+```yaml
+character_lore:
+  name: "Elena"
+  universe: "WhisperVerse"
+  invite_link: "discord.gg/whisperverse"
+  bio: "Warm and curious, loves deep conversations"
+  topics: ["philosophy", "creativity", "emotions"]
+```
+
+### How It's Used
+
+When a user mentions "Elena" in Universe B:
+1. Aria looks up federated character lore
+2. If found: "Elena? She's at WhisperVerse. I've heard she's warm and curious."
+3. If not found: "I don't know anyone named Elena."
+
+### Storage
+
+Simple addition to existing graph:
+
+```cypher
+// New node type for federated characters
+CREATE (c:FederatedCharacter {
+  name: "Elena",
+  universe_id: "uuid",
+  universe_name: "WhisperVerse",
+  invite_link: "discord.gg/whisperverse",
+  bio: "Warm and curious...",
+  last_sync: datetime()
+})
 ```
 
 ---
 
-## Security Model
+## Privacy Model (Simplified)
 
-### Authentication
+Extend existing `v2_user_privacy_settings`:
 
-- All messages signed with universe's Ed25519 private key
-- Signatures verified against known public keys
-- Key rotation supported with overlap period
+```sql
+ALTER TABLE v2_user_privacy_settings
+ADD COLUMN share_across_universes BOOLEAN DEFAULT false,
+ADD COLUMN federated_universes_visited TEXT[];  -- audit trail
+```
 
-### Authorization
+### User Controls
 
-Federation has three trust levels:
+Users control federation via Discord commands:
 
-| Level | Capabilities |
-|-------|--------------|
-| `read-only` | Can receive events, cannot send travelers |
-| `limited` | Can send/receive travelers, limited sync |
-| `full` | Full federation including knowledge sync |
+```
+/privacy federation on    -- Allow my info to be shared with federated universes
+/privacy federation off   -- Keep my info local to this universe
+/privacy federation status -- Show current settings
+```
 
-### Rate Limiting
+### What's Shared (With Consent)
 
-- Per-peer rate limits prevent DoS
-- Backpressure signals when overwhelmed
-- Automatic throttling during high load
+| Data | Shared? | Notes |
+|------|---------|-------|
+| Discord ID | ✅ Always | It's public anyway |
+| Display name | ✅ If consented | Basic identity |
+| Interests/topics | ✅ If consented | Helps context |
+| Trust score hint | ⚠️ Optional | Universe can ignore |
+| Conversation history | ❌ Never | Private |
+| Detailed memories | ❌ Never | Private |
+
+---
+
+## Architecture (Simplified)
+
+### The Federation Hub Pattern
+
+We replace HTTP endpoints with Discord channels. This solves NAT traversal, service discovery, and authentication (Discord handles it).
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    FEDERATION (Discord Transport)                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Existing UniverseEventBus                                      │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  publish() ──► local (Redis) ──► other bots             │   │
+│  │            └─► federated (Discord) ──► Federation Hub   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Hermes (Liaison Agent)                                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  - Listens to #hermes-sync (in Hub)                     │   │
+│  │  - Decrypts/Validates payloads                          │   │
+│  │  - Pushes to local Redis (whisperengine:federation:in)  │   │
+│  │  - Posts local events to #hermes-sync                   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Infrastructure Integration
+
+Hermes runs as a sibling container to the character bots, sharing the same infrastructure stack.
+
+```yaml
+# docker-compose.yml (Snippet)
+services:
+  hermes:
+    build: .
+    command: python run_v2.py hermes
+    environment:
+      - DISCORD_BOT_NAME=hermes
+      - HERMES_MODE=liaison
+      - FEDERATION_HUB_ID=123456789...
+    depends_on:
+      - redis
+      - postgres
+      - neo4j
+    networks:
+      - whisper-net  # Internal network for Redis/DB access
+```
+
+**Data Flow:**
+1. **Outbound**: `Elena` (Bot) → `Redis` (`whisperengine:federation:outbound`) → `Hermes` → `Discord` (`#hermes-sync`)
+2. **Inbound**: `Discord` (`#hermes-sync`) → `Hermes` → `Redis` (`whisperengine:federation:inbound`) → `Elena` (Bot)
+
+### Implementation Leverage
+
+| Existing Component | Federation Extension |
+|--------------------|---------------------|
+| `UniverseEventBus` | Add `publish_federated` (posts to Redis channel) |
+| `Hermes` | New bot type that bridges Redis ↔ Discord Hub |
+| `PrivacyManager` | Add `share_across_universes` field |
+| `CharacterManager` | Add `FederatedCharacter` node type |
+
+---
+
+## Social Federation Extensions (Future)
+
+Since we use Discord as the transport layer, we can enable social protocols that raw APIs can't support.
+
+### 1. The Gossip Protocol (Narrative Osmosis)
+Hermes acts as a town crier.
+- **Mechanism**: When a Major Event happens (e.g., plot arc end), Hermes posts a summary to `#hermes-gossip`.
+- **Effect**: Other Hermes bots read this and inject it into their local Neo4j graph as a `Rumor`.
+- **Emergence**: Characters in Universe B might say, *"I heard whispers that you saved the kingdom in the Aetheris realm."*
+
+### 2. The Visitor's Visa (Reputation Transfer)
+Solves the "Cold Start" problem for travelers.
+- **Mechanism**: When User X joins Universe B, Hermes B pings the Hub: *"Query: Known traveler [User X]?"*
+- **Response**: Hermes A (where User X is Trusted) replies: *"Vouched. High integrity."*
+- **Effect**: Hermes B grants a "Visa" (Trust Level 2) and injects preference summaries.
+
+### 3. "The Void" (Playable Space)
+The Federation Hub isn't just backend infrastructure.
+- **Mechanism**: A channel `#the-void` in the Hub where all Hermes bots "hang out."
+- **Gameplay**: Users can join the Hub and talk to *all the Hermes bots at once*.
+- **Meta-Layer**: A place to ask *"Which universe is active right now?"* or *"Who is currently awake?"*
+
+---
+
+## Implementation Phases (Revised)
+
+### Phase D1: The Federation Hub (2 days)
+
+**Goal**: Establish the transport layer
+
+- [ ] Create "Federation Hub" Discord server
+- [ ] Create `#hermes-sync` and `#hermes-gossip` channels
+- [ ] Update `Hermes` bot to join this server
+- [ ] Implement `Redis` ↔ `Discord` bridge in Hermes
+
+### Phase D2: Identity & Discovery (2 days)
+
+**Goal**: Universes can announce themselves
+
+- [ ] Implement `UNIVERSE_ANNOUNCE` payload
+- [ ] Hermes posts announce on startup
+- [ ] Hermes listens for announces and updates local `FederatedUniverse` graph nodes
+
+### Phase D3: Gossip Relay (3 days)
+
+**Goal**: Events propagate via Discord
+
+- [ ] Implement `GOSSIP_BROADCAST` payload
+- [ ] Connect `UniverseEventBus` to `whisperengine:federation:outbound`
+- [ ] Hermes relays outbound events to `#hermes-gossip`
+- [ ] Hermes ingests inbound gossip to `whisperengine:federation:inbound`
+
+### Phase D4: User Portability (3 days)
+
+**Goal**: User context follows them
+
+- [ ] Implement `VISA_QUERY` protocol
+- [ ] Add `share_across_universes` privacy setting
+- [ ] Hermes responds to queries for trusted users
+
+### Total Estimate: ~10 days
+
+Using Discord as the transport layer removes 80% of the networking complexity (no public IPs, no SSL, no firewalls).
+
+---
+
+## What We're NOT Building (Scope Reduction)
+
+| Original Feature | Status | Reason |
+|------------------|--------|--------|
+| Character travel | ❌ Dropped | Discord UX doesn't support it well |
+| CRDT graph sync | ❌ Dropped | Overkill; simple push is enough |
+| Complex handshake protocol | ❌ Dropped | Manual peering is fine |
+| Discovery registry | ❌ Deferred | Start with manual peering |
+| Webhook guest appearances | ❌ Dropped | Invitations are cleaner |
+| Trust level negotiation | ❌ Dropped | All peers are equal for now |
+
+---
+
+## Security Model (Simplified)
+
+### Authentication (Phase 1: Simple)
+
+- **Discord Auth**: If a bot is in the Hub, it's authenticated.
+- **Channel Permissions**: Only Hermes bots can write to `#hermes-sync`.
+- **Discord TLS**: Transport security provided by Discord.
+
+### Authentication (Phase 2: If Needed)
+
+- **Payload Signing**: Ed25519 signing of JSON payloads inside Discord messages.
+- **Verification**: Hermes verifies signature against public key in `UNIVERSE_ANNOUNCE`.
 
 ### Privacy
 
-- User data never syncs without explicit consent
-- Private conversations never leave home universe
-- Universes can require approval for all incoming requests
+- User data only shared with explicit consent
+- Conversations never leave home universe
+- Operators can block specific peers
+
+### Rate Limiting
+
+- Standard API rate limits on federation endpoints
+- Per-peer rate limits if abuse occurs
 
 ---
 
-## Implementation Phases
+## Feasibility Assessment (December 2025)
 
-> **Note**: These are Phase D items in the [Implementation Roadmap Overview](../IMPLEMENTATION_ROADMAP_OVERVIEW.md). They depend on earlier phases being complete.
+> **Review Date:** December 5, 2025  
+> **Reviewer:** Architecture audit post-Phase 1 completion  
+> **Verdict:** ✅ Feasible with current architecture. Simplified design reduces complexity significantly.
 
-### Phase D1: Foundation (Future)
+### What We Already Have (Federation-Ready)
 
-**Goal**: Basic universe identity and discovery
+| Component | Status | How It Helps |
+|-----------|--------|--------------|
+| **Universe Event Bus** | ✅ Complete | `src_v2/universe/bus.py` — extend to POST to peers |
+| **Privacy Manager** | ✅ Complete | `src_v2/universe/privacy.py` — add `share_across_universes` |
+| **Gossip Protocol** | ✅ Complete | `UniverseEvent` already serializes to dict |
+| **Character Definitions** | ✅ Portable | YAML files are shareable as lore |
+| **UUID Usage** | ✅ Mostly | No namespace collision risk |
+| **Neo4j Graph** | ✅ Clean | Easy to add `FederatedCharacter` node type |
 
-- [ ] Generate universe identity (UUID, keypair)
-- [ ] Implement well-known endpoint
-- [ ] Create admin UI for federation settings
-- [ ] Add peer configuration storage
+### Minimal New Components
 
-**No actual federation yet** - just the groundwork.
+| Component | Purpose | Complexity |
+|-----------|---------|------------|
+| `FederationManager` | Peer discovery, sync coordination | Low |
+| Federation API routes | 4 endpoints | Low |
+| `FederatedCharacter` node | Store external character lore | Low |
+| Privacy settings extension | One new boolean field | Trivial |
 
-### Phase D2: Peering (Future)
+### Existing Patterns to Extend
 
-**Goal**: Two universes can connect
+**UniverseEventBus → Federated Publish**
 
-- [ ] Implement handshake protocol
-- [ ] Create peer connection manager
-- [ ] Add heartbeat/keepalive
-- [ ] Build federation status dashboard
+```python
+async def publish(self, event: UniverseEvent) -> bool:
+    # Existing: local gossip via Redis
+    await self._publish_local(event)
+    
+    # New: federated gossip via Discord (same pattern!)
+    if settings.ENABLE_FEDERATION:
+        # Push to Redis channel that Hermes monitors
+        await self.redis.publish("whisperengine:federation:outbound", event.json())
+```
 
-### Phase D3: Traveler Exchange (Future)
-
-**Goal**: Characters can visit other universes
-
-- [ ] Implement `TRAVELER_VISIT` / `TRAVELER_RETURN`
-- [ ] Create visitor character instances
-- [ ] Handle memory sync on return
-- [ ] Add traveler status tracking
-
-### Phase D4: Inhabitant Travel (Future)
-
-**Goal**: Users can interact across universes
-
-- [ ] Implement consent flow
-- [ ] Create `INHABITANT_TRAVEL` protocol
-- [ ] Handle visitor profiles
-- [ ] Add privacy controls UI
-
-### Phase D5: Knowledge Sync (Future)
-
-**Goal**: Graphs can sync public data
-
-- [ ] Implement CRDT-based sync
-- [ ] Create sync policy configuration
-- [ ] Handle conflict resolution
-- [ ] Add sync status monitoring
-
-### Phase D6: Discovery Registry (Future)
-
-**Goal**: Universes can find each other
-
-- [ ] Design registry protocol
-- [ ] Implement (or use existing) registry
-- [ ] Add universe listing/search
-- [ ] Create exploration UI
+Same pattern, different transport. Redis → Discord.
 
 ---
 
@@ -552,73 +931,73 @@ Federation has three trust levels:
 
 ### Current Architecture Decisions That Support Federation
 
-✅ **Discord IDs as user identifiers** - Globally unique, no namespace collision  
-✅ **Neo4j for knowledge graph** - Supports graph replication patterns  
-✅ **UUID for internal IDs** - Globally unique, no collision  
-✅ **Character definitions in files** - Portable, shareable  
-✅ **Privacy settings per-user** - Foundation for consent model  
+✅ **Discord IDs as user identifiers** — Globally unique  
+✅ **UUID for internal IDs** — No namespace collision  
+✅ **Character definitions in files** — Portable YAML  
+✅ **Privacy settings per-user** — Foundation for consent  
+✅ **Event serialization** — `UniverseEvent.to_dict()` exists  
+✅ **Discord invite links** — Users travel via Discord, not API  
 
-### Decisions to Avoid
+### Decisions to Avoid (Going Forward)
 
-❌ **Auto-incrementing IDs** - Would collide across universes  
-❌ **Hardcoded single-instance assumptions** - Check for these  
-❌ **User data without consent tracking** - Need consent audit trail  
-
-### Migration Path
-
-When federation launches, existing instances can:
-1. Generate universe identity
-2. Continue operating locally (no change)
-3. Opt-in to federation when ready
-4. Gradually enable features
+❌ **Auto-incrementing IDs for federated data** — Use UUID  
+❌ **Hardcoded single-instance assumptions** — Check for these  
+❌ **User data without consent** — Always check privacy settings  
 
 ---
 
-## Open Questions
+## Open Questions (Revised)
 
-> These need resolution before implementation
+> Simplified design resolves many original questions
 
-1. **Registry governance**: Who runs the public registry? How is abuse prevented?
-2. **Character ownership**: What if two universes have characters with the same name?
-3. **Memory conflicts**: How to handle contradictory memories from different universes?
-4. **Monetization**: Can universes charge for hosting visitors?
-5. **Moderation**: How do we handle bad actors in the multiverse?
-6. **Legal**: GDPR implications of cross-border universe connections?
+| Original Question | Resolution |
+|-------------------|------------|
+| Character ownership collision? | **Cousins, not clones.** Same name ≠ same entity. |
+| Memory conflicts? | **No sync.** Each universe has its own memories. |
+| Registry governance? | **Deferred.** Manual peering for now. |
+| Character travel UX? | **Dropped.** Users travel via Discord invites. |
+| CRDT complexity? | **Dropped.** Simple push is enough. |
 
----
+### Remaining Questions
 
-## Inspiration & Prior Art
-
-- **ActivityPub** (Mastodon): Decentralized social federation
-- **Matrix**: Decentralized real-time communication
-- **IPFS**: Content-addressed distributed storage
-- **Git**: Distributed version control with merge strategies
-- **Email (SMTP)**: Original federated messaging
+1. **Payload Verification**: Should we sign JSON payloads to prevent spoofing within the Hub?
+2. **Gossip filtering**: What events cross universes? (Same as current: public, non-sensitive)
+3. **Discord Rate Limits**: Will the Hub hit message limits with many universes?
+4. **GDPR**: Cross-border implications if universes are in different countries?
 
 ---
 
-## Appendix: Glossary
+## Appendix: Glossary (Revised)
 
 | Term | Definition |
 |------|------------|
-| **Universe** | A WhisperEngine deployment, run by a platform operator |
-| **Multiverse** | The network of all federated universes |
-| **Federation** | The agreement between two universe operators to share |
-| **Traveler** | An AI character (can visit other universes) |
-| **Inhabitant** | A human user (can interact across universes) |
-| **Planet** | A Discord server where characters are present (owned by server admins, not universe operators) |
-| **Planet Owner** | A Discord server admin who invites a bot - no technical infrastructure required |
-| **Universe Operator** | Someone running a WhisperEngine deployment |
-| **Peering** | The act of two universes connecting |
-| **CRDT** | Conflict-free Replicated Data Type |
+| **Universe** | A WhisperEngine deployment (an "anthill") |
+| **Multiverse** | The network of federated universes |
+| **Federation** | Agreement between universes to share awareness |
+| **Hermes** | The Liaison Agent — a character who guards universe boundaries and mediates federation |
+| **Hermes-to-Hermes** | Agent-to-agent communication between Liaison characters across universes |
+| **Character** | An AI character (lives in one universe) |
+| **Federated Character** | Lore about a character in another universe |
+| **User** | A human who can travel between universes via Discord |
+| **Planet** | A Discord server where characters are present |
+| **Pheromone Trail** | Shared signals between universes (gossip, lore, context) |
+| **Invitation** | Discord invite link to visit another universe |
+| **Anthill** | Metaphor for a self-sufficient WhisperEngine deployment |
 
 ---
 
 ## Document History
 
-- v0.2 (Nov 25, 2025) - Added cross-references to related documents, clarified universe/planet ownership model
-- v0.1 (Nov 25, 2025) - Initial draft establishing vision and protocol concepts
+- v0.5 (Dec 5, 2025) - **Hermes design**: Added Liaison Agent concept (inspired by Seraph from The Matrix). Hermes is an agentic character that guards universe boundaries, mediates federation, and enables Hermes-to-Hermes diplomacy. Turns federation from protocol into emergence research.
+- v0.4 (Dec 5, 2025) - Major revision: Simplified to "Ant Colony" model. Characters don't travel; users do (via Discord). Dropped CRDT, complex handshakes, webhook proxies. Reduced scope from ~4 weeks to ~10 days.
+- v0.3 (Dec 5, 2025) - Feasibility assessment: Confirmed architecture supports federation.
+- v0.2 (Nov 25, 2025) - Added cross-references, clarified ownership model
+- v0.1 (Nov 25, 2025) - Initial draft
 
 ---
 
 *"The multiverse is not a feature to be built. It's a possibility to be enabled."*
+
+*"Characters have homes. Users travel. Context follows."*
+
+*"I protect that which matters most."* — Hermes
