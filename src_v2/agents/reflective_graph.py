@@ -29,9 +29,8 @@ from src_v2.tools.insight_tools import (
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.reminder_tools import SetReminderTool
 from src_v2.tools.math_tools import CalculatorTool
-from src_v2.agents.composite_tools import AnalyzeTopicTool
+from src_v2.tools.web_search import WebSearchTool
 from src_v2.config.settings import settings
-from src_v2.knowledge.document_context import has_document_context
 from src_v2.memory.traces import trace_retriever
 
 # Define State
@@ -124,6 +123,10 @@ class ReflectiveGraphAgent:
             CalculatorTool(),
         ]
         
+        # Conditionally add web search tool
+        if settings.ENABLE_WEB_SEARCH:
+            tools.append(WebSearchTool())
+        
         # Add Discord search tools if channel is available
         if channel:
             tools.extend([
@@ -169,7 +172,7 @@ class ReflectiveGraphAgent:
             "4. Introspection: analyze_conversation_patterns, detect_recurring_themes",
             "5. Context: check_planet_context (current server), get_universe_overview (all planets/channels)",
             "6. Discord Search: search_channel_messages, search_user_messages, get_message_context, get_recent_messages",
-            "7. Utility: calculator (math calculations)",
+            "7. Utility: calculator (math calculations)" + (", web_search (internet search)" if settings.ENABLE_WEB_SEARCH else ""),
         ]
         
         # Add optional categories based on feature flags
@@ -216,6 +219,12 @@ class ReflectiveGraphAgent:
             # Utility
             ("calculator", "Perform math calculations, unit conversions, or quantitative problems."),
         ]
+        
+        # Conditionally add web search to tool guide
+        if settings.ENABLE_WEB_SEARCH:
+            tool_guide_entries.append(
+                ("web_search", "Search the internet for current events, news, or facts not in your memory.")
+            )
         
         # Add optional tools
         if settings.ENABLE_REMINDERS:

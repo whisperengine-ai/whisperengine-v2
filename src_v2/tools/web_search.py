@@ -1,18 +1,32 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Type
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
 from ddgs import DDGS
 from loguru import logger
 import asyncio
 
-class SearchResult(BaseModel):
-    title: str
-    href: str
-    body: str
+
+class WebSearchInput(BaseModel):
+    """Input schema for web search tool."""
+    query: str = Field(description="The search query to look up on the web")
+    max_results: int = Field(default=5, description="Maximum number of results to return (1-10)")
+
 
 class WebSearchTool(BaseTool):
     name: str = "web_search"
-    description: str = "Search the web for current events, news, facts, or general knowledge. Use this when you need information outside your training data."
+    description: str = """Search the web for current events, news, facts, or general knowledge.
+
+USE THIS WHEN:
+- User asks about recent news or current events
+- User asks about something that requires up-to-date information
+- User asks about a topic you don't have knowledge of
+- User explicitly asks to "search" or "look up" something
+
+DO NOT USE FOR:
+- Questions about the user themselves (use memory tools instead)
+- Questions about your relationship or past conversations
+- Simple greetings or casual chat"""
+    args_schema: Type[BaseModel] = WebSearchInput
     
     def _run(self, query: str, max_results: int = 5) -> str:
         """
@@ -46,5 +60,6 @@ class WebSearchTool(BaseTool):
             
         return "\n---\n".join(formatted)
 
-# Export a singleton or factory
+
+# Export a singleton for direct usage
 web_search_tool = WebSearchTool()

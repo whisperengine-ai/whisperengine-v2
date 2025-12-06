@@ -120,6 +120,10 @@ class CalculatorTool(BaseTool):
                 expression = response.content.strip().replace("`", "").replace("python", "")
                 logger.info(f"Math Tool: Translated '{query}' to '{expression}'")
                 
+                # Basic validation to prevent non-code execution
+                if not any(c in expression for c in "0123456789+-*/()"):
+                    return f"I couldn't translate '{query}' into a math expression."
+                
                 return self._run(expression)
                 
             except Exception as e:

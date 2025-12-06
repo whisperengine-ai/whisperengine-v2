@@ -134,6 +134,10 @@ class Settings(BaseSettings):
     # --- Vision ---
     LLM_SUPPORTS_VISION: bool = False
 
+    # --- Web Search ---
+    ENABLE_WEB_SEARCH: bool = True  # Feature flag to enable/disable web search capability
+    WEB_SEARCH_MAX_RESULTS: int = 5  # Maximum results per search query
+
     # --- Image Generation ---
     ENABLE_IMAGE_GENERATION: bool = True  # Feature flag to enable/disable image generation per character
     IMAGE_GEN_MIN_TRUST: int = 20  # Minimum trust level required to request image generation (0 = no restriction)
