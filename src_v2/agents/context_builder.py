@@ -157,7 +157,12 @@ class ContextBuilder:
             # 2.11 Timestamp Instruction (Anti-Hallucination)
             system_content += "\n\n[SYSTEM NOTE]\nChat history messages have relative timestamps at the end (e.g. 'message text (2 mins ago)'). These are for your context only. DO NOT echo these timestamps in your response."
 
-            # 2.12 Final Identity Anchor (Anti-Identity-Bleed)
+            # 2.12 Additional Context (e.g., reply context for cross-bot)
+            # This is minimal context that can't be inferred from memories/history
+            if context_variables.get("additional_context"):
+                system_content += f"\n\n{context_variables['additional_context']}"
+
+            # 2.13 Final Identity Anchor (Anti-Identity-Bleed)
             # Place at very end of context where LLMs pay most attention
             # This guards against memories/diary from other users bleeding into current conversation
             if context_variables.get("user_name"):

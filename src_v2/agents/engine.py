@@ -903,11 +903,10 @@ class AgentEngine:
     async def _build_system_context(self, character: Character, user_message: str, user_id: Optional[str], context_variables: Dict[str, Any]) -> str:
         """Constructs the full system prompt including evolution, goals, and knowledge."""
         
-        # Optimization: For cross-bot, suppress heavy context that is already in cross_bot_context
-        # This prevents double-injection of knowledge graph facts
+        # Pass prefetched knowledge if available (e.g. from cross-bot pipeline)
         prefetched = {}
-        if context_variables.get("is_cross_bot"):
-            prefetched["knowledge"] = ""
+        if context_variables.get("prefetched_knowledge"):
+            prefetched["knowledge"] = context_variables["prefetched_knowledge"]
             
         return await self.context_builder.build_system_context(character, user_message, user_id, context_variables, prefetched_context=prefetched)
 
@@ -1066,11 +1065,10 @@ Using the information above, formulate a final response to the user in my authen
         if not user_id or context_variables.get("memory_context"):
             return
 
-        # Optimization: If cross_bot_context is provided (from message_handler), use it
-        # This avoids double-fetching and preserves the specialized cross-bot prompt instructions
-        if context_variables.get("cross_bot_context"):
-            logger.info(f"Using pre-fetched cross-bot context for user {user_id}")
-            context_variables["memory_context"] = context_variables["cross_bot_context"]
+        # Check for prefetched context (from cross-bot or other optimized paths)
+        # If prefetched_memories exists, context was already fetched - don't double-fetch
+        if context_variables.get("prefetched_memories") is not None:
+            logger.debug(f"Using pre-fetched context for user {user_id}")
             return
             
         try:

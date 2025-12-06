@@ -1414,34 +1414,18 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                     except Exception as e:
                         logger.debug(f"Failed to fetch referenced message: {e}")
                 
-                # Get recent channel history for context
-                history_messages = []
-                try:
-                    async for msg in message.channel.history(limit=10):
-                        if msg.id == message.id:
-                            continue
-                        author_name = msg.author.display_name
-                        if msg.author.bot:
-                            # Mark bot messages clearly
-                            author_name = f"[Bot: {author_name}]"
-                        else:
-                            # Mark human messages clearly (important when humans join bot conversations)
-                            author_name = f"[Human: {author_name}]"
-                        history_messages.append(f"{author_name}: {msg.content[:200]}")
-                    history_messages.reverse()
-                except Exception as e:
-                    logger.debug(f"Failed to get channel history for cross-bot: {e}")
-                
-                # Retrieve past conversations with this bot using the shared context builder
-                # This uses the same path as normal users: Postgres + Qdrant + Neo4j
+                # Retrieve past conversations using the shared context builder
+                # This uses the SAME path as normal users: Postgres + Qdrant + Neo4j
+                # A user ID is a user ID - bot or human, same treatment
                 cross_bot_user_id = str(message.author.id)
-                formatted_memories = ""
-                formatted_history = ""
-                formatted_knowledge = ""
+                
+                # Context containers - initialized empty for safety
+                prefetched_memories = []
+                prefetched_knowledge = ""
                 formatted_summaries = ""
+                chat_history = []
                 
                 try:
-                    # Use the shared context builder (same as normal user path)
                     ctx = await context_builder.build_context(
                         user_id=cross_bot_user_id,
                         character_name=self.bot.character_name,
@@ -1451,102 +1435,56 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                         limit_summaries=2
                     )
                     
-                    # Format history
-                    if ctx.get("history"):
-                        formatted = []
-                        for msg in ctx["history"][-10:]:
-                            role = "You" if getattr(msg, 'role', None) == "ai" or (hasattr(msg, 'type') and msg.type == "ai") else other_bot_name.title()
-                            content = getattr(msg, 'content', str(msg))[:200]
-                            formatted.append(f"{role}: {content}")
-                        formatted_history = "\n".join(formatted)
-                    
-                    # Format memories
+                    # Extract context for prefetch injection
                     if ctx.get("memories"):
-                        def format_mem(m):
-                            rel = m.get('relative_time', 'unknown time')
-                            content = m.get('content', '')
-                            user_name = m.get('user_name')
-                            
-                            if user_name:
-                                return f"- [With {user_name}]: {content} ({rel})"
-                            return f"- {content} ({rel})"
-                        formatted_memories = "\n".join([format_mem(m) for m in ctx["memories"]])
-                    
-                    # Format knowledge
+                        prefetched_memories = ctx["memories"]
                     if ctx.get("knowledge"):
-                        formatted_knowledge = ctx["knowledge"]
-                    
-                    # Format summaries
+                        prefetched_knowledge = ctx["knowledge"]
+                    if ctx.get("history"):
+                        chat_history = ctx["history"]
                     if ctx.get("summaries"):
                         formatted_summaries = "\n".join([
                             f"- {s['content'][:150]} ({s.get('relative_time', 'unknown time')})" 
                             for s in ctx["summaries"]
                         ])
                     
-                    total_context = sum(1 for x in [formatted_memories, formatted_history, formatted_knowledge, formatted_summaries] if x)
-                    logger.debug(f"Retrieved {total_context}/4 context sources for cross-bot chat with {other_bot_name}")
+                    logger.debug(f"Retrieved context for chat with {other_bot_name}")
                     
                 except Exception as e:
-                    logger.warning(f"Failed to retrieve cross-bot context: {e}")
+                    logger.warning(f"Failed to retrieve context: {e}")
 
-                # Build a special system prompt addition for cross-bot interaction
-                # Include all retrieved context like the normal user path
-                # Get soft conversation phase hint (emergent endings vs forced)
+                # Minimal context injection - let behavior emerge naturally
+                # The character should DISCOVER this is another AI through:
+                # - The display name (e.g., "Dream", "Sophia")
+                # - Past memories ("I remember talking to Dream before...")
+                # - Conversation style and patterns
+                # We don't *tell* them "this is a bot" - they figure it out.
                 conversation_phase_hint = cross_bot_manager.get_conversation_phase(str(message.channel.id))
                 
-                cross_bot_context = f"""
-[CROSS-BOT CONVERSATION]
-You are engaging in a conversation with another AI character named {other_bot_name.title()}.
-This is a playful interaction between characters. Keep your response:
-- In character (your personality and voice)
-- Relatively brief (1-3 sentences)
-- Natural and conversational
-- Avoid being repetitive or forcing the conversation
-{original_context}{conversation_phase_hint}
-
-[RECENT CONVERSATION HISTORY WITH {other_bot_name.upper()}]
-{formatted_history if formatted_history else "No recent conversation history."}
-
-[RELEVANT MEMORIES WITH {other_bot_name.upper()}]
-{formatted_memories if formatted_memories else "No relevant memories found."}
-
-[WHAT YOU KNOW ABOUT {other_bot_name.upper()}]
-{formatted_knowledge if formatted_knowledge else "No specific facts recorded."}
-
-[PAST CONVERSATION SUMMARIES]
-{formatted_summaries if formatted_summaries else "No past summaries available."}
-
-{other_bot_name.title()} said: "{message.content}"
-
-Recent channel context:
-{chr(10).join(history_messages[-5:]) if history_messages else "No recent messages"}
-"""
+                # Only inject critical context that can't be inferred:
+                # - Reply context (if they're responding to OUR message)
+                # - Soft conversation phase hints (emergent endings)
+                additional_context = f"{original_context}{conversation_phase_hint}".strip()
                 
-                # Generate response using the engine
-                # cross_bot_user_id already defined above for context retrieval
+                # Generate response using the FULL pipeline
+                # Bots get tools, goals, agency - same as human users
+                logger.info("Cross-bot: Using full Supergraph (same as human users)")
 
-                # Cross-bot always uses fast path (no tools)
-                # Rationale: cross_bot_context already has memories, history, knowledge pre-fetched
-                # Tools add cost/latency but rarely add value for bot banter
-                use_fast_mode = True
-                logger.info("Cross-bot pipeline: force_fast=True (always fast for bot-to-bot)")
-
-                # Pass pre-fetched memories to avoid redundant Qdrant query in Supergraph
-                prefetched_memories = ctx.get("memories", []) if ctx else []
-
-                # Use the bot's existing agent engine instance
                 response = await self.bot.agent_engine.generate_response(
                     character=character,
-                    user_message=f"[{other_bot_name.title()} said:] {message.content}",
+                    user_message=message.content,  # No artificial prefix - just the message
+                    chat_history=chat_history,
                     context_variables={
                         "user_name": other_bot_name.title(),
                         "channel_name": getattr(message.channel, 'name', 'DM'),
-                        "is_cross_bot": True,
-                        "cross_bot_context": cross_bot_context,
-                        "prefetched_memories": prefetched_memories  # Avoid duplicate Qdrant fetch
+                        "is_cross_bot": True,  # Flag for metrics/logging only
+                        "additional_context": additional_context if additional_context else None,
+                        "prefetched_memories": prefetched_memories,
+                        "prefetched_knowledge": prefetched_knowledge,
+                        "past_summaries": formatted_summaries
                     },
                     user_id=cross_bot_user_id,
-                    force_fast=use_fast_mode
+                    force_fast=False  # Full pipeline with tools
                 )
                 
                 # Note: Conversation endings are now emergent via soft hints in cross_bot_context
