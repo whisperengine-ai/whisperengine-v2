@@ -23,59 +23,66 @@ classifiers = [
 
 dependencies = [
     # Core Discord Bot Dependencies
-    "discord.py>=2.6.4",  # Updated Nov 2025
+    "discord.py>=2.6.4",
     "python-dotenv>=1.1.1",
     
     # HTTP Client Dependencies  
     "aiohttp>=3.12.15",
     "requests>=2.32.5",
+    "httpx>=0.28.1",
     
     # AI/ML and Memory System Dependencies
     "qdrant-client>=1.16.0",  # Local vector database (Docker)
     "fastembed>=0.7.3",  # Local embeddings (Python 3.13 compatible)
-    "numpy>=1.26.0,<3.0.0",  # Essential vector operations (2.x breaking)
-    "redis>=5.0.0,<7.0.0",  # Session cache only (6.x is major bump)
+    "numpy>=2.3.5,<3.0.0",  # Essential vector operations (2.x breaking)
+    "redis>=5.3.1,<7.0.0",  # Session cache only (6.x is major bump)
+    "sympy>=1.14.0",
     
     # Image Processing Dependencies
-    "Pillow>=11.0.0",  # Updated Nov 2025
+    "Pillow>=11.3.0",
     
     # Async File I/O Dependencies
-    "aiofiles>=24.1.0",  # Updated Nov 2025
+    "aiofiles>=24.1.0",
     
     # Voice functionality dependencies (optional)
     "PyNaCl>=1.5.0",
-    "audioop-lts>=0.2.0; python_version >= '3.13'",
-    "elevenlabs>=1.50.0",  # Updated Nov 2025
+    "audioop-lts>=0.2.2; python_version >= '3.13'",
+    "elevenlabs>=2.16.0",
 
     # AI & Orchestration - pinned to 0.3.x for stability
-    "langchain>=0.3.0,<0.4.0",  # Updated Nov 2025
-    "langchain-community>=0.3.0,<0.4.0",  # Updated Nov 2025
-        "langchain-openai>=0.3.0,<0.4.0",
-    "langgraph>=0.0.10",
-    "openai>=1.82.0",
-    "ddgs>=9.9.0",
+    "langchain>=0.3.27,<0.4.0",
+    "langchain-community>=0.3.31,<0.4.0",
+    "langchain-openai>=0.3.35,<0.4.0",
+    "langgraph>=1.0.1",
+    "langsmith>=0.4.46",
+    "openai>=2.8.1",
+    "ddgs>=9.9.2",
     
     # Document Processing
-    "docx2txt>=0.8",  # Word Documents
-    "pypdf>=5.0.0",  # Updated Nov 2025
+    "docx2txt>=0.9",  # Word Documents
+    "pypdf>=6.3.0",
 
     # Database Drivers
-    "psycopg2-binary>=2.9.10",  # PostgreSQL adapter
-    "asyncpg>=0.30.0",  # PostgreSQL - Updated Nov 2025
-    "neo4j>=5.28.0",  # Neo4j - Updated Nov 2025
-    "influxdb-client>=1.49.0",  # InfluxDB - Updated Nov 2025
+    "psycopg2-binary>=2.9.11",  # PostgreSQL adapter
+    "asyncpg>=0.30.0",
+    "neo4j>=6.0.3",
+    "influxdb-client>=1.49.0",
 
     # API
-    "fastapi>=0.115.0",  # Updated Nov 2025
-    "uvicorn>=0.34.0",  # Updated Nov 2025
+    "fastapi>=0.121.3",
+    "uvicorn>=0.38.0",
 
     # Utilities
-    "alembic>=1.14.0",  # Migrations - Updated Nov 2025
-    "tenacity>=9.0.0",  # Retries - Updated Nov 2025
-    "loguru>=0.7.2",
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
-    "arq>=0.26.0",
+    "alembic>=1.17.2",
+    "tenacity>=9.1.2",
+    "loguru>=0.7.3",
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.12.0",
+    "arq>=0.26.3",
+    "PyYAML>=6.0.3",
+    "rich>=14.2.0",
+    "pytz>=2025.2",
+    "dateparser>=1.2.2",
 ]
 
 [project.optional-dependencies]
