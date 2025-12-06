@@ -15,17 +15,30 @@ from src_v2.config.constants import should_use_base64
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
-    LookupFactsTool, 
+    LookupFactsTool,
+    UpdateFactsTool,
+    UpdatePreferencesTool,
     ExploreGraphTool,
     DiscoverCommonGroundTool,
     CharacterEvolutionTool,
-    RecallBotConversationTool
+    RecallBotConversationTool,
+    SearchMyThoughtsTool,
+    CreateUserGoalTool,
+    ReadFullMemoryTool
 )
 from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.math_tools import CalculatorTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
+from src_v2.tools.web_search import WebSearchTool
+from src_v2.tools.reminder_tools import SetReminderTool
+from src_v2.tools.insight_tools import (
+    AnalyzePatternsTool,
+    DetectThemesTool,
+    DiscoverCommunityInsightsTool
+)
+from src_v2.agents.composite_tools import AnalyzeTopicTool
 
 # Define State
 class CharacterAgentState(TypedDict):
@@ -173,17 +186,52 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
     def _get_tools(self, user_id: str, guild_id: Optional[str] = None, character_name: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:
         bot_name = character_name or "default"
         tools: List[BaseTool] = [
+            # Memory & Knowledge Tools
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
+            UpdateFactsTool(user_id=user_id),
+            UpdatePreferencesTool(user_id=user_id, character_name=bot_name),
+            AnalyzeTopicTool(user_id=user_id, bot_name=bot_name),
+            
+            # Document Tools
+            ReadDocumentTool(user_id=user_id, character_name=bot_name),
+            ReadFullMemoryTool(),
+            
+            # Bot's Internal Experiences (diaries, dreams, observations, gossip)
+            SearchMyThoughtsTool(character_name=bot_name),
+            
+            # Cross-Bot Memory Recall
+            RecallBotConversationTool(character_name=bot_name),
+            
+            # User-Requested Goals
+            CreateUserGoalTool(user_id=user_id, character_name=bot_name),
+            
+            # Graph & Relationship Tools
             ExploreGraphTool(user_id=user_id, bot_name=bot_name),
             DiscoverCommonGroundTool(user_id=user_id, bot_name=bot_name),
             CharacterEvolutionTool(user_id=user_id, character_name=bot_name),
+            
+            # Introspection & Pattern Tools
+            AnalyzePatternsTool(user_id=user_id, bot_name=bot_name),
+            DetectThemesTool(user_id=user_id, bot_name=bot_name),
+            
+            # Community/Cross-Bot Discovery
+            DiscoverCommunityInsightsTool(character_name=bot_name),
+            
+            # Context Tools
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
-            ReadDocumentTool(user_id=user_id, character_name=bot_name),
-            RecallBotConversationTool(character_name=bot_name),
+            
+            # Math Tool
+            CalculatorTool(),
         ]
+        
+        # Conditionally add web search tool
+        if settings.ENABLE_WEB_SEARCH:
+            tools.append(WebSearchTool())
+        
+        # Add Discord search tools if channel is available
         if channel:
             tools.extend([
                 SearchChannelMessagesTool(channel=channel),
@@ -191,9 +239,21 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
                 GetMessageContextTool(channel=channel),
                 GetRecentMessagesTool(channel=channel),
             ])
+        
+        # Conditionally add image generation tool
         if settings.ENABLE_IMAGE_GENERATION:
             tools.append(GenerateImageTool(user_id=user_id, character_name=bot_name))
-        tools.append(CalculatorTool())
+        
+        # Conditionally add reminder tool
+        if settings.ENABLE_REMINDERS and channel:
+            channel_id = str(channel.id) if hasattr(channel, 'id') else None
+            if channel_id:
+                tools.append(SetReminderTool(
+                    user_id=user_id,
+                    channel_id=channel_id,
+                    character_name=bot_name
+                ))
+        
         return tools
 
     async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool], callback: Optional[Callable[[str], Awaitable[None]]]) -> ToolMessage:
