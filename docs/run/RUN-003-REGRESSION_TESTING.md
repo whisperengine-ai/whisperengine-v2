@@ -152,9 +152,9 @@ python tests_v2/run_regression.py --cov
 | jake | 8005 | x-ai/grok-4.1-fast | 0.7 | x-ai/grok-4 | gemini-flash-lite | Test |
 | sophia | 8006 | x-ai/grok-4.1-fast | 0.4 | x-ai/grok-4 | gemini-flash-lite | Test |
 | marcus | 8007 | google/gemini-2.5-flash | 0.5 | google/gemini-2.5-pro | gemini-flash-lite | Test |
-| nottaylor | 8008 | mistralai/mistral-medium-3.1 | 0.85 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Production |
-| gabriel | 8009 | mistralai/mistral-medium-3.1 | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Personal |
-| aethys | 8010 | mistralai/mistral-medium-3.1 | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Test |
+| nottaylor | 8008 | mistralai/mistral-small-3.1-24b-instruct | 0.85 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Production |
+| gabriel | 8009 | mistralai/mistral-small-3.1-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Personal |
+| aethys | 8010 | mistralai/mistral-small-3.1-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Test |
 | aetheris | 8011 | anthropic/claude-3.5-haiku | 0.7 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Personal |
 
 ### Model Coverage by Provider
