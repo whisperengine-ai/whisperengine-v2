@@ -206,7 +206,13 @@ class TaskQueue:
         character_name: str,
         interaction_text: str
     ) -> Optional[str]:
-        """Enqueue a goal analysis task (SENSORY queue - fast analysis)."""
+        """
+        Enqueue a goal analysis task (SENSORY queue - fast analysis).
+        
+        DEPRECATED: Use enqueue_batch_goal_analysis for session-level analysis.
+        This per-message method is kept for backward compatibility but is no longer
+        called from the main message handler.
+        """
         return await self.enqueue(
             "run_goal_analysis",
             _queue_name=self.QUEUE_SENSORY,
@@ -221,13 +227,91 @@ class TaskQueue:
         character_name: str,
         message_content: str
     ) -> Optional[str]:
-        """Enqueue a preference extraction task (SENSORY queue - fast analysis)."""
+        """
+        Enqueue a preference extraction task (SENSORY queue - fast analysis).
+        
+        DEPRECATED: Use enqueue_batch_preference_extraction for session-level extraction.
+        This per-message method is kept for backward compatibility but is no longer
+        called from the main message handler.
+        """
         return await self.enqueue(
             "run_preference_extraction",
             _queue_name=self.QUEUE_SENSORY,
             user_id=user_id,
             character_name=character_name,
             message_content=message_content
+        )
+
+    async def enqueue_batch_preference_extraction(
+        self,
+        user_id: str,
+        messages: List[Dict[str, str]],
+        character_name: str,
+        session_id: str = ""
+    ) -> Optional[str]:
+        """
+        Queue a job to extract preferences from an entire conversation session.
+        
+        This is more efficient than per-message extraction because the LLM
+        sees the full conversation context and can deduplicate preferences.
+        
+        Args:
+            user_id: Discord user ID
+            messages: List of message dicts with 'role' and 'content' keys
+            character_name: The name of the bot
+            session_id: Optional session identifier
+            
+        Returns:
+            Job ID if queued, None if queue unavailable
+        """
+        # Deduplicate by session to avoid double-processing
+        job_id = f"batch_preference_{user_id}_{session_id}" if session_id else None
+        
+        return await self.enqueue(
+            "run_batch_preference_extraction",
+            _queue_name=self.QUEUE_SENSORY,
+            _job_id=job_id,
+            user_id=user_id,
+            messages=messages,
+            character_name=character_name,
+            session_id=session_id
+        )
+
+    async def enqueue_batch_goal_analysis(
+        self,
+        user_id: str,
+        messages: List[Dict[str, str]],
+        character_name: str,
+        session_id: str = ""
+    ) -> Optional[str]:
+        """
+        Queue a job to analyze goal progress from an entire conversation session.
+        
+        This is more efficient than per-message analysis because:
+        - The LLM sees the full conversation arc
+        - One LLM call per session instead of N calls per response
+        - Can detect gradual goal progress across exchanges
+        
+        Args:
+            user_id: Discord user ID
+            messages: List of message dicts with 'role' and 'content' keys
+            character_name: The name of the bot
+            session_id: Optional session identifier
+            
+        Returns:
+            Job ID if queued, None if queue unavailable
+        """
+        # Deduplicate by session to avoid double-processing
+        job_id = f"batch_goal_{user_id}_{session_id}" if session_id else None
+        
+        return await self.enqueue(
+            "run_batch_goal_analysis",
+            _queue_name=self.QUEUE_SENSORY,
+            _job_id=job_id,
+            user_id=user_id,
+            messages=messages,
+            character_name=character_name,
+            session_id=session_id
         )
 
     async def enqueue_vision_analysis(

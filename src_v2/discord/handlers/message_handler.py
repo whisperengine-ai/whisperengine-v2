@@ -52,23 +52,15 @@ async def enqueue_background_learning(
         character_name: The bot's character name
         context: Context label for logging (conversation, cross_bot, lurk, etc.)
     """
-    if not message_content or len(message_content.strip()) < 10:
-        return  # Skip very short messages
-    
-    # NOTE: Knowledge extraction is now handled at session end via batch extraction.
+    # NOTE: All per-message learning has been moved to session-end batch processing.
     # This provides better context (full conversation) and reduces LLM costs.
-    # See enqueue_post_conversation_tasks() for the batch extraction call.
-    
-    # Preference extraction: Learn communication style
-    if settings.ENABLE_PREFERENCE_EXTRACTION:
-        try:
-            await task_queue.enqueue_preference_extraction(
-                user_id=user_id,
-                character_name=character_name,
-                message_content=message_content
-            )
-        except Exception as e:
-            logger.debug(f"Failed to enqueue {context} preference extraction: {e}")
+    # See enqueue_post_conversation_tasks() for:
+    #   - Batch knowledge extraction
+    #   - Batch preference extraction
+    #   - Batch goal analysis
+    #
+    # This function is kept for backward compatibility but is now a no-op.
+    return
 
 
 async def enqueue_post_conversation_tasks(
@@ -104,6 +96,29 @@ async def enqueue_post_conversation_tasks(
             )
         except Exception as e:
             logger.debug(f"Failed to enqueue {trigger} batch knowledge extraction: {e}")
+    
+    # Enqueue batch preference extraction (session-level, deduplicates preferences)
+    if settings.ENABLE_PREFERENCE_EXTRACTION:
+        try:
+            await task_queue.enqueue_batch_preference_extraction(
+                user_id=user_id,
+                messages=messages,
+                character_name=character_name,
+                session_id=session_id
+            )
+        except Exception as e:
+            logger.debug(f"Failed to enqueue {trigger} batch preference extraction: {e}")
+    
+    # Enqueue batch goal analysis (session-level, more efficient than per-response)
+    try:
+        await task_queue.enqueue_batch_goal_analysis(
+            user_id=user_id,
+            messages=messages,
+            character_name=character_name,
+            session_id=session_id
+        )
+    except Exception as e:
+        logger.debug(f"Failed to enqueue {trigger} batch goal analysis: {e}")
     
     # Enqueue summarization
     try:
@@ -1204,17 +1219,9 @@ class MessageHandler:
                             user_name=message.author.display_name
                         )
                     
-                    # 4.5 Goal Analysis (Fire-and-forget)
-                    # Analyze the interaction (User Message + AI Response)
-                    interaction_text = f"User: {user_message}\nAI: {response}"
-                    try:
-                        await task_queue.enqueue_goal_analysis(
-                            user_id=user_id,
-                            character_name=self.bot.character_name,
-                            interaction_text=interaction_text
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to enqueue goal analysis: {e}")
+                    # NOTE: Goal analysis is now handled at session end via batch goal analysis.
+                    # This provides better context (full conversation arc) and reduces LLM costs.
+                    # See enqueue_post_conversation_tasks() for the batch goal analysis call.
                     
                     # 4.6 Trust Update (Engagement Reward)
                     # Small trust increase for every positive interaction
