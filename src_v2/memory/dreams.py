@@ -28,6 +28,8 @@ import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+
+from src_v2.utils.name_resolver import get_name_resolver
 from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue
 
 from src_v2.core.database import db_manager
@@ -300,15 +302,22 @@ Create a surreal dream echoing these experiences.""")
                     
                     # Build seed themes from gathered material
                     memory_themes: List[str] = []
-                    recent_users: List[str] = []
+                    recent_users: List[str] = []  # Will store resolved names, not raw IDs
                     other_bots: List[str] = []  # Bot names from cross-bot conversations
                     
-                    # Extract themes from memories
+                    # Resolve user IDs to display names for GraphWalker
+                    name_resolver = get_name_resolver()
+                    
+                    # Extract themes from memories and resolve user names
                     for mem in material.memories[:3]:
                         if mem.get("emotions"):
                             memory_themes.extend(mem["emotions"][:2])
-                        if mem.get("user_id"):
-                            recent_users.append(str(mem["user_id"]))
+                        # Use user_name if available, otherwise resolve the ID
+                        if mem.get("user_name") and mem["user_name"] != "someone":
+                            recent_users.append(mem["user_name"])
+                        elif mem.get("user_id"):
+                            resolved_name = await name_resolver.resolve_user_id(str(mem["user_id"]))
+                            recent_users.append(resolved_name)
                     
                     # Extract themes from diary
                     memory_themes.extend(material.recent_diary_themes[:2])
@@ -332,7 +341,10 @@ Create a surreal dream echoing these experiences.""")
                             recent_user_ids=all_seeds
                         )
                         # Store interpretation and clusters in DreamMaterial fields
-                        material.graph_walk_interpretation = graph_result.interpretation
+                        # Apply name resolution to any remaining IDs in the interpretation
+                        material.graph_walk_interpretation = await name_resolver.resolve_ids_in_text(
+                            graph_result.interpretation
+                        )
                         material.graph_walk_clusters = [
                             f"{c.theme}: {', '.join(n.name for n in c.nodes[:3])}"
                             for c in graph_result.clusters[:3]

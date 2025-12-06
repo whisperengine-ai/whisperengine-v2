@@ -28,6 +28,7 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
 from src_v2.safety.content_review import content_safety_checker
+from src_v2.utils.name_resolver import get_name_resolver
 from src_v2.core.provenance import ProvenanceCollector
 
 
@@ -275,11 +276,17 @@ class DiaryManager:
                 try:
                     from src_v2.knowledge.walker import GraphWalkerAgent
                     
-                    # Extract user IDs from today's interactions
-                    today_interactions: List[str] = []
+                    # Extract user names from today's interactions (resolved from IDs if needed)
+                    today_interactions: List[str] = []  # Will store resolved names, not raw IDs
+                    name_resolver = get_name_resolver()
+                    
                     for summary in material.summaries:
-                        if summary.get("user_id"):
-                            today_interactions.append(str(summary["user_id"]))
+                        # Use user_name if available, otherwise resolve the ID
+                        if summary.get("user_name") and summary["user_name"] != "someone":
+                            today_interactions.append(summary["user_name"])
+                        elif summary.get("user_id"):
+                            resolved_name = await name_resolver.resolve_user_id(str(summary["user_id"]))
+                            today_interactions.append(resolved_name)
                     
                     # Also include other bots from gossip (cross-bot conversations)
                     other_bots: List[str] = []
@@ -302,7 +309,10 @@ class DiaryManager:
                         )
                         
                         # Store interpretation and clusters in DiaryMaterial fields
-                        material.graph_walk_interpretation = graph_result.interpretation
+                        # Apply name resolution to any remaining IDs in the interpretation
+                        material.graph_walk_interpretation = await name_resolver.resolve_ids_in_text(
+                            graph_result.interpretation
+                        )
                         material.graph_walk_clusters = [
                             f"{c.theme}: {', '.join(n.name for n in c.nodes[:3])}"
                             for c in graph_result.clusters[:3]
@@ -529,10 +539,26 @@ class DiaryManager:
         
         collector = ProvenanceCollector("diary", self.bot_name)
         
-        # Add provenance for each source
+        # Resolve all user IDs to names upfront for provenance and generation
+        name_resolver = get_name_resolver()
+        resolved_names_cache: Dict[str, str] = {}  # Cache resolved names for this generation
+        
+        async def get_display_name(summary: Dict[str, Any]) -> str:
+            """Get display name from summary, resolving ID if needed."""
+            if summary.get("user_name") and summary["user_name"] != "someone":
+                return summary["user_name"]
+            user_id = summary.get("user_id")
+            if user_id:
+                if str(user_id) not in resolved_names_cache:
+                    resolved_names_cache[str(user_id)] = await name_resolver.resolve_user_id(str(user_id))
+                return resolved_names_cache[str(user_id)]
+            return "someone"
+        
+        # Add provenance for each source (with resolved names)
         for s in material.summaries[:10]:
+            display_name = await get_display_name(s)
             collector.add_conversation(
-                who=s.get("user_name", s.get("user_id", "someone")),  # Prefer display name
+                who=display_name,
                 topic=", ".join(s.get("topics", ["chat"])),
                 where="chat",
                 when="today",
@@ -549,8 +575,11 @@ class DiaryManager:
             logger.info("Using LangGraph Diary Agent")
             from src_v2.agents.diary_graph import diary_graph_agent
             
-            # Extract user names from summaries for the agent
-            user_names = list(set(s.get("user_name", s.get("user_id", "someone")) for s in material.summaries))
+            # Extract user names from summaries for the agent (resolved)
+            user_names = []
+            for s in material.summaries:
+                user_names.append(await get_display_name(s))
+            user_names = list(set(user_names))
             
             # Fetch previous diary entries for anti-pattern injection
             previous_entries = []
