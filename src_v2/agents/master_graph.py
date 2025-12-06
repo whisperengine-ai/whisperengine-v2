@@ -151,12 +151,7 @@ class MasterGraphAgent:
         
         # 8. Stigmergy (Shared Artifacts)
         if settings.ENABLE_STIGMERGIC_DISCOVERY:
-            # We need to import here or move import to top. 
-            # ContextBuilder imports it inside method, so we can't easily call it unless we expose it.
-            # But wait, ContextBuilder.build_system_context handles stigmergy internally with an import.
-            # I didn't expose get_stigmergic_context in ContextBuilder.
-            # So we'll skip pre-fetching stigmergy for now, or add it to ContextBuilder.
-            pass
+            tasks["stigmergy"] = self.context_builder.get_stigmergy_context(user_input, user_id, character.name)
 
         # Execute all tasks in parallel
         # We need to map keys back to results

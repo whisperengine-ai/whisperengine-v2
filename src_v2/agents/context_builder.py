@@ -84,23 +84,8 @@ class ContextBuilder:
             if "stigmergy" in prefetched_context:
                 system_content += prefetched_context["stigmergy"]
             elif settings.ENABLE_STIGMERGIC_DISCOVERY:
-                from src_v2.memory.shared_artifacts import shared_artifact_manager
-                other_bot_insights = await shared_artifact_manager.discover_artifacts(
-                    query=user_message,
-                    artifact_types=["epiphany", "diary", "dream"],
-                    exclude_bot=character.name,
-                    user_id=user_id,
-                    limit=settings.STIGMERGIC_DISCOVERY_LIMIT
-                )
-                
-                if other_bot_insights:
-                    stigmergic_context = "\n\n[INSIGHTS FROM OTHER CHARACTERS]\n"
-                    for insight in other_bot_insights:
-                        source = (insight.get("source_bot") or "unknown").title()
-                        content = insight.get("content", "")[:200]
-                        stigmergic_context += f"- {source} noticed: {content}\n"
-                    system_content += stigmergic_context
-                    logger.debug(f"Injected {len(other_bot_insights)} shared artifacts")
+                stigmergic_context = await self.get_stigmergy_context(user_message, user_id, character.name)
+                system_content += stigmergic_context
 
             # 2.7.6 Inject Absence Context (Phase E22 - Self-Awareness)
             absence_context = await self.get_absence_context(character.name)
@@ -475,4 +460,30 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
             return context
         except Exception as e:  # noqa: BLE001 - fallback logging only
             logger.warning(f"Failed to get absence context: {e}")
+            return ""
+
+    async def get_stigmergy_context(self, user_message: str, user_id: str, character_name: str) -> str:
+        """Retrieves shared artifacts (epiphanies, diaries, dreams) from other bots."""
+        try:
+            from src_v2.memory.shared_artifacts import shared_artifact_manager
+            other_bot_insights = await shared_artifact_manager.discover_artifacts(
+                query=user_message,
+                artifact_types=["epiphany", "diary", "dream"],
+                exclude_bot=character_name,
+                user_id=user_id,
+                limit=settings.STIGMERGIC_DISCOVERY_LIMIT
+            )
+            
+            if other_bot_insights:
+                stigmergic_context = "\n\n[INSIGHTS FROM OTHER CHARACTERS]\n"
+                for insight in other_bot_insights:
+                    source = (insight.get("source_bot") or "unknown").title()
+                    content = insight.get("content", "")[:200]
+                    stigmergic_context += f"- {source} noticed: {content}\n"
+                logger.debug(f"Injected {len(other_bot_insights)} shared artifacts")
+                return stigmergic_context
+            
+            return ""
+        except Exception as e:
+            logger.warning(f"Failed to get stigmergy context: {e}")
             return ""
