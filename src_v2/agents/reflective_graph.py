@@ -223,7 +223,7 @@ class ReflectiveGraphAgent:
         # Conditionally add web search to tool guide
         if settings.ENABLE_WEB_SEARCH:
             tool_guide_entries.append(
-                ("web_search", "Search the internet for current events, news, or facts not in your memory.")
+                ("web_search", "CALL THIS TOOL to search the internet when user asks for current events, recent news, live data, or facts beyond your training data. Examples: 'latest Bitcoin price', 'news about AI psychosis', 'current weather'. Use this instead of saying you cannot access the web.")
             )
         
         # Add optional tools
@@ -247,6 +247,9 @@ class ReflectiveGraphAgent:
             intent_hints.append("DETECTED: User is refining a previous image. Call generate_image with image_type='refine'.")
         if "image_other" in detected_intents:
             intent_hints.append("DETECTED: User wants an image of something else. Call generate_image with image_type='other'. Do NOT include your appearance.")
+        
+        if "search" in detected_intents:
+            intent_hints.append("DETECTED: User wants WEB SEARCH. Call web_search with their query immediately. Do not use memory tools or say you cannot access the web.")
         
         intent_section = ""
         if intent_hints:

@@ -266,12 +266,16 @@ class MasterGraphAgent:
             return "fast"
             
         complexity = classification["complexity"]
-        # intents = classification["intents"] # Unused for now
+        intents = classification.get("intents", [])
         image_urls = state.get("image_urls")
         
         # Image uploads -> Fast (Vision)
         if image_urls:
             return "fast"
+        
+        # Search intent -> Always use Reflective (has web_search tool)
+        if "search" in intents and settings.ENABLE_WEB_SEARCH:
+            return "reflective"
             
         # Complex -> Reflective
         if settings.ENABLE_REFLECTIVE_MODE and complexity in ["COMPLEX_MID", "COMPLEX_HIGH"]:
