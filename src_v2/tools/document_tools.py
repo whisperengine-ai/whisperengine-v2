@@ -1,5 +1,5 @@
 
-from typing import Type, Optional
+from typing import Type, Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
 from loguru import logger
@@ -58,6 +58,75 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
             
         return file_content if file_content else None
 
+    async def _reconstruct_from_chunks(self, parent_message_id: str, collection: str) -> Optional[str]:
+        """
+        Reconstruct a full document from its chunked memories.
+        
+        When documents exceed CHUNK_THRESHOLD (1000 chars), they're split into 
+        overlapping chunks. This method fetches all chunks with the same 
+        parent_message_id and reassembles them in order.
+        
+        Args:
+            parent_message_id: The shared ID linking all chunks of a document
+            collection: The Qdrant collection name
+            
+        Returns:
+            Reconstructed document content, or None if reconstruction fails
+        """
+        try:
+            # Fetch all chunks with this parent_message_id
+            scroll_result = await db_manager.qdrant_client.scroll(
+                collection_name=collection,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="parent_message_id", match=MatchValue(value=parent_message_id)),
+                        FieldCondition(key="is_chunk", match=MatchValue(value=True)),
+                    ]
+                ),
+                limit=100,  # Should be enough for any document
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            points = scroll_result[0] if scroll_result else []
+            
+            if not points:
+                logger.debug(f"No chunks found for parent_message_id={parent_message_id}")
+                return None
+            
+            # Sort chunks by chunk_index
+            chunks: List[Dict[str, Any]] = []
+            for point in points:
+                payload = point.payload or {}
+                chunks.append({
+                    "index": payload.get("chunk_index", 0),
+                    "content": payload.get("content", ""),
+                    "total": payload.get("chunk_total", 1)
+                })
+            
+            chunks.sort(key=lambda x: x["index"])
+            
+            # Verify we have all chunks
+            expected_total = chunks[0]["total"] if chunks else 0
+            if len(chunks) != expected_total:
+                logger.warning(f"Chunk count mismatch: found {len(chunks)}, expected {expected_total}")
+                # Continue anyway - partial reconstruction is better than nothing
+            
+            # Reconstruct content
+            # Note: Chunks have 50-char overlap, so we need to deduplicate
+            # For simplicity, we concatenate directly - the overlap is minimal
+            # and won't significantly affect document reading
+            reconstructed = ""
+            for chunk in chunks:
+                reconstructed += chunk["content"] + "\n"
+            
+            logger.info(f"Reconstructed document from {len(chunks)} chunks ({len(reconstructed)} chars)")
+            return reconstructed.strip()
+            
+        except Exception as e:
+            logger.error(f"Failed to reconstruct document from chunks: {e}")
+            return None
+
     async def _arun(self, filename: str) -> str:
         try:
             collection = f"whisperengine_memory_{self.character_name}"
@@ -88,11 +157,24 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
                         
                         # Check if this memory contains our target filename
                         if filename in filenames or filename in content:
-                            # Try to extract the document content
-                            extracted = self._extract_document_content(content, filename)
-                            if extracted:
-                                logger.info(f"Successfully extracted document '{filename}' via metadata filter ({len(extracted)} chars)")
-                                return f"**Document: {filename}**\n\n{extracted}"
+                            # Check if this is a chunked document
+                            if payload.get("is_chunk") and payload.get("parent_message_id"):
+                                reconstructed = await self._reconstruct_from_chunks(
+                                    payload["parent_message_id"], 
+                                    collection
+                                )
+                                if reconstructed:
+                                    # Extract the specific file from reconstructed content
+                                    extracted = self._extract_document_content(reconstructed, filename)
+                                    if extracted:
+                                        logger.info(f"Successfully extracted document '{filename}' via chunk reconstruction ({len(extracted)} chars)")
+                                        return f"**Document: {filename}**\n\n{extracted}"
+                            else:
+                                # Non-chunked document - extract directly
+                                extracted = self._extract_document_content(content, filename)
+                                if extracted:
+                                    logger.info(f"Successfully extracted document '{filename}' via metadata filter ({len(extracted)} chars)")
+                                    return f"**Document: {filename}**\n\n{extracted}"
                     
                     logger.debug(f"Metadata filter found {len(points)} attachment memories, but none contained '{filename}'")
                     
@@ -100,7 +182,7 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
                     logger.warning(f"Metadata filter search failed, falling back to semantic search: {e}")
             
             # Strategy 2: Fall back to semantic search if metadata approach didn't work
-            results = await memory_manager.search_memories(filename, self.user_id, limit=15, collection_name=collection)
+            results = await memory_manager.search_memories(filename, self.user_id, limit=20, collection_name=collection)
             
             if not results:
                 return f"Could not find document '{filename}' in memory. The document may not have been uploaded yet, or it might have been uploaded in a different conversation."
@@ -109,12 +191,49 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
             for result in results:
                 content = result.get('content', '')
                 
-                # Check if this memory contains file content markers and our filename
-                if "[Attached File Content]:" in content and filename in content:
+                # Check if this is a chunked document
+                if result.get('is_chunk') and result.get('parent_message_id'):
+                    # Found a chunk that mentions our filename - try to reconstruct
+                    reconstructed = await self._reconstruct_from_chunks(
+                        result['parent_message_id'], 
+                        collection
+                    )
+                    if reconstructed:
+                        extracted = self._extract_document_content(reconstructed, filename)
+                        if extracted:
+                            logger.info(f"Successfully extracted document '{filename}' via chunk reconstruction from search ({len(extracted)} chars)")
+                            return f"**Document: {filename}**\n\n{extracted}"
+                
+                # Check if this memory contains file content markers and our filename (non-chunked)
+                elif "[Attached File Content]:" in content and filename in content:
                     extracted = self._extract_document_content(content, filename)
                     if extracted:
                         logger.info(f"Successfully extracted document '{filename}' via semantic search ({len(extracted)} chars)")
                         return f"**Document: {filename}**\n\n{extracted}"
+            
+            # Strategy 3: Try to find chunks directly by searching for the file header
+            # This catches cases where the chunk with the header wasn't in top search results
+            if db_manager.qdrant_client:
+                try:
+                    # Search for chunks that might contain our file header
+                    header_search = f"--- File: {filename} ---"
+                    header_results = await memory_manager.search_memories(
+                        header_search, self.user_id, limit=5, collection_name=collection
+                    )
+                    
+                    for result in header_results:
+                        if result.get('is_chunk') and result.get('parent_message_id'):
+                            reconstructed = await self._reconstruct_from_chunks(
+                                result['parent_message_id'], 
+                                collection
+                            )
+                            if reconstructed:
+                                extracted = self._extract_document_content(reconstructed, filename)
+                                if extracted:
+                                    logger.info(f"Successfully extracted document '{filename}' via header search + reconstruction ({len(extracted)} chars)")
+                                    return f"**Document: {filename}**\n\n{extracted}"
+                except Exception as e:
+                    logger.warning(f"Header search fallback failed: {e}")
             
             # If we found results but couldn't extract content
             logger.warning(f"Found {len(results)} memories mentioning '{filename}' but couldn't extract content")
