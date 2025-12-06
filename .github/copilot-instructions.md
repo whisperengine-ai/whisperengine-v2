@@ -110,6 +110,7 @@ When creating new documentation, **always follow the template in the `README.md`
 | gabriel | 8009 | Personal | `mistralai/mistral-small-3.2-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
 | aethys | 8010 | Test | `mistralai/mistral-small-3.2-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
 | aetheris | 8011 | Personal | `anthropic/claude-3.5-haiku` | 0.7 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
+| sage | External | Test | `anthropic/claude-4.5-sonnet` | 0.7 | `anthropic/claude-4.5-sonnet` | gemini-flash-lite |
 
 **Router models**: All bots use `google/gemini-2.5-flash-lite` for fast, cost-efficient routing ($0.10/$0.40 per M tokens, 1M context).
 
@@ -120,13 +121,14 @@ When creating new documentation, **always follow the template in the `README.md`
 - **dotty** (Personal): Production-quality Claude bot for personal use. Can experiment carefully.
 - **gabriel** (Personal): Rugged British gentleman AI companion for Cynthia. Mistral-based (edgier, less filtered).
 - **aetheris** (Personal): Philosophical AI companion (also known as Liln) for Cynthia. Claude-based, existential themes. Note: Different bot from **aethys**.
+- **sage** (Test): External test bot running on a separate system. Uses high-end Claude models.
 - **aethys** (Test): Cosmic transcendent entity. Mistral-based.
 - **dream** (Test): Dream of the Endless. Grok-based for edgy/mystical vibes.
 - **Test bots** (aria, marcus, ryan, sophia): Google Gemini A/B testing. Safe to experiment.
 - **Test bots** (jake): Mistral testing. Safe to experiment.
 
 **Model coverage by provider**:
-- **Anthropic** (3): elena, dotty, aetheris
+- **Anthropic** (4): elena, dotty, aetheris, sage
 - **Google** (3): aria, marcus, ryan
 - **Mistral** (3): nottaylor, gabriel, aethys
 - **Grok/xAI** (3): dream, sophia, jake

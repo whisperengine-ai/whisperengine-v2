@@ -10,6 +10,7 @@ from src_v2.memory.embeddings import EmbeddingService
 from src_v2.utils.time_utils import get_relative_time
 from src_v2.memory.models import MemorySourceType
 from src_v2.memory import scoring
+from src_v2.utils.validation import smart_truncate
 from influxdb_client import Point
 import time
 
@@ -794,6 +795,12 @@ class MemoryManager:
                     
                     if row['role'] == 'human':
                         content = row['content']
+                        
+                        # Truncate extremely long messages to prevent context window explosion
+                        # (e.g. when users upload large files which get stored in history)
+                        if len(content) > 4000:
+                            # Middle truncation is better: preserves start (context) and end (instruction/conclusion)
+                            content = smart_truncate(content, max_length=4000)
                         
                         # In group contexts (channel_id present), distinguish other users
                         if channel_id and row['user_id'] != str(user_id):

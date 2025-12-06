@@ -18,6 +18,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
+from src_v2.utils.validation import smart_truncate
 from src_v2.memory.models import MemorySourceType
 from pydantic import BaseModel, Field
 from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue
@@ -146,7 +147,8 @@ class DiaryMaterial(BaseModel):
             sections.append("\n## What I Heard From Others")
             for g in self.gossip[:3]:
                 source = g.get("source_bot", "someone")
-                content = g.get("content", "")[:150]
+                raw_content = g.get("content", "")
+                content = smart_truncate(raw_content, max_length=150)
                 sections.append(f"- {source.title()} told me: {content}")
         
         if self.new_facts:

@@ -7,6 +7,7 @@ from src_v2.core.database import db_manager
 from src_v2.agents.llm_factory import create_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from src_v2.utils.validation import smart_truncate
 
 
 # Goal source hierarchy: Core > User > Inferred > Strategic
@@ -322,9 +323,7 @@ Return JSON:
             stats["total_goals"] = len(active_goals)
             
             # Truncate conversation to avoid massive prompts
-            truncated_text = conversation_text[:self.MAX_CONVERSATION_CHARS]
-            if len(conversation_text) > self.MAX_CONVERSATION_CHARS:
-                truncated_text += "...[truncated]"
+            truncated_text = smart_truncate(conversation_text, max_length=self.MAX_CONVERSATION_CHARS)
 
             # 2. Create batches
             batches = [

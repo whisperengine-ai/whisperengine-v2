@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import List
 import re
 from loguru import logger
+from src_v2.utils.validation import smart_truncate
 
 
 @dataclass
@@ -49,10 +50,11 @@ class DocumentContext:
         filenames = re.findall(r'--- (?:File|Referenced File): (.+?) ---', full_content)
         
         # Create preview
-        preview_content = full_content[:cls.PREVIEW_LIMIT]
         if len(full_content) > cls.PREVIEW_LIMIT:
-            remaining = len(full_content) - cls.PREVIEW_LIMIT
-            preview_content += f"\n...[Content continues - {remaining} more chars stored in memory]..."
+            # Middle truncation to preserve start (headers) and end (conclusions)
+            preview_content = smart_truncate(full_content, max_length=cls.PREVIEW_LIMIT)
+        else:
+            preview_content = full_content
         
         logger.info(f"Document context: {len(filenames)} files, {len(preview_content)} preview / {len(full_content)} full chars")
         
