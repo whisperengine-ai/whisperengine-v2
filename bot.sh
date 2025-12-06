@@ -59,7 +59,7 @@ is_bot() {
 resolve_target() {
     local target=$1
     case "$target" in
-        all|"")      echo "ALL" ;;
+        all)         echo "ALL" ;;
         infra)       echo "$INFRA_SERVICES" ;;
         bots)        echo "$BOT_SERVICES" ;;
         workers)     echo "$WORKER_SERVICES" ;;
@@ -101,6 +101,14 @@ case "$CMD" in
         exit 0
         ;;
 esac
+
+# Require explicit target for lifecycle commands (safety)
+if [ -z "$TARGET" ]; then
+    echo -e "${RED}Error: Please specify a target (all, infra, bots, workers, or service name)${NC}"
+    echo ""
+    show_help
+    exit 1
+fi
 
 # Resolve services for lifecycle commands
 SERVICES=$(resolve_target "$TARGET")
