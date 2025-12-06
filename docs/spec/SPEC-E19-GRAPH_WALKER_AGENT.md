@@ -21,7 +21,7 @@
 
 ---
 
-> ✅ **Emergence Check Passed:** This design uses Python-first traversal with a single LLM call at the end. This aligns with the emergence philosophy: deterministic exploration, semantic interpretation. See [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md) for principles.
+> ✅ **Emergence Check Passed:** This design uses Python-first traversal with a single LLM call at the end. This aligns with the emergence philosophy: deterministic exploration, semantic interpretation. See [ADR-003-EMERGENCE_PHILOSOPHY.md](../adr/ADR-003-EMERGENCE_PHILOSOPHY.md) for principles.
 
 ---
 

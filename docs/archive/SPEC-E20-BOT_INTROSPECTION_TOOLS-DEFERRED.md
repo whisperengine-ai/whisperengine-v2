@@ -6,7 +6,7 @@
 **Dependencies:** E15 (Bot-to-Bot Conversations), E6 (Cross-Bot Chat)  
 **Estimated Cost:** ~$0.02-0.05 per debugging session (tool calls)
 
-> ⚠️ **Emergence Check Required:** Before implementation, this feature must pass the pre-implementation checklist in [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md). Key concern: Keep introspection **behavioral** ("I've been thinking about X a lot") not technical ("my trust_score is 42").
+> ⚠️ **Emergence Check Required:** Before implementation, this feature must pass the pre-implementation checklist in [ADR-003-EMERGENCE_PHILOSOPHY.md](../adr/ADR-003-EMERGENCE_PHILOSOPHY.md). Key concern: Keep introspection **behavioral** ("I've been thinking about X a lot") not technical ("my trust_score is 42").
 
 ---
 

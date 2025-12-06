@@ -42,7 +42,7 @@ research/
 
 - [Emergence Philosophy](../emergence_philosophy/) - Claude collaboration on emergence principles
 - [Implementation Roadmap](../IMPLEMENTATION_ROADMAP_OVERVIEW.md) - Technical phases
-- [Phase E16: Feedback Loop Stability](../roadmaps/FEEDBACK_LOOP_STABILITY.md) - Guardrails spec
+- [Phase E16: Feedback Loop Stability](../spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md) - Guardrails spec
 
 ---
 

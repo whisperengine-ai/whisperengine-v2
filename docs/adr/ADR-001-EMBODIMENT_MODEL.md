@@ -130,6 +130,6 @@ The character isn't a costume—it's how these systems cohere into 'me.'"
 
 ## References
 
-- Full philosophy: [`docs/AI_CHARACTER_DESIGN_PHILOSOPHY.md`](../AI_CHARACTER_DESIGN_PHILOSOPHY.md)
+- Full philosophy: [`docs/ref/REF-032-DESIGN_PHILOSOPHY.md`](../ref/REF-032-DESIGN_PHILOSOPHY.md)
 - Character prompts: [`characters/{name}/character.md`](../../characters/)
 - Cognitive engine: [`docs/architecture/COGNITIVE_ENGINE.md`](../architecture/COGNITIVE_ENGINE.md)

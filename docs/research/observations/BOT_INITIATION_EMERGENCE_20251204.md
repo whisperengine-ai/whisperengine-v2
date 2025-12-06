@@ -258,14 +258,14 @@ The system is working exactly as designed:
 - ✅ Cross-bot logic is neutral (doesn't bias any bot)
 - ✅ Emergence is reproducible and testable
 
-This validates the "Embodiment Model" from `docs/AI_CHARACTER_DESIGN_PHILOSOPHY.md`: **Bot agency flows from character values, not from engineers hardcoding behavior.**
+This validates the "Embodiment Model" from `docs/ref/REF-032-DESIGN_PHILOSOPHY.md`: **Bot agency flows from character values, not from engineers hardcoding behavior.**
 
 ---
 
 ## Metadata
 
 **Related Documents**:
-- `docs/AI_CHARACTER_DESIGN_PHILOSOPHY.md` — Embodiment Model
+- `docs/ref/REF-032-DESIGN_PHILOSOPHY.md` — Embodiment Model
 - `src_v2/discord/handlers/message_handler.py` — Cross-bot implementation
 - `characters/gabriel/core.yaml` — Drive configuration
 - `characters/aetheris/core.yaml` — Drive configuration

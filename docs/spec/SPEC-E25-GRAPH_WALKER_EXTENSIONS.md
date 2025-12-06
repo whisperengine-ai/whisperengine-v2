@@ -21,7 +21,7 @@
 
 ---
 
-> ✅ **Emergence Check Passed:** These extensions follow the "observe first, constrain later" principle. No new Neo4j node types are added—all enhancements work through edge properties, scoring heuristics, and emergent discovery. See [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md).
+> ✅ **Emergence Check Passed:** These extensions follow the "observe first, constrain later" principle. No new Neo4j node types are added—all enhancements work through edge properties, scoring heuristics, and emergent discovery. See [ADR-003-EMERGENCE_PHILOSOPHY.md](../adr/ADR-003-EMERGENCE_PHILOSOPHY.md).
 
 ---
 Five extensions to the Graph Walker Agent that deepen the knowledge graph's value:
@@ -730,7 +730,7 @@ E28 (User Graph) can be done independently
 ## Related Documents
 
 - [GRAPH_WALKER_AGENT.md](./GRAPH_WALKER_AGENT.md) — Foundation (E19)
-- [EMERGENCE_ARCHITECTURE_AUDIT.md](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md) — Design philosophy
+- [ADR-003-EMERGENCE_PHILOSOPHY.md](../adr/ADR-003-EMERGENCE_PHILOSOPHY.md) — Design philosophy
 - [ref/REF-002-GRAPH_SYSTEMS.md](../ref/REF-002-GRAPH_SYSTEMS.md) — Unified graph architecture
 - [CROSS_BOT_MEMORY.md](./CROSS_BOT_MEMORY.md) — Related cross-bot enhancement
 

@@ -179,6 +179,5 @@ await influxdb.write("drift_observation", {
 ## References
 
 - Emergence philosophy archive: [`docs/emergence_philosophy/`](../emergence_philosophy/)
-- Feedback loop stability: [`docs/roadmaps/FEEDBACK_LOOP_STABILITY.md`](../roadmaps/FEEDBACK_LOOP_STABILITY.md)
-- Architecture audit: [`docs/reviews/EMERGENCE_ARCHITECTURE_AUDIT.md`](../reviews/EMERGENCE_ARCHITECTURE_AUDIT.md)
+- Feedback loop stability: [`docs/spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md`](../spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md)
 - Claude collaboration: [`docs/emergence_philosophy/05_EMERGENCE_WITH_GUARDRAILS_SYNTHESIS.md`](../emergence_philosophy/05_EMERGENCE_WITH_GUARDRAILS_SYNTHESIS.md)

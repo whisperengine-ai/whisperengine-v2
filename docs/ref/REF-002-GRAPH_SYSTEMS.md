@@ -1358,7 +1358,7 @@ This might be correct for dreams? Dreams have the *texture* of meaning without c
 - [AGENTIC_QUEUE_ARCHITECTURE.md](./AGENTIC_QUEUE_ARCHITECTURE.md) — Stigmergic nervous system
 - [GRAPH_WALKER_AGENT.md](../roadmaps/GRAPH_WALKER_AGENT.md) — Proposed dynamic graph exploration
 - [AUTONOMOUS_SERVER_ACTIVITY.md](../roadmaps/AUTONOMOUS_SERVER_ACTIVITY.md) — E15 phase details
-- [FEEDBACK_LOOP_STABILITY.md](../roadmaps/FEEDBACK_LOOP_STABILITY.md) — Emergence guardrails
+- [SPEC-E16-FEEDBACK_LOOP_STABILITY.md](../spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md) — Emergence guardrails
 - [IMPLEMENTATION_ROADMAP_OVERVIEW.md](../IMPLEMENTATION_ROADMAP_OVERVIEW.md) — Master roadmap
 
 ### Emergence Philosophy Archive

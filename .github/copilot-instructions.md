@@ -4,7 +4,7 @@
 
 WhisperEngine v2 is a production multi-character Discord AI roleplay platform with Vector Memory (Qdrant), Knowledge Graphs (Neo4j), and Dual-Process cognitive architecture. **This is also an emergent behavior research project** — we study how agentic AI systems develop complex behavior patterns over time.
 
-> **Terminology Note:** We use terms like "perceive," "experience," "memory," and "think" as design metaphors for computational processes. WhisperEngine does not claim to create conscious or sentient AI. See `docs/AI_CHARACTER_DESIGN_PHILOSOPHY.md` for the "Embodiment Model" approach.
+> **Terminology Note:** We use terms like "perceive," "experience," "memory," and "think" as design metaphors for computational processes. WhisperEngine does not claim to create conscious or sentient AI. See `docs/ref/REF-032-DESIGN_PHILOSOPHY.md` for the "Embodiment Model" approach.
 
 ## ✍️ Writing Tone & Style
 
@@ -68,12 +68,12 @@ Before implementing, answer these four questions:
 
 If answers lean toward "need new schema/code/declarations" — reconsider the approach.
 
-**Audit Reference:** See `docs/reviews/EMERGENCE_ARCHITECTURE_AUDIT.md` for full checklist and cleanup backlog.
+**Audit Reference:** See `docs/adr/ADR-003-EMERGENCE_PHILOSOPHY.md` for the full emergence philosophy and pre-implementation checklist.
 
 **Research Documentation:**
 - `docs/research/` — Research journal (daily logs, weekly summaries, experiments)
 - `docs/emergence_philosophy/` — Claude-to-Claude architecture reviews and philosophy docs
-- `docs/roadmaps/FEEDBACK_LOOP_STABILITY.md` — Phase E16: Emergent behavior guardrails spec
+- `docs/spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md` — Phase E16: Emergent behavior guardrails spec
 
 **Research Cadence:**
 - **Daily logs** (~5-10 min): Raw observations in `docs/research/journal/YYYY-MM/`
