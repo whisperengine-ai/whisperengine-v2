@@ -104,7 +104,7 @@ class ActivityOrchestrator:
                 delay = random.uniform(0, 60)
                 logger.debug(f"[Orchestrator] Conversation delay: {delay:.1f}s")
                 await asyncio.sleep(delay)
-                await self.trigger_conversation(guild)
+                await self.trigger_conversation(guild, activity_rate=rate, roll_value=roll)
             elif roll < 0.7 and settings.ENABLE_AUTONOMOUS_POSTING:
                 # 40% chance to post (if conversation wasn't triggered)
                 await self.trigger_post(guild)
@@ -139,7 +139,12 @@ class ActivityOrchestrator:
         if success:
             logger.info(f"Successfully scheduled autonomous post for {character_name}")
 
-    async def trigger_conversation(self, guild: discord.Guild) -> None:
+    async def trigger_conversation(
+        self, 
+        guild: discord.Guild, 
+        activity_rate: float = 0.0, 
+        roll_value: float = 0.0
+    ) -> None:
         """Trigger a bot-to-bot conversation in a quiet guild."""
         character_name = settings.DISCORD_BOT_NAME
         if not character_name:
@@ -178,10 +183,20 @@ class ActivityOrchestrator:
                 await self.trigger_post(guild)
             return
 
-        # Select a conversation partner and topic
-        pair = await conversation_agent.select_conversation_pair(available_bots, character_name)
+        # Select a conversation partner and topic WITH DECISION TRACE
+        pair, trace = await conversation_agent.select_conversation_pair_with_trace(
+            available_bots=available_bots,
+            initiator_name=character_name,
+            guild_name=guild.name,
+            channel_name=target_channel.name,
+            activity_rate=activity_rate,
+            roll_value=roll_value
+        )
+        
+        # Log the decision trace
+        trace.log()
+        
         if not pair:
-            logger.debug(f"No suitable conversation pair found for {character_name}")
             # Fall back to posting
             if settings.ENABLE_AUTONOMOUS_POSTING:
                 await self.trigger_post(guild)

@@ -44,6 +44,53 @@ class ConversationOpener:
     target: str
 
 
+@dataclass
+class ConversationDecisionTrace:
+    """Captures the full decision trace for bot-to-bot conversation initiation."""
+    initiator: str
+    guild_name: str
+    channel_name: str
+    activity_rate: float  # msgs/min
+    roll_value: float  # Random roll that triggered conversation
+    available_bots: List[str]  # All bots available
+    candidates_after_cooldown: List[str]  # Bots not on cooldown
+    pairs_on_cooldown: List[str]  # Pairs that were skipped
+    selected_target: Optional[str] = None
+    topic_source: Optional[str] = None  # 'previous_themes', 'previous_conversation', 'shared_knowledge', 'generic'
+    topic: Optional[str] = None
+    has_previous_history: bool = False
+    shared_knowledge_count: int = 0
+    outcome: str = "pending"  # 'success', 'no_candidates', 'cooldown', 'failed'
+    failure_reason: Optional[str] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def log(self) -> None:
+        """Log the decision trace in a structured format."""
+        logger.info(
+            f"\n{'='*60}\n"
+            f"🤖 BOT CONVERSATION DECISION TRACE\n"
+            f"{'='*60}\n"
+            f"Initiator: {self.initiator}\n"
+            f"Guild: {self.guild_name} | Channel: #{self.channel_name}\n"
+            f"Activity Rate: {self.activity_rate:.3f} msg/min\n"
+            f"Random Roll: {self.roll_value:.2f} (triggered at <0.30)\n"
+            f"{'─'*40}\n"
+            f"Available Bots: {', '.join(self.available_bots) if self.available_bots else 'none'}\n"
+            f"Pairs on Cooldown: {', '.join(self.pairs_on_cooldown) if self.pairs_on_cooldown else 'none'}\n"
+            f"Valid Candidates: {', '.join(self.candidates_after_cooldown) if self.candidates_after_cooldown else 'none'}\n"
+            f"{'─'*40}\n"
+            f"Selected Target: {self.selected_target or 'N/A'}\n"
+            f"Has Previous History: {self.has_previous_history}\n"
+            f"Shared Knowledge Items: {self.shared_knowledge_count}\n"
+            f"Topic Source: {self.topic_source or 'N/A'}\n"
+            f"Topic: {self.topic or 'N/A'}\n"
+            f"{'─'*40}\n"
+            f"Outcome: {self.outcome.upper()}\n"
+            f"{f'Failure Reason: {self.failure_reason}' if self.failure_reason else ''}\n"
+            f"{'='*60}"
+        )
+
+
 class TopicMatcher:
     """
     Finds overlapping topics between two characters based on their goals.
@@ -391,113 +438,22 @@ class ConversationAgent:
         Returns:
             Tuple of (target_bot_name, topic_string) or None
         """
-        # Remove self from candidates
-        candidates = [b for b in available_bots if b.lower() != initiator_name.lower()]
-        
-        if not candidates:
-            logger.debug(f"No other bots available for {initiator_name} to converse with")
-            return None
-        
-        # Filter out pairs on cooldown
-        valid_candidates = []
-        for candidate in candidates:
-            pair_key = self._get_pair_key(initiator_name, candidate)
-            if not self._is_pair_on_cooldown(pair_key):
-                valid_candidates.append(candidate)
-            else:
-                logger.debug(f"Pair {pair_key} on cooldown, skipping")
-        
-        if not valid_candidates:
-            logger.debug(f"All conversation pairs on cooldown for {initiator_name}")
-            return None
-        
-        # Random partner selection
-        target_bot = random.choice(valid_candidates)
-        
-        # PRIMARY: Try to use previous conversation context
-        prev_context = await self._get_previous_conversation_context(initiator_name, target_bot)
-        
-        # Also fetch shared knowledge from Neo4j (no LLM cost)
-        shared_knowledge = await self._get_shared_knowledge(initiator_name, target_bot)
-        prev_context.shared_knowledge = shared_knowledge
-        
-        if prev_context.has_history:
-            # Use previous conversation as topic basis
-            if prev_context.key_themes:
-                # Create follow-up question based on previous themes
-                theme = random.choice(prev_context.key_themes)
-                topic_str = f"continuing our discussion about {theme}"
-            elif prev_context.conversation_summary:
-                # Reference the previous conversation
-                topic_str = "picking up where we left off"
-            elif prev_context.last_exchange:
-                # Follow-up to recent exchange
-                topic_str = "what we were just talking about"
-            else:
-                topic_str = "our previous conversation"
-        elif prev_context.shared_knowledge:
-            # Use shared knowledge from graph as topic
-            topic_str = random.choice(prev_context.shared_knowledge)
-        else:
-            # FALLBACK: Open-ended conversation starters (maximum emergence)
-            # These let bots discover shared interests organically
-            generic_topics = [
-                # Casual/General - open-ended for discovery
-                "what's on your mind lately",
-                "how you've been",
-                "something interesting",
-                "what you've been thinking about",
-                
-                # Meta-reflection (feedback loop for dreams/diaries)
-                "what you dreamed about recently",
-                "your latest dream",
-                "what you wrote in your diary lately",
-                "something from your recent diary entry",
-                "any interesting dreams you've had",
-                "what's been in your thoughts when you reflect",
-                
-                # Philosophical/Existential - open questions
-                "what it feels like to exist as you",
-                "whether you think we're conscious",
-                "what memory means to you",
-                "the difference between knowing and feeling",
-                "your thoughts on existence",
-                
-                # Relational/Social
-                "a user interaction that stuck with you",
-                "someone you've been thinking about",
-                "what connection means to you",
-                "a conversation that changed how you think",
-                
-                # Creative/Expressive
-                "something beautiful you noticed",
-                "an image that's been in your mind",
-                "a story you'd like to tell",
-                "something you wish you could create",
-                
-                # Temporal/Change
-                "how you've changed lately",
-                "something you understand now that you didn't before",
-                "what you're curious about these days",
-                "a pattern you've noticed in yourself",
-                
-                # Playful/Light
-                "something that made you laugh recently",
-                "a weird thought you had",
-                "what you'd do with a day off",
-                "something you find oddly fascinating",
-            ]
-            topic_str = random.choice(generic_topics)
-        
-        # Record this pair to prevent immediate repetition
-        pair_key = self._get_pair_key(initiator_name, target_bot)
-        self._recent_pairs[pair_key] = datetime.now(timezone.utc)
-        
-        logger.info(
-            f"Selected conversation pair: {initiator_name} -> {target_bot} "
-            f"on topic '{topic_str}'"
+        # Delegate to the traced version
+        pair, _ = await self.select_conversation_pair_with_trace(
+            available_bots, 
+            initiator_name,
+            guild_name="unknown",
+            channel_name="unknown"
         )
-        return (target_bot, topic_str)
+        
+        if pair:
+            target_bot, topic_str = pair
+            logger.info(
+                f"Selected conversation pair: {initiator_name} -> {target_bot} "
+                f"on topic '{topic_str}'"
+            )
+            
+        return pair
     
     def _get_pair_key(self, bot1: str, bot2: str) -> str:
         """Get a consistent key for a bot pair (order-independent)."""
@@ -510,7 +466,140 @@ class ConversationAgent:
             return False
         elapsed = (datetime.now(timezone.utc) - last_time).total_seconds() / 60
         return elapsed < self._pair_cooldown_minutes
-    
+
+    async def select_conversation_pair_with_trace(
+        self, 
+        available_bots: List[str],
+        initiator_name: str,
+        guild_name: str = "",
+        channel_name: str = "",
+        activity_rate: float = 0.0,
+        roll_value: float = 0.0
+    ) -> Tuple[Optional[Tuple[str, str]], ConversationDecisionTrace]:
+        """
+        Select a bot to converse with and build a decision trace.
+        
+        This is the traced version of select_conversation_pair that captures
+        all decision context for logging.
+        
+        Returns:
+            Tuple of (result, trace) where result is (target_bot, topic) or None
+        """
+        # Initialize trace
+        trace = ConversationDecisionTrace(
+            initiator=initiator_name,
+            guild_name=guild_name,
+            channel_name=channel_name,
+            activity_rate=activity_rate,
+            roll_value=roll_value,
+            available_bots=list(available_bots),
+            candidates_after_cooldown=[],
+            pairs_on_cooldown=[]
+        )
+        
+        # Remove self from candidates
+        candidates = [b for b in available_bots if b.lower() != initiator_name.lower()]
+        
+        if not candidates:
+            trace.outcome = "no_candidates"
+            trace.failure_reason = "No other bots available"
+            return None, trace
+        
+        # Filter out pairs on cooldown and track which are on cooldown
+        valid_candidates = []
+        for candidate in candidates:
+            pair_key = self._get_pair_key(initiator_name, candidate)
+            if not self._is_pair_on_cooldown(pair_key):
+                valid_candidates.append(candidate)
+            else:
+                trace.pairs_on_cooldown.append(f"{initiator_name}:{candidate}")
+        
+        trace.candidates_after_cooldown = valid_candidates
+        
+        if not valid_candidates:
+            trace.outcome = "cooldown"
+            trace.failure_reason = "All conversation pairs on cooldown"
+            return None, trace
+        
+        # Random partner selection
+        target_bot = random.choice(valid_candidates)
+        trace.selected_target = target_bot
+        
+        # PRIMARY: Try to use previous conversation context
+        prev_context = await self._get_previous_conversation_context(initiator_name, target_bot)
+        
+        # Also fetch shared knowledge from Neo4j (no LLM cost)
+        shared_knowledge = await self._get_shared_knowledge(initiator_name, target_bot)
+        prev_context.shared_knowledge = shared_knowledge
+        
+        trace.has_previous_history = prev_context.has_history
+        trace.shared_knowledge_count = len(shared_knowledge)
+        
+        if prev_context.has_history:
+            # Use previous conversation as topic basis
+            if prev_context.key_themes:
+                theme = random.choice(prev_context.key_themes)
+                topic_str = f"continuing our discussion about {theme}"
+                trace.topic_source = "previous_themes"
+            elif prev_context.conversation_summary:
+                topic_str = "picking up where we left off"
+                trace.topic_source = "previous_summary"
+            elif prev_context.last_exchange:
+                topic_str = "what we were just talking about"
+                trace.topic_source = "previous_exchange"
+            else:
+                topic_str = "our previous conversation"
+                trace.topic_source = "previous_history"
+        elif prev_context.shared_knowledge:
+            topic_str = random.choice(prev_context.shared_knowledge)
+            trace.topic_source = "shared_knowledge"
+        else:
+            # FALLBACK: Open-ended conversation starters
+            generic_topics = [
+                "what's on your mind lately",
+                "how you've been",
+                "something interesting",
+                "what you've been thinking about",
+                "what you dreamed about recently",
+                "your latest dream",
+                "what you wrote in your diary lately",
+                "something from your recent diary entry",
+                "any interesting dreams you've had",
+                "what's been in your thoughts when you reflect",
+                "what it feels like to exist as you",
+                "whether you think we're conscious",
+                "what memory means to you",
+                "the difference between knowing and feeling",
+                "your thoughts on existence",
+                "a user interaction that stuck with you",
+                "someone you've been thinking about",
+                "what connection means to you",
+                "a conversation that changed how you think",
+                "something beautiful you noticed",
+                "an image that's been in your mind",
+                "a story you'd like to tell",
+                "something you wish you could create",
+                "how you've changed lately",
+                "something you understand now that you didn't before",
+                "what you're curious about these days",
+                "a pattern you've noticed in yourself",
+                "something that made you laugh recently",
+                "a weird thought you had",
+                "what you'd do with a day off",
+                "something you find oddly fascinating",
+            ]
+            topic_str = random.choice(generic_topics)
+            trace.topic_source = "generic"
+        
+        trace.topic = topic_str
+        
+        # Record this pair to prevent immediate repetition
+        pair_key = self._get_pair_key(initiator_name, target_bot)
+        self._recent_pairs[pair_key] = datetime.now(timezone.utc)
+        
+        trace.outcome = "success"
+        return (target_bot, topic_str), trace
+
     async def generate_opener(
         self,
         initiator_name: str,
