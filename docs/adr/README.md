@@ -18,6 +18,9 @@ ADRs are immutable once accepted—if we change our minds, we create a new ADR t
 | [ADR-006: Feature Flags for LLM Costs](./ADR-006-FEATURE_FLAGS.md) | ✅ Accepted | All expensive LLM features gated by flags |
 | [ADR-007: Dual-Layer Provenance](./ADR-007-DUAL_LAYER_PROVENANCE.md) | ✅ Accepted | Searchable content + poetic footer for diaries/dreams |
 | [ADR-008: Insight Job Thresholds](./ADR-008-INSIGHT_JOB_THRESHOLDS.md) | ✅ Accepted | Minimum data thresholds before triggering insight analysis |
+| [ADR-009: Relationship Boundaries](./ADR-009-RELATIONSHIP_BOUNDARIES.md) | ✅ Accepted | Research-context framing for emotional dependency and attachment |
+| [ADR-010: Crisis Response](./ADR-010-CRISIS_RESPONSE.md) | ✅ Accepted | Community over automation for mental health concerns |
+| [ADR-011: Emergence Boundaries](./ADR-011-EMERGENCE_BOUNDARIES.md) | ✅ Accepted | When observation becomes intervention ("Interesting Until Harmful") |
 
 ---
 
