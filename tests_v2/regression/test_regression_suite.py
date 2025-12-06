@@ -54,9 +54,9 @@ BOT_CONFIGS = [
     BotConfig("jake", 8005, "x-ai/grok-4.1-fast", "x-ai/grok-4"),
     BotConfig("sophia", 8006, "x-ai/grok-4.1-fast", "x-ai/grok-4"),
     BotConfig("marcus", 8007, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
-    BotConfig("nottaylor", 8008, "mistralai/mistral-medium-3.1", "mistralai/mistral-large-2512", is_production=True),
-    BotConfig("gabriel", 8009, "mistralai/mistral-small-3.1-24b-instruct", "mistralai/mistral-medium-3.1"),
-    BotConfig("aethys", 8010, "mistralai/mistral-medium-3.1", "mistralai/mistral-large-2512"),
+    BotConfig("nottaylor", 8008, "mistralai/mistral-medium-3.1", "mistralai/mistral-medium-3.1", is_production=True),
+    BotConfig("gabriel", 8009, "mistralai/mistral-medium-3.1", "mistralai/mistral-medium-3.1"),
+    BotConfig("aethys", 8010, "mistralai/mistral-medium-3.1", "mistralai/mistral-medium-3.1"),
     BotConfig("aetheris", 8011, "anthropic/claude-3.5-haiku", "anthropic/claude-sonnet-4.5"),
 ]
 

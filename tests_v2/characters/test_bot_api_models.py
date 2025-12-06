@@ -81,25 +81,25 @@ BOT_CONFIGS = [
         main_model="google/gemini-2.5-flash",
         reflective_model="google/gemini-2.5-pro"
     ),
-    # Mistral bots (small/medium → medium/large)
+    # Mistral bots (medium → medium)
     BotConfig(
         name="nottaylor",
         port=8008,
         main_model="mistralai/mistral-medium-3.1",
-        reflective_model="mistralai/mistral-large-2512",
+        reflective_model="mistralai/mistral-medium-3.1",
         is_production=True
     ),
     BotConfig(
         name="gabriel",
         port=8009,
-        main_model="mistralai/mistral-small-3.1-24b-instruct",
+        main_model="mistralai/mistral-medium-3.1",
         reflective_model="mistralai/mistral-medium-3.1"
     ),
     BotConfig(
         name="aethys",
         port=8010,
         main_model="mistralai/mistral-medium-3.1",
-        reflective_model="mistralai/mistral-large-2512"
+        reflective_model="mistralai/mistral-medium-3.1"
     ),
     # Grok bots (fast → reasoning)
     BotConfig(
