@@ -261,7 +261,7 @@ cp .env.example .env.newcharacter
 # 5. Add to docker-compose.yml (see QUICK_REFERENCE.md)
 ```
 
-**Full guide:** [Creating New Characters](docs/CREATING_NEW_CHARACTERS.md) | **Deploy multiple:** [Multi-Bot Deployment](docs/MULTI_BOT_DEPLOYMENT.md)
+**Full guide:** [Creating New Characters](docs/guide/GUIDE-020-CREATING_CHARACTERS.md) | **Deploy multiple:** [Multi-Bot Deployment](docs/run/RUN-001-MULTI_BOT_DEPLOYMENT.md)
 
 ## 🛠️ Development
 
