@@ -33,6 +33,7 @@ from src_v2.workers.strategist import run_goal_strategist
 from src_v2.workers.tasks.insight_tasks import run_insight_analysis, run_reflection
 from src_v2.workers.tasks.summary_tasks import run_summarization
 from src_v2.workers.tasks.knowledge_tasks import run_knowledge_extraction
+from src_v2.workers.tasks.batch_knowledge_tasks import run_batch_knowledge_extraction
 from src_v2.workers.tasks.diary_tasks import run_diary_generation
 from src_v2.workers.tasks.dream_tasks import run_dream_generation
 from src_v2.workers.tasks.drift_observation import run_drift_observation
@@ -108,6 +109,7 @@ class WorkerSettings:
         run_summarization,
         run_reflection,
         run_knowledge_extraction,
+        run_batch_knowledge_extraction,
         run_universe_observation,
         run_relationship_update,
         # LangGraph agents get 10 min timeout (local LLMs + multi-step reasoning)

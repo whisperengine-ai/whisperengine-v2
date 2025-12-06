@@ -55,16 +55,9 @@ async def enqueue_background_learning(
     if not message_content or len(message_content.strip()) < 10:
         return  # Skip very short messages
     
-    # Knowledge extraction: Extract facts from the message
-    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
-        try:
-            await task_queue.enqueue_knowledge_extraction(
-                user_id=user_id,
-                message=message_content,
-                character_name=character_name
-            )
-        except Exception as e:
-            logger.debug(f"Failed to enqueue {context} knowledge extraction: {e}")
+    # NOTE: Knowledge extraction is now handled at session end via batch extraction.
+    # This provides better context (full conversation) and reduces LLM costs.
+    # See enqueue_post_conversation_tasks() for the batch extraction call.
     
     # Preference extraction: Learn communication style
     if settings.ENABLE_PREFERENCE_EXTRACTION:
@@ -89,8 +82,8 @@ async def enqueue_post_conversation_tasks(
     """
     Unified post-conversation processing pipeline.
     
-    Handles summarization, reflection, and insight analysis for ALL conversation types.
-    A user ID is a user ID - human or bot, same pipeline!
+    Handles summarization, reflection, insight analysis, and batch knowledge extraction
+    for ALL conversation types. A user ID is a user ID - human or bot, same pipeline!
     
     Args:
         user_id: Discord user ID (human or bot)
@@ -100,6 +93,18 @@ async def enqueue_post_conversation_tasks(
         user_name: Display name for diary provenance
         trigger: What triggered this (session_end, cross_bot_session, etc.)
     """
+    # Enqueue batch knowledge extraction (session-level, more efficient than per-message)
+    if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+        try:
+            await task_queue.enqueue_batch_knowledge_extraction(
+                user_id=user_id,
+                messages=messages,
+                character_name=character_name,
+                session_id=session_id
+            )
+        except Exception as e:
+            logger.debug(f"Failed to enqueue {trigger} batch knowledge extraction: {e}")
+    
     # Enqueue summarization
     try:
         await task_queue.enqueue_summarization(

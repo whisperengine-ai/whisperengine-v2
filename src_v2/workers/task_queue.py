@@ -300,6 +300,10 @@ class TaskQueue:
         """
         Queue a job to extract facts from a user message (SENSORY queue - fast analysis).
         
+        DEPRECATED: Use enqueue_batch_knowledge_extraction for session-level extraction.
+        This per-message method is kept for backward compatibility but is no longer
+        called from the main message handler.
+        
         Args:
             user_id: Discord user ID
             message: The message content
@@ -315,6 +319,41 @@ class TaskQueue:
             user_id=user_id,
             message=message,
             character_name=character_name
+        )
+
+    async def enqueue_batch_knowledge_extraction(
+        self, 
+        user_id: str, 
+        messages: List[Dict[str, str]], 
+        character_name: str,
+        session_id: str = ""
+    ) -> Optional[str]:
+        """
+        Queue a job to extract facts from an entire conversation session.
+        
+        This is more efficient and produces higher quality facts than per-message
+        extraction because the LLM sees the full conversation context.
+        
+        Args:
+            user_id: Discord user ID
+            messages: List of message dicts with 'role' and 'content' keys
+            character_name: The name of the bot (for privacy segmentation)
+            session_id: Optional session identifier
+            
+        Returns:
+            Job ID if queued, None if queue unavailable
+        """
+        # Deduplicate by session to avoid double-processing
+        job_id = f"batch_knowledge_{user_id}_{session_id}" if session_id else None
+        
+        return await self.enqueue(
+            "run_batch_knowledge_extraction",
+            _queue_name=self.QUEUE_SENSORY,
+            _job_id=job_id,
+            user_id=user_id,
+            messages=messages,
+            character_name=character_name,
+            session_id=session_id
         )
 
     async def enqueue_relationship_update(
