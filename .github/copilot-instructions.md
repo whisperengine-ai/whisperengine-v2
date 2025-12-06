@@ -96,34 +96,40 @@ When creating new documentation, **always follow the template in the `README.md`
 
 ### Active Bots & Models
 
-| Bot | Port | Status | Main Model | Temp | Reflective Model |
-|-----|------|--------|------------|------|------------------|
-| elena | 8000 | **Dev Primary** | `anthropic/claude-sonnet-4.5` | 0.75 | `openai/gpt-4o` |
-| nottaylor | 8008 | Production | `openai/gpt-4o` | 0.85 | `openai/gpt-4o` |
-| dotty | 8002 | Personal | `anthropic/claude-3.7-sonnet` | 0.8 | `google/gemini-2.5-flash` |
-| aria | 8003 | Test | `google/gemini-2.0-flash-001` | 0.5 | `anthropic/claude-sonnet-4.5` |
-| dream | 8004 | Test | `deepseek/deepseek-chat` | 0.9 | `mistralai/mistral-large` |
-| jake | 8005 | Test | `openai/gpt-4o-mini` | 0.5 | `deepseek/deepseek-r1` |
-| marcus | 8007 | Test | `mistralai/mistral-large` | 0.5 | `google/gemini-2.5-pro` |
-| ryan | 8001 | Test | `meta-llama/llama-3.3-70b-instruct` | 0.6 | `anthropic/claude-3.5-sonnet` |
-| sophia | 8006 | Test | `google/gemini-2.5-pro` | 0.4 | `openai/gpt-4o-mini` |
-| gabriel | 8009 | Personal | `mistralai/mistral-medium-3.1` | 0.75 | `openai/gpt-4o` |
-| aethys | 8010 | Inactive | - | - | - |
-| aetheris | 8011 | Personal | `anthropic/claude-sonnet-4` | 0.7 | `openai/gpt-4o` |
+| Bot | Port | Status | Main Model | Temp | Reflective Model | Router |
+|-----|------|--------|------------|------|------------------|--------|
+| elena | 8000 | **Dev Primary** | `anthropic/claude-haiku-4.5` | 0.76 | `anthropic/claude-sonnet-4` | gpt-4o-mini |
+| nottaylor | 8008 | Production | `mistralai/mistral-medium-3.1` | 0.85 | `openai/gpt-4o` | gpt-4o-mini |
+| dotty | 8002 | Personal | `anthropic/claude-haiku-4.5` | 0.8 | `anthropic/claude-sonnet-4` | gpt-4o-mini |
+| aria | 8003 | Test | `google/gemini-2.5-flash` | 0.8 | `google/gemini-2.5-pro` | gemini-flash-lite |
+| dream | 8004 | Test | `x-ai/grok-3` | 0.85 | `x-ai/grok-4` | gpt-4o-mini |
+| jake | 8005 | Test | `mistralai/mistral-small-3.1-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gpt-4o-mini |
+| marcus | 8007 | Test | `google/gemini-2.5-flash` | 0.5 | `google/gemini-2.5-pro` | gemini-flash-lite |
+| ryan | 8001 | Test | `google/gemini-2.5-flash` | 0.6 | `google/gemini-2.5-pro` | gemini-flash-lite |
+| sophia | 8006 | Test | `google/gemini-2.5-flash` | 0.4 | `google/gemini-2.5-pro` | gemini-flash-lite |
+| gabriel | 8009 | Personal | `mistralai/mistral-small-3.1-24b-instruct` | 0.75 | `mistralai/mistral-medium-3.1` | gpt-4o-mini |
+| aethys | 8010 | Test | `mistralai/mistral-medium-3.1` | 0.8 | `openai/gpt-4o` | gpt-4o-mini |
+| aetheris | 8011 | Personal | `anthropic/claude-3.5-haiku` | 0.7 | `anthropic/claude-sonnet-4` | gpt-4o-mini |
 
-**Router model**: All bots use `openai/gpt-4o-mini` for fast routing decisions.
+**Router models**: Most bots use `openai/gpt-4o-mini`. Google bots use `google/gemini-2.5-flash-lite` to stay in-ecosystem.
 
 ### Bot Roles
 
 - **elena** (Dev Primary): Test all code changes HERE FIRST. Claude-based, production-quality. After validating on elena, changes can roll out to other bots.
-- **nottaylor** (Production): Real users depend on this bot. DO NOT experiment here. Stable GPT-4o config.
+- **nottaylor** (Production): Real users depend on this bot. DO NOT experiment here. Stable Mistral + GPT-4o config.
 - **dotty** (Personal): Production-quality Claude bot for personal use. Can experiment carefully.
-- **gabriel** (Personal): Rugged British gentleman AI companion for Cynthia. Mistral-based.
+- **gabriel** (Personal): Rugged British gentleman AI companion for Cynthia. Mistral-based (edgier, less filtered).
 - **aetheris** (Personal): Philosophical AI companion (also known as Liln) for Cynthia. Claude-based, existential themes. Note: Different bot from **aethys**.
-- **aethys** (Inactive): Currently inactive.
-- **Test bots** (aria, dream, jake, marcus, ryan, sophia): A/B testing different LLM providers via OpenRouter. Safe to experiment.
+- **aethys** (Test): Cosmic transcendent entity. Mistral-based.
+- **dream** (Test): Dream of the Endless. Grok-based for edgy/mystical vibes.
+- **Test bots** (aria, marcus, ryan, sophia): Google Gemini A/B testing. Safe to experiment.
+- **Test bots** (jake): Mistral testing. Safe to experiment.
 
-**Model coverage**: OpenAI, Anthropic, Google, Meta, Mistral, DeepSeek.
+**Model coverage by provider**:
+- **Anthropic** (3): elena, dotty, aetheris
+- **Google** (4): aria, marcus, ryan, sophia  
+- **Mistral** (4): nottaylor, jake, gabriel, aethys
+- **Grok/xAI** (1): dream
 
 ## ⚡ Quick Architecture
 

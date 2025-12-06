@@ -140,29 +140,36 @@ python tests_v2/run_regression.py --cov
 
 ## Bot Configuration
 
-### Current Model Distribution (Dec 2024)
+### Current Model Distribution (Dec 2025)
 
-| Bot | Port | Main Model | Temp | Reflective Model | Status |
-|-----|------|------------|------|------------------|--------|
-| elena | 8000 | anthropic/claude-sonnet-4.5 | 0.75 | openai/gpt-4o | Personal |
-| ryan | 8001 | meta-llama/llama-3.3-70b-instruct | 0.6 | anthropic/claude-3.5-sonnet | Test |
-| dotty | 8002 | anthropic/claude-3.7-sonnet | 0.8 | google/gemini-2.5-flash | Personal |
-| aria | 8003 | google/gemini-2.0-flash-001 | 0.5 | anthropic/claude-sonnet-4.5 | Test |
-| dream | 8004 | deepseek/deepseek-r1 | 0.9 | mistralai/mistral-large | Test |
-| jake | 8005 | meta-llama/llama-4-maverick | 0.5 | deepseek/deepseek-r1 | Test |
-| sophia | 8006 | google/gemini-2.5-pro | 0.4 | openai/gpt-4o-mini | Test |
-| marcus | 8007 | mistralai/mistral-large | 0.5 | google/gemini-2.5-pro | Test |
-| nottaylor | 8008 | openai/gpt-4o | 0.85 | openai/gpt-4o | Production |
+| Bot | Port | Main Model | Temp | Reflective Model | Router | Status |
+|-----|------|------------|------|------------------|--------|--------|
+| elena | 8000 | anthropic/claude-haiku-4.5 | 0.76 | anthropic/claude-sonnet-4 | gpt-4o-mini | Dev Primary |
+| ryan | 8001 | google/gemini-2.5-flash | 0.6 | google/gemini-2.5-pro | gemini-flash-lite | Test |
+| dotty | 8002 | anthropic/claude-haiku-4.5 | 0.8 | anthropic/claude-sonnet-4 | gpt-4o-mini | Personal |
+| aria | 8003 | google/gemini-2.5-flash | 0.8 | google/gemini-2.5-pro | gemini-flash-lite | Test |
+| dream | 8004 | x-ai/grok-3 | 0.85 | x-ai/grok-4 | gpt-4o-mini | Test |
+| jake | 8005 | mistralai/mistral-small-3.1-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gpt-4o-mini | Test |
+| sophia | 8006 | google/gemini-2.5-flash | 0.4 | google/gemini-2.5-pro | gemini-flash-lite | Test |
+| marcus | 8007 | google/gemini-2.5-flash | 0.5 | google/gemini-2.5-pro | gemini-flash-lite | Test |
+| nottaylor | 8008 | mistralai/mistral-medium-3.1 | 0.85 | openai/gpt-4o | gpt-4o-mini | Production |
+| gabriel | 8009 | mistralai/mistral-small-3.1-24b-instruct | 0.75 | mistralai/mistral-medium-3.1 | gpt-4o-mini | Personal |
+| aethys | 8010 | mistralai/mistral-medium-3.1 | 0.8 | openai/gpt-4o | gpt-4o-mini | Test |
+| aetheris | 8011 | anthropic/claude-3.5-haiku | 0.7 | anthropic/claude-sonnet-4 | gpt-4o-mini | Personal |
 
-### Model Coverage
+### Model Coverage by Provider
 
-The test bots cover these LLM providers:
-- **OpenAI**: GPT-4o (nottaylor), GPT-4o-mini (sophia reflective)
-- **Anthropic**: Claude Sonnet 4.5 (elena), Claude 3.7 Sonnet (dotty), Claude 3.5 Sonnet (ryan reflective)
-- **Google**: Gemini 2.5 Pro (sophia), Gemini 2.5 Flash (dotty reflective), Gemini 2.0 Flash (aria)
-- **Meta**: Llama 4 Maverick (jake), Llama 3.3 70B (ryan)
-- **Mistral**: Mistral Large (marcus)
-- **DeepSeek**: DeepSeek R1 (dream)
+- **Anthropic** (3 bots): elena, dotty, aetheris
+- **Google** (4 bots): aria, marcus, ryan, sophia
+- **Mistral** (4 bots): nottaylor, jake, gabriel, aethys
+- **Grok/xAI** (1 bot): dream
+
+### Model Tiering Pattern
+
+All bots follow the recommended tiering:
+- **Router**: Smallest/fastest (gpt-4o-mini or gemini-flash-lite)
+- **Main**: Fast + good (handles 70% of requests)
+- **Reflective**: Smart + slower (handles complex 30% of requests)
 
 ### Feature Flags (Should Be Consistent)
 
