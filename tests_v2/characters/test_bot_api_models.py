@@ -85,20 +85,20 @@ BOT_CONFIGS = [
     BotConfig(
         name="nottaylor",
         port=8008,
-        main_model="mistralai/mistral-small-3.1-24b-instruct",
+        main_model="mistralai/mistral-small-3.2-24b-instruct",
         reflective_model="mistralai/mistral-medium-3.1",
         is_production=True
     ),
     BotConfig(
         name="gabriel",
         port=8009,
-        main_model="mistralai/mistral-small-3.1-24b-instruct",
+        main_model="mistralai/mistral-small-3.2-24b-instruct",
         reflective_model="mistralai/mistral-medium-3.1"
     ),
     BotConfig(
         name="aethys",
         port=8010,
-        main_model="mistralai/mistral-small-3.1-24b-instruct",
+        main_model="mistralai/mistral-small-3.2-24b-instruct",
         reflective_model="mistralai/mistral-medium-3.1"
     ),
     # Grok bots (fast → reasoning)

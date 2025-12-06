@@ -99,7 +99,7 @@ When creating new documentation, **always follow the template in the `README.md`
 | Bot | Port | Status | Main Model | Temp | Reflective Model | Router |
 |-----|------|--------|------------|------|------------------|--------|
 | elena | 8000 | **Dev Primary** | `anthropic/claude-3.5-haiku` | 0.76 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
-| nottaylor | 8008 | Production | `mistralai/mistral-small-3.1-24b-instruct` | 0.85 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
+| nottaylor | 8008 | Production | `mistralai/mistral-small-3.2-24b-instruct` | 0.85 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
 | dotty | 8002 | Personal | `anthropic/claude-3.5-haiku` | 0.8 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
 | aria | 8003 | Test | `google/gemini-2.5-flash` | 0.65 | `google/gemini-2.5-pro` | gemini-flash-lite |
 | dream | 8004 | Test | `x-ai/grok-4.1-fast` | 0.85 | `x-ai/grok-4` | gemini-flash-lite |
@@ -107,8 +107,8 @@ When creating new documentation, **always follow the template in the `README.md`
 | marcus | 8007 | Test | `google/gemini-2.5-flash` | 0.5 | `google/gemini-2.5-pro` | gemini-flash-lite |
 | ryan | 8001 | Test | `google/gemini-2.5-flash` | 0.6 | `google/gemini-2.5-pro` | gemini-flash-lite |
 | sophia | 8006 | Test | `x-ai/grok-4.1-fast` | 0.4 | `x-ai/grok-4` | gemini-flash-lite |
-| gabriel | 8009 | Personal | `mistralai/mistral-small-3.1-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
-| aethys | 8010 | Test | `mistralai/mistral-small-3.1-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
+| gabriel | 8009 | Personal | `mistralai/mistral-small-3.2-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
+| aethys | 8010 | Test | `mistralai/mistral-small-3.2-24b-instruct` | 0.8 | `mistralai/mistral-medium-3.1` | gemini-flash-lite |
 | aetheris | 8011 | Personal | `anthropic/claude-3.5-haiku` | 0.7 | `anthropic/claude-sonnet-4.5` | gemini-flash-lite |
 
 **Router models**: All bots use `google/gemini-2.5-flash-lite` for fast, cost-efficient routing ($0.10/$0.40 per M tokens, 1M context).
