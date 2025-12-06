@@ -1490,6 +1490,15 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 # Note: Conversation endings are now emergent via soft hints in cross_bot_context
                 # The bot decides naturally if/when to wrap up based on conversation flow
 
+                # Validate response before sending (Discord rejects empty/None content)
+                if not response or not response.strip():
+                    logger.warning(f"Empty response generated for cross-bot message from {other_bot_name}")
+                    return
+                
+                # Discord has a 2000 character limit for messages
+                if len(response) > 2000:
+                    response = response[:1997] + "..."
+                
                 # Send response as a reply
                 sent_message = await message.reply(response, mention_author=True)
                 

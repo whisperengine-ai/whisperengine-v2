@@ -67,6 +67,7 @@ RULES:
 - If the question cannot be answered by the schema (e.g. asking for chat history, weather, time), return exactly: RETURN "NO_ANSWER"
 - Do NOT use UNION queries. Instead, use a single MATCH with OR conditions or multiple patterns separated by commas.
 - NEVER respond with a conversational message. Only output Cypher or RETURN "NO_ANSWER".
+- NEVER use CREATE or MERGE - this is a READ-ONLY query function. Only use MATCH/OPTIONAL MATCH/RETURN.
 
 {privacy_instructions}
 """),
@@ -88,11 +89,7 @@ EXAMPLES:
    Query: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity {{name: 'Pizza'}}) WHERE r.predicate = 'LIKES' DELETE r
 
 2. User: "Actually, I live in Seattle now, not Portland."
-   Query: 
-   MATCH (u:User {{id: $user_id}})-[r:FACT {{predicate: 'LIVES_IN'}}]->(o:Entity) DELETE r
-   WITH u
-   MERGE (new_loc:Entity {{name: 'Seattle'}})
-   MERGE (u)-[:FACT {{predicate: 'LIVES_IN', confidence: 1.0}}]->(new_loc)
+   Query: MATCH (u:User {{id: $user_id}})-[r:FACT {{predicate: 'LIVES_IN'}}]->(o:Entity) DELETE r WITH u MERGE (new_loc:Entity {{name: 'Seattle'}}) MERGE (u)-[:FACT {{predicate: 'LIVES_IN', confidence: 1.0}}]->(new_loc)
 
 3. User: "Forget that I own a cat."
    Query: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) WHERE r.predicate = 'OWNS' AND o.name CONTAINS 'cat' DELETE r
@@ -101,6 +98,8 @@ RULES:
 - Use $user_id parameter.
 - Return ONLY the raw Cypher query. No markdown.
 - Be careful with DELETE operations.
+- CRITICAL: When using MERGE after DELETE, you MUST use WITH to carry forward variables.
+- Always keep DELETE...WITH...MERGE patterns on a single logical flow.
 """),
             ("human", "{correction}")
         ])
@@ -223,6 +222,12 @@ PRIVACY RESTRICTION ENABLED:
                     logger.debug(f"LLM returned conversational response instead of Cypher (question: {question[:50]}...)")
                 else:
                     logger.warning(f"LLM generated invalid Cypher: {cypher_query[:200]}")
+                return "No relevant information found in the graph (out of scope)."
+            
+            # SAFETY: Reject write operations in read-only query_graph
+            write_keywords = ["CREATE", "MERGE", "DELETE", "SET ", "REMOVE"]
+            if any(keyword in cypher_upper for keyword in write_keywords):
+                logger.warning(f"LLM generated write query in read-only context, rejecting: {cypher_query[:100]}")
                 return "No relevant information found in the graph (out of scope)."
 
             logger.info(f"Generated Cypher: {cypher_query}")

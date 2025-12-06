@@ -381,7 +381,12 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
             if guild_id:
                 discord_bot = get_discord_bot()
                 if discord_bot:
-                    guild = discord_bot.get_guild(int(guild_id))
+                    try:
+                        guild_id_int = int(guild_id)
+                    except (ValueError, TypeError):
+                        logger.debug(f"Invalid guild_id format: {guild_id}, skipping guild filtering")
+                        guild_id_int = None
+                    guild = discord_bot.get_guild(guild_id_int) if guild_id_int else None
                     if guild:
                         for bot_name, discord_id in known_bots.items():
                             member = guild.get_member(discord_id)

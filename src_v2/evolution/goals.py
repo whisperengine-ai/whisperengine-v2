@@ -193,7 +193,8 @@ class GoalManager:
             """, character_name, goal_slug)
             
             if not goal_id:
-                logger.warning(f"Goal '{goal_slug}' not found for {character_name}")
+                # Debug level: LLM may hallucinate goal slugs that don't exist - this is expected
+                logger.debug(f"Goal '{goal_slug}' not found for {character_name} (LLM may have hallucinated slug)")
                 return
 
             # Upsert progress
