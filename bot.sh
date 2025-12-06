@@ -13,6 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 INFRA_SERVICES="postgres qdrant neo4j influxdb redis"
+BOT_SERVICES="elena ryan dotty aria dream jake sophia marcus nottaylor gabriel aethys aetheris"
 
 show_help() {
     echo -e "${BLUE}WhisperEngine v2 - Bot Management${NC}"
@@ -23,9 +24,9 @@ show_help() {
     echo "  infra [up|down]       Start or stop infrastructure services"
     echo "  up [bot|all]          Start infrastructure + bot(s) (builds images)"
     echo "  down [bot|all]        Stop and remove containers"
-    echo "  start [bot|all]       Start existing containers (no build)"
-    echo "  stop [bot|all]        Stop running containers"
-    echo "  restart [bot|all]     Restart containers"
+    echo "  start [bot|all|bots]  Start existing containers (no build)"
+    echo "  stop [bot|all|bots]   Stop running containers"
+    echo "  restart [bot|all|bots] Restart containers"
     echo "  logs [bot|all]        Show logs"
     echo "  ps                    Show status of all containers"
     echo "  build                 Rebuild bot images"
@@ -38,6 +39,7 @@ show_help() {
     echo "  ./bot.sh up all       # Start everything"
     echo "  ./bot.sh stop elena   # Stop Elena"
     echo "  ./bot.sh start elena  # Start Elena"
+    echo "  ./bot.sh restart bots # Restart all bots (no infra/workers)"
     echo "  ./bot.sh logs elena   # Watch Elena's logs"
     echo "  ./bot.sh restart elena # Restart Elena"
     echo "  ./bot.sh backup       # Backup all databases"
@@ -104,12 +106,13 @@ case "$1" in
     
     stop)
         TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory worker-social"; fi
+        if [ "$TARGET" = "bots" ]; then TARGET="$BOT_SERVICES"; fi
 
         if [ -z "$TARGET" ]; then
-            echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh stop [bot|all]"
-            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
+            echo -e "${RED}Error: Specify bot name, 'bots', or 'all'${NC}"
+            echo "Usage: ./bot.sh stop [bot|all|bots]"
+            echo "Bots: $BOT_SERVICES"
             exit 1
         fi
 
@@ -125,12 +128,13 @@ case "$1" in
 
     start)
         TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory worker-social"; fi
+        if [ "$TARGET" = "bots" ]; then TARGET="$BOT_SERVICES"; fi
 
         if [ -z "$TARGET" ]; then
-            echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh start [bot|all]"
-            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
+            echo -e "${RED}Error: Specify bot name, 'bots', or 'all'${NC}"
+            echo "Usage: ./bot.sh start [bot|all|bots]"
+            echo "Bots: $BOT_SERVICES"
             exit 1
         fi
 
@@ -149,12 +153,13 @@ case "$1" in
     
     restart)
         TARGET="$2"
-        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory"; fi
+        if [ "$TARGET" = "worker" ]; then TARGET="worker-cognition worker-action worker-sensory worker-social"; fi
+        if [ "$TARGET" = "bots" ]; then TARGET="$BOT_SERVICES"; fi
 
         if [ -z "$TARGET" ]; then
-            echo -e "${RED}Error: Specify bot name or 'all'${NC}"
-            echo "Usage: ./bot.sh restart [bot|all]"
-            echo "Bots: elena, ryan, dotty, aria, dream, jake, sophia, marcus, nottaylor"
+            echo -e "${RED}Error: Specify bot name, 'bots', or 'all'${NC}"
+            echo "Usage: ./bot.sh restart [bot|all|bots]"
+            echo "Bots: $BOT_SERVICES"
             exit 1
         fi
 
