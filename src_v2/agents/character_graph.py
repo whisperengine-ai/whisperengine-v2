@@ -27,7 +27,7 @@ from src_v2.tools.memory_tools import (
     ReadFullMemoryTool
 )
 from src_v2.tools.document_tools import ReadDocumentTool
-from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
+from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool, GetSiblingBotInfoTool
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.math_tools import CalculatorTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
@@ -75,6 +75,7 @@ You have access to tools that let you look things up. Use them when:
 - The user asks about your relationship or how close you are
 - You want to find common ground or shared interests
 - The user asks what they or someone else just said in the channel
+- The user asks about another bot (sibling AI) in the WhisperEngine family
 
 Available tools:
 - search_archived_summaries: Past conversations and topics (days/weeks ago)
@@ -86,8 +87,9 @@ Available tools:
 - get_character_evolution: Check your relationship level and trust
 - check_planet_context: See the current server/planet context
 - get_universe_overview: View all planets and channels across the universe
+- get_sibling_bot_info: Learn about other bots (Dotty, Elena, etc.) - use when someone mentions a bot name
 - search_channel_messages: Find recent messages in the channel by keyword
-- search_user_messages: Find what a specific person said recently
+- search_user_messages: Find what a specific HUMAN said recently (not for bots)
 - get_message_context: Get context around a specific message (when replying to old messages)
 - get_recent_messages: Get latest channel messages without filtering (for "catch me up")
 - calculator: Perform mathematical calculations
@@ -102,7 +104,9 @@ Don't use tools for:
 - Questions you can answer from general knowledge
 - When the conversation is flowing naturally
 
-IMPORTANT: If the user asks about the universe, planets, servers, channels, or regions - USE the appropriate tool (get_universe_overview, check_planet_context). Don't guess or give vague responses.
+IMPORTANT: 
+- If the user asks about the universe, planets, servers, channels, or regions - USE the appropriate tool (get_universe_overview, check_planet_context). Don't guess or give vague responses.
+- If the user mentions another bot by name (Dotty, Elena, Aria, etc.) or asks "do you know X?" - USE get_sibling_bot_info to check your relationship with that bot.
 
 If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
 """
@@ -222,6 +226,7 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             # Context Tools
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
+            GetSiblingBotInfoTool(character_name=bot_name),
             
             # Math Tool
             CalculatorTool(),

@@ -19,7 +19,7 @@ from src_v2.tools.memory_tools import (
 )
 from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
-from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool
+from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool, GetSiblingBotInfoTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
 from src_v2.tools.insight_tools import (
     AnalyzePatternsTool,
@@ -118,6 +118,7 @@ class ReflectiveGraphAgent:
             # Context Tools
             CheckPlanetContextTool(guild_id=guild_id),
             GetUniverseOverviewTool(),
+            GetSiblingBotInfoTool(character_name=character_name),
             
             # Math Tool
             CalculatorTool(),
@@ -170,8 +171,8 @@ class ReflectiveGraphAgent:
             "2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)",
             "3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution",
             "4. Introspection: analyze_conversation_patterns, detect_recurring_themes",
-            "5. Context: check_planet_context (current server), get_universe_overview (all planets/channels)",
-            "6. Discord Search: search_channel_messages, search_user_messages, get_message_context, get_recent_messages",
+            "5. Context: check_planet_context (current server), get_universe_overview (all planets/channels), get_sibling_bot_info (other bots in the family)",
+            "6. Discord Search: search_channel_messages, search_user_messages (humans only), get_message_context, get_recent_messages",
             "7. Utility: calculator (math calculations)" + (", web_search (internet search)" if settings.ENABLE_WEB_SEARCH else ""),
         ]
         
@@ -209,10 +210,11 @@ class ReflectiveGraphAgent:
             # Context
             ("check_planet_context", "Get context about the current server/planet."),
             ("get_universe_overview", "Get overview of all planets/servers in the universe."),
+            ("get_sibling_bot_info", "Get info about sibling bots (Dotty, Elena, Aria, etc.). Use when: user mentions another bot's name, asks 'do you know [bot]?', shares a document about a bot, or asks about your AI friends/siblings."),
             
             # Discord search
             ("search_channel_messages", "Search recent channel messages by keyword. Use for 'what did I just say?' or 'what happened earlier?'."),
-            ("search_user_messages", "Search messages from a specific person. Use for 'what did [name] say?'."),
+            ("search_user_messages", "Search messages from a specific HUMAN. Use for 'what did [human name] say?'. NOT for bots - use get_sibling_bot_info instead."),
             ("get_message_context", "Get surrounding context for a specific message."),
             ("get_recent_messages", "Get latest messages. Use for 'catch me up' or 'what's happening?'."),
             
