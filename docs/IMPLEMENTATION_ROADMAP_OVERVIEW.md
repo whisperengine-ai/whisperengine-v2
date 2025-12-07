@@ -1,9 +1,9 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 3.1  
+**Document Version:** 3.2  
 **Created:** November 24, 2025  
-**Last Updated:** December 4, 2025 (E28, E29 complete — Phase 1 Complete)
-**Status:** Phase 1 Complete
+**Last Updated:** December 7, 2025 (Added S6, S7 proposed work)
+**Status:** Phase 1 Complete, Phase 2 Proposed
 
 ### Status Legend
 | Icon | Meaning |
@@ -100,7 +100,28 @@ All proposed roadmap items have been implemented. The system is feature-complete
 - **Safety & Observability** (Content safety, classifier metrics, InfluxDB analytics)
 - **User Transparency** (User-facing graph, recommendations)
 
-**Next Phase Planning:** No active proposed work. Consider:
+---
+
+### 📋 Proposed Work (Phase 2)
+
+| Priority | Phase | Description | Time | Deps | Spec |
+|----------|-------|-------------|------|------|------|
+| 🟡 Medium | **S6** | **Session Timeout Processing** | **2-3 hours** | arq ✅ | [SPEC-S06](./spec/SPEC-S06-SHORT_SESSION_PROCESSING.md) |
+| 🔴 High | **S7** | **Redis TTL Reminders** | **3-4 hours** | Redis ✅ | [SPEC-S07](./spec/SPEC-S07-REDIS_TTL_REMINDERS.md) |
+
+**S6: Session Timeout Processing**
+- Problem: Short conversations (<20 messages) that timeout are never processed for goal analysis, knowledge extraction
+- Solution: Cron job every 5 min closes stale sessions and triggers batch processing
+- Impact: 100% of sessions processed (vs ~60% today)
+
+**S7: Redis TTL Reminders**
+- Problem: Reminder delivery has up to 60-second jitter (cron polling)
+- Solution: Redis TTL with keyspace notifications for precise delivery
+- Impact: Sub-second precision for user-facing reminders
+
+---
+
+**Next Phase Planning:** Additional items to consider:
 - Production deployment and stability monitoring
 - User feedback collection
 - New feature ideation based on emergent behavior observations

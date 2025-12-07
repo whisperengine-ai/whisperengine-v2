@@ -39,6 +39,8 @@
 | [SPEC-S03](./SPEC-S03-LLM_SENSITIVITY_DETECTION.md) | S3 | LLM Sensitivity Detection | ✅ Complete | Universe event filtering |
 | [SPEC-S04](./SPEC-S04-PROACTIVE_TIMEZONE_AWARENESS.md) | S4 | Proactive Timezone Awareness | ✅ Complete | Time-aware messages |
 | [SPEC-S05](./SPEC-S05-MANIPULATION_TIMEOUT.md) | S5 | Manipulation Timeout | ✅ Complete | Jailbreak protection |
+| [SPEC-S06](./SPEC-S06-SHORT_SESSION_PROCESSING.md) | S6 | Session Timeout Processing | 📋 Proposed | Cron-based stale session processing |
+| [SPEC-S07](./SPEC-S07-REDIS_TTL_REMINDERS.md) | S7 | Redis TTL Reminders | 📋 Proposed | Precise reminder delivery |
 
 ### Deferred/Future Specifications
 
