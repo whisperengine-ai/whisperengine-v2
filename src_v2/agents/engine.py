@@ -1166,11 +1166,8 @@ Using the information above, formulate a final response to the user in my authen
                             logger.debug(f"Encoded image to base64 for {settings.LLM_PROVIDER}")
                         except Exception as e:
                             logger.error(f"Failed to download/encode image {img_url}: {e}")
-                            # Fallback to URL anyway
-                            input_content.append({
-                                "type": "image_url",
-                                "image_url": {"url": img_url}
-                            })
+                            # Don't fallback to raw Discord CDN URL - it won't work for external LLMs
+                            input_content.append({"type": "text", "text": "[An image was shared but could not be processed]"})
                     else:
                         # Use URL directly
                         input_content.append({

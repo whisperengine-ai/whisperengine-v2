@@ -356,8 +356,9 @@ class MasterGraphAgent:
                             })
                         except Exception as e:
                             logger.error(f"Failed to download/encode image {img_url}: {e}")
-                            # Fallback to URL (might still fail, but worth trying)
-                            content.append({"type": "image_url", "image_url": {"url": img_url}})
+                            # Don't fallback to raw Discord CDN URL - it won't work for external LLMs
+                            # Instead, add a text note so the LLM knows an image was present
+                            content.append({"type": "text", "text": "[An image was shared but could not be processed]"})
                     else:
                         # Provider accepts direct URLs and URL doesn't require base64
                         content.append({"type": "image_url", "image_url": {"url": img_url}})

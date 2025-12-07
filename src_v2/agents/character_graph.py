@@ -181,7 +181,8 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
                         })
                     except Exception as e:
                         logger.error(f"Failed to download/encode image {img_url}: {e}")
-                        content.append({"type": "image_url", "image_url": {"url": img_url}})
+                        # Don't fallback to raw Discord CDN URL - it won't work for external LLMs
+                        content.append({"type": "text", "text": "[An image was shared but could not be processed]"})
                 else:
                     content.append({"type": "image_url", "image_url": {"url": img_url}})
         

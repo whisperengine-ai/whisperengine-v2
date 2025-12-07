@@ -11,14 +11,15 @@ class MathInput(BaseModel):
 class CalculatorTool(BaseTool):
     name: str = "calculator"
     description: str = (
-        "A comprehensive math tool powered by Python's SymPy library. "
-        "Use this for ANY mathematical task including:\n"
-        "- Basic Arithmetic: 2 + 2, 5 * 10^3\n"
+        "A math calculator for NUMERIC computations only. Use this for:\n"
+        "- Arithmetic: 2 + 2, 5 * 10^3, 123.45 * 67\n"
         "- Algebra: Solving equations (e.g., 'solve x^2 - 4 = 0')\n"
         "- Calculus: Derivatives ('diff(sin(x))'), Integrals ('integrate(x**2)')\n"
-        "- Geometry & Trigonometry: sin(pi/4), degrees(atan(0.5))\n"
-        "- Number Theory: isprime(17), factor(100)\n"
-        "Input should be a clear mathematical query or Python expression."
+        "- Trigonometry: sin(pi/4), degrees(atan(0.5))\n"
+        "- Number Theory: isprime(17), factor(100)\n\n"
+        "DO NOT use for: astrology, birth charts, horoscopes, personality analysis, "
+        "star signs, or any non-mathematical lookups. Those require web_search instead.\n"
+        "Input must be a clear mathematical expression or equation."
     )
     args_schema: Type[BaseModel] = MathInput
 
