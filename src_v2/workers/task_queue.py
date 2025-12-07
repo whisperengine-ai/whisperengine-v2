@@ -269,7 +269,7 @@ class TaskQueue:
         
         return await self.enqueue(
             "run_batch_preference_extraction",
-            _queue_name=self.QUEUE_SENSORY,
+            _queue_name=self.QUEUE_COGNITION,
             _job_id=job_id,
             user_id=user_id,
             messages=messages,
@@ -306,7 +306,7 @@ class TaskQueue:
         
         return await self.enqueue(
             "run_batch_goal_analysis",
-            _queue_name=self.QUEUE_SENSORY,
+            _queue_name=self.QUEUE_COGNITION,
             _job_id=job_id,
             user_id=user_id,
             messages=messages,
@@ -432,7 +432,7 @@ class TaskQueue:
         
         return await self.enqueue(
             "run_batch_knowledge_extraction",
-            _queue_name=self.QUEUE_SENSORY,
+            _queue_name=self.QUEUE_COGNITION,
             _job_id=job_id,
             user_id=user_id,
             messages=messages,
