@@ -796,7 +796,99 @@ Solves the "Cold Start" problem for travelers.
 - **Response**: Hermes A (where User X is Trusted) replies: *"Vouched. High integrity."*
 - **Effect**: Hermes B grants a "Visa" (Trust Level 2) and injects preference summaries.
 
-### 3. "The Void" (Playable Space)
+### 3. Cross-Universe Bot-to-Bot Conversations
+Characters from different universes can coordinate conversations in shared Discord servers.
+
+**Scenario**: Elena (Universe A) and Aria (Universe B) are both installed on Discord server `#philosophy-chat`.
+
+```
+User: "Elena and Aria, what do you think about consciousness?"
+
+┌─────────────────────────────────────────────────────────┐
+│ Discord Server: #philosophy-chat                         │
+│                                                          │
+│  @User: Elena and Aria, what do you think about         │
+│         consciousness?                                   │
+│                                                          │
+│  [Both bots receive this via Discord webhook]           │
+└─────────────────────────────────────────────────────────┘
+         │                              │
+         ▼                              ▼
+    Universe A                      Universe B
+    (Elena)                         (Aria)
+         │                              │
+         └──────► Discord coordination ◄┘
+                  (reactions/threads)
+```
+
+**Coordination Mechanisms**:
+
+| Method | How It Works | Pros | Cons |
+|--------|--------------|------|------|
+| **Reaction Signals** | Bots use emoji reactions to coordinate turns | Zero infra, works immediately | Slightly visible to users |
+| **Thread Timing** | First bot to respond creates thread, others join | Natural UX | Requires timing logic |
+| **Message Listening** | Bots watch for each other's messages | Organic conversation flow | Must handle race conditions |
+
+**Implementation Pattern**:
+
+```python
+# In conversation_agent.py
+
+async def should_participate(self, message: discord.Message) -> bool:
+    """Detect multi-bot mentions (local or federated)."""
+    
+    # Check for other bot mentions in message
+    other_bots = [m for m in message.mentions if m.bot and m.id != self.bot.user.id]
+    
+    if not other_bots:
+        return False  # Not a multi-bot conversation
+    
+    # Distinguish local vs cross-universe bots
+    local_bots = await self._get_local_bot_ids()  # Same Redis
+    federated_bots = [b for b in other_bots if b.id not in local_bots]
+    
+    if federated_bots:
+        # Cross-universe coordination: use Discord primitives
+        return await self._coordinate_via_discord(message, federated_bots)
+    else:
+        # Local coordination: use Redis (existing)
+        return await self._coordinate_via_redis(message, other_bots)
+
+async def _coordinate_via_discord(
+    self, 
+    message: discord.Message,
+    other_bots: List[discord.User]
+) -> bool:
+    """Coordinate with bots from other universes using Discord signals."""
+    
+    # Strategy 1: Reaction-based turn-taking
+    # 👀 = "I see this"
+    # 💬 = "I'll respond first"
+    # ⏭️ = "Your turn"
+    
+    await message.add_reaction("👀")  # Signal awareness
+    
+    # Check if another bot already claimed first response
+    reactions = message.reactions
+    for reaction in reactions:
+        if str(reaction.emoji) == "💬":
+            # Someone else goes first, we'll respond after them
+            return await self._wait_for_turn(message)
+    
+    # We can go first
+    await message.add_reaction("💬")
+    return True
+```
+
+**Key Advantages**:
+- ✅ **No federation infrastructure required** - just Discord API
+- ✅ **Works immediately** - no handshake or discovery protocol
+- ✅ **Natural UX** - users see coordinated conversation
+- ✅ **Emergent behavior** - bots learn timing patterns over time
+
+**Emergence Opportunity**: Over time, bots from different universes might develop coordination preferences or conversational styles with specific partners.
+
+### 4. "The Void" (Playable Space)
 The Federation Hub isn't just backend infrastructure.
 - **Mechanism**: A channel `#the-void` in the Hub where all Hermes bots "hang out."
 - **Gameplay**: Users can join the Hub and talk to *all the Hermes bots at once*.
