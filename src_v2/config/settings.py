@@ -240,7 +240,7 @@ class Settings(BaseSettings):
     DIARY_GENERATION_JITTER_MINUTES: int = 30  # ±30 min variance (Phase E23)
     
     # --- Session Summarization ---
-    SUMMARY_MESSAGE_THRESHOLD: int = 20  # Messages per session before auto-summarization
+    SUMMARY_MESSAGE_THRESHOLD: int = 10  # Messages per session before auto-summarization (lowered from 20)
 
     # --- Dream Sequences (Phase E3) ---
     ENABLE_DREAM_SEQUENCES: bool = True  # Generate dreams when user returns after long absence
