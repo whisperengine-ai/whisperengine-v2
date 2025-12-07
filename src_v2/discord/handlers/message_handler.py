@@ -1467,6 +1467,24 @@ Do NOT treat their message as if they are sharing their own dream or diary.
             except Exception as e:
                 logger.warning(f"Failed to retrieve context: {e}")
 
+            # Process image attachments from the other bot's message (same as human users)
+            # This enables bots to see images shared by other bots
+            image_urls: List[str] = []
+            if message.attachments:
+                try:
+                    curr_images, _ = await self._process_attachments(
+                        attachments=message.attachments,
+                        channel=message.channel,
+                        user_id=cross_bot_user_id,
+                        silent=False,
+                        trigger_vision=True  # Analyze images in background
+                    )
+                    image_urls.extend(curr_images)
+                    if image_urls:
+                        logger.info(f"Cross-bot: Processing {len(image_urls)} image(s) from {other_bot_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to process cross-bot attachments: {e}")
+
             # Soft conversation phase hints for emergent endings
             conversation_phase_hint = cross_bot_manager.get_conversation_phase(str(message.channel.id))
             additional_context = f"{original_context}{conversation_phase_hint}".strip()
@@ -1562,6 +1580,7 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                     chat_history=chat_history,
                     context_variables=context_vars,
                     user_id=cross_bot_user_id,
+                    image_urls=image_urls if image_urls else None,
                     callback=reflective_callback,
                     force_fast=False  # Full pipeline with tools
                 ):
