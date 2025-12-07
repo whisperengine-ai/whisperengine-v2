@@ -31,6 +31,54 @@ def smart_truncate(text: str, max_length: int = 500) -> str:
     return text[:half] + " ... " + text[-half:]
 
 
+def truncate_conversation_for_analysis(text: str, max_length: int = 4000) -> str:
+    """
+    Truncates conversation text while preserving message boundaries.
+    
+    Unlike smart_truncate which cuts the middle, this function:
+    1. Keeps the FULL conversation if it fits
+    2. Otherwise, keeps the MOST RECENT messages (end of conversation)
+       because goal completion often happens later in conversations
+    3. Preserves complete messages (doesn't cut mid-message)
+    
+    This is important for goal analysis because:
+    - Users often state their name after initial greetings (not at the very start)
+    - Goal completion signals are often at the end of conversations
+    - Cutting the middle loses critical context
+    
+    Args:
+        text: Conversation text with "User: ..." / "AI: ..." format
+        max_length: Maximum total length (default 4000 chars, ~1000 tokens)
+        
+    Returns:
+        Truncated text with "[earlier messages omitted]" prefix if needed
+    """
+    if len(text) <= max_length:
+        return text
+    
+    # Split by message boundaries
+    lines = text.split('\n')
+    
+    # Build from the end, keeping most recent messages
+    result_lines = []
+    current_length = 0
+    prefix = "[earlier messages omitted]\n"
+    available_length = max_length - len(prefix)
+    
+    for line in reversed(lines):
+        line_length = len(line) + 1  # +1 for newline
+        if current_length + line_length <= available_length:
+            result_lines.insert(0, line)
+            current_length += line_length
+        else:
+            break
+    
+    if len(result_lines) < len(lines):
+        return prefix + '\n'.join(result_lines)
+    
+    return '\n'.join(result_lines)
+
+
 class ValidationError(Exception):
     """Custom exception for validation failures with user-friendly messages."""
     def __init__(self, message: str, user_message: str):

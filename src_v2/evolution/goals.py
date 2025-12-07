@@ -7,7 +7,7 @@ from src_v2.core.database import db_manager
 from src_v2.agents.llm_factory import create_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from src_v2.utils.validation import smart_truncate
+from src_v2.utils.validation import truncate_conversation_for_analysis
 
 
 # Goal source hierarchy: Core > User > Inferred > Strategic
@@ -213,8 +213,9 @@ class GoalManager:
             logger.info(f"Updated goal '{goal_slug}' for user {user_id}: {status} ({progress*100}%)")
 
 class GoalAnalyzer:
-    # Max conversation length to send (tokens are ~4 chars)
-    MAX_CONVERSATION_CHARS = 2000
+    # Max conversation length to send (4000 chars ≈ 1000 tokens)
+    # Increased from 2000 to capture goal completion signals in longer conversations
+    MAX_CONVERSATION_CHARS = 4000
     # Retry settings
     MAX_RETRIES = 2
     RETRY_DELAY_BASE = 2  # seconds, doubles each retry
@@ -234,17 +235,24 @@ class GoalAnalyzer:
         self.llm = create_llm(temperature=0.0, mode="utility")
         self.parser = JsonOutputParser()
         
-        # Simplified prompt for faster inference
-        self.prompt = ChatPromptTemplate.from_template("""Evaluate if this conversation advanced these goals. Be concise.
+        # Goal analysis prompt - clear instructions for completion detection
+        self.prompt = ChatPromptTemplate.from_template("""Analyze this conversation to determine if any goals were completed or progressed.
 
-GOALS:
+GOALS (with current status):
 {goals_context}
 
 CONVERSATION:
 {conversation_text}
 
-Return JSON:
-{{"updates": [{{"slug": "goal-slug", "status": "completed|in_progress|no_change", "progress_score": 0.0-1.0, "reasoning": "brief reason"}}]}}""")
+INSTRUCTIONS:
+- Mark "completed" if the success criteria was MET at any point in this conversation
+- Mark "in_progress" if there's partial progress (set progress_score 0.1-0.9)
+- Mark "no_change" ONLY if the goal was not addressed at all
+- For "learn_name": Mark COMPLETED if the user stated their name (e.g., "I'm John", "My name is Sarah", "call me Mike", "the name's Alex")
+- Include extracted_data when you learn concrete info (name, interests, preferences)
+
+Return JSON with an update for EACH goal:
+{{"updates": [{{"slug": "goal-slug", "status": "completed|in_progress|no_change", "progress_score": 0.0-1.0, "reasoning": "brief reason", "extracted_data": "value if applicable"}}]}}""")
         
         self.chain = self.prompt | self.llm | self.parser
         
@@ -259,8 +267,9 @@ Return JSON:
         """Process a single batch with retry logic and timeout."""
         import asyncio
         
+        # Include current status and progress so LLM knows where each goal stands
         goals_context = "\n".join(
-            f"- {g['slug']}: {g['description']} (Criteria: {g['success_criteria']})"
+            f"- {g['slug']}: {g['description']} (Criteria: {g['success_criteria']}) [Current: {g.get('status', 'not_started')}, {int(g.get('progress', 0) * 100)}%]"
             for g in batch
         )
         
@@ -322,8 +331,12 @@ Return JSON:
             
             stats["total_goals"] = len(active_goals)
             
-            # Truncate conversation to avoid massive prompts
-            truncated_text = smart_truncate(conversation_text, max_length=self.MAX_CONVERSATION_CHARS)
+            # Truncate conversation - use recency-based truncation to preserve
+            # goal completion signals (like user stating their name)
+            truncated_text = truncate_conversation_for_analysis(
+                conversation_text, 
+                max_length=self.MAX_CONVERSATION_CHARS
+            )
 
             # 2. Create batches
             batches = [
