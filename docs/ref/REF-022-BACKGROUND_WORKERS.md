@@ -1,7 +1,7 @@
 # REF-022: Background Workers & Task Queue
 
 **Status:** Active  
-**Last Updated:** December 5, 2025  
+**Last Updated:** December 6, 2025  
 **Author:** WhisperEngine Team
 
 ---
@@ -83,11 +83,13 @@ WhisperEngine uses **arq** (Async Redis Queue) for background task processing. T
 
 | Task | Trigger | What It Does |
 |------|---------|--------------|
-| `run_knowledge_extraction` | Every user message | Extracts facts to Neo4j |
-| `run_preference_extraction` | Every user message | Detects style preferences ("be concise") |
-| `run_goal_analysis` | After each response | Checks if interaction advances goals |
+| `run_batch_knowledge_extraction` | Session end (batch) | Extracts facts from entire session to Neo4j |
+| `run_batch_preference_extraction` | Session end (batch) | Detects style preferences from full conversation |
+| `run_batch_goal_analysis` | Session end (batch) | Checks if session advanced any goals |
 | `run_relationship_update` | After each response | Updates familiarity score in universe |
 | `run_graph_enrichment` | Session threshold | Discovers implicit graph edges |
+
+> **Note:** Knowledge, preference, and goal tasks are now **session-level batch operations** for better context and reduced LLM costs. Per-message methods (`run_knowledge_extraction`, `run_preference_extraction`, `run_goal_analysis`) are deprecated.
 
 ### Action Queue (Outbound Effects)
 
@@ -145,14 +147,20 @@ await task_queue.enqueue("run_knowledge_extraction",
 ### Convenience Methods
 
 ```python
-# These handle queue routing and validation automatically:
+# Session-level batch processing (preferred):
 await task_queue.enqueue_summarization(user_id, bot_name, session_id, messages)
+await task_queue.enqueue_batch_knowledge_extraction(user_id, messages, bot_name, session_id)
+await task_queue.enqueue_batch_goal_analysis(user_id, messages, bot_name, session_id)
+await task_queue.enqueue_batch_preference_extraction(user_id, messages, bot_name, session_id)
 await task_queue.enqueue_insight_analysis(user_id, bot_name, trigger="volume")
-await task_queue.enqueue_knowledge_extraction(user_id, message, bot_name)
-await task_queue.enqueue_goal_analysis(user_id, bot_name, interaction_text)
 await task_queue.enqueue_gossip(event)
 await task_queue.enqueue_graph_enrichment(session_id, user_id, channel_id, bot_name)
+
+# Per-response lightweight operations:
+await task_queue.enqueue_relationship_update(bot_name, user_id, guild_id)
 ```
+
+> **Important:** The batch methods receive a full `messages` list and process the entire session in one LLM call, significantly reducing costs compared to per-message processing.
 
 ---
 
@@ -174,13 +182,25 @@ arq src_v2.workers.worker.WorkerSettings
 # src_v2/workers/worker.py
 class WorkerSettings:
     functions = [
+        # Session-level batch processing
         run_summarization,
+        run_batch_knowledge_extraction,
+        run_batch_goal_analysis,
+        run_batch_preference_extraction,
         run_insight_analysis,
         run_reflection,
-        run_knowledge_extraction,
-        run_goal_analysis,
+        run_graph_enrichment,
+        # Per-response lightweight tasks
+        run_relationship_update,
+        run_universe_observation,
+        # Scheduled/agentic tasks
         run_gossip_dispatch,
-        # ... all task functions
+        run_diary_generation,
+        run_dream_generation,
+        # Deprecated (kept for backward compatibility)
+        run_knowledge_extraction,   # Use batch version
+        run_goal_analysis,          # Use batch version
+        run_preference_extraction,  # Use batch version
     ]
     
     redis_settings = TaskQueue.get_redis_settings()
@@ -225,26 +245,41 @@ User sends 20th message in session
 └─────────────────────────────────────┘
 ```
 
-### Knowledge Extraction Flow
+### Knowledge Extraction Flow (Batch)
 
 ```
-User message: "I work at Google as an engineer"
+Session ends (20+ messages OR cross-bot chain completes)
          │
          ▼
 ┌─────────────────────────────────────┐
-│  Background learning pipeline       │
-│  - Enqueue to SENSORY queue (fast)  │
+│  enqueue_post_conversation_tasks()  │
+│  - Collects ALL session messages    │
+│  - Enqueues batch extraction        │
+└─────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────┐
+│  Redis: arq:sensory queue           │
+│  Job: run_batch_knowledge_extraction│
+│  Payload: messages=[{role, content}]│
 └─────────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────┐
 │  Worker picks up job                │
-│  1. LLM extracts facts              │
-│  2. Creates Neo4j nodes/edges:      │
+│  1. Combines all human messages     │
+│  2. Single LLM call for full context│
+│  3. Creates Neo4j nodes/edges:      │
 │     (User) -[:WORKS_AT]-> (Google)  │
 │     (User) -[:HAS_ROLE]-> (Engineer)│
 └─────────────────────────────────────┘
 ```
+
+**Benefits of batch processing:**
+- LLM sees full conversation context
+- One LLM call per session instead of N calls per message
+- Reduces redundant/fragmented facts
+- ~80% cost reduction compared to per-message
 
 ---
 
@@ -276,15 +311,18 @@ Some tasks run on a schedule rather than being triggered by events:
 | File | Tasks |
 |------|-------|
 | `summary_tasks.py` | `run_summarization` |
-| `insight_tasks.py` | `run_insight_analysis` |
-| `knowledge_tasks.py` | `run_knowledge_extraction` |
-| `analysis_tasks.py` | `run_reflection`, `run_goal_analysis` |
+| `insight_tasks.py` | `run_insight_analysis`, `run_reflection` |
+| `batch_knowledge_tasks.py` | `run_batch_knowledge_extraction` |
+| `batch_goal_tasks.py` | `run_batch_goal_analysis` |
+| `batch_preference_tasks.py` | `run_batch_preference_extraction` |
+| `knowledge_tasks.py` | `run_knowledge_extraction` (deprecated) |
+| `analysis_tasks.py` | `run_goal_analysis` (deprecated), `run_preference_extraction` (deprecated) |
 | `diary_tasks.py` | `run_diary_generation` |
 | `dream_tasks.py` | `run_dream_generation` |
-| `social_tasks.py` | `run_gossip_dispatch`, `run_relationship_update` |
-| `enrichment_tasks.py` | `run_graph_enrichment` |
-| `action_tasks.py` | `run_image_generation`, `run_voice_generation` |
-| `posting_tasks.py` | `run_posting` |
+| `social_tasks.py` | `run_gossip_dispatch`, `run_relationship_update`, `run_universe_observation` |
+| `enrichment_tasks.py` | `run_graph_enrichment`, `run_batch_enrichment` |
+| `action_tasks.py` | `run_proactive_message` |
+| `posting_tasks.py` | `run_posting_agent` |
 
 ---
 
