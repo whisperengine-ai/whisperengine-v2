@@ -219,8 +219,8 @@ QUEUE_SOCIAL = "arq:social"        # Reserved for future cross-bot coordination
 | Queue | Worker | Tasks Routed |
 |-------|--------|--------------|
 | `arq:cognition` | worker-cognition (x2) | `run_insight_analysis`, `run_summarization`, `run_reflection`, `run_diary_generation`, `run_dream_generation`, `run_goal_strategist`, `run_drift_observation`, `run_graph_enrichment`, `run_batch_enrichment` |
-| `arq:action` | worker-action | `run_vision_analysis`, `run_posting_agent` |
-| `arq:sensory` | worker-sensory | `run_knowledge_extraction`, `run_preference_extraction`, `run_goal_analysis`, `run_universe_observation`, `run_relationship_update`, `run_gossip_dispatch` |
+| `arq:action` | worker-action | `run_posting_agent`, `run_proactive_message` |
+| `arq:sensory` | worker-sensory | `run_vision_analysis`, `run_knowledge_extraction`, `run_preference_extraction`, `run_goal_analysis`, `run_universe_observation`, `run_relationship_update`, `run_gossip_dispatch` |
 
 **Graph Metaphor:** The queue structure is an **event graph** where tasks are nodes and dependencies are edges. The arq worker traverses this graph, executing tasks in priority order.
 

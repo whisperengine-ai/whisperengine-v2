@@ -320,10 +320,10 @@ class TaskQueue:
         user_id: str,
         channel_id: str
     ) -> Optional[str]:
-        """Enqueue a vision analysis task (ACTION queue - outbound processing)."""
+        """Enqueue a vision analysis task (SENSORY queue - perceptual input processing)."""
         return await self.enqueue(
             "run_vision_analysis",
-            _queue_name=self.QUEUE_ACTION,
+            _queue_name=self.QUEUE_SENSORY,
             image_url=image_url,
             user_id=user_id,
             channel_id=channel_id
