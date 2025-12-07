@@ -2,6 +2,7 @@ import discord
 import asyncio
 import time
 import random
+import re
 from typing import List, Tuple, Optional, Any, Dict
 from datetime import datetime, timezone, timedelta
 from loguru import logger
@@ -544,6 +545,53 @@ class MessageHandler:
                 # Initialize attachment containers
                 image_urls: List[str] = []
                 processed_files: List[str] = []
+
+                # Handle Discord Message Links (Context Injection)
+                # Parse links like https://discord.com/channels/SERVER/CHANNEL/MESSAGE
+                discord_link_pattern = re.compile(
+                    r'https?://(?:ptb\.|canary\.)?discord(?:app)?\.com/channels/(\d+)/(\d+)/(\d+)'
+                )
+                link_matches = discord_link_pattern.findall(user_message)
+                
+                for server_id_str, channel_id_str, message_id_str in link_matches:
+                    try:
+                        # Only fetch if it's from the same channel (we have access)
+                        if channel_id_str == str(message.channel.id):
+                            linked_msg = await message.channel.fetch_message(int(message_id_str))
+                            if linked_msg and linked_msg.content:
+                                linked_author = linked_msg.author.display_name
+                                linked_content = smart_truncate(linked_msg.content, 500)
+                                
+                                # Inject context about the linked message
+                                user_message = f"[User shared a link to an earlier message from {linked_author}: \"{linked_content}\"]\n{user_message}"
+                                logger.info(f"Injected Discord message link context from message {message_id_str}")
+                                
+                                # Also process any images from the linked message
+                                if linked_msg.attachments:
+                                    for att in linked_msg.attachments:
+                                        if att.content_type and att.content_type.startswith("image/"):
+                                            image_urls.append(att.url)
+                                            logger.info(f"Included image from linked message: {att.url}")
+                        else:
+                            # Different channel - we might not have access, or it's in the same server
+                            # Try to fetch from the guild if we have access
+                            if message.guild:
+                                try:
+                                    linked_channel = message.guild.get_channel(int(channel_id_str))
+                                    if linked_channel and isinstance(linked_channel, discord.TextChannel):
+                                        linked_msg = await linked_channel.fetch_message(int(message_id_str))
+                                        if linked_msg and linked_msg.content:
+                                            linked_author = linked_msg.author.display_name
+                                            linked_content = smart_truncate(linked_msg.content, 500)
+                                            channel_name = linked_channel.name
+                                            user_message = f"[User shared a link to a message from #{channel_name} by {linked_author}: \"{linked_content}\"]\n{user_message}"
+                                            logger.info(f"Injected cross-channel Discord message link context from #{channel_name}")
+                                except (discord.Forbidden, discord.NotFound) as e:
+                                    logger.debug(f"Cannot access linked message in channel {channel_id_str}: {e}")
+                    except (discord.NotFound, discord.Forbidden) as e:
+                        logger.debug(f"Failed to fetch linked message {message_id_str}: {e}")
+                    except Exception as e:
+                        logger.warning(f"Error processing Discord message link: {e}")
 
                 # Handle Replies (Context Injection)
                 if message.reference:
