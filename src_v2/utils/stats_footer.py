@@ -96,7 +96,7 @@ class StatsFooter:
             # Relationship Line
             traits_text = f" [{', '.join(unlocked_traits[:2])}]" if unlocked_traits else ""
             lines.append(
-                f"💙 **Relationship**: {level_label} (Trust: {trust_score}/150{traits_text}) • {interaction_count} interactions"
+                f"💙 **Relationship**: {level_label} (Trust: {trust_score}/100{traits_text}) • {interaction_count} interactions"
             )
             
             # Goals Line (if any active)
@@ -149,7 +149,7 @@ class StatsFooter:
             level_label = relationship.get("level_label", "Stranger")
             
             return (
-                f"💙 {level_label} (Trust: {trust_score}/150) | "
+                f"💙 {level_label} (Trust: {trust_score}/100) | "
                 f"🧠 {memory_count} memories | "
                 f"⚡ {processing_time_ms:.0f}ms"
             )

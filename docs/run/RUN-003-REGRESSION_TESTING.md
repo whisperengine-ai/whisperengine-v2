@@ -144,7 +144,7 @@ python tests_v2/run_regression.py --cov
 
 | Bot | Port | Main Model | Temp | Reflective Model | Router | Status |
 |-----|------|------------|------|------------------|--------|--------|
-| elena | 8000 | anthropic/claude-3.5-haiku | 0.76 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Dev Primary |
+| elena | 8000 | anthropic/claude-3.5-haiku | 0.76 | anthropic/claude-3.5-haiku | gemini-flash-lite | Dev Primary |
 | ryan | 8001 | google/gemini-2.5-flash | 0.6 | google/gemini-2.5-pro | gemini-flash-lite | Test |
 | dotty | 8002 | anthropic/claude-3.5-haiku | 0.8 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Personal |
 | aria | 8003 | google/gemini-2.5-flash | 0.65 | google/gemini-2.5-pro | gemini-flash-lite | Test |
@@ -155,7 +155,7 @@ python tests_v2/run_regression.py --cov
 | nottaylor | 8008 | mistralai/mistral-small-3.2-24b-instruct | 0.85 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Production |
 | gabriel | 8009 | mistralai/mistral-small-3.2-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Personal |
 | aethys | 8010 | mistralai/mistral-small-3.2-24b-instruct | 0.8 | mistralai/mistral-medium-3.1 | gemini-flash-lite | Test |
-| aetheris | 8011 | anthropic/claude-3.5-haiku | 0.7 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Personal |
+| aetheris | 8011 | anthropic/claude-sonnet-4.5 | 0.7 | anthropic/claude-sonnet-4.5 | gemini-flash-lite | Personal |
 
 ### Model Coverage by Provider
 

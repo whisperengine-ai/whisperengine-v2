@@ -39,25 +39,23 @@ class BotConfig:
     """Configuration for a bot under test."""
     name: str
     port: int
-    main_model: str
-    reflective_model: str
     is_production: bool = False
 
 
-# All bot configurations (synced with actual .env.* files as of Dec 5, 2025)
+# All bot configurations
 BOT_CONFIGS = [
-    BotConfig("elena", 8000, "anthropic/claude-3.5-haiku", "anthropic/claude-sonnet-4.5"),
-    BotConfig("ryan", 8001, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
-    BotConfig("dotty", 8002, "anthropic/claude-3.5-haiku", "anthropic/claude-sonnet-4.5"),
-    BotConfig("aria", 8003, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
-    BotConfig("dream", 8004, "x-ai/grok-4.1-fast", "x-ai/grok-4"),
-    BotConfig("jake", 8005, "x-ai/grok-4.1-fast", "x-ai/grok-4"),
-    BotConfig("sophia", 8006, "x-ai/grok-4.1-fast", "x-ai/grok-4"),
-    BotConfig("marcus", 8007, "google/gemini-2.5-flash", "google/gemini-2.5-pro"),
-    BotConfig("nottaylor", 8008, "mistralai/mistral-small-3.2-24b-instruct", "mistralai/mistral-medium-3.1", is_production=True),
-    BotConfig("gabriel", 8009, "mistralai/mistral-small-3.2-24b-instruct", "mistralai/mistral-medium-3.1"),
-    BotConfig("aethys", 8010, "mistralai/mistral-small-3.2-24b-instruct", "mistralai/mistral-medium-3.1"),
-    BotConfig("aetheris", 8011, "anthropic/claude-3.5-haiku", "anthropic/claude-sonnet-4.5"),
+    BotConfig("elena", 8000),
+    BotConfig("ryan", 8001),
+    BotConfig("dotty", 8002),
+    BotConfig("aria", 8003),
+    BotConfig("dream", 8004),
+    BotConfig("jake", 8005),
+    BotConfig("sophia", 8006),
+    BotConfig("marcus", 8007),
+    BotConfig("nottaylor", 8008, is_production=True),
+    BotConfig("gabriel", 8009),
+    BotConfig("aethys", 8010),
+    BotConfig("aetheris", 8011),
 ]
 
 # Test user prefix to avoid polluting real user data
@@ -164,17 +162,11 @@ class TestHealthAndDiagnostics:
             # Check bot name
             assert result.get("bot_name") == bot.name
             
-            # Check model config
-            llm_models = result.get("llm_models", {})
-            assert llm_models.get("main") == bot.main_model, \
-                f"Expected {bot.main_model}, got {llm_models.get('main')}"
-            
             # Check database connections
             db_status = result.get("database_status", {})
             assert db_status.get("postgres") is True, "Postgres not connected"
             
             print(f"\n[{bot.name}] Diagnostics:")
-            print(f"  Model: {llm_models.get('main')}")
             print(f"  DBs: {db_status}")
             print(f"  Uptime: {result.get('uptime_seconds', 0):.0f}s")
             
@@ -447,8 +439,8 @@ class TestComplexityRouting:
             pytest.skip(f"{bot.name} not running")
 
 
-class TestModelComparison:
-    """Compare responses across different models."""
+class TestBotComparison:
+    """Compare responses across different bots."""
     
     @pytest.mark.asyncio
     async def test_same_prompt_all_bots(self):
@@ -464,7 +456,6 @@ class TestModelComparison:
                 result = await client.chat(user_id, prompt)
                 results.append({
                     "bot": bot.name,
-                    "model": bot.main_model,
                     "response": result.get("response", "")[:200],
                     "time_ms": result.get("processing_time_ms", 0),
                     "mode": result.get("mode", "unknown")
@@ -472,7 +463,6 @@ class TestModelComparison:
             except httpx.ConnectError:
                 results.append({
                     "bot": bot.name,
-                    "model": bot.main_model,
                     "response": "[NOT RUNNING]",
                     "time_ms": 0,
                     "mode": "N/A"
@@ -480,12 +470,12 @@ class TestModelComparison:
         
         # Print comparison
         print("\n" + "="*80)
-        print(f"MODEL COMPARISON: '{prompt}'")
+        print(f"BOT COMPARISON: '{prompt}'")
         print("="*80)
         
         for r in sorted(results, key=lambda x: x["time_ms"]):
             if r["response"] != "[NOT RUNNING]":
-                print(f"\n[{r['bot']}] {r['model']} ({r['time_ms']:.0f}ms)")
+                print(f"\n[{r['bot']}] ({r['time_ms']:.0f}ms)")
                 print(f"  {r['response']}")
         
         # At least some bots should be running

@@ -137,8 +137,8 @@ async def test_trust_manager():
         await trust_manager.update_trust(test_user, test_character, delta=1000)
         relationship = await trust_manager.get_relationship_level(test_user, test_character)
         
-        if relationship['trust_score'] <= 150:
-            logger.info(f"✅ Trust ceiling enforced: {relationship['trust_score']} (should be <= 150)")
+        if relationship['trust_score'] <= 100:
+            logger.info(f"✅ Trust ceiling enforced: {relationship['trust_score']} (should be <= 100)")
         else:
             logger.error(f"❌ Trust exceeded maximum: {relationship['trust_score']}")
         
