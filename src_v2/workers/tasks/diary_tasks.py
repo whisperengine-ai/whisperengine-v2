@@ -1,6 +1,9 @@
 from typing import Dict, Any
+from datetime import datetime, timedelta
 from loguru import logger
 from src_v2.config.settings import settings
+from src_v2.memory.manager import memory_manager
+from src_v2.memory.models import MemorySourceType
 
 
 async def run_diary_generation(
@@ -33,7 +36,7 @@ async def run_diary_generation(
     
     try:
         from src_v2.agents.diary_graph import DiaryGraphAgent
-        from src_v2.memory.diary import get_diary_manager, DiaryMaterial
+        from src_v2.memory.diary import get_diary_manager
         from src_v2.core.behavior import load_behavior_profile
         
         diary_manager = get_diary_manager(character_name)
@@ -78,9 +81,65 @@ async def run_diary_generation(
         # Use the proper method to gather all material
         material = await diary_manager.gather_diary_material(hours=24)
         
-        # Note: We intentionally don't skip on insufficient material.
-        # The diary graph handles sparse days gracefully, and the character
-        # should still reflect even on quiet days (emergence philosophy).
+        # Phase E22: Check material sufficiency and track absences
+        if not material.is_sufficient() or not material.is_rich_enough():
+            reason = "insufficient_material" if not material.is_sufficient() else "low_richness"
+            richness = material.richness_score()
+            
+            logger.info(f"Insufficient diary material for {character_name}: {reason} (richness={richness})")
+            
+            # Track absence with streak linking
+            try:
+                # Find previous absence to calculate streak
+                recent_absences = await memory_manager.search_memories_advanced(
+                    query="absence of diary material",
+                    metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
+                    limit=1,
+                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp()
+                )
+                
+                streak = 1
+                prior_id = None
+                
+                if recent_absences:
+                    last_absence = recent_absences[0]
+                    last_streak = last_absence.get("absence_streak", 1)
+                    streak = last_streak + 1
+                    prior_id = last_absence.get("id")
+                    logger.info(f"Found prior diary absence (streak: {last_streak} -> {streak})")
+                
+                # Store absence memory
+                content = f"I wanted to write in my diary tonight, but the day felt sparse. Not enough to reflect on. (Streak: {streak})"
+                
+                await memory_manager.save_typed_memory(
+                    user_id=character_name,  # Self-memory
+                    memory_type="absence",
+                    content=content,
+                    metadata={
+                        "what_was_sought": "diary_material",
+                        "reason": reason,
+                        "material_richness": richness,
+                        "threshold": settings.DIARY_MIN_RICHNESS,
+                        "prior_absence_id": prior_id,
+                        "absence_streak": streak,
+                        "summaries_count": len(material.summaries),
+                        "observations_count": len(material.observations)
+                    },
+                    source_type=MemorySourceType.ABSENCE,
+                    importance_score=2
+                )
+                logger.info(f"Recorded diary absence for {character_name} (streak: {streak})")
+                
+            except Exception as e:
+                logger.error(f"Failed to record diary absence: {e}")
+            
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": reason,
+                "character_name": character_name,
+                "absence_recorded": True
+            }
         
         # Extract actual user names from summaries for searchability
         # This allows the diary to mention people by name, making it searchable
@@ -147,6 +206,40 @@ async def run_diary_generation(
         
         # Save
         point_id = await diary_manager.save_diary_entry(entry, provenance=provenance_data)
+        
+        # Phase E22: Check for absence resolution (diary succeeded after previous failures)
+        try:
+            recent_absences = await memory_manager.search_memories_advanced(
+                query="absence of diary material",
+                metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
+                limit=1,
+                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp()
+            )
+            
+            if recent_absences:
+                last_absence = recent_absences[0]
+                absence_streak = last_absence.get("absence_streak", 1)
+                absence_id = last_absence.get("id")
+                
+                # Store resolution memory
+                resolution_content = f"Today I finally had enough to write about. After {absence_streak} {'days' if absence_streak > 1 else 'day'} of wanting to reflect but finding nothing, the words finally came."
+                
+                await memory_manager.save_typed_memory(
+                    user_id=character_name,
+                    memory_type="absence_resolution",
+                    content=resolution_content,
+                    metadata={
+                        "what_was_resolved": "diary_material",
+                        "resolved_absence_id": absence_id,
+                        "absence_streak_was": absence_streak,
+                        "resolution_context": "diary"
+                    },
+                    source_type=MemorySourceType.INFERENCE,
+                    importance_score=3
+                )
+                logger.info(f"Recorded diary absence resolution for {character_name} (streak was: {absence_streak})")
+        except Exception as e:
+            logger.debug(f"Failed to check/record absence resolution: {e}")
         
         # Queue Broadcast
         broadcast_queued = False

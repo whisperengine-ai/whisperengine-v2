@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from loguru import logger
 from zoneinfo import ZoneInfo
 
@@ -10,7 +10,7 @@ from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
-from src_v2.evolution.manager import get_evolution_manager
+from src_v2.knowledge.walker import GraphWalker
 
 class ContextBuilder:
     """Handles the construction of the system prompt and context injection."""
@@ -240,79 +240,108 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
         """Retrieves Common Ground and Background Relevance from Knowledge Graph."""
         context: str = ""
         try:
-            # Phase E30: Instrument knowledge retrieval for ambient graph design
             start_time = time.time()
             
-            # E30: Get user entity count and check for potential matches
-            user_entities = await knowledge_manager.get_user_entities(user_id)
-            entity_count = len(user_entities)
+            # Phase E30: Ambient Graph Memory (1-hop connections from mentioned entities)
+            if settings.ENABLE_AMBIENT_GRAPH_RETRIEVAL:
+                ambient_context = await self.get_ambient_graph_context(user_id, char_name, user_message)
+                if ambient_context:
+                    context += ambient_context
             
-            # Check what entities from the message could match (preview for Phase 2)
-            message_lower = user_message.lower()
-            potential_matches = [e for e in user_entities if e.lower() in message_lower]
-            
-            if potential_matches:
-                logger.info(
-                    f"[E30-INSTRUMENT] ENTITY_MATCH_POTENTIAL user={user_id[:8]}... "
-                    f"matches={potential_matches} (from {entity_count} known entities)"
-                )
-            elif entity_count > 0:
-                logger.debug(
-                    f"[E30-INSTRUMENT] ENTITY_MATCH_NONE user={user_id[:8]}... "
-                    f"({entity_count} known entities, none in message)"
-                )
-            
+            # Common Ground (Shared facts)
             common_ground = await knowledge_manager.find_common_ground(user_id, char_name)
-            common_ground_time = time.time() - start_time
-            
             if common_ground:
                 context += f"""
 [COMMON GROUND]
 {common_ground}
 (You share these things with the user. Feel free to reference them naturally.)
 """
-                logger.debug(
-                    f"[E30-INSTRUMENT] common_ground HIT for user={user_id[:8]}... "
-                    f"chars={len(common_ground)} time={common_ground_time*1000:.1f}ms"
-                )
-            else:
-                logger.debug(
-                    f"[E30-INSTRUMENT] common_ground MISS for user={user_id[:8]}... "
-                    f"time={common_ground_time*1000:.1f}ms"
-                )
-            
-            bg_start = time.time()
+
+            # Background Relevance (Bot's backstory)
             relevant_bg = await knowledge_manager.search_bot_background(char_name, user_message)
-            bg_time = time.time() - bg_start
-            
             if relevant_bg:
                 context += f"""
 [RELEVANT BACKGROUND]
 {relevant_bg}
 (The user mentioned something related to your background. You can bring this up.)
 """
-                logger.debug(
-                    f"[E30-INSTRUMENT] background HIT for char={char_name} "
-                    f"query='{user_message[:50]}...' chars={len(relevant_bg)} time={bg_time*1000:.1f}ms"
-                )
-            else:
-                logger.debug(
-                    f"[E30-INSTRUMENT] background MISS for char={char_name} "
-                    f"query='{user_message[:50]}...' time={bg_time*1000:.1f}ms"
-                )
             
             total_time = time.time() - start_time
             logger.debug(
-                f"[E30-INSTRUMENT] knowledge_context total: "
-                f"common_ground={'HIT' if common_ground else 'MISS'} "
-                f"background={'HIT' if relevant_bg else 'MISS'} "
-                f"entity_potential={len(potential_matches)} "
-                f"total_time={total_time*1000:.1f}ms"
+                f"[E30] Knowledge retrieval total: "
+                f"ambient={'HIT' if settings.ENABLE_AMBIENT_GRAPH_RETRIEVAL and 'ASSOCIATIVE MEMORY' in context else 'MISS'} "
+                f"common={'HIT' if common_ground else 'MISS'} "
+                f"bg={'HIT' if relevant_bg else 'MISS'} "
+                f"time={total_time*1000:.1f}ms"
             )
             
         except Exception as e:
             logger.error(f"Failed to inject knowledge context: {e}")
         return context
+
+    async def get_ambient_graph_context(self, user_id: str, char_name: str, user_message: str) -> str:
+        """
+        Phase E30: Ambient Graph Memory
+        Injects 1-hop graph context for entities mentioned in the message.
+        Uses GraphWalker to explore connections without LLM calls.
+        """
+        try:
+            # 1. Identify Entities
+            user_entities = await knowledge_manager.get_user_entities(user_id)
+            if not user_entities:
+                return ""
+                
+            message_lower = user_message.lower()
+            # Simple string matching (can be improved with fuzzy matching later)
+            matches = [e for e in user_entities if e.lower() in message_lower]
+            
+            if not matches:
+                return ""
+                
+            logger.debug(f"[E30] Ambient Graph Trigger: {matches}")
+            
+            # 2. Walk the Graph
+            walker = GraphWalker()
+            result = await walker.explore(
+                seed_ids=matches,
+                user_id=user_id,
+                bot_name=char_name,
+                max_depth=1,  # Shallow walk for ambient context
+                max_nodes=10, # Keep it lightweight
+                serendipity=0.0 # Strict relevance
+            )
+            
+            if not result.nodes:
+                return ""
+                
+            # 3. Format Context
+            # We want to show connections: "Entity -> Relation -> Neighbor"
+            context_lines = []
+            seen_facts = set()
+            
+            for edge in result.edges:
+                # Find source and target nodes
+                source = next((n for n in result.nodes if n.id == edge.source_id), None)
+                target = next((n for n in result.nodes if n.id == edge.target_id), None)
+                
+                if source and target:
+                    # Format: "Luna LIKES ocean"
+                    fact = f"{source.name} {edge.edge_type} {target.name}"
+                    if fact not in seen_facts:
+                        context_lines.append(f"- {fact}")
+                        seen_facts.add(fact)
+            
+            if not context_lines:
+                return ""
+                
+            return f"""
+[ASSOCIATIVE MEMORY]
+(Triggered by: {', '.join(matches)})
+{chr(10).join(context_lines)}
+"""
+        except Exception as e:
+            logger.error(f"Ambient graph retrieval failed: {e}")
+            return ""
 
     async def get_diary_context(self, char_name: str) -> str:
         """Retrieves the character's most recent diary entry for context."""
@@ -486,38 +515,45 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
         try:
             from src_v2.memory.manager import memory_manager
             
-            # Search for recent absence traces
-            collection_name = f"whisperengine_memory_{character_name}"
-            absences = await memory_manager.search_memories(
-                query="wanted to dream, wanted to reflect, tried to remember, lacked material, insufficient",
-                user_id=character_name,
-                collection_name=collection_name,
-                limit=3
+            # Use advanced search with metadata filter for precise absence retrieval
+            # Look back 7 days for absence patterns
+            min_ts = (datetime.datetime.now() - datetime.timedelta(days=7)).timestamp()
+            
+            absences = await memory_manager.search_memories_advanced(
+                query="meta-memory absence knowledge gap",
+                metadata_filter={"type": "absence"},
+                limit=5,
+                min_timestamp=min_ts
             )
             
-            # Filter for absence-related memories
-            absence_traces = [
-                a for a in absences 
-                if a.get("source_type") == "absence" or "absence" in a.get("type", "").lower()
-            ]
-            
-            if not absence_traces:
+            if not absences:
                 return ""
             
-            # Format as self-aware context
+            # Format as self-aware context with streak awareness
             context = "\n\n[RECENT SELF-AWARENESS]\n"
             context += "Things I've wanted to do but couldn't:\n"
             
-            for trace in absence_traces:
+            for trace in absences:
                 content = trace.get("content", "")
-                # Extract the key insight from absence message
-                if "dream" in content.lower():
-                    context += "- Dream more deeply, but lacked enough experiences\n"
-                elif "reflect" in content.lower() or "diary" in content.lower():
-                    context += "- Reflect on recent events, but haven't had enough interactions\n"
-                elif "remember" in content.lower():
-                    context += "- Remember more, but you haven't shared those details with me\n"
+                metadata = trace.get("metadata", {}) if isinstance(trace.get("metadata"), dict) else {}
+                what_was_sought = metadata.get("what_was_sought", "")
+                streak = metadata.get("absence_streak", 1)
+                
+                # Format based on what was being sought
+                if what_was_sought == "dream_material" or "dream" in content.lower():
+                    if streak > 2:
+                        context += f"- Dream more deeply (tried {streak} times recently), but lacked rich enough experiences\n"
+                    else:
+                        context += "- Dream more deeply, but lacked enough experiences\n"
+                elif what_was_sought == "diary_material" or "diary" in content.lower() or "reflect" in content.lower():
+                    if streak > 2:
+                        context += f"- Reflect on recent events (tried {streak} times), but haven't had enough meaningful interactions\n"
+                    else:
+                        context += "- Reflect on recent events, but haven't had enough interactions\n"
+                else:
+                    context += f"- {content[:100]}...\n" if len(content) > 100 else f"- {content}\n"
             
+            logger.debug(f"Injected {len(absences)} absence traces for {character_name}")
             return context
         except Exception as e:  # noqa: BLE001 - fallback logging only
             logger.warning(f"Failed to get absence context: {e}")

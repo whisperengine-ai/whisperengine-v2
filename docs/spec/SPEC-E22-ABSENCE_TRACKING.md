@@ -241,13 +241,41 @@ Bot: I wish I had more to reflect on. I keep wanting to dream deeper
 
 ## Implementation Checklist
 
-- [ ] Add `DREAM_ABSENCE`, `MEMORY_ABSENCE` to `MemorySource` enum
-- [ ] Modify `DreamSequenceManager.generate()` to capture dream absences
-- [ ] Modify `DiaryManager.generate()` to capture diary absences
-- [ ] Add `_build_absence_context()` to context builder
-- [ ] Wire absence context into agent context building
-- [ ] Test: Verify absences are stored and retrievable
-- [ ] Test: Verify bots can reference absences in responses
+- [x] Add `ABSENCE` to `MemorySourceType` enum (`src_v2/memory/models.py`)
+- [x] Add absence tracking with streak linking to `dream_tasks.py` (worker path)
+- [x] Add absence tracking with streak linking to `diary_tasks.py` (worker path)
+- [x] Add `get_absence_context()` to context builder with metadata filtering
+- [x] Implement absence resolution tracking (when dream/diary succeeds after absences)
+- [x] Remove duplicate absence tracking from `dreams.py` and `diary.py` (consolidated to worker tasks)
+- [x] Test: Verify absences are stored with proper metadata
+- [x] Test: Verify streak counting works correctly
+
+### Implementation Notes (Dec 2025)
+
+**Architecture Decision:** Absence tracking is centralized in the worker tasks (`dream_tasks.py`, `diary_tasks.py`) rather than the manager classes. This ensures:
+1. Streak tracking works correctly (single point of truth)
+2. No duplicate absence records
+3. Resolution tracking happens after successful save
+
+**Memory Schema:**
+```python
+# Absence memory
+{
+    "type": "absence",
+    "what_was_sought": "dream_material" | "diary_material",
+    "reason": "insufficient_material" | "low_richness",
+    "absence_streak": int,
+    "prior_absence_id": str | None
+}
+
+# Resolution memory  
+{
+    "type": "absence_resolution",
+    "what_was_resolved": "dream_material" | "diary_material",
+    "resolved_absence_id": str,
+    "absence_streak_was": int
+}
+```
 
 ---
 
@@ -296,12 +324,14 @@ async def test_absence_in_context():
 
 ## Files Modified
 
-- ✅ `src_v2/memory/models.py` (add enum values)
-- ✅ `src_v2/memory/dreams.py` (capture dream absences)
-- ✅ `src_v2/memory/diary.py` (capture diary absences)
-- ✅ `src_v2/agents/context_builder.py` (retrieve and format absences)
+- ✅ `src_v2/memory/models.py` (add `ABSENCE` to `MemorySourceType` enum)
+- ✅ `src_v2/workers/tasks/dream_tasks.py` (absence tracking with streaks + resolution)
+- ✅ `src_v2/workers/tasks/diary_tasks.py` (absence tracking with streaks + resolution)
+- ✅ `src_v2/agents/context_builder.py` (retrieve absences via metadata filter, streak-aware formatting)
+- ✅ `src_v2/memory/dreams.py` (removed duplicate absence tracking, consolidated to worker)
+- ✅ `src_v2/memory/diary.py` (removed duplicate absence tracking, consolidated to worker)
 
-**Total LOC:** ~150 lines of actual code + tests
+**Total LOC:** ~200 lines of actual code + tests
 
 ---
 
@@ -321,6 +351,6 @@ async def test_absence_in_context():
 
 ---
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Author:** Mark + Claude  
-**Date:** December 3, 2025
+**Date:** December 7, 2025 (Updated from December 3, 2025)

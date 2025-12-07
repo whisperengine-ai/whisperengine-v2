@@ -481,30 +481,10 @@ class DiaryManager:
         Returns:
             Tuple of (DiaryEntry, provenance_data) if successful
         """
+        # Note: Absence tracking is now handled in diary_tasks.py with streak linking.
+        # This method just returns None for insufficient material.
         if not override and not material.is_sufficient():
             logger.info(f"Insufficient diary material for {self.bot_name}")
-            
-            # [E22] Store absence as meta-memory
-            try:
-                from src_v2.memory.manager import memory_manager
-                await memory_manager.save_typed_memory(
-                    user_id=None,  # System-level reflection
-                    memory_type="diary_absence",
-                    content=f"Wanted to write a diary entry but lacked sufficient material ({len(material.summaries)} summaries, {len(material.observations)} observations). Not enough has happened to reflect on.",
-                    metadata={
-                        "reason": "insufficient_material",
-                        "summaries_count": len(material.summaries),
-                        "observations_count": len(material.observations),
-                        "gossip_count": len(material.gossip),
-                        "epiphanies_count": len(material.epiphanies)
-                    },
-                    importance_score=2,
-                    source_type=MemorySourceType.ABSENCE,
-                    collection_name=self.collection_name
-                )
-            except Exception as e:
-                logger.warning(f"Failed to store diary absence: {e}")
-            
             return None, []
         
         # Check richness - skip hollow entries even if ALWAYS_GENERATE is on
@@ -515,29 +495,6 @@ class DiaryManager:
                 f"Material: {len(material.summaries)} summaries, {len(material.observations)} observations, "
                 f"{len(material.gossip)} gossip, {len(material.epiphanies)} epiphanies"
             )
-            
-            # [E22] Store absence due to low richness
-            try:
-                from src_v2.memory.manager import memory_manager
-                await memory_manager.save_typed_memory(
-                    user_id=None,
-                    memory_type="diary_absence",
-                    content=f"Tried to reflect on recent events but everything felt fragmented or unclear (richness score {richness}/10). Need more coherent or meaningful experiences.",
-                    metadata={
-                        "reason": "low_richness",
-                        "richness_score": richness,
-                        "summaries_count": len(material.summaries),
-                        "observations_count": len(material.observations),
-                        "gossip_count": len(material.gossip),
-                        "epiphanies_count": len(material.epiphanies)
-                    },
-                    importance_score=2,
-                    source_type=MemorySourceType.ABSENCE,
-                    collection_name=self.collection_name
-                )
-            except Exception as e:
-                logger.warning(f"Failed to store diary richness absence: {e}")
-            
             return None, []
         
         logger.info(f"Generating diary with richness score {richness}")

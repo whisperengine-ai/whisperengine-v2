@@ -199,6 +199,40 @@ async def run_dream_generation(
         # Save
         point_id = await dream_manager.save_dream(user_id="__character__", dream=dream, provenance=provenance_data)
         
+        # Phase E22: Check for absence resolution (dream succeeded after previous failures)
+        try:
+            recent_absences = await memory_manager.search_memories_advanced(
+                query="absence of dream material",
+                metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
+                limit=1,
+                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp()
+            )
+            
+            if recent_absences:
+                last_absence = recent_absences[0]
+                absence_streak = last_absence.get("absence_streak", 1)
+                absence_id = last_absence.get("id")
+                
+                # Store resolution memory
+                resolution_content = f"Tonight I finally dreamed. After {absence_streak} {'nights' if absence_streak > 1 else 'night'} of reaching for something that wasn't there, the images finally came."
+                
+                await memory_manager.save_typed_memory(
+                    user_id=character_name,
+                    memory_type="absence_resolution",
+                    content=resolution_content,
+                    metadata={
+                        "what_was_resolved": "dream_material",
+                        "resolved_absence_id": absence_id,
+                        "absence_streak_was": absence_streak,
+                        "resolution_context": "dream"
+                    },
+                    source_type=MemorySourceType.INFERENCE,
+                    importance_score=3
+                )
+                logger.info(f"Recorded dream absence resolution for {character_name} (streak was: {absence_streak})")
+        except Exception as e:
+            logger.debug(f"Failed to check/record absence resolution: {e}")
+        
         # Queue Broadcast
         broadcast_queued = False
         if settings.ENABLE_BOT_BROADCAST and settings.BOT_BROADCAST_DREAMS:

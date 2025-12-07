@@ -148,6 +148,7 @@ class Settings(BaseSettings):
 
     # --- Knowledge Graph ---
     ENABLE_RUNTIME_FACT_EXTRACTION: bool = True
+    ENABLE_AMBIENT_GRAPH_RETRIEVAL: bool = True  # Phase E30: Inject 1-hop graph context for mentioned entities
     
     # --- Graph Enrichment (Phase E25) ---
     ENABLE_GRAPH_ENRICHMENT: bool = True  # Proactive graph enrichment from conversations

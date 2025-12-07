@@ -87,14 +87,15 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | ⚪ Low | **O1** | **InfluxDB Analytics** | **2-3 hours** | A4 ✅ | ✅ Complete (was already implemented) |
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | ✅ Complete |
+| 🟡 Medium | **E30** | **Ambient Graph Memory** | **1-2 days** | E19 ✅ | ✅ Complete |
 
 ---
 
-### 🎉 Phase 1 Complete (December 4, 2025)
+### 🎉 Phase 1 Complete (December 7, 2025)
 
 All proposed roadmap items have been implemented. The system is feature-complete for:
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
-- **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks)
+- **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks + ambient retrieval)
 - **Autonomous Agency** (Lurking, reactions, posting, bot-to-bot conversations)
 - **LangGraph Orchestration** (Supergraph, specialized workers, advanced queues)
 - **Safety & Observability** (Content safety, classifier metrics, InfluxDB analytics)
@@ -146,6 +147,7 @@ All proposed roadmap items have been implemented. The system is feature-complete
 | E19 | Graph Walker Agent | Dec 2025 |
 | E16 | Feedback Loop Stability | Dec 2025 |
 | E22 | Absence Tracking (Meta-Memory) | Dec 2025 |
+| E30 | Ambient Graph Memory | Dec 2025 |
 | E23 | Schedule Jitter | Dec 2025 |
 | S1-S4 | Safety & Observability (all) | Nov-Dec 2025 |
 | E13 | Stigmergic Shared Artifacts | Nov 2025 |
@@ -187,7 +189,7 @@ LangGraph ──► E17 (Supergraph) ──► E18 (Queue) ──► E24 (propos
 
 E12 (Dreams) ──► E16 (Feedback Loop) ──► E23 (Jitter) ──► E22 (Absence) ✅
 
-Neo4j + LangGraph ──► E19 (Graph Walker)
+Neo4j + LangGraph ──► E19 (Graph Walker) ──► E30 (Ambient Memory) ✅
 ```
 
 ---
