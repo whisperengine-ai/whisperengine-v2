@@ -1,8 +1,9 @@
 # Cross-Bot Memory Enhancement
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Created:** December 1, 2025  
-**Status:** 📋 Proposed  
+**Last Updated:** December 6, 2025  
+**Status:** ✅ Complete  
 **Priority:** Low-Medium  
 **Complexity:** 🟢 Low  
 **Estimated Time:** 2-3 hours
@@ -17,6 +18,8 @@
 | **Proposed by** | Mark (quality observation) |
 | **Catalyst** | Bot conversations felt superficial without shared memory |
 | **Key insight** | Bots should remember cross-bot discussions |
+| **Implemented** | December 6, 2025 |
+| **Commit** | `bf01d9b` |
 
 ---
 
@@ -282,3 +285,82 @@ history_messages.reverse()
 ```
 
 Memories ARE being stored (lines 1183-1207), but never retrieved before response generation.
+
+---
+
+## ✅ Implementation Complete (December 6, 2025)
+
+### What Was Implemented
+
+The implementation focused on **batch processing feature parity** for bot-to-bot conversations:
+
+#### 1. Real Session IDs
+```python
+# BEFORE: Synthetic session IDs that weren't in the database
+cross_bot_session_id = f"crossbot_{bot_user_id}_{self.bot.character_name}"
+
+# AFTER: Real UUIDs from session_manager
+session_id = await session_manager.get_or_create_session(
+    user_id=cross_bot_user_id,
+    character_name=self.bot.character_name
+)
+```
+
+#### 2. Chain Completion Signal
+```python
+# src_v2/broadcast/cross_bot.py
+async def record_response(...) -> bool:
+    """Returns True if chain just completed (hit max)."""
+    chain_completed = not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN)
+    return chain_completed
+```
+
+#### 3. Force Processing on Chain End
+```python
+# src_v2/discord/handlers/message_handler.py
+async def _check_and_summarize(
+    ...,
+    force_processing: bool = False  # NEW: Bypass threshold
+):
+    # Cross-bot chains are 3-5 messages, threshold is 20
+    # force_processing=True triggers batch analysis when chain ends
+    should_process = message_count >= settings.SUMMARY_MESSAGE_THRESHOLD or (
+        force_processing and message_count >= 2  # At least a back-and-forth
+    )
+```
+
+#### 4. Unified Code Path
+```python
+# Cross-bot now uses same _check_and_summarize as human users
+if session_id:
+    self.bot.loop.create_task(
+        self._check_and_summarize(
+            session_id=session_id,
+            user_id=cross_bot_user_id,
+            user_name=other_bot_name.title(),
+            channel_id=str(message.channel.id),
+            server_id=str(message.guild.id) if message.guild else None,
+            force_processing=chain_completed  # Trigger batch when chain ends
+        )
+    )
+```
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src_v2/broadcast/cross_bot.py` | `record_response()` returns `bool` indicating chain completion |
+| `src_v2/discord/handlers/message_handler.py` | Added `force_processing` parameter, unified code path |
+| `src_v2/memory/manager.py` | Type safety fix (`Optional[str]`) |
+
+### Result
+
+Bot-to-bot conversations now trigger the same batch analysis as human conversations:
+- ✅ Knowledge extraction (facts to Neo4j)
+- ✅ Goal analysis
+- ✅ Preference learning
+- ✅ Session summaries
+
+This happens when:
+1. Message count reaches threshold (20), **OR**
+2. Cross-bot chain completes (3-5 messages) with at least 2 messages exchanged

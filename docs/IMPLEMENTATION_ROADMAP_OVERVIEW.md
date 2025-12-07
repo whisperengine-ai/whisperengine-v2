@@ -2033,24 +2033,49 @@ Allows for "Stigmergic" behavior where agents communicate by modifying the envir
 
 ### ✅ Cross-Bot Memory Enhancement
 **Priority:** Low | **Time:** 2-3 hours | **Complexity:** Low
-**Status:** ✅ Complete (Already Implemented)
+**Status:** ✅ Complete (December 6, 2025)
 **Dependencies:** E6 (Character-to-Character)
 **Added:** December 2025
+**Commit:** `bf01d9b`
 
-**Problem:** Bot-to-bot conversations use `force_fast=True` which bypasses memory retrieval. Bots don't remember what they discussed with each other yesterday.
+**Problem:** Bot-to-bot conversations use `force_fast=True` which bypasses memory retrieval. Bots don't remember what they discussed with each other yesterday. Additionally, bot conversations never triggered batch processing (knowledge extraction, goal analysis) because they used synthetic session IDs and never reached the 20-message threshold.
 
-**Solution:** Add memory retrieval for cross-bot conversations by querying past interactions before generating responses.
+**Solution:** 
+1. Add memory retrieval for cross-bot conversations by querying past interactions before generating responses
+2. Use real session IDs (UUIDs) instead of synthetic `crossbot_xxx` IDs
+3. Trigger batch processing when cross-bot chain completes (not just when threshold is reached)
 
-**Implementation (Already in `_handle_cross_bot_message()`):**
+**Implementation (in `_handle_cross_bot_message()`):**
 - ✅ Uses `context_builder.build_context()` to retrieve history, memories, knowledge, summaries
 - ✅ Injects retrieved context into `cross_bot_context` system prompt
 - ✅ Stores both sides of conversation via `memory_manager.add_message()`
 - ✅ `force_fast=True` only skips tools, NOT pre-fetched context
+- ✅ Uses real `session_id` from `session_manager.get_or_create_session()`
+- ✅ `record_response()` returns `chain_completed` flag
+- ✅ `_check_and_summarize()` accepts `force_processing=True` to bypass threshold
+- ✅ Batch processing triggers when chain ends OR threshold reached
+
+**Key Code Changes:**
+```python
+# cross_bot.py - Returns completion status
+async def record_response(...) -> bool:
+    chain_completed = not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN)
+    return chain_completed
+
+# message_handler.py - Force processing on chain end
+should_process = message_count >= threshold or (
+    force_processing and message_count >= 2
+)
+```
 
 **Benefits:**
 - Bots can reference past conversations with each other
 - Creates richer, more continuous cross-bot relationships
 - Enables callbacks to shared memories ("Remember when we talked about...?")
+- **NEW:** Bot conversations now trigger full batch analysis (knowledge extraction, goals, preferences)
+- **NEW:** Bot sessions appear in database with real UUIDs (same as human sessions)
+
+**Spec:** [SPEC-E06B-CROSS_BOT_MEMORY.md](./spec/SPEC-E06B-CROSS_BOT_MEMORY.md)
 
 ---
 
