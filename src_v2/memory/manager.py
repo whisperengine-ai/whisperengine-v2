@@ -757,7 +757,7 @@ class MemoryManager:
             except Exception as e:
                 logger.error(f"Failed to clear Qdrant memory: {e}")
 
-    async def get_recent_history(self, user_id: str, character_name: str, limit: int = 10, channel_id: str = None) -> List[BaseMessage]:
+    async def get_recent_history(self, user_id: str, character_name: str, limit: int = 10, channel_id: Optional[str] = None) -> List[BaseMessage]:
         """
         Retrieves the recent chat history for a user and character.
         If channel_id is provided, retrieves history for that channel (group chat context).

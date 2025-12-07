@@ -1600,7 +1600,8 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                     logger.debug(f"Failed to record activity for cross-bot reply: {e}")
             
             # Record the response in the chain (for loop prevention)
-            await cross_bot_manager.record_response(
+            # Returns True if chain just completed (hit max), triggering batch processing
+            chain_completed = await cross_bot_manager.record_response(
                 channel_id=str(message.channel.id),
                 message_id=str(sent_message.id)
             )
@@ -1649,15 +1650,23 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 context="cross_bot"
             )
             
-            # Summarization check (sessions now handle this via timeout, but keep backup)
-            self.bot.loop.create_task(
-                self._check_and_summarize_cross_bot(
-                    cross_bot_user_id, 
-                    other_bot_name.title()
+            # Summarization check - USE THE REAL SESSION, same as human users
+            # This ensures proper batch processing (knowledge, goals, preferences)
+            # When chain_completed=True, we force processing even if < threshold
+            # because cross-bot chains are limited to 3-5 messages max
+            if session_id:
+                self.bot.loop.create_task(
+                    self._check_and_summarize(
+                        session_id=session_id,
+                        user_id=cross_bot_user_id,
+                        user_name=other_bot_name.title(),
+                        channel_id=str(message.channel.id),
+                        server_id=str(message.guild.id) if message.guild else None,
+                        force_processing=chain_completed  # Trigger batch analysis when chain ends
+                    )
                 )
-            )
             
-            logger.info(f"Sent cross-bot response to {other_bot_name}")
+            logger.info(f"Sent cross-bot response to {other_bot_name} (chain_completed={chain_completed})")
                 
         except Exception as e:
             logger.error(f"Failed to handle cross-bot message: {e}")
@@ -1871,7 +1880,8 @@ Do NOT treat their message as if they are sharing their own dream or diary.
         user_id: str,
         user_name: str,
         channel_id: Optional[str] = None,
-        server_id: Optional[str] = None
+        server_id: Optional[str] = None,
+        force_processing: bool = False
     ):
         """
         Checks if summarization is needed and enqueues it to background worker.
@@ -1882,6 +1892,8 @@ Do NOT treat their message as if they are sharing their own dream or diary.
             user_name: User's display name (for diary provenance)
             channel_id: Discord channel identifier for this conversation
             server_id: Discord server identifier (or None for DM)
+            force_processing: If True, process even if message count < threshold
+                              (used for cross-bot chain completion)
         """
         try:
             # 1. Get session start time
@@ -1900,9 +1912,20 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                     server_id=server_id
                 )
             
-            # 3. Check threshold
-            if message_count >= settings.SUMMARY_MESSAGE_THRESHOLD:
-                logger.info(f"Session {session_id} reached {message_count} messages. Enqueueing summarization.")
+            # 3. Check threshold OR force processing (for cross-bot chain completion)
+            # Cross-bot chains are limited to 3-5 messages, so they rarely hit the
+            # normal threshold of 20. force_processing=True bypasses the threshold
+            # to ensure batch analysis happens when the chain ends.
+            should_process = message_count >= settings.SUMMARY_MESSAGE_THRESHOLD or (
+                force_processing and message_count >= 2  # At least a back-and-forth
+            )
+            
+            if should_process:
+                trigger_reason = "chain_complete" if force_processing else "threshold"
+                logger.info(
+                    f"Session {session_id} processing ({trigger_reason}): "
+                    f"{message_count} messages. Enqueueing batch analysis."
+                )
                 
                 # Fetch messages
                 messages = await memory_manager.get_recent_history(
@@ -1936,70 +1959,22 @@ Do NOT treat their message as if they are sharing their own dream or diary.
 
     async def _check_and_summarize_cross_bot(self, bot_user_id: str, bot_name: str):
         """
-        Check if cross-bot conversation needs summarization.
+        DEPRECATED: Use _check_and_summarize with actual session_id and force_processing instead.
         
-        Unlike user sessions, cross-bot conversations don't have explicit sessions.
-        We check if there are enough unsummarized messages and trigger summarization.
+        This method is kept only for backwards compatibility and does nothing.
+        Cross-bot conversations now use the same session system as human users,
+        with force_processing=True when the chain completes.
         
         Args:
-            bot_user_id: The other bot's Discord user ID
-            bot_name: The other bot's display name
+            bot_user_id: The other bot's Discord user ID (unused)
+            bot_name: The other bot's display name (unused)
         """
-        try:
-            # Get message count in the last 24 hours with this bot
-            since_time = datetime.now(timezone.utc) - timedelta(hours=24)
-            message_count = await memory_manager.count_messages_since(
-                bot_user_id, 
-                self.bot.character_name, 
-                since_time
-            )
-
-            cross_bot_session_id = f"crossbot_{bot_user_id}_{self.bot.character_name}"
-
-            if self._should_enqueue_enrichment(message_count):
-                enrichment_limit = self._calculate_enrichment_limit(message_count, channel_id=None)
-                enrichment_messages = await self._prepare_enrichment_messages(
-                    user_id=bot_user_id,
-                    character_name=self.bot.character_name,
-                    limit=enrichment_limit,
-                    channel_id=None
-                )
-                await self._enqueue_graph_enrichment_job(
-                    session_id=cross_bot_session_id,
-                    user_id=bot_user_id,
-                    channel_id=None,
-                    server_id=None,
-                    enrichment_messages=enrichment_messages
-                )
-            
-            # Use same threshold as normal users
-            if message_count >= settings.SUMMARY_MESSAGE_THRESHOLD:
-                logger.info(f"Cross-bot conversation with {bot_name} reached {message_count} messages. Enqueueing summarization.")
-                
-                # Fetch messages for summarization
-                messages = await memory_manager.get_recent_history(
-                    bot_user_id, 
-                    self.bot.character_name, 
-                    limit=message_count
-                )
-                
-                # Convert to dict format
-                from langchain_core.messages import HumanMessage
-                msg_dicts = [{"role": "human" if isinstance(m, HumanMessage) else "ai", "content": m.content} for m in messages]
-                
-                # Generate a synthetic session ID for cross-bot conversations
-                # Unified post-conversation processing - bot user IDs are just user IDs!
-                await enqueue_post_conversation_tasks(
-                    user_id=bot_user_id,
-                    character_name=self.bot.character_name,
-                    session_id=cross_bot_session_id,
-                    messages=msg_dicts,
-                    user_name=bot_name,
-                    trigger="cross_bot_session"
-                )
-                    
-        except Exception as e:
-            logger.debug(f"Error in _check_and_summarize_cross_bot: {e}")
+        logger.warning(
+            "_check_and_summarize_cross_bot is deprecated - "
+            "use _check_and_summarize(session_id=..., force_processing=True) instead"
+        )
+        # No-op: All cross-bot summarization now goes through _check_and_summarize
+        return
 
     async def _process_attachments(
         self, 

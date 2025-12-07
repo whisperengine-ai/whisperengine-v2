@@ -437,18 +437,27 @@ Trust your instincts - there's no pressure either way.]"""
         self,
         channel_id: str,
         message_id: str
-    ) -> None:
-        """Record that we responded in a cross-bot conversation."""
+    ) -> bool:
+        """
+        Record that we responded in a cross-bot conversation.
+        
+        Returns:
+            True if the chain just completed (hit max), False otherwise.
+            When True, caller should trigger batch post-conversation processing.
+        """
         chain = self._get_or_create_chain(channel_id)
         chain.add_message(self._bot_name or "unknown", message_id)
         
         # Only set cooldown when chain reaches its limit
         # This allows back-and-forth within a chain, but prevents new chains from starting too soon
-        if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
+        chain_completed = not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN)
+        if chain_completed:
             self._set_cooldown(channel_id)
             logger.info(f"Cross-bot chain completed (count: {chain.message_count}), cooldown set")
         else:
             logger.info(f"Recorded cross-bot response in chain (count: {chain.message_count}/{settings.CROSS_BOT_MAX_CHAIN})")
+        
+        return chain_completed
     
     async def queue_cross_bot_mention(self, mention: CrossBotMention) -> bool:
         """
