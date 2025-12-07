@@ -834,5 +834,51 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Failed to get recent facts: {e}")
             return []
 
+    # ========== E30: AMBIENT GRAPH MEMORY SUPPORT ==========
+    
+    @require_db("neo4j", default_return=set())
+    async def get_user_entities(self, user_id: str) -> set:
+        """
+        Get all entity names connected to a user.
+        Used for ambient graph memory matching (Phase E30).
+        
+        Returns a set of entity names that the user has mentioned/connected to.
+        This enables fast string matching against incoming messages.
+        
+        Example return: {"Luna", "Seattle", "marine biology", "sister Maya"}
+        """
+        cache_key = f"knowledge:user_entities:{user_id}"
+        cached_data = await cache_manager.get(cache_key)
+        if cached_data is not None:
+            return set(cached_data)  # Redis returns list, convert to set
+        
+        try:
+            query = """
+            MATCH (u:User {id: $user_id})-[:FACT]->(e:Entity)
+            RETURN DISTINCT e.name as name
+            """
+            
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(query, user_id=user_id)
+                records = await result.data()
+                
+                entities = {r['name'] for r in records if r.get('name')}
+                
+                # Cache for 5 minutes (300 seconds)
+                await cache_manager.set(cache_key, list(entities), ttl=300)
+                
+                logger.debug(f"[E30] Loaded {len(entities)} entities for user {user_id[:8]}...")
+                return entities
+                
+        except Exception as e:
+            logger.error(f"Failed to get user entities: {e}")
+            return set()
+
+    async def get_user_entity_count(self, user_id: str) -> int:
+        """Get count of entities for a user (for instrumentation)."""
+        entities = await self.get_user_entities(user_id)
+        return len(entities)
+
+
 # Global instance
 knowledge_manager = KnowledgeManager()

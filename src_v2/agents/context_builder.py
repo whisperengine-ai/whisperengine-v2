@@ -1,4 +1,5 @@
 import datetime
+import time
 from typing import Dict, Any, Optional, List
 from loguru import logger
 from zoneinfo import ZoneInfo
@@ -239,21 +240,76 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
         """Retrieves Common Ground and Background Relevance from Knowledge Graph."""
         context: str = ""
         try:
+            # Phase E30: Instrument knowledge retrieval for ambient graph design
+            start_time = time.time()
+            
+            # E30: Get user entity count and check for potential matches
+            user_entities = await knowledge_manager.get_user_entities(user_id)
+            entity_count = len(user_entities)
+            
+            # Check what entities from the message could match (preview for Phase 2)
+            message_lower = user_message.lower()
+            potential_matches = [e for e in user_entities if e.lower() in message_lower]
+            
+            if potential_matches:
+                logger.info(
+                    f"[E30-INSTRUMENT] ENTITY_MATCH_POTENTIAL user={user_id[:8]}... "
+                    f"matches={potential_matches} (from {entity_count} known entities)"
+                )
+            elif entity_count > 0:
+                logger.debug(
+                    f"[E30-INSTRUMENT] ENTITY_MATCH_NONE user={user_id[:8]}... "
+                    f"({entity_count} known entities, none in message)"
+                )
+            
             common_ground = await knowledge_manager.find_common_ground(user_id, char_name)
+            common_ground_time = time.time() - start_time
+            
             if common_ground:
                 context += f"""
 [COMMON GROUND]
 {common_ground}
 (You share these things with the user. Feel free to reference them naturally.)
 """
+                logger.debug(
+                    f"[E30-INSTRUMENT] common_ground HIT for user={user_id[:8]}... "
+                    f"chars={len(common_ground)} time={common_ground_time*1000:.1f}ms"
+                )
+            else:
+                logger.debug(
+                    f"[E30-INSTRUMENT] common_ground MISS for user={user_id[:8]}... "
+                    f"time={common_ground_time*1000:.1f}ms"
+                )
             
+            bg_start = time.time()
             relevant_bg = await knowledge_manager.search_bot_background(char_name, user_message)
+            bg_time = time.time() - bg_start
+            
             if relevant_bg:
                 context += f"""
 [RELEVANT BACKGROUND]
 {relevant_bg}
 (The user mentioned something related to your background. You can bring this up.)
 """
+                logger.debug(
+                    f"[E30-INSTRUMENT] background HIT for char={char_name} "
+                    f"query='{user_message[:50]}...' chars={len(relevant_bg)} time={bg_time*1000:.1f}ms"
+                )
+            else:
+                logger.debug(
+                    f"[E30-INSTRUMENT] background MISS for char={char_name} "
+                    f"query='{user_message[:50]}...' time={bg_time*1000:.1f}ms"
+                )
+            
+            total_time = time.time() - start_time
+            logger.debug(
+                f"[E30-INSTRUMENT] knowledge_context total: "
+                f"common_ground={'HIT' if common_ground else 'MISS'} "
+                f"background={'HIT' if relevant_bg else 'MISS'} "
+                f"entity_potential={len(potential_matches)} "
+                f"total_time={total_time*1000:.1f}ms"
+            )
+            
         except Exception as e:
             logger.error(f"Failed to inject knowledge context: {e}")
         return context
