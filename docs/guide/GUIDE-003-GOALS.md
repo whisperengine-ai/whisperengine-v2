@@ -1,8 +1,8 @@
 # Goals System: How Bots Pursue Conversation Objectives
 
 **Status**: ✅ Implemented  
-**Version**: 2.2  
-**Last Updated**: December 1, 2025
+**Version**: 2.3  
+**Last Updated**: December 7, 2025
 
 ---
 
@@ -290,6 +290,42 @@ The critical phrase is:
 
 ## Goal Progress Flow
 
+### Batch Processing Architecture (v2.3)
+
+Goal analysis uses **session-level batch processing** rather than per-message analysis. This provides better context and reduces LLM costs.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     GOAL ANALYSIS LIFECYCLE                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  [DURING CONVERSATION]                                           │
+│  Each message → Goal injected into system prompt                 │
+│              → Bot naturally pursues goal                        │
+│              → (No goal analysis yet)                            │
+│                                                                  │
+│  [SESSION END TRIGGERS]                                          │
+│  Trigger A: Message count ≥ 20 (SUMMARY_MESSAGE_THRESHOLD)       │
+│  Trigger B: Cross-bot chain completes (force_processing=True)    │
+│                                                                  │
+│  [BATCH ANALYSIS]                                                │
+│  enqueue_post_conversation_tasks() →                             │
+│    → run_batch_goal_analysis() (background worker)               │
+│      → GoalAnalyzer sees ENTIRE conversation                     │
+│      → Updates goal progress in DB                               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why batch processing?**
+
+| Aspect | Per-Message (Old) | Batch/Session (Current) |
+|--------|-------------------|-------------------------|
+| **Context** | Fragmented (1 exchange) | Full arc (10+ exchanges) |
+| **Cost** | N LLM calls per session | 1 call per session |
+| **Detection** | May miss gradual progress | Sees complete patterns |
+| **Latency** | Slows response | No impact (async worker) |
+
 ### Scenario: Learning the User's Name
 
 ```
@@ -314,18 +350,35 @@ The critical phrase is:
    ↓
 6. User responds: "I'm Alex, nice to meet you!"
    ↓
-7. After conversation, GoalAnalyzer.check_goals() is called:
-   - Analyzes: "User said 'I'm Alex'"
+7. Conversation continues... (20 messages total)
+   ↓
+8. Message threshold reached → enqueue_post_conversation_tasks()
+   ↓
+9. Background worker: run_batch_goal_analysis()
+   - GoalAnalyzer sees FULL conversation
+   - Analyzes: "User said 'I'm Alex' early in conversation"
    - Detects: learn_name criteria met
    - Returns: {"slug": "learn_name", "status": "completed", "extracted_data": {"name": "Alex"}}
    ↓
-8. goal_manager.update_goal_progress() called:
-   - status = "completed"
-   - metadata = {"reasoning": "User explicitly stated name", "extracted": {"name": "Alex"}}
+10. goal_manager.update_goal_progress() called:
+    - status = "completed"
+    - metadata = {"reasoning": "User explicitly stated name", "extracted": {"name": "Alex"}}
    ↓
-9. Next conversation: learn_name no longer in active_goals
-   - discuss_ocean becomes top priority
+11. Next conversation: learn_name no longer in active_goals
+    - discuss_ocean becomes top priority
 ```
+
+### Known Limitation: Short Conversations
+
+⚠️ **Gap**: If a user has a short conversation (< 20 messages) and leaves, the session times out but goal analysis never runs.
+
+| Scenario | Behavior | Issue? |
+|----------|----------|--------|
+| 20+ message conversation | ✅ Goal analysis runs | No |
+| 5 message convo, user leaves | ❌ Goal analysis never runs | **Yes** |
+| Cross-bot chain (3-5 msgs) | ✅ `force_processing=True` | No |
+
+See [SPEC-S06-SHORT_SESSION_PROCESSING.md](../spec/SPEC-S06-SHORT_SESSION_PROCESSING.md) for the proposed fix.
 
 ---
 
@@ -487,8 +540,10 @@ ORDER BY g.priority DESC  -- ← Highest priority first
 
 ### LLM Cost
 - GoalAnalyzer uses LLM to evaluate conversations
-- Only runs after conversation exchanges (not every message)
-- Consider: Run goal analysis asynchronously/background
+- Runs at session end (batch processing), not per-message
+- Uses background worker (`run_batch_goal_analysis`) to avoid blocking responses
+- Goals are batched: 2-3 goals per LLM call (local: 2, cloud: 3)
+- Cloud providers process batches in parallel; local LLMs sequential
 
 ### Caching
 - Character goals are cached in `_character_goals_cache`
