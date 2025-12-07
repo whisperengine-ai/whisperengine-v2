@@ -1,4 +1,3 @@
-```markdown
 # Daily Log: 2025-12-06
 
 **Observer**: Mark Castillo  
@@ -243,4 +242,3 @@ git push origin research/2025-12-06
 ---
 
 *Time spent on this log: ~15 minutes*
-```
