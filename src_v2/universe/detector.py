@@ -11,7 +11,7 @@ adding latency. The goal is to catch obvious signals:
 - Topic discoveries (new hobbies, interests mentioned for first time)
 """
 
-from typing import Optional, List
+from typing import Optional, Dict, Any
 from loguru import logger
 import re
 
@@ -68,7 +68,8 @@ class EventDetector:
         user_id: str,
         user_message: str,
         character_name: str,
-        detected_intents: Optional[List[str]] = None
+        detected_intents: Optional[Dict[str, Any]] = None,
+        user_name: Optional[str] = None
     ) -> Optional[UniverseEvent]:
         """
         Analyze a user message for significant events and publish if found.
@@ -78,6 +79,7 @@ class EventDetector:
             user_message: The user's message text
             character_name: The bot that received this message
             detected_intents: Optional list of intents from LLM classifier
+            user_name: Display name of the user (for readable summaries)
             
         Returns:
             The published event if one was detected, None otherwise
@@ -85,18 +87,21 @@ class EventDetector:
         if not settings.ENABLE_UNIVERSE_EVENTS:
             return None
         
+        # Use a privacy-safe fallback if no name provided
+        display_name = user_name or "someone"
+        
         event: Optional[UniverseEvent] = None
         
         # Prefer LLM-detected intents if available
         if detected_intents:
-            event = self._detect_from_intents(user_id, user_message, character_name, detected_intents)
+            event = self._detect_from_intents(user_id, user_message, character_name, detected_intents, display_name)
         
         # Fallback to regex if no intent-based detection
         if not event:
-            event = self._detect_emotional_spike(user_id, user_message, character_name)
+            event = self._detect_emotional_spike(user_id, user_message, character_name, display_name)
         
         if not event:
-            event = self._detect_life_update(user_id, user_message, character_name)
+            event = self._detect_life_update(user_id, user_message, character_name, display_name)
         
         if event:
             # S3: LLM-based sensitivity check before publishing
@@ -120,11 +125,13 @@ class EventDetector:
     def _detect_from_intents(
         self,
         user_id: str,
-        message: str,
+        _message: str,
         character_name: str,
-        intents: List[str]
+        detected_intents: Dict[str, Any],
+        display_name: str
     ) -> Optional[UniverseEvent]:
         """Detect events from LLM-classified intents."""
+        intents = detected_intents.get("intents", [])
         
         if "event_positive" in intents:
             logger.debug(f"LLM detected positive emotion event for user {user_id}")
@@ -132,7 +139,7 @@ class EventDetector:
                 event_type=EventType.EMOTIONAL_SPIKE,
                 user_id=user_id,
                 source_bot=character_name,
-                summary="is feeling very happy",
+                summary=f"{display_name} is feeling very happy",
                 topic="positive_emotion",
                 metadata={"sentiment": "positive", "source": "llm_intent"}
             )
@@ -143,7 +150,7 @@ class EventDetector:
                 event_type=EventType.EMOTIONAL_SPIKE,
                 user_id=user_id,
                 source_bot=character_name,
-                summary="seems to be going through a tough time",
+                summary=f"{display_name} seems to be going through a tough time",
                 topic="negative_emotion",
                 metadata={"sentiment": "negative", "source": "llm_intent"}
             )
@@ -154,7 +161,7 @@ class EventDetector:
                 event_type=EventType.USER_UPDATE,
                 user_id=user_id,
                 source_bot=character_name,
-                summary="shared some personal news",
+                summary=f"{display_name} shared some personal news",
                 topic="life_update",
                 metadata={"source": "llm_intent"}
             )
@@ -165,7 +172,8 @@ class EventDetector:
         self,
         user_id: str,
         message: str,
-        character_name: str
+        character_name: str,
+        display_name: str
     ) -> Optional[UniverseEvent]:
         """Detect strong emotional expressions."""
         
@@ -177,7 +185,7 @@ class EventDetector:
                     event_type=EventType.EMOTIONAL_SPIKE,
                     user_id=user_id,
                     source_bot=character_name,
-                    summary=f"is feeling very happy - {match.group(0)}",
+                    summary=f"{display_name} is feeling very happy",
                     topic="positive_emotion",
                     metadata={"sentiment": "positive", "match": match.group(0)}
                 )
@@ -190,7 +198,7 @@ class EventDetector:
                     event_type=EventType.EMOTIONAL_SPIKE,
                     user_id=user_id,
                     source_bot=character_name,
-                    summary=f"seems to be going through a tough time",
+                    summary=f"{display_name} seems to be going through a tough time",
                     topic="negative_emotion",
                     metadata={"sentiment": "negative", "match": match.group(0)}
                 )
@@ -201,7 +209,8 @@ class EventDetector:
         self,
         user_id: str,
         message: str,
-        character_name: str
+        character_name: str,
+        display_name: str
     ) -> Optional[UniverseEvent]:
         """Detect major life updates."""
         
@@ -218,11 +227,12 @@ class EventDetector:
                     "home": "has news about their home",
                 }
                 
+                summary_text = summary_map.get(topic, "shared some personal news")
                 return UniverseEvent(
                     event_type=EventType.USER_UPDATE,
                     user_id=user_id,
                     source_bot=character_name,
-                    summary=summary_map.get(topic, "shared some personal news"),
+                    summary=f"{display_name} {summary_text}",
                     topic=topic,
                     metadata={"match": match.group(0)}
                 )

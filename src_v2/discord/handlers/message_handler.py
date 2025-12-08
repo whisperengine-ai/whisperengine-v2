@@ -1320,7 +1320,8 @@ class MessageHandler:
                                 user_id=user_id,
                                 user_message=raw_user_message,
                                 character_name=self.bot.character_name,
-                                detected_intents=detected_intents
+                                detected_intents=detected_intents,
+                                user_name=message.author.display_name
                             )
                         except Exception as e:
                             logger.debug(f"Failed to detect universe event: {e}")
