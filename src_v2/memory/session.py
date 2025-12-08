@@ -193,6 +193,13 @@ class SessionManager:
                 start_time = session['start_time']
                 end_time = session['end_time'] if not session['is_active'] else session['updated_at']
                 
+                # Ensure timezone awareness - PostgreSQL may return naive datetimes
+                # if the column is TIMESTAMP instead of TIMESTAMPTZ
+                if start_time and start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=timezone.utc)
+                if end_time and end_time.tzinfo is None:
+                    end_time = end_time.replace(tzinfo=timezone.utc)
+                
                 # Add a small buffer to end_time to ensure we catch the last message
                 # if timestamps are slightly off or if updated_at was set before message insert committed
                 if end_time:
