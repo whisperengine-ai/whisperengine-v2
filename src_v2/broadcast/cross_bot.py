@@ -351,9 +351,12 @@ Trust your instincts - there's no pressure either way.]"""
             f"name_mention={has_name_mention}, is_reply={is_direct_reply}"
         )
         
-        # Must have some form of mention
-        if not has_at_mention and not has_name_mention:
-            logger.info(f"[CrossBot] No mention from {mentioning_bot} - content: {message.content[:100]}")
+        # Must have some form of engagement:
+        # 1. Direct @mention, OR
+        # 2. Name in text, OR
+        # 3. Direct reply to our message (they're continuing the conversation)
+        if not has_at_mention and not has_name_mention and not is_direct_reply:
+            logger.info(f"[CrossBot] No mention/reply from {mentioning_bot} - content: {message.content[:100]}")
             return None
         
         chain = self._get_or_create_chain(channel_id)
