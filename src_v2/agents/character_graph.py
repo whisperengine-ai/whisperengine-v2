@@ -117,7 +117,7 @@ If you decide to use a tool, you don't need to announce it - just use the inform
 RULES:
 1. If the user is just saying "hi" or casual chat, you MAY call lookup_user_facts to personalize (find their name).
 2. If the user asks about past conversations or memories, call the appropriate search tool.
-3. If the user asks about the universe, planets, servers, or channels, use check_planet_context or get_universe_overview.
+3. If the user asks about the universe, planets, servers, or channels, use planet_ctx or universe.
 4. If the user wants an image generated, call generate_image.
 5. If the user needs a calculation, call calculator.
 6. You can call multiple tools if needed.
