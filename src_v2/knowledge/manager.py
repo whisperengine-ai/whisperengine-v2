@@ -442,15 +442,117 @@ PRIVACY RESTRICTION ENABLED:
     async def save_facts(self, user_id: str, facts: List[Fact], bot_name: str = "unknown"):
         """
         Saves a list of facts to Neo4j.
+        Includes validation to filter out common LLM hallucinations.
         """
         if not facts:
             return
-
-        logger.info(f"Saving {len(facts)} facts for user {user_id} (source: {bot_name})")
+        
+        # === FACT VALIDATION ===
+        # Filter out common LLM hallucinations before saving to Neo4j
+        valid_facts = []
+        
+        # Known bot/character names that should never be entities
+        BOT_NAMES = {
+            "elena", "nottaylor", "dotty", "aria", "dream", "jake", 
+            "marcus", "ryan", "sophia", "gabriel", "aethys", "aetheris",
+            "sage", "becky", "silas", "liln"  # Include character aliases
+        }
+        
+        # Meta-categories that are useless as facts
+        INVALID_OBJECTS = {
+            "user", "ai", "bot", "human", "person", "entity", 
+            "assistant", "chatbot", "pet",  # Generic, not specific
+            "career", "family", "husband", "wife", "friend", "companion",
+            "system", "presence", "song", "conversation", "memory",
+            "something", "anything", "nothing", "everything"  # Vague
+        }
+        
+        # Invalid predicates that produce low-value facts
+        INVALID_PREDICATES = {
+            "HAS_A", "EXIST_IN", "NOTICED", "SAID", "ASKED", "TOLD",
+            "MENTIONED", "TALKED_ABOUT", "DISCUSSED"  # Conversational, not factual
+        }
+        
+        # Try to get user's display name to avoid storing it as an entity
+        # (e.g., username "markanthony" being stored as a pet name)
+        user_names_to_block = set()
+        try:
+            from src_v2.core.database import db_manager
+            if db_manager.postgres_pool:
+                async with db_manager.postgres_pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        "SELECT display_name FROM v2_users WHERE user_id = $1",
+                        user_id
+                    )
+                    if row and row['display_name']:
+                        # Add variations of the username
+                        name = row['display_name'].lower().strip()
+                        user_names_to_block.add(name)
+                        # Also block without spaces/underscores
+                        user_names_to_block.add(name.replace(" ", ""))
+                        user_names_to_block.add(name.replace("_", ""))
+        except Exception:
+            pass  # Fail silently, validation continues
+        
+        # Animals that users can't "be"
+        ANIMAL_TYPES = {"cat", "dog", "bird", "fish", "hamster", "rabbit", "snake", "turtle"}
+        
+        for fact in facts:
+            obj_lower = fact.object.lower().strip()
+            subj_lower = fact.subject.lower().strip()
+            predicate = fact.predicate.upper()
+            
+            # 1. Reject facts with JSON artifacts (malformed parsing)
+            if any(char in fact.object for char in ['{', '}', '[', ']']):
+                logger.debug(f"Rejecting malformed fact: {fact.predicate} -> {fact.object}")
+                continue
+            
+            # 2. Reject facts where object is a bot name
+            if obj_lower in BOT_NAMES:
+                logger.debug(f"Rejecting bot-name fact: {fact.predicate} -> {fact.object}")
+                continue
+            
+            # 3. Reject facts where object is the user's own name (username confusion)
+            if obj_lower in user_names_to_block:
+                logger.debug(f"Rejecting user-name-as-entity fact: {fact.predicate} -> {fact.object}")
+                continue
+            
+            # 4. Reject useless meta-categories
+            if obj_lower in INVALID_OBJECTS:
+                logger.debug(f"Rejecting meta-category fact: {fact.predicate} -> {fact.object}")
+                continue
+            
+            # 5. Reject invalid predicates (conversational, not factual)
+            if predicate in INVALID_PREDICATES:
+                logger.debug(f"Rejecting invalid predicate: {predicate} -> {fact.object}")
+                continue
+            
+            # 6. Reject "User IS_A <animal>" hallucinations
+            if subj_lower == "user" and predicate == "IS_A" and obj_lower in ANIMAL_TYPES:
+                logger.debug(f"Rejecting User IS_A animal: {fact.object}")
+                continue
+            
+            # 7. Reject self-referential facts
+            if subj_lower == obj_lower:
+                logger.debug(f"Rejecting self-referential fact: {fact.subject} -> {fact.object}")
+                continue
+            
+            # 8. Reject very short or very long objects (likely noise)
+            if len(fact.object.strip()) < 2 or len(fact.object.strip()) > 100:
+                logger.debug(f"Rejecting invalid length object: {fact.object}")
+                continue
+            
+            valid_facts.append(fact)
+        
+        if not valid_facts:
+            logger.debug(f"All {len(facts)} facts filtered out for user {user_id}")
+            return
+        
+        logger.info(f"Saving {len(valid_facts)}/{len(facts)} facts for user {user_id} (source: {bot_name})")
 
         # 2. Store in Neo4j
         async with db_manager.neo4j_driver.session() as session:
-            for fact in facts:
+            for fact in valid_facts:
                 await session.execute_write(self._merge_fact, user_id, fact, bot_name)
         
         # Invalidate common ground cache for this user (across all bots)
