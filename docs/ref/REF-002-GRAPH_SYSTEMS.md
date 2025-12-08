@@ -174,7 +174,6 @@ PostgreSQL is the **source of truth** — it stores verbatim records and structu
 | `v2_conversation_sessions` | Session tracking | → User, → Character |
 | `v2_user_relationships` | Trust scores, preferences, timezone | → User, → Character |
 | `v2_character_goals` | Character goals | → Character |
-| `v2_reminders` | Scheduled reminders | → User, → Character |
 | `v2_user_daily_usage` | Quota tracking | → User |
 
 **Graph Metaphor:** Foreign keys create an implicit **relational graph**. A user connects to sessions, which connect to characters, which connect to trust scores. Join queries are graph traversals.

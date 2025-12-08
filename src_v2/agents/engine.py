@@ -545,11 +545,6 @@ class AgentEngine:
             logger.info("Promoting complexity to COMPLEX_MID due to 'memory' intent")
             complexity_result = "COMPLEX_MID"
             
-        # "reminder" intent requires SetReminderTool which is only in Reflective Mode (COMPLEX_MID+)
-        if "reminder" in detected_intents and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
-            logger.info("Promoting complexity to COMPLEX_MID due to 'reminder' intent")
-            complexity_result = "COMPLEX_MID"
-
         # Handle image-related complexity:
         # - Image UPLOADS (image_urls present) → cap at COMPLEX_LOW (CharacterAgent can view images)
         # - Image GENERATION intents → promote to COMPLEX_MID (needs tools)

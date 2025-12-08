@@ -14,8 +14,6 @@ from src_v2.memory.manager import memory_manager
 from src_v2.memory.session import session_manager
 from src_v2.evolution.drives import drive_manager, Drive
 
-from src_v2.intelligence.reminder_manager import reminder_manager
-
 class ProactiveScheduler:
     """Manages proactive engagement scheduling for the bot."""
     
@@ -34,7 +32,6 @@ class ProactiveScheduler:
         self.is_running = True
         self._tasks = [
             self.bot.loop.create_task(self._loop(), name="proactive_scheduler"),
-            self.bot.loop.create_task(self._reminder_loop(), name="reminder_loop"),
         ]
         logger.info("ProactiveScheduler started.")
 
@@ -67,73 +64,7 @@ class ProactiveScheduler:
             
             await asyncio.sleep(self.check_interval_minutes * 60)
 
-    async def _reminder_loop(self) -> None:
-        """Loop to check for due reminders (Phase E5)."""
-        await self.bot.wait_until_ready()
-        while self.is_running:
-            try:
-                await self.check_reminders()
-            except Exception as e:
-                logger.error(f"Error in reminder loop: {e}")
-            
-            # Check every minute
-            await asyncio.sleep(60)
 
-    async def check_reminders(self) -> None:
-        """Check and deliver due reminders."""
-        # Check feature flag (default to True if not set, or add to settings)
-        if not getattr(settings, "ENABLE_REMINDERS", False):
-            return
-            
-        character_name = settings.DISCORD_BOT_NAME
-        if not character_name:
-            return
-            
-        due_reminders = await reminder_manager.get_due_reminders(character_name)
-        
-        for reminder in due_reminders:
-            try:
-                await self.deliver_reminder(reminder)
-            except Exception as e:
-                logger.error(f"Failed to deliver reminder {reminder['id']}: {e}")
-
-    async def deliver_reminder(self, reminder: dict) -> None:
-        """Deliver a single reminder."""
-        user_id = reminder['user_id']
-        channel_id = reminder['channel_id']
-        content = reminder['content']
-        
-        # Get channel
-        channel = self.bot.get_channel(int(channel_id))
-        if not channel:
-            # Try to fetch if not in cache
-            try:
-                channel = await self.bot.fetch_channel(int(channel_id))
-            except Exception:
-                logger.warning(f"Could not find channel {channel_id} for reminder {reminder['id']}")
-                return
-
-        # Send message
-        message = f"⏰ **Reminder:** {content}"
-        
-        # Mention user
-        try:
-            # Try to get member to mention
-            if isinstance(channel, discord.TextChannel):
-                member = channel.guild.get_member(int(user_id))
-                if member:
-                    message = f"{member.mention} {message}"
-            elif isinstance(channel, discord.DMChannel):
-                # No need to mention in DM
-                pass
-        except Exception:
-            pass
-            
-        await channel.send(message)
-        
-        # Mark as delivered
-        await reminder_manager.mark_as_delivered(reminder['id'])
-        logger.info(f"Delivered reminder {reminder['id']} to user {user_id}")
 
     async def check_all_users(self) -> None:
         """Checks all users with relationships to determine if proactive engagement is needed."""

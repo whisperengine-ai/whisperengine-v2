@@ -32,7 +32,6 @@ from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.math_tools import CalculatorTool
 from src_v2.tools.discord_tools import SearchChannelMessagesTool, SearchUserMessagesTool, GetMessageContextTool, GetRecentMessagesTool
 from src_v2.tools.web_search import WebSearchTool
-from src_v2.tools.reminder_tools import SetReminderTool
 from src_v2.tools.insight_tools import (
     AnalyzePatternsTool,
     DetectThemesTool,
@@ -249,16 +248,6 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
         # Conditionally add image generation tool
         if settings.ENABLE_IMAGE_GENERATION:
             tools.append(GenerateImageTool(user_id=user_id, character_name=bot_name))
-        
-        # Conditionally add reminder tool
-        if settings.ENABLE_REMINDERS and channel:
-            channel_id = str(channel.id) if hasattr(channel, 'id') else None
-            if channel_id:
-                tools.append(SetReminderTool(
-                    user_id=user_id,
-                    channel_id=channel_id,
-                    character_name=bot_name
-                ))
         
         return tools
 

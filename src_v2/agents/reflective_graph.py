@@ -27,7 +27,6 @@ from src_v2.tools.insight_tools import (
     DiscoverCommunityInsightsTool
 )
 from src_v2.tools.image_tools import GenerateImageTool
-from src_v2.tools.reminder_tools import SetReminderTool
 from src_v2.tools.math_tools import CalculatorTool
 from src_v2.tools.web_search import WebSearchTool
 from src_v2.config.settings import settings
@@ -141,16 +140,6 @@ class ReflectiveGraphAgent:
         if settings.ENABLE_IMAGE_GENERATION:
             tools.append(GenerateImageTool(character_name=character_name, user_id=user_id))
         
-        # Conditionally add reminder tool (Phase E5)
-        if settings.ENABLE_REMINDERS and channel:
-            channel_id = str(channel.id) if hasattr(channel, 'id') else None
-            if channel_id:
-                tools.append(SetReminderTool(
-                    user_id=user_id,
-                    channel_id=channel_id,
-                    character_name=character_name
-                ))
-        
         return tools
 
     def _construct_prompt(self, base_system_prompt: str, detected_intents: Optional[List[str]] = None) -> str:
@@ -177,8 +166,6 @@ class ReflectiveGraphAgent:
         ]
         
         # Add optional categories based on feature flags
-        if settings.ENABLE_REMINDERS:
-            tool_categories.append("8. Scheduling: set_reminder (schedule future reminders)")
         if settings.ENABLE_IMAGE_GENERATION:
             tool_categories.append("9. Creative: generate_image (create images)")
         
@@ -229,11 +216,6 @@ class ReflectiveGraphAgent:
             )
         
         # Add optional tools
-        if settings.ENABLE_REMINDERS:
-            tool_guide_entries.append(
-                ("set_reminder", "Schedule a reminder for a specific time. ONLY use when the user explicitly asks to be reminded of something later. Example: 'remind me to call mom at 5pm'.")
-            )
-        
         if settings.ENABLE_IMAGE_GENERATION:
             tool_guide_entries.append(
                 ("generate_image", "Generate an image. Use when user asks to CREATE, GENERATE, SHOW, MAKE, or DRAW an image. Include all visual details in the prompt - the tool cannot see your previous thoughts.")

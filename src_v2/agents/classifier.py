@@ -178,9 +178,6 @@ class ComplexityClassifier:
 Visual request triggers: "show me", "visualize", "picture of", "what does X look like", "generate an image", "create a picture", "draw", "illustrate", "render", "depict".
 Priority: image_refine > image_self/image_other. If replying to an image with modification words, use image_refine.'''
             
-        if settings.ENABLE_REMINDERS:
-            intent_section += '\n- "reminder": User wants to set a reminder, be reminded about something, or schedule a future notification (e.g. "remind me in 10 minutes", "set a reminder for tomorrow", "don\'t let me forget to...").'
-
         # Event detection intents (for cross-bot universe events)
         if settings.ENABLE_UNIVERSE_EVENTS:
             intent_section += '''\n- "event_positive": User expresses strong POSITIVE emotion (excitement, joy, celebration, great news, achievement, gratitude). Examples: "I'm so happy!", "Best day ever", "Finally made it!", "Over the moon".

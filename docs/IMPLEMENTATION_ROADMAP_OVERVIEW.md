@@ -108,17 +108,11 @@ All proposed roadmap items have been implemented. The system is feature-complete
 | Priority | Phase | Description | Time | Deps | Spec |
 |----------|-------|-------------|------|------|------|
 | 🟡 Medium | **S6** | **Session Timeout Processing** | **2-3 hours** | arq ✅ | [SPEC-S06](./spec/SPEC-S06-SHORT_SESSION_PROCESSING.md) |
-| 🔴 High | **S7** | **Redis TTL Reminders** | **3-4 hours** | Redis ✅ | [SPEC-S07](./spec/SPEC-S07-REDIS_TTL_REMINDERS.md) |
 
 **S6: Session Timeout Processing**
 - Problem: Short conversations (<20 messages) that timeout are never processed for goal analysis, knowledge extraction
 - Solution: Cron job every 5 min closes stale sessions and triggers batch processing
 - Impact: 100% of sessions processed (vs ~60% today)
-
-**S7: Redis TTL Reminders**
-- Problem: Reminder delivery has up to 60-second jitter (cron polling)
-- Solution: Redis TTL with keyspace notifications for precise delivery
-- Impact: Sub-second precision for user-facing reminders
 
 ---
 
@@ -154,7 +148,7 @@ All proposed roadmap items have been implemented. The system is feature-complete
 | E14 | Web Search Tool | Nov 2025 |
 | E11 | Discord Search Tools | Nov 2025 |
 | E9 | Artifact Provenance | Nov 2025 |
-| E5-E8 | Reminders, Timezone, Broadcast, Bot-to-Bot | Nov 2025 |
+| E5-E8 | Timezone, Broadcast, Bot-to-Bot (E5 Reminders removed) | Nov 2025 |
 | E12 | Agentic Dreams (DreamWeaver) | Nov 2025 |
 | E1-E4 | Threading, Diary, Dreams, Milestones | Nov 2025 |
 | E10 | Channel Observer | ⏭️ Permanently Skipped (Dec 2025) |
@@ -1500,14 +1494,13 @@ Focus on making characters feel more alive, interconnected, and temporally aware
 
 **Spec:** [RELATIONSHIP_MILESTONES.md](./spec/SPEC-E04-RELATIONSHIP_MILESTONES.md)
 
-### ✅ Phase E5: Scheduled Reminders
+### 🗄️ Phase E5: Scheduled Reminders
 **Priority:** Low | **Time:** 3-4 days | **Complexity:** Medium
-**Status:** ✅ Complete
-**Dependencies:** None
+**Status:** 🗄️ Removed (Dec 7, 2025)
+**Reason:** Feature removed as "gold plating" / unnecessary complexity.
 
 **Problem:** Users ask for reminders, but bot cannot deliver them.
-**Solution:** Intent detection + temporal parsing + proactive scheduler delivery.
-**Spec:** [SCHEDULED_REMINDERS.md](./spec/SPEC-E05-SCHEDULED_REMINDERS.md)
+**Solution:** (Removed) Intent detection + temporal parsing + proactive scheduler delivery.
 
 ### ✅ Phase E6: Character-to-Character Conversation
 **Priority:** Low | **Time:** 1 week | **Complexity:** High

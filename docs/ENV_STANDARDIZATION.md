@@ -69,7 +69,6 @@ All `.env*` files in WhisperEngine v2 follow a consistent structure for easy nav
 - Provenance display
 
 ### 15. **Advanced Features** (Lines 296-325)
-- Scheduled reminders
 - Stigmergic discovery (shared artifacts)
 
 ### 16. **Knowledge Graph** (Lines 326-350)

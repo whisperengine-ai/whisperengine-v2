@@ -88,7 +88,6 @@ The Complexity Classifier also detects **intents** for specialized handling:
 | `search` | User wants to look something up | Memory tools |
 | `memory` | User correcting/updating a fact | UpdateFactsTool in Reflective Mode |
 | `math` | Calculation or equation solving | CalculatorTool |
-| `reminder` | Set a future reminder | SetReminderTool |
 
 ## Core Components
 
@@ -161,7 +160,6 @@ Used in **Fast Mode** to determine if external tools are needed before response 
     *   `analyze_topic`: Composite tool for comprehensive research
     *   `check_planet_context`: Current server/channel info
     *   `get_universe_overview`: All planets/channels across universe
-    *   `set_reminder`: Schedule future notifications (if enabled)
 *   **Execution**: Parallel tool execution via `asyncio.gather`
 
 ### 5. CharacterAgent (`src_v2/agents/character_agent.py`)
@@ -208,7 +206,6 @@ Used in **Fast Mode** to determine if external tools are needed before response 
 - `detect_themes`: Theme extraction
 - `discover_community_insights`: Cross-bot stigmergic discovery
 - `generate_image`: Image generation (if enabled)
-- `set_reminder`: Reminders (if enabled)
 - Discord search tools (if channel available)
 
 ## Request Flow
@@ -352,7 +349,6 @@ Key flags that affect engine behavior (from `settings.py`):
 | `ENABLE_CHARACTER_AGENCY` | `true` | Enables COMPLEX_LOW → single-tool agent |
 | `ENABLE_IMAGE_GENERATION` | `true` | Adds `generate_image` tool, detects image intents |
 | `ENABLE_VOICE_RESPONSES` | `false` | Detects `voice` intent, generates TTS |
-| `ENABLE_REMINDERS` | `false` | Adds `set_reminder` tool |
 | `ENABLE_TRACE_LEARNING` | `true` | Injects few-shot traces in Reflective Mode |
 | `ENABLE_GOAL_STRATEGIST` | `true` | Injects goal strategies into context |
 | `ENABLE_CHARACTER_DIARY` | `true` | Injects diary context |

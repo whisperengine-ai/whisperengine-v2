@@ -14,7 +14,7 @@
 | [SPEC-E02](./SPEC-E02-ADVANCED_MEMORY_RETRIEVAL.md) | E2 | Advanced Memory Retrieval | ✅ Complete | Hybrid memory search |
 | [SPEC-E03](./SPEC-E03-USER_IDENTIFICATION.md) | E3 | User Identification | ✅ Complete | Display name storage |
 | [SPEC-E04](./SPEC-E04-RELATIONSHIP_MILESTONES.md) | E4 | Relationship Milestones | ✅ Complete | Trust level transitions |
-| [SPEC-E05](./SPEC-E05-SCHEDULED_REMINDERS.md) | E5 | Scheduled Reminders | ✅ Complete | User reminder system |
+| SPEC-E05 | E5 | Scheduled Reminders | 🗄️ Removed | User reminder system (Removed Dec 2025) |
 | [SPEC-E06](./SPEC-E06-CHARACTER_TO_CHARACTER.md) | E6 | Character-to-Character | ✅ Complete | Cross-bot conversations |
 | [SPEC-E06B](./SPEC-E06B-CROSS_BOT_MEMORY.md) | E6B | Cross-Bot Memory | ✅ Complete | Shared memory artifacts |
 | [SPEC-E07](./SPEC-E07-USER_TIMEZONE_SUPPORT.md) | E7 | User Timezone Support | ✅ Complete | Timezone-aware scheduling |
