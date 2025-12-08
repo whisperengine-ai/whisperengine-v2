@@ -35,10 +35,12 @@ REDIS_PREFIX_COOLDOWN = "crossbot:cooldown:"      # TTL-based, auto-expires
 REDIS_PREFIX_CHAIN = "crossbot:chain:"            # Hash with chain state
 REDIS_PREFIX_BURST = "crossbot:burst:"            # TTL-based, 30s auto-expire
 REDIS_PREFIX_BOT = "crossbot:bot:"                # Bot registry, 24h TTL
+REDIS_PREFIX_LOCK = "crossbot:lock:"              # Distributed lock for chain ops
 
 # TTL constants
 CHAIN_EXPIRE_MINUTES = 10  # Chains expire after 10 min of inactivity
 BURST_EXPIRE_SECONDS = 30  # Burst detection window
+LOCK_EXPIRE_SECONDS = 30   # Max time a lock can be held (prevents deadlocks)
 
 
 def _redis_key(key: str) -> str:
@@ -282,6 +284,99 @@ class CrossBotManager:
             logger.debug(f"Burst check failed: {e}")
             return False
 
+    # ========== Distributed Lock for Race Condition Prevention ==========
+    
+    async def acquire_response_lock(self, channel_id: str) -> bool:
+        """
+        Acquire a distributed lock for responding in a channel.
+        
+        This prevents multiple bots from responding simultaneously to the same
+        channel, which would cause message storms and chain count race conditions.
+        
+        Returns:
+            True if lock acquired, False if another bot is already responding
+        """
+        if not db_manager.redis_client:
+            # No Redis = no distributed coordination, allow response
+            return True
+        
+        lock_key = _redis_key(f"{REDIS_PREFIX_LOCK}{channel_id}")
+        lock_value = f"{self._bot_name}:{datetime.now(timezone.utc).isoformat()}"
+        
+        try:
+            # Atomic: SET key value NX EX seconds
+            # NX = only set if doesn't exist
+            # EX = auto-expire to prevent deadlocks
+            was_set = await db_manager.redis_client.set(
+                lock_key, lock_value, nx=True, ex=LOCK_EXPIRE_SECONDS
+            )
+            if was_set:
+                logger.debug(f"[CrossBot] Acquired response lock for channel {channel_id}")
+                return True
+            else:
+                # Another bot has the lock
+                existing = await db_manager.redis_client.get(lock_key)
+                logger.info(f"[CrossBot] Lock held by another bot: {existing} - skipping response")
+                return False
+        except Exception as e:
+            logger.warning(f"[CrossBot] Lock acquisition failed: {e}")
+            # On error, be conservative and skip the response
+            return False
+    
+    async def release_response_lock(self, channel_id: str) -> None:
+        """Release the response lock for a channel (only if we own it)."""
+        if not db_manager.redis_client:
+            return
+        
+        lock_key = _redis_key(f"{REDIS_PREFIX_LOCK}{channel_id}")
+        
+        try:
+            # Only release if we own the lock (prevents releasing another bot's lock)
+            current = await db_manager.redis_client.get(lock_key)
+            if current and current.startswith(f"{self._bot_name}:"):
+                await db_manager.redis_client.delete(lock_key)
+                logger.debug(f"[CrossBot] Released response lock for channel {channel_id}")
+            elif current:
+                logger.warning(f"[CrossBot] Lock owned by another bot, not releasing: {current}")
+            # If current is None, lock already expired - nothing to release
+        except Exception as e:
+            logger.debug(f"[CrossBot] Lock release failed: {e}")
+
+    async def _get_atomic_chain_count(self, channel_id: str) -> int:
+        """Get the current chain count using the atomic counter key."""
+        if not db_manager.redis_client:
+            # Fallback to old chain object
+            chain = await self._get_chain_from_redis(channel_id)
+            return chain.message_count if chain else 0
+        
+        count_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:count")
+        
+        try:
+            count = await db_manager.redis_client.get(count_key)
+            return int(count) if count else 0
+        except Exception as e:
+            logger.debug(f"[CrossBot] Failed to get atomic count: {e}")
+            return 0
+    
+    async def _get_last_bot(self, channel_id: str) -> Optional[str]:
+        """Get the last bot who spoke in the chain from metadata."""
+        if not db_manager.redis_client:
+            # Fallback to old chain object
+            chain = await self._get_chain_from_redis(channel_id)
+            return chain.last_bot if chain else None
+        
+        meta_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:meta")
+        
+        try:
+            data = await db_manager.redis_client.get(meta_key)
+            if data:
+                meta = json.loads(data)
+                return meta.get("last_bot")
+        except Exception as e:
+            logger.debug(f"[CrossBot] Failed to get last bot: {e}")
+        
+        return None
+
     def is_known_bot(self, user_id: int) -> bool:
         """Check if a Discord user ID belongs to a known bot."""
         return user_id in self._known_bots.values()
@@ -524,15 +619,19 @@ Trust your instincts - there's no pressure either way.]"""
                     logger.debug(f"Skipping: burst detection for {mentioning_bot} (within 30s, not in chain)")
                     return None
         
-        # Check chain limit
-        if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
-            logger.info(f"[CrossBot] Chain limit reached in channel {channel_id} (count: {chain.message_count})")
+        # Check chain limit using atomic count (prevents race conditions)
+        current_count = await self._get_atomic_chain_count(channel_id)
+        if current_count >= settings.CROSS_BOT_MAX_CHAIN:
+            logger.info(f"[CrossBot] Chain limit reached in channel {channel_id} (count: {current_count})")
             return None
+        
+        # Get last bot from metadata to check if it's our turn
+        last_bot = await self._get_last_bot(channel_id)
         
         # Don't respond if we were the last bot in the chain
         # BUT: if this is a direct reply to our message, the other bot just spoke - so we CAN respond
-        if chain.last_bot == self._bot_name and not is_direct_reply and not has_at_mention:
-            logger.info(f"[CrossBot] We were last bot in chain, skipping (last_bot={chain.last_bot})")
+        if last_bot == self._bot_name and not is_direct_reply and not has_at_mention:
+            logger.info(f"[CrossBot] We were last bot in chain, skipping (last_bot={last_bot})")
             return None
         
         return CrossBotMention(
@@ -577,25 +676,68 @@ Trust your instincts - there's no pressure either way.]"""
         """
         Record that we responded in a cross-bot conversation (Redis-backed).
         
+        Uses atomic Redis operations to prevent race conditions.
+        
         Returns:
             True if the chain just completed (hit max), False otherwise.
             When True, caller should trigger batch post-conversation processing.
         """
-        # Get chain from Redis (shared state)
-        chain = await self._get_or_create_chain_async(channel_id)
-        chain.add_message(self._bot_name or "unknown", message_id)
+        # Use atomic increment for message count to prevent race conditions
+        count_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:count")
+        meta_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:meta")
         
-        # Only set cooldown when chain reaches its limit
-        # This allows back-and-forth within a chain, but prevents new chains from starting too soon
-        chain_completed = not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN)
+        new_count = 1
+        
+        if db_manager.redis_client:
+            try:
+                # Atomic increment - this is the critical fix for the race condition
+                new_count = await db_manager.redis_client.incr(count_key)
+                
+                # Set TTL on first message
+                if new_count == 1:
+                    await db_manager.redis_client.expire(count_key, CHAIN_EXPIRE_MINUTES * 60)
+                
+                # Update metadata (last bot, participants) - less critical for race conditions
+                meta = {
+                    "last_bot": self._bot_name or "unknown",
+                    "last_message_id": message_id,
+                    "last_activity": datetime.now(timezone.utc).isoformat()
+                }
+                await db_manager.redis_client.setex(
+                    meta_key, 
+                    CHAIN_EXPIRE_MINUTES * 60, 
+                    json.dumps(meta)
+                )
+                
+                logger.info(f"[CrossBot] Atomic increment: chain count = {new_count}/{settings.CROSS_BOT_MAX_CHAIN}")
+                
+            except Exception as e:
+                logger.warning(f"[CrossBot] Atomic increment failed: {e}, falling back to non-atomic")
+                # Fallback to old method if Redis fails
+                chain = await self._get_or_create_chain_async(channel_id)
+                chain.add_message(self._bot_name or "unknown", message_id)
+                new_count = chain.message_count
+                await self._save_chain_to_redis(chain)
+        else:
+            # No Redis - use local cache (single bot only)
+            chain = await self._get_or_create_chain_async(channel_id)
+            chain.add_message(self._bot_name or "unknown", message_id)
+            new_count = chain.message_count
+        
+        # Check if chain completed
+        chain_completed = new_count >= settings.CROSS_BOT_MAX_CHAIN
+        
         if chain_completed:
             await self._set_cooldown_async(channel_id)
-            await self._delete_chain_from_redis(channel_id)  # Clean up completed chain
-            logger.info(f"Cross-bot chain completed (count: {chain.message_count}), cooldown set")
-        else:
-            # Save updated chain back to Redis
-            await self._save_chain_to_redis(chain)
-            logger.info(f"Recorded cross-bot response in chain (count: {chain.message_count}/{settings.CROSS_BOT_MAX_CHAIN})")
+            # Clean up both keys
+            if db_manager.redis_client:
+                try:
+                    await db_manager.redis_client.delete(count_key)
+                    await db_manager.redis_client.delete(meta_key)
+                except Exception:
+                    pass
+            await self._delete_chain_from_redis(channel_id)
+            logger.info(f"[CrossBot] Chain completed (count: {new_count}), cooldown set")
         
         return chain_completed
     
