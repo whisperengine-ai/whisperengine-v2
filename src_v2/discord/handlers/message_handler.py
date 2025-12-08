@@ -30,7 +30,6 @@ from src_v2.utils.validation import ValidationError, validator, smart_truncate
 from src_v2.discord.utils.message_utils import chunk_message, is_image, extract_pending_images
 from src_v2.core.behavior import get_character_timezone
 from influxdb_client.client.write.point import Point
-from src_v2.intelligence.activity import server_monitor
 from src_v2.core.goals import goal_manager
 
 
@@ -1548,8 +1547,8 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 except Exception as e:
                     logger.warning(f"Failed to process cross-bot attachments: {e}")
 
-            # Soft conversation phase hints for emergent endings
-            conversation_phase_hint = cross_bot_manager.get_conversation_phase(str(message.channel.id))
+            # Soft conversation phase hints for emergent endings (Redis-backed)
+            conversation_phase_hint = await cross_bot_manager.get_conversation_phase_async(str(message.channel.id))
             additional_context = f"{original_context}{conversation_phase_hint}".strip()
             
             context_vars = {

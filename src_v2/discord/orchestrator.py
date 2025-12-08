@@ -164,13 +164,13 @@ class ActivityOrchestrator:
             logger.warning(f"No suitable channel found in {guild.name} for bot conversation")
             return
 
-        # Check cooldown for this channel (use cross_bot_manager)
-        if cross_bot_manager.is_on_cooldown(str(target_channel.id)):
+        # Check cooldown for this channel (use cross_bot_manager with async Redis check)
+        if await cross_bot_manager.is_on_cooldown_async(str(target_channel.id)):
             logger.info(f"Channel {target_channel.name} is on cooldown for cross-bot chat")
             return
         
-        # Check if there's already an active conversation in this channel
-        if cross_bot_manager.has_active_conversation(str(target_channel.id)):
+        # Check if there's already an active conversation in this channel (Redis-backed)
+        if await cross_bot_manager.has_active_conversation_async(str(target_channel.id)):
             logger.info(f"Channel {target_channel.name} already has active bot conversation - skipping")
             return
 

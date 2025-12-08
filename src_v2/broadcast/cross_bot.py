@@ -9,11 +9,18 @@ Key Features:
 - Tracks conversation chains to prevent infinite loops
 - Respects cooldowns per channel
 - Probabilistic engagement for natural feel
+
+State Management (Redis-backed for cross-bot coordination):
+- Cooldowns: Redis TTL keys (auto-expire, no cleanup needed)
+- Active Chains: Redis hash (shared chain state across all bots)
+- Burst Detection: Redis TTL keys (30s auto-expire)
+- Known Bots: Redis keys with 24h TTL (bot registry)
 """
 
 import asyncio
+import json
 import random
-from typing import Optional, Dict, Any, List, Set
+from typing import Optional, Dict, List, Set
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass, field
 import discord
@@ -21,6 +28,17 @@ from loguru import logger
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
+
+
+# Redis key prefixes for cross-bot state
+REDIS_PREFIX_COOLDOWN = "crossbot:cooldown:"      # TTL-based, auto-expires
+REDIS_PREFIX_CHAIN = "crossbot:chain:"            # Hash with chain state
+REDIS_PREFIX_BURST = "crossbot:burst:"            # TTL-based, 30s auto-expire
+REDIS_PREFIX_BOT = "crossbot:bot:"                # Bot registry, 24h TTL
+
+# TTL constants
+CHAIN_EXPIRE_MINUTES = 10  # Chains expire after 10 min of inactivity
+BURST_EXPIRE_SECONDS = 30  # Burst detection window
 
 
 def _redis_key(key: str) -> str:
@@ -33,7 +51,7 @@ def _redis_key(key: str) -> str:
 
 @dataclass
 class ConversationChain:
-    """Tracks a bot-to-bot conversation chain."""
+    """Tracks a bot-to-bot conversation chain (Redis-serializable)."""
     channel_id: str
     participants: Set[str] = field(default_factory=set)  # Bot names in this chain
     message_count: int = 0
@@ -54,9 +72,34 @@ class ConversationChain:
         """Check if this chain should continue."""
         return self.message_count < max_chain
     
-    def is_expired(self, minutes: int = 10) -> bool:
+    def is_expired(self, minutes: int = CHAIN_EXPIRE_MINUTES) -> bool:
         """Check if chain is expired (no activity for N minutes)."""
         return datetime.now(timezone.utc) - self.last_activity_at > timedelta(minutes=minutes)
+    
+    def to_dict(self) -> dict:
+        """Serialize to dict for Redis storage."""
+        return {
+            "channel_id": self.channel_id,
+            "participants": list(self.participants),
+            "message_count": self.message_count,
+            "started_at": self.started_at.isoformat(),
+            "last_activity_at": self.last_activity_at.isoformat(),
+            "last_message_id": self.last_message_id,
+            "last_bot": self.last_bot,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "ConversationChain":
+        """Deserialize from Redis dict."""
+        return cls(
+            channel_id=data["channel_id"],
+            participants=set(data.get("participants", [])),
+            message_count=data.get("message_count", 0),
+            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else datetime.now(timezone.utc),
+            last_activity_at=datetime.fromisoformat(data["last_activity_at"]) if data.get("last_activity_at") else datetime.now(timezone.utc),
+            last_message_id=data.get("last_message_id"),
+            last_bot=data.get("last_bot"),
+        )
 
 
 @dataclass
@@ -76,15 +119,22 @@ class CrossBotMention:
 class CrossBotManager:
     """
     Manages cross-bot interactions and conversations.
+    
+    All shared state is stored in Redis for cross-bot coordination:
+    - Cooldowns: TTL keys that auto-expire (no cleanup needed)
+    - Chains: JSON in Redis with TTL refresh on activity
+    - Burst detection: TTL keys (30s window)
+    - Bot registry: TTL keys (24h, refreshed on startup)
+    
+    Local caches are kept for fast-path reads but Redis is authoritative.
     """
     
     def __init__(self, bot: Optional[discord.Client] = None, bot_name: Optional[str] = None):
         self._bot = bot
         self._bot_name = bot_name or settings.DISCORD_BOT_NAME
+        # Local caches (fast path, Redis is authoritative)
         self._known_bots: Dict[str, int] = {}  # bot_name -> discord_user_id
-        self._active_chains: Dict[str, ConversationChain] = {}  # channel_id -> chain
-        self._channel_cooldowns: Dict[str, datetime] = {}  # channel_id -> last_interaction_time
-        self._recent_bot_messages: Dict[str, datetime] = {}  # "channel_id:bot_name" -> last_message_time (burst detection)
+        self._chain_cache: Dict[str, ConversationChain] = {}  # channel_id -> chain (local cache)
     
     @property
     def known_bots(self) -> Dict[str, int]:
@@ -150,44 +200,87 @@ class CrossBotManager:
             logger.warning(f"Failed to load known bots: {e}")
 
     async def start_registration_loop(self) -> None:
-        """Background task to refresh bot registration and clean up state."""
+        """Background task to refresh bot registration. No cleanup needed - Redis TTLs handle expiration."""
         while True:
             try:
                 await self.load_known_bots()
-                self._cleanup_state()
+                # No local cleanup needed - Redis TTLs auto-expire cooldowns, chains, and burst keys
             except Exception as e:
-                logger.error(f"Registration/cleanup loop error: {e}")
+                logger.error(f"Registration loop error: {e}")
             # Refresh every hour
             await asyncio.sleep(3600)
     
-    def _cleanup_state(self) -> None:
-        """Clean up expired state to prevent memory leaks."""
+    # ========== Redis-backed State Management ==========
+    
+    async def _get_chain_from_redis(self, channel_id: str) -> Optional[ConversationChain]:
+        """Get conversation chain from Redis."""
+        if not db_manager.redis_client:
+            return self._chain_cache.get(channel_id)
+        
         try:
-            # Cleanup chains
-            self._cleanup_expired_chains()
-            
-            now = datetime.now(timezone.utc)
-            
-            # Cleanup burst detection cache (older than 5 minutes)
-            expired_bursts = [
-                k for k, t in self._recent_bot_messages.items()
-                if (now - t).total_seconds() > 300
-            ]
-            for k in expired_bursts:
-                del self._recent_bot_messages[k]
-                
-            # Cleanup cooldowns (older than 1 hour)
-            expired_cooldowns = [
-                k for k, t in self._channel_cooldowns.items()
-                if (now - t).total_seconds() > 3600
-            ]
-            for k in expired_cooldowns:
-                del self._channel_cooldowns[k]
-                
-            if expired_bursts or expired_cooldowns:
-                logger.debug(f"Cleaned up cross-bot state: {len(expired_bursts)} bursts, {len(expired_cooldowns)} cooldowns removed")
+            key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}")
+            data = await db_manager.redis_client.get(key)
+            if data:
+                chain = ConversationChain.from_dict(json.loads(data))
+                self._chain_cache[channel_id] = chain  # Update local cache
+                return chain
         except Exception as e:
-            logger.warning(f"State cleanup failed: {e}")
+            logger.debug(f"Failed to get chain from Redis: {e}")
+        
+        return self._chain_cache.get(channel_id)
+    
+    async def _save_chain_to_redis(self, chain: ConversationChain) -> None:
+        """Save conversation chain to Redis with TTL."""
+        self._chain_cache[chain.channel_id] = chain  # Update local cache
+        
+        if not db_manager.redis_client:
+            return
+        
+        try:
+            key = _redis_key(f"{REDIS_PREFIX_CHAIN}{chain.channel_id}")
+            ttl_seconds = CHAIN_EXPIRE_MINUTES * 60
+            await db_manager.redis_client.setex(
+                key, 
+                ttl_seconds, 
+                json.dumps(chain.to_dict())
+            )
+        except Exception as e:
+            logger.debug(f"Failed to save chain to Redis: {e}")
+    
+    async def _delete_chain_from_redis(self, channel_id: str) -> None:
+        """Delete conversation chain from Redis."""
+        self._chain_cache.pop(channel_id, None)
+        
+        if not db_manager.redis_client:
+            return
+        
+        try:
+            key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}")
+            await db_manager.redis_client.delete(key)
+        except Exception as e:
+            logger.debug(f"Failed to delete chain from Redis: {e}")
+    
+    async def _check_burst(self, channel_id: str, bot_name: str) -> bool:
+        """Check if this is a burst message (same bot posted within 30s). Uses Redis TTL.
+        
+        Uses atomic SET NX EX to avoid race conditions between EXISTS and SETEX.
+        """
+        burst_key = _redis_key(f"{REDIS_PREFIX_BURST}{channel_id}:{bot_name}")
+        
+        if not db_manager.redis_client:
+            # Fallback: always allow (no burst detection without Redis)
+            return False
+        
+        try:
+            # Atomic: SET key value NX EX seconds
+            # Returns True if key was SET (no burst), None/False if key already exists (burst)
+            was_set = await db_manager.redis_client.set(
+                burst_key, "1", nx=True, ex=BURST_EXPIRE_SECONDS
+            )
+            return not was_set  # True = burst (key existed), False = no burst (key was set)
+        except Exception as e:
+            logger.debug(f"Burst check failed: {e}")
+            return False
 
     def is_known_bot(self, user_id: int) -> bool:
         """Check if a Discord user ID belongs to a known bot."""
@@ -201,44 +294,58 @@ class CrossBotManager:
         return None
     
     def is_on_cooldown(self, channel_id: str) -> bool:
-        """Check if channel is on cooldown for cross-bot chat."""
-        last_time = self._channel_cooldowns.get(channel_id)
-        if not last_time:
-            return False
+        """Sync version: Check if channel is on cooldown (local cache only).
         
-        cooldown = timedelta(minutes=settings.CROSS_BOT_COOLDOWN_MINUTES)
-        return datetime.now(timezone.utc) - last_time < cooldown
+        DEPRECATED: Use is_on_cooldown_async() for accurate Redis-backed check.
+        This method only checks local memory and may not see cooldowns set by other bots.
+        """
+        # This is a best-effort sync check - Redis is authoritative
+        # The async version should be used whenever possible
+        return False  # Conservative: assume not on cooldown, let async check handle it
+    
+    async def is_on_cooldown_async(self, channel_id: str) -> bool:
+        """Async version: Check if channel is on cooldown (shared via Redis with TTL)."""
+        if db_manager.redis_client:
+            try:
+                key = _redis_key(f"{REDIS_PREFIX_COOLDOWN}{channel_id}")
+                ttl = await db_manager.redis_client.ttl(key)
+                if ttl > 0:
+                    return True
+            except Exception as e:
+                logger.debug(f"Redis cooldown check failed: {e}")
+        
+        # No Redis or Redis check failed - assume not on cooldown
+        # Redis TTL is the authoritative source for cooldowns
+        return False
+    
+    async def has_active_conversation_async(self, channel_id: str) -> bool:
+        """Check if there's an active (non-expired) conversation chain in this channel (Redis-backed)."""
+        chain = await self._get_chain_from_redis(channel_id)
+        if not chain:
+            return False
+        return not chain.is_expired() and chain.message_count > 0
     
     def has_active_conversation(self, channel_id: str) -> bool:
-        """Check if there's an active (non-expired) conversation chain in this channel."""
-        chain = self._active_chains.get(channel_id)
+        """Check if there's an active conversation (local cache only, use async for Redis)."""
+        chain = self._chain_cache.get(channel_id)
         if not chain:
             return False
         return not chain.is_expired() and chain.message_count > 0
 
-    def is_last_turn(self, channel_id: str) -> bool:
-        """
-        Check if the next response would be the last turn in the chain.
-        Used to trigger closing message generation.
-        """
-        chain = self._active_chains.get(channel_id)
+    async def is_last_turn_async(self, channel_id: str) -> bool:
+        """Check if the next response would be the last turn in the chain (Redis-backed)."""
+        chain = await self._get_chain_from_redis(channel_id)
         if not chain:
             return False
-        # After we respond, message_count will be incremented by 1
-        # So if current count + 1 >= max, this is the last turn
         return (chain.message_count + 1) >= settings.CROSS_BOT_MAX_CHAIN
 
-    def get_conversation_phase(self, channel_id: str) -> str:
+    async def get_conversation_phase_async(self, channel_id: str) -> str:
         """
-        Get a soft hint about the conversation phase.
+        Get a soft hint about the conversation phase (Redis-backed).
         Returns context that gently suggests where the conversation is,
         allowing emergent endings rather than forced ones.
-        
-        Returns:
-            Empty string for early conversation,
-            Soft hint for middle/late conversation
         """
-        chain = self._active_chains.get(channel_id)
+        chain = await self._get_chain_from_redis(channel_id)
         if not chain:
             return ""
         
@@ -254,35 +361,58 @@ class CrossBotManager:
             return "\n[CONVERSATION FLOW: You've been chatting for a bit. Continue naturally.]"
         
         # Approaching natural pause (turns 5+): soft hint
-        # This is NOT a command to end - just awareness that enables organic closure
+        return """\n[CONVERSATION FLOW: This has been a nice exchange. 
+If it feels natural to wrap up with a warm closing, you can.
+If there's genuinely more to explore, continue.
+Trust your instincts - there's no pressure either way.]"""
+    
+    # Legacy sync versions for backward compatibility (use local cache)
+    def is_last_turn(self, channel_id: str) -> bool:
+        """Sync version using local cache. Prefer is_last_turn_async()."""
+        chain = self._chain_cache.get(channel_id)
+        if not chain:
+            return False
+        return (chain.message_count + 1) >= settings.CROSS_BOT_MAX_CHAIN
+
+    def get_conversation_phase(self, channel_id: str) -> str:
+        """Sync version using local cache. Prefer get_conversation_phase_async()."""
+        chain = self._chain_cache.get(channel_id)
+        if not chain:
+            return ""
+        
+        turn_count = chain.message_count
+        max_turns = settings.CROSS_BOT_MAX_CHAIN
+        
+        if turn_count < 3:
+            return ""
+        if turn_count < max_turns - 2:
+            return "\n[CONVERSATION FLOW: You've been chatting for a bit. Continue naturally.]"
         return """\n[CONVERSATION FLOW: This has been a nice exchange. 
 If it feels natural to wrap up with a warm closing, you can.
 If there's genuinely more to explore, continue.
 Trust your instincts - there's no pressure either way.]"""
 
-    def _set_cooldown(self, channel_id: str) -> None:
-        """Set cooldown for a channel."""
-        self._channel_cooldowns[channel_id] = datetime.now(timezone.utc)
+    async def _set_cooldown_async(self, channel_id: str) -> None:
+        """Set cooldown for a channel (shared via Redis with TTL - auto-expires)."""
+        if db_manager.redis_client:
+            try:
+                key = _redis_key(f"{REDIS_PREFIX_COOLDOWN}{channel_id}")
+                cooldown_seconds = settings.CROSS_BOT_COOLDOWN_MINUTES * 60
+                await db_manager.redis_client.setex(key, cooldown_seconds, "1")
+                logger.info(f"Set shared cooldown for channel {channel_id} ({settings.CROSS_BOT_COOLDOWN_MINUTES} min)")
+            except Exception as e:
+                logger.debug(f"Failed to set Redis cooldown: {e}")
     
-    def _get_or_create_chain(self, channel_id: str) -> ConversationChain:
-        """Get existing chain or create new one."""
-        chain = self._active_chains.get(channel_id)
+    async def _get_or_create_chain_async(self, channel_id: str) -> ConversationChain:
+        """Get existing chain from Redis or create new one."""
+        chain = await self._get_chain_from_redis(channel_id)
         
         # Create new chain if none exists or current is expired
         if not chain or chain.is_expired():
             chain = ConversationChain(channel_id=channel_id)
-            self._active_chains[channel_id] = chain
+            await self._save_chain_to_redis(chain)
         
         return chain
-    
-    def _cleanup_expired_chains(self) -> None:
-        """Remove expired conversation chains."""
-        expired = [
-            cid for cid, chain in self._active_chains.items()
-            if chain.is_expired()
-        ]
-        for cid in expired:
-            del self._active_chains[cid]
     
     async def detect_cross_bot_mention(
         self,
@@ -368,7 +498,8 @@ Trust your instincts - there's no pressure either way.]"""
             logger.info(f"[CrossBot] No mention/reply from {mentioning_bot} - content: {message.content[:100]}")
             return None
         
-        chain = self._get_or_create_chain(channel_id)
+        # Get chain from Redis (shared state)
+        chain = await self._get_or_create_chain_async(channel_id)
         mentioning_bot = self.get_bot_name(message.author.id)
         
         # Check if we're in an active chain and it's our turn
@@ -382,23 +513,16 @@ Trust your instincts - there's no pressure either way.]"""
         # 1. We're in an active chain and it's our turn, OR
         # 2. This is a direct reply to our message
         if not is_direct_reply and not in_active_chain:
-            if self.is_on_cooldown(channel_id):
-                logger.debug(f"Cross-bot cooldown active for channel {channel_id}")
+            if await self.is_on_cooldown_async(channel_id):
+                logger.info(f"[CrossBot] Channel {channel_id} on cooldown (shared via Redis)")
                 return None
             
-            # Burst detection: ONLY for unsolicited mentions (not replies/chain responses)
-            # This prevents responding to multi-part messages (like chunked dream journals)
+            # Burst detection using Redis TTL (shared across bots)
             if mentioning_bot:
-                burst_key = f"{channel_id}:{mentioning_bot}"
-                last_msg_time = self._recent_bot_messages.get(burst_key)
-                now = datetime.now(timezone.utc)
-                if last_msg_time and (now - last_msg_time).total_seconds() < 30:
-                    # Same bot posted within 30 seconds outside of a conversation chain
-                    # Likely a multi-part message - skip to avoid spam
+                is_burst = await self._check_burst(channel_id, mentioning_bot)
+                if is_burst:
                     logger.debug(f"Skipping: burst detection for {mentioning_bot} (within 30s, not in chain)")
-                    self._recent_bot_messages[burst_key] = now
                     return None
-                self._recent_bot_messages[burst_key] = now
         
         # Check chain limit
         if not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN):
@@ -431,7 +555,7 @@ Trust your instincts - there's no pressure either way.]"""
             return True
         
         # Always respond if chain just started (first bot-to-bot exchange)
-        chain = self._active_chains.get(mention.channel_id)
+        chain = await self._get_chain_from_redis(mention.channel_id)
         if chain and chain.message_count == 0:
             return True
         
@@ -451,22 +575,26 @@ Trust your instincts - there's no pressure either way.]"""
         message_id: str
     ) -> bool:
         """
-        Record that we responded in a cross-bot conversation.
+        Record that we responded in a cross-bot conversation (Redis-backed).
         
         Returns:
             True if the chain just completed (hit max), False otherwise.
             When True, caller should trigger batch post-conversation processing.
         """
-        chain = self._get_or_create_chain(channel_id)
+        # Get chain from Redis (shared state)
+        chain = await self._get_or_create_chain_async(channel_id)
         chain.add_message(self._bot_name or "unknown", message_id)
         
         # Only set cooldown when chain reaches its limit
         # This allows back-and-forth within a chain, but prevents new chains from starting too soon
         chain_completed = not chain.should_continue(settings.CROSS_BOT_MAX_CHAIN)
         if chain_completed:
-            self._set_cooldown(channel_id)
+            await self._set_cooldown_async(channel_id)
+            await self._delete_chain_from_redis(channel_id)  # Clean up completed chain
             logger.info(f"Cross-bot chain completed (count: {chain.message_count}), cooldown set")
         else:
+            # Save updated chain back to Redis
+            await self._save_chain_to_redis(chain)
             logger.info(f"Recorded cross-bot response in chain (count: {chain.message_count}/{settings.CROSS_BOT_MAX_CHAIN})")
         
         return chain_completed
@@ -484,8 +612,6 @@ Trust your instincts - there's no pressure either way.]"""
             return False
         
         try:
-            import json
-            
             mention_data = {
                 "channel_id": mention.channel_id,
                 "message_id": mention.message_id,
@@ -524,8 +650,6 @@ Trust your instincts - there's no pressure either way.]"""
         queue_key = _redis_key(f"crossbot:mentions:{self._bot_name}")
         
         try:
-            import json
-            
             # Process up to 5 mentions per call using non-blocking LPOP
             # For real-time processing, use BLPOP in a dedicated loop
             for _ in range(5):
