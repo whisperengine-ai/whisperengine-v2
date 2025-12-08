@@ -207,6 +207,12 @@ class SessionManager:
                 else:
                     end_time_buffer = datetime.now(timezone.utc)
 
+                # v2_chat_history.timestamp is timezone-naive (TIMESTAMP, not TIMESTAMPTZ)
+                # We need to strip timezone info for comparison, otherwise asyncpg throws:
+                # "can't subtract offset-naive and offset-aware datetimes"
+                query_start_time = start_time.replace(tzinfo=None) if start_time else None
+                query_end_time = end_time_buffer.replace(tzinfo=None) if end_time_buffer else None
+
                 rows = await conn.fetch("""
                     SELECT role, content, timestamp, user_name
                     FROM v2_chat_history 
@@ -215,7 +221,7 @@ class SessionManager:
                     AND timestamp >= $3
                     AND timestamp <= $4
                     ORDER BY timestamp ASC
-                """, session['user_id'], session['character_name'], start_time, end_time_buffer)
+                """, session['user_id'], session['character_name'], query_start_time, query_end_time)
                 
                 return [
                     {
