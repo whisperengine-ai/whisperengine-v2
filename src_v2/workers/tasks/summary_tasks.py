@@ -63,14 +63,20 @@ async def run_summarization(
         if result and result.meaningfulness_score >= 3:
             # Use SummaryManager for saving (it handles DB logic)
             summarizer = SummaryManager(bot_name=character_name)
-            await summarizer.save_summary(session_id, user_id, result, user_name=user_name)
+            saved = await summarizer.save_summary(session_id, user_id, result, user_name=user_name)
             
-            logger.info(f"Summary saved for session {session_id} (score: {result.meaningfulness_score})")
+            if saved:
+                logger.info(f"Summary saved for session {session_id} (score: {result.meaningfulness_score})")
+            else:
+                logger.warning(f"Summary generated but failed to save for session {session_id}")
+            
             return {
                 "success": True,
+                "saved": saved,
                 "summary": result.summary,
                 "meaningfulness_score": result.meaningfulness_score,
                 "emotions": result.emotions,
+                "topics": result.topics,
                 "session_id": session_id
             }
         else:

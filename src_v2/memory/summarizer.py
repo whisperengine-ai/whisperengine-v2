@@ -1,11 +1,9 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 import uuid
 from loguru import logger
-from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from src_v2.core.database import db_manager
-from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.manager import MemoryManager
 
 class SummaryResult(BaseModel):
@@ -16,60 +14,20 @@ class SummaryResult(BaseModel):
 
 class SummaryManager:
     def __init__(self, bot_name: Optional[str] = None):
-        base_llm = create_llm(temperature=0.3, mode="utility")
-        self.llm = base_llm.with_structured_output(SummaryResult)
         self.memory_manager = MemoryManager(bot_name=bot_name)
-        
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert conversation summarizer for an AI companion.
-Your goal is to compress the conversation into a concise summary that preserves context for future recall.
 
-RULES:
-1. Focus on FACTS, TOPICS, and USER OPINIONS.
-2. Ignore generic greetings ("Hi", "Hello") unless they are the only content.
-3. Rate "Meaningfulness" (1-5):
-   - 1: Small talk, greetings, short jokes.
-   - 3: Hobbies, daily events, opinions.
-   - 5: Deep emotional sharing, philosophy, life goals, trauma.
-4. Detect Emotions: List 2-3 dominant emotions.
-5. Extract Topics: List 1-5 key topics or themes (e.g., 'career anxiety', 'favorite movies', 'childhood memories').
-   These topics help maintain narrative continuity across sessions.
-"""),
-            ("human", "Conversation to summarize:\n{conversation_text}")])
-        
-        self.chain = self.prompt | self.llm
-
-    async def generate_summary(self, messages: List[Dict[str, Any]]) -> Optional[SummaryResult]:
-        """
-        Generates a summary from a list of message dictionaries.
-        Messages should have 'role' and 'content'.
-        """
-        if not messages:
-            return None
-
-        # Format conversation text
-        conversation_text = ""
-        for msg in messages:
-            role = msg.get('role', 'unknown')
-            content = msg.get('content', '')
-            conversation_text += f"{role}: {content}\n"
-
-        try:
-            result = await self.chain.ainvoke({"conversation_text": conversation_text})
-            return result
-        except Exception as e:
-            logger.error(f"Failed to generate summary: {e}")
-            return None
-
-    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult, user_name: Optional[str] = None):
+    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult, user_name: Optional[str] = None) -> bool:
         """
         Saves the summary to Postgres and Qdrant.
         
         Args:
             user_name: User's display name (for diary provenance)
+            
+        Returns:
+            True if saved successfully, False otherwise
         """
         if not db_manager.postgres_pool:
-            return
+            return False
 
         try:
             # 1. Save to Postgres
@@ -80,25 +38,6 @@ RULES:
                     VALUES ($1, $2, $3, $4)
                 """, summary_id, session_id, result.summary, result.meaningfulness_score)
             
-            # 2. Embed and Save to Qdrant (Collection: summaries)
-            # We need to ensure the 'summaries' collection exists or use the main one with a tag.
-            # For now, let's use the main collection but with type='summary' payload.
-            
-            # Construct payload
-            payload = {
-                "type": "summary",
-                "session_id": str(session_id),
-                "meaningfulness_score": result.meaningfulness_score,
-                "emotions": result.emotions,
-                "content": result.summary
-            }
-            
-            # Use MemoryManager to save (we might need to expose a raw save method)
-            # For now, let's assume we can use the embedding service directly if we had it exposed,
-            # but MemoryManager encapsulates it.
-            # Let's add a method to MemoryManager to save structured data.
-            
-            # For now, I'll just log it as a TODO until I update MemoryManager
             logger.info(f"Summary saved to Postgres: {summary_id}")
             
             # Call MemoryManager to save vector
@@ -121,5 +60,8 @@ RULES:
                         WHERE id = $2
                     """, uuid.UUID(embedding_id), summary_id)
             
+            return True
+            
         except Exception as e:
             logger.error(f"Failed to save summary to DB: {e}")
+            return False

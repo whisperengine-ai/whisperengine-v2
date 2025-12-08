@@ -518,6 +518,23 @@ async def save_reflection_output(
                             expires_at
                         )
                         logger.info(f"Created inferred goal '{goal.slug}' for {character_name}/{user_id}")
+            
+            # 3. Save traits to Neo4j knowledge graph
+            if output.updated_traits:
+                from src_v2.universe.manager import universe_manager
+                for trait in output.updated_traits:
+                    try:
+                        await universe_manager.add_user_trait(
+                            user_id=user_id,
+                            trait=trait,
+                            category="personality",
+                            learned_by=character_name,
+                            confidence=0.7
+                        )
+                    except Exception as trait_error:
+                        logger.warning(f"Failed to save trait '{trait}': {trait_error}")
+                
+                logger.info(f"Saved {len(output.updated_traits)} traits for user {user_id}")
                         
     except Exception as e:
         logger.error(f"Failed to save reflection output: {e}")

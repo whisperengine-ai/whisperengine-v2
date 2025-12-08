@@ -602,18 +602,20 @@ async def save_strategist_output(
     
     try:
         async with db_manager.postgres_pool.acquire() as conn:
-            # 1. Apply strategies
+            # 1. Apply strategies (store both strategy and reasoning)
             for strategy in output.strategies:
                 if strategy.confidence >= 0.4:
+                    # Store strategy with reasoning for observability
+                    strategy_with_context = f"{strategy.strategy}\n\n[Reasoning: {strategy.reasoning}]"
                     await conn.execute("""
                         UPDATE v2_goals 
                         SET current_strategy = $1
                         WHERE character_name = $2 AND slug = $3
-                    """, strategy.strategy, character_name, strategy.goal_slug)
+                    """, strategy_with_context, character_name, strategy.goal_slug)
                     results["strategies_applied"] += 1
-                    logger.info(f"Applied strategy for goal '{strategy.goal_slug}'")
+                    logger.info(f"Applied strategy for goal '{strategy.goal_slug}': {strategy.reasoning[:80]}...")
             
-            # 2. Create new goals
+            # 2. Create new goals (initialize with reasoning as strategy context)
             expires_at = datetime.now() + timedelta(days=30)
             
             for goal in output.new_goals:
@@ -623,12 +625,14 @@ async def save_strategist_output(
                 """, character_name, goal.slug)
                 
                 if not exists:
+                    # Store reasoning as initial strategy context
+                    initial_strategy = f"[Created because: {goal.reasoning}]"
                     await conn.execute("""
                         INSERT INTO v2_goals (
                             character_name, slug, description, success_criteria,
-                            priority, source, category, expires_at
+                            priority, source, category, current_strategy, expires_at
                         )
-                        VALUES ($1, $2, $3, $4, $5, 'strategic', $6, $7)
+                        VALUES ($1, $2, $3, $4, $5, 'strategic', $6, $7, $8)
                     """, 
                         character_name, 
                         goal.slug, 
@@ -636,10 +640,11 @@ async def save_strategist_output(
                         goal.success_criteria,
                         goal.priority,
                         goal.category,
+                        initial_strategy,
                         expires_at
                     )
                     results["goals_created"] += 1
-                    logger.info(f"Created strategic goal '{goal.slug}' (expires: {expires_at.date()})")
+                    logger.info(f"Created strategic goal '{goal.slug}': {goal.reasoning[:80]}...")
                     
     except Exception as e:
         logger.error(f"Failed to save strategist output: {e}")
