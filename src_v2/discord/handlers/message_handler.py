@@ -806,13 +806,24 @@ class MessageHandler:
                         logger.error(f"Failed to retrieve universe context: {e}")
                         return "Location: Unknown"
 
+                async def get_user_nickname():
+                    """Fetch user's preferred nickname from relationship preferences."""
+                    try:
+                        trust_data = await trust_manager.get_relationship_level(user_id, self.bot.character_name)
+                        preferences = trust_data.get('preferences', {})
+                        return preferences.get('nickname')  # Returns None if not set
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch user nickname: {e}")
+                        return None
+
                 # Execute all context retrieval tasks in parallel
-                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context = await asyncio.gather(
+                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, preferred_nickname = await asyncio.gather(
                     get_memories(),
                     get_history(),
                     get_knowledge(),
                     get_summaries(),
-                    get_universe_context()
+                    get_universe_context(),
+                    get_user_nickname()
                 )
 
                 # 2. Save User Message & Extract Knowledge
@@ -896,8 +907,12 @@ class MessageHandler:
                 elif hasattr(message.channel, 'name'):
                     channel_name = message.channel.name
 
+                # Use preferred nickname if set, otherwise fall back to Discord display name
+                effective_user_name = preferred_nickname or message.author.display_name
+                
                 context_vars = {
-                    "user_name": message.author.display_name,
+                    "user_name": effective_user_name,
+                    "discord_display_name": message.author.display_name,  # Keep original for reference
                     "current_datetime": datetime_display,
                     "universe_context": universe_context,
                     "recent_memories": formatted_memories,
@@ -1828,12 +1843,26 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                     except Exception as e:
                         logger.error(f"Failed to retrieve history for lurk: {e}")
                         return []
+                
+                async def get_user_nickname():
+                    """Fetch user's preferred nickname from relationship preferences."""
+                    try:
+                        trust_data = await trust_manager.get_relationship_level(user_id, self.bot.character_name)
+                        preferences = trust_data.get('preferences', {})
+                        return preferences.get('nickname')
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch user nickname for lurk: {e}")
+                        return None
                         
-                formatted_memories, knowledge_facts, chat_history = await asyncio.gather(
+                formatted_memories, knowledge_facts, chat_history, preferred_nickname = await asyncio.gather(
                     get_memories(),
                     get_knowledge(),
-                    get_history()
+                    get_history(),
+                    get_user_nickname()
                 )
+                
+                # Use preferred nickname if set
+                effective_user_name = preferred_nickname or message.author.display_name
                 
                 # Build context for lurk response
                 # Add special lurk instruction to guide the response style
@@ -1845,7 +1874,8 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 )
                 
                 context_vars = {
-                    "user_name": message.author.display_name,
+                    "user_name": effective_user_name,
+                    "discord_display_name": message.author.display_name,
                     "recent_memories": formatted_memories,
                     "knowledge_facts": knowledge_facts,
                     "lurk_instruction": lurk_instruction,
