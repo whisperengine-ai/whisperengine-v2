@@ -329,6 +329,15 @@ Trust your instincts - there's no pressure either way.]"""
                 if ref_msg and ref_msg.author.id == self._bot.user.id:
                     is_direct_reply = True
                     logger.debug("Message is a direct reply to our message")
+                # Fallback: Fetch message if not resolved (e.g., old message not in cache)
+                elif not ref_msg:
+                    try:
+                        ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                        if ref_msg and ref_msg.author.id == self._bot.user.id:
+                            is_direct_reply = True
+                            logger.debug("Message is a direct reply to our message (fetched)")
+                    except Exception:
+                        pass
             except Exception:
                 pass
         
