@@ -328,14 +328,14 @@ Returns artifacts from the shared community mind, excluding your own thoughts.""
 
 
 class TriggerProactiveActionInput(BaseModel):
-    user_id: str = Field(description="User ID to message")
+    user_id: str = Field(description="The numeric Discord user ID to message (e.g. '123456789012345678')")
     reason: str = Field(description="Why we are messaging them")
 
 
 class TriggerProactiveActionTool(BaseTool):
     """Triggers a proactive message to the user based on an insight."""
     name: str = "trigger_proactive_action"
-    description: str = "Triggers a proactive message to the user based on an insight. Use this when you detect a good reason to reach out (e.g. shared interest, concern, celebration)."
+    description: str = "Triggers a proactive message to the user based on an insight. Use this when you detect a good reason to reach out (e.g. shared interest, concern, celebration). The user_id must be a numeric Discord user ID."
     args_schema: Type[BaseModel] = TriggerProactiveActionInput
     
     bot_name: str = Field(default="default", exclude=True)
@@ -345,6 +345,10 @@ class TriggerProactiveActionTool(BaseTool):
 
     async def _arun(self, user_id: str, reason: str) -> str:
         from src_v2.workers.task_queue import task_queue, TaskQueue
+        
+        # Validate user_id is a numeric Discord ID (17-20 digits)
+        if not user_id or not user_id.isdigit() or len(user_id) < 17:
+            return f"Error: Invalid user_id '{user_id}'. Must be a numeric Discord user ID (17-20 digits)."
         
         job_id = await task_queue.enqueue(
             "run_proactive_message",

@@ -657,7 +657,14 @@ class BroadcastManager:
                     
                     logger.debug(f"Processing queue item: type={item.get('post_type')}, id={item.get('id', 'unknown')}")
                     
-                    # Fetch artifacts if specified
+                    # Validate target_user_id BEFORE extracting artifacts (which is destructive)
+                    target_user_id_str = item.get("target_user_id")
+                    if target_user_id_str:
+                        if not target_user_id_str.isdigit() or len(target_user_id_str) < 17:
+                            logger.warning(f"Invalid target_user_id '{target_user_id_str}' in queue - skipping (must be 17-20 digit Discord ID)")
+                            continue
+                    
+                    # Fetch artifacts if specified (only after validation passes)
                     files = []
                     if item.get("artifact_user_id"):
                         from src_v2.artifacts.discord_utils import extract_pending_artifacts
@@ -666,9 +673,9 @@ class BroadcastManager:
                             logger.info(f"Attached {len(files)} artifacts to broadcast for {item['character_name']}")
                     
                     # Handle DM if target_user_id is present
-                    if item.get("target_user_id"):
+                    if target_user_id_str:
                         try:
-                            user_id = int(item["target_user_id"])
+                            user_id = int(target_user_id_str)
                             user = await self._bot.fetch_user(user_id)
                             if user:
                                 # Send DM

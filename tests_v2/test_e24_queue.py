@@ -40,11 +40,12 @@ class TestInterAgentTrigger:
     async def test_trigger_proactive_action_tool(self):
         """Verify tool enqueues to ACTION queue."""
         tool = TriggerProactiveActionTool(bot_name="elena")
+        valid_user_id = "123456789012345678"
     
         with patch('src_v2.workers.task_queue.task_queue.enqueue', new_callable=AsyncMock) as mock_enqueue:
             mock_enqueue.return_value = "job_123"
     
-            result = await tool._arun(user_id="u1", reason="test reason")
+            result = await tool._arun(user_id=valid_user_id, reason="test reason")
     
             assert "job_123" in result
     
@@ -55,7 +56,7 @@ class TestInterAgentTrigger:
             args, kwargs = mock_enqueue.call_args
             assert args[0] == "run_proactive_message"
             assert kwargs['_queue_name'] == TaskQueue.QUEUE_ACTION
-            assert kwargs['user_id'] == "u1"
+            assert kwargs['user_id'] == valid_user_id
             assert kwargs['character_name'] == "elena"
 
 class TestBroadcastManager:
@@ -65,6 +66,7 @@ class TestBroadcastManager:
     async def test_queue_broadcast_dm(self):
         """Verify queuing a DM broadcast."""
         manager = BroadcastManager()
+        valid_user_id = "123456789012345678"
         
         # Mock redis
         # We need to mock db_manager.redis_client because queue_broadcast uses it directly
@@ -80,7 +82,7 @@ class TestBroadcastManager:
                     content="Hello",
                     post_type=MagicMock(value="diary"),
                     character_name="elena",
-                    target_user_id="12345"
+                    target_user_id=valid_user_id
                 )
                 
                 # Verify pushed to redis list
@@ -91,7 +93,7 @@ class TestBroadcastManager:
                 # Check payload
                 import json
                 payload = json.loads(call_args[0][1])
-                assert payload['target_user_id'] == "12345"
+                assert payload['target_user_id'] == valid_user_id
                 assert payload['content'] == "Hello"
 
     @pytest.mark.asyncio
@@ -99,6 +101,7 @@ class TestBroadcastManager:
         """Verify processing a DM broadcast."""
         manager = BroadcastManager()
         manager._bot = AsyncMock()
+        valid_user_id = "123456789012345678"
         
         # Mock user fetch
         mock_user = AsyncMock()
@@ -111,7 +114,7 @@ class TestBroadcastManager:
             "content": "Hello",
             "post_type": "diary",
             "character_name": "elena",
-            "target_user_id": "12345"
+            "target_user_id": valid_user_id
         })
         
         with patch('src_v2.broadcast.manager.db_manager') as mock_db:
@@ -126,6 +129,6 @@ class TestBroadcastManager:
                 await manager.process_queued_broadcasts()
             
             # Verify user fetched and message sent
-            manager._bot.fetch_user.assert_called_with(12345)
+            manager._bot.fetch_user.assert_called_with(int(valid_user_id))
             mock_user.send.assert_called_once()
             assert mock_user.send.call_args[0][0] == "Hello"
