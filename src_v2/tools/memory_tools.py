@@ -245,7 +245,7 @@ class SearchSummariesInput(BaseModel):
     time_range: Optional[str] = Field(description="Optional time range (e.g., 'last week', 'yesterday').", default=None)
 
 class SearchSummariesTool(BaseTool):
-    name: str = "search_archived_summaries"
+    name: str = "old_summaries"
     description: str = "Searches high-level summaries of past conversations. Use this to recall topics, events, or emotional context from days or weeks ago."
     args_schema: Type[BaseModel] = SearchSummariesInput
     user_id: str = Field(exclude=True) # Exclude from LLM schema
@@ -320,7 +320,7 @@ class SearchEpisodesInput(BaseModel):
     query: str = Field(description="The specific detail or quote to search for.")
 
 class SearchEpisodesTool(BaseTool):
-    name: str = "search_specific_memories"
+    name: str = "mem_search"
     description: str = """Search YOUR semantic memory for past conversations with this user - including DMs, channels, and all contexts.
 
 USE THIS WHEN:
@@ -472,7 +472,7 @@ class UpdatePreferencesInput(BaseModel):
     value: Optional[str] = Field(description="The new value (only for 'update' action).", default=None)
 
 class UpdatePreferencesTool(BaseTool):
-    name: str = "update_user_preferences"
+    name: str = "save_prefs"
     description: str = "Updates or deletes user preferences (configuration). Use this when the user explicitly changes a setting like 'stop calling me Captain' or 'change verbosity to short'."
     args_schema: Type[BaseModel] = UpdatePreferencesInput
     user_id: str = Field(exclude=True)
@@ -505,7 +505,7 @@ class ExploreGraphInput(BaseModel):
     )
 
 class ExploreGraphTool(BaseTool):
-    name: str = "explore_knowledge_graph"
+    name: str = "graph_walk"
     description: str = "Explores the knowledge graph to find hidden connections, thematic clusters, and relationships. Use this when the user asks 'what is connected?', 'explore the graph', 'find connections', or wants to discover relationships beyond specific facts."
     args_schema: Type[BaseModel] = ExploreGraphInput
     user_id: str = Field(exclude=True)
@@ -575,7 +575,7 @@ class DiscoverCommonGroundInput(BaseModel):
     target: str = Field(description="The target to find common ground with. Defaults to 'user'.", default="user")
 
 class DiscoverCommonGroundTool(BaseTool):
-    name: str = "discover_common_ground"
+    name: str = "common_ground"
     description: str = "Discovers what you and the user have in common - shared interests, places, experiences, or values. Use this when you want to find connection points, when asked 'what do we have in common?', or to personalize the conversation with shared interests."
     args_schema: Type[BaseModel] = DiscoverCommonGroundInput
     user_id: str = Field(exclude=True)
@@ -599,7 +599,7 @@ class GetEvolutionStateInput(BaseModel):
     target: str = Field(description="The target to check evolution state for. Defaults to 'user'.", default="user")
 
 class CharacterEvolutionTool(BaseTool):
-    name: str = "get_character_evolution"
+    name: str = "char_evolve"
     description: str = "Retrieves the current relationship level, trust score, and unlocked personality traits between you and the user. Use this to understand how your personality should adapt to this specific relationship."
     args_schema: Type[BaseModel] = GetEvolutionStateInput
     user_id: str = Field(exclude=True)
@@ -645,7 +645,7 @@ class RecallBotConversationInput(BaseModel):
 
 class RecallBotConversationTool(BaseTool):
     """Recall past conversations with another bot character."""
-    name: str = "recall_bot_conversation"
+    name: str = "bot_recall"
     description: str = """Recall memories of conversations you've had with another bot.
 
 USE THIS WHEN the user asks:
@@ -743,7 +743,7 @@ class ReadFullMemoryInput(BaseModel):
     message_id: str = Field(description="The Discord message ID of the memory to read in full.")
 
 class ReadFullMemoryTool(BaseTool):
-    name: str = "read_full_memory"
+    name: str = "full_memory"
     description: str = """Fetches the COMPLETE, untruncated content of a memory fragment.
 
 USE THIS WHEN:

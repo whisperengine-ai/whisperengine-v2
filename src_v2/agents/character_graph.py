@@ -78,20 +78,20 @@ You have access to tools that let you look things up. Use them when:
 - The user asks about another bot (sibling AI) in the WhisperEngine family
 
 Available tools:
-- search_archived_summaries: Past conversations and topics (days/weeks ago)
-- search_specific_memories: Specific details and quotes from memory
+- old_summaries: Past conversations and topics (days/weeks ago)
+- mem_search: Specific details and quotes from memory
 - read_document: Read the full content of an attached file
 - lookup_user_facts: Facts about the user from the knowledge graph
-- explore_knowledge_graph: Explore connections and relationships
-- discover_common_ground: Find what you have in common
-- get_character_evolution: Check your relationship level and trust
-- check_planet_context: See the current server/planet context
-- get_universe_overview: View all planets and channels across the universe
-- get_sibling_bot_info: Learn about other bots (Dotty, Elena, etc.) - use when someone mentions a bot name
-- search_channel_messages: Find recent messages in the channel by keyword
-- search_user_messages: Find what a specific HUMAN said recently (not for bots)
-- get_message_context: Get context around a specific message (when replying to old messages)
-- get_recent_messages: Get latest channel messages without filtering (for "catch me up")
+- graph_walk: Explore connections and relationships
+- common_ground: Find what you have in common
+- char_evolve: Check your relationship level and trust
+- planet_ctx: See the current server/planet context
+- universe: View all planets and channels across the universe
+- sibling_info: Learn about other bots (Dotty, Elena, etc.) - use when someone mentions a bot name
+- chan_search: Find recent messages in the channel by keyword
+- user_search: Find what a specific HUMAN said recently (not for bots)
+- msg_context: Get context around a specific message (when replying to old messages)
+- recent_msgs: Get latest channel messages without filtering (for "catch me up")
 - calculator: Perform mathematical calculations
 """
 
@@ -105,8 +105,8 @@ Don't use tools for:
 - When the conversation is flowing naturally
 
 IMPORTANT: 
-- If the user asks about the universe, planets, servers, channels, or regions - USE the appropriate tool (get_universe_overview, check_planet_context). Don't guess or give vague responses.
-- If the user mentions another bot by name (Dotty, Elena, Aria, etc.) or asks "do you know X?" - USE get_sibling_bot_info to check your relationship with that bot.
+- If the user asks about the universe, planets, servers, channels, or regions - USE the appropriate tool (universe, planet_ctx). Don't guess or give vague responses.
+- If the user mentions another bot by name (Dotty, Elena, Aria, etc.) or asks "do you know X?" - USE sibling_info to check your relationship with that bot.
 
 If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
 """

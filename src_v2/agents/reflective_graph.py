@@ -157,12 +157,12 @@ class ReflectiveGraphAgent:
         
         # Build tool categories list
         tool_categories = [
-            "1. Memory & Knowledge: search_archived_summaries, search_specific_memories, read_full_memory, lookup_user_facts, update_user_facts, analyze_topic, read_document",
+            "1. Memory & Knowledge: old_summaries, mem_search, full_memory, lookup_user_facts, update_user_facts, analyze_topic, read_document",
             "2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)",
-            "3. Graph & Relationships: explore_knowledge_graph, discover_common_ground, get_character_evolution",
-            "4. Introspection: analyze_conversation_patterns, detect_recurring_themes",
-            "5. Context: check_planet_context (current server), get_universe_overview (all planets/channels), get_sibling_bot_info (other bots in the family)",
-            "6. Discord Search: search_channel_messages, search_user_messages (humans only), get_message_context, get_recent_messages",
+            "3. Graph & Relationships: graph_walk, common_ground, char_evolve",
+            "4. Introspection: conv_patterns, find_themes",
+            "5. Context: planet_ctx (current server), universe (all planets/channels), sibling_info (other bots in the family)",
+            "6. Discord Search: chan_search, user_search (humans only), msg_context, recent_msgs",
             "7. Utility: calculator (math calculations)" + (", web_search (internet search)" if settings.ENABLE_WEB_SEARCH else ""),
         ]
         
@@ -176,9 +176,9 @@ class ReflectiveGraphAgent:
         tool_guide_entries = [
             # Memory tools
             ("read_document", "Read the full content of an attached file. Use this when the user says 'check this out' or asks about a file."),
-            ("read_full_memory", "Fetch the COMPLETE content of a fragmented memory. ALWAYS use this when: (1) you see [Fragment X/Y] in search results and the user asks for 'full text', 'exact words', or 'complete message', OR (2) the fragment seems cut off mid-sentence. Pass the message ID shown in parentheses."),
-            ("search_specific_memories", "Search the USER's past conversations, quotes, or things they mentioned."),
-            ("search_archived_summaries", "Search summarized conversation history for broader context."),
+            ("full_memory", "Fetch the COMPLETE content of a fragmented memory. ALWAYS use this when: (1) you see [Fragment X/Y] in search results and the user asks for 'full text', 'exact words', or 'complete message', OR (2) the fragment seems cut off mid-sentence. Pass the message ID shown in parentheses."),
+            ("mem_search", "Search the USER's past conversations, quotes, or things they mentioned."),
+            ("old_summaries", "Search summarized conversation history for broader context."),
             ("lookup_user_facts", "Look up stored facts about the user (preferences, background, etc.)."),
             ("update_user_facts", "Store new facts learned about the user."),
             ("analyze_topic", "Deep analysis of a topic combining multiple memory sources."),
@@ -187,24 +187,24 @@ class ReflectiveGraphAgent:
             ("search_my_thoughts", "Search MY internal experiences: diaries, dreams, observations, gossip. Use for 'what have you been thinking about?' or 'tell me about your dreams'."),
             
             # Graph tools
-            ("explore_knowledge_graph", "Explore connections and relationships in the knowledge graph."),
-            ("discover_common_ground", "Find shared interests or experiences with the user."),
-            ("get_character_evolution", "Check relationship status, trust level, or how we've grown closer."),
+            ("graph_walk", "Explore connections and relationships in the knowledge graph."),
+            ("common_ground", "Find shared interests or experiences with the user."),
+            ("char_evolve", "Check relationship status, trust level, or how we've grown closer."),
             
             # Introspection
-            ("analyze_conversation_patterns", "Analyze patterns in our conversations over time."),
-            ("detect_recurring_themes", "Identify recurring themes or topics we discuss."),
+            ("conv_patterns", "Analyze patterns in our conversations over time."),
+            ("find_themes", "Identify recurring themes or topics we discuss."),
             
             # Context
-            ("check_planet_context", "Get context about the current server/planet."),
-            ("get_universe_overview", "Get overview of all planets/servers in the universe."),
-            ("get_sibling_bot_info", "Get info about sibling bots (Dotty, Elena, Aria, etc.). Use when: user mentions another bot's name, asks 'do you know [bot]?', shares a document about a bot, or asks about your AI friends/siblings."),
+            ("planet_ctx", "Get context about the current server/planet."),
+            ("universe", "Get overview of all planets/servers in the universe."),
+            ("sibling_info", "Get info about sibling bots (Dotty, Elena, Aria, etc.). Use when: user mentions another bot's name, asks 'do you know [bot]?', shares a document about a bot, or asks about your AI friends/siblings."),
             
             # Discord search
-            ("search_channel_messages", "Search recent channel messages by keyword. Use for 'what did I just say?' or 'what happened earlier?'."),
-            ("search_user_messages", "Search messages from a specific HUMAN. Use for 'what did [human name] say?'. NOT for bots - use get_sibling_bot_info instead."),
-            ("get_message_context", "Get surrounding context for a specific message."),
-            ("get_recent_messages", "Get latest messages. Use for 'catch me up' or 'what's happening?'."),
+            ("chan_search", "Search recent channel messages by keyword. Use for 'what did I just say?' or 'what happened earlier?'."),
+            ("user_search", "Search messages from a specific HUMAN. Use for 'what did [human name] say?'. NOT for bots - use sibling_info instead."),
+            ("msg_context", "Get surrounding context for a specific message."),
+            ("recent_msgs", "Get latest messages. Use for 'catch me up' or 'what's happening?'."),
             
             # Utility
             ("calculator", "Perform math calculations, unit conversions, or quantitative problems."),
@@ -483,12 +483,12 @@ TOOL USAGE GUIDE:
                 tool_name = msg.name
                 
                 # Strategy: Suggest alternatives based on the specific failure
-                if tool_name == "search_specific_memories":
-                    hints.append(f"The search in 'search_specific_memories' returned no results. Try using 'search_summaries' for broader context, or refine your search query to be less specific.")
+                if tool_name == "mem_search":
+                    hints.append(f"The search in 'mem_search' returned no results. Try using 'old_summaries' for broader context, or refine your search query to be less specific.")
                 elif tool_name == "lookup_user_facts":
-                    hints.append("Fact lookup failed. Try 'search_specific_memories' to find where this might have been discussed, or 'search_summaries'.")
-                elif tool_name == "search_summaries":
-                    hints.append("Summary search failed. Try 'search_episodes' for raw conversation logs if you need specific details.")
+                    hints.append("Fact lookup failed. Try 'mem_search' to find where this might have been discussed, or 'old_summaries'.")
+                elif tool_name == "old_summaries":
+                    hints.append("Summary search failed. Try 'mem_search' for raw conversation logs if you need specific details.")
                 elif tool_name == "generate_image":
                     hints.append("Image generation failed. Check if the prompt is appropriate and try again with a simpler description.")
                 else:

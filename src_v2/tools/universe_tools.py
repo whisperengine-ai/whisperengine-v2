@@ -11,7 +11,7 @@ class CheckPlanetContextInput(BaseModel):
     reason: Optional[str] = Field(default=None, description="Optional reason for checking context")
 
 class CheckPlanetContextTool(BaseTool):
-    name: str = "check_planet_context"
+    name: str = "planet_ctx"
     description: str = "Checks the current 'Planet' (Discord Server) for context. Returns the planet name, population, and list of known channels/locations. Use this when the user asks 'where are we?' or about the server."
     args_schema: Type[BaseModel] = CheckPlanetContextInput
     guild_id: Optional[str] = Field(exclude=True)
@@ -43,7 +43,7 @@ class GetUniverseOverviewInput(BaseModel):
     pass  # No input needed, returns global universe state
 
 class GetUniverseOverviewTool(BaseTool):
-    name: str = "get_universe_overview"
+    name: str = "universe"
     description: str = """Get a comprehensive overview of ALL planets, channels, and inhabitants across the entire universe. 
     Use this when the user asks about what's happening 'everywhere', 'across all planets', 'in the universe', or wants you to tell another bot about the universe state.
     Returns: planet count, list of planets with their channels/topics/inhabitants, and top topics across the universe."""
@@ -96,7 +96,7 @@ class GetSiblingBotInfoInput(BaseModel):
 
 class GetSiblingBotInfoTool(BaseTool):
     """Get information about sibling bots in the WhisperEngine family."""
-    name: str = "get_sibling_bot_info"
+    name: str = "sibling_info"
     description: str = """Get information about other AI companions (sibling bots) in the WhisperEngine family.
 
 USE THIS WHEN:

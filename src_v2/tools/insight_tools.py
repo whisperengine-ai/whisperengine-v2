@@ -22,7 +22,7 @@ class AnalyzePatternsInput(BaseModel):
 
 class AnalyzePatternsTool(BaseTool):
     """Analyzes conversation patterns for a user over time."""
-    name: str = "analyze_conversation_patterns"
+    name: str = "conv_patterns"
     description: str = "Analyzes a user's conversation patterns including topics, emotional trends, and engagement styles over the specified time period."
     args_schema: Type[BaseModel] = AnalyzePatternsInput
     
@@ -72,7 +72,7 @@ class DetectThemesInput(BaseModel):
 
 class DetectThemesTool(BaseTool):
     """Detects recurring themes in a user's conversations."""
-    name: str = "detect_recurring_themes"
+    name: str = "find_themes"
     description: str = "Identifies themes that appear repeatedly in a user's conversations, such as hobbies, concerns, or life events they keep mentioning."
     args_schema: Type[BaseModel] = DetectThemesInput
     
@@ -171,7 +171,7 @@ class StoreReasoningTraceInput(BaseModel):
 
 class StoreReasoningTraceTool(BaseTool):
     """Stores a successful reasoning trace for future reuse."""
-    name: str = "store_reasoning_trace"
+    name: str = "save_trace"
     description: str = "Saves a successful reasoning pattern that can be reused for similar future queries. Helps the agent learn what approaches work."
     args_schema: Type[BaseModel] = StoreReasoningTraceInput
     
@@ -216,7 +216,7 @@ class LearnResponsePatternInput(BaseModel):
 
 class LearnResponsePatternTool(BaseTool):
     """Learns a successful response pattern for future reference."""
-    name: str = "learn_response_pattern"
+    name: str = "learn_pattern"
     description: str = "Stores a successful response pattern that resonated with the user. Can be used as few-shot examples for similar future queries."
     args_schema: Type[BaseModel] = LearnResponsePatternInput
     
@@ -272,7 +272,7 @@ class DiscoverCommunityInsightsTool(BaseTool):
     - "Any community observations about relationships?"
     - "What dreams have others had lately?"
     """
-    name: str = "discover_community_insights"
+    name: str = "community"
     description: str = """Search for insights, epiphanies, diary entries, and dreams from OTHER characters about a topic.
 Use this to see what your fellow characters have been thinking about or experiencing.
 Returns artifacts from the shared community mind, excluding your own thoughts."""
@@ -334,7 +334,7 @@ class TriggerProactiveActionInput(BaseModel):
 
 class TriggerProactiveActionTool(BaseTool):
     """Triggers a proactive message to the user based on an insight."""
-    name: str = "trigger_proactive_action"
+    name: str = "proact_msg"
     description: str = "Triggers a proactive message to the user based on an insight. Use this when you detect a good reason to reach out (e.g. shared interest, concern, celebration). The user_id must be a numeric Discord user ID."
     args_schema: Type[BaseModel] = TriggerProactiveActionInput
     

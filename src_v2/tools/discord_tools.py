@@ -53,13 +53,13 @@ class SearchChannelMessagesInput(BaseModel):
     limit: int = Field(default=10, description="Max number of matching messages to return (default 10)")
 
 class SearchChannelMessagesTool(BaseTool):
-    name: str = "search_channel_messages"
+    name: str = "chan_search"
     description: str = """Search the CURRENT CHANNEL's recent Discord messages by keyword. Only scans last 200 messages in THIS channel.
 
 USE THIS FOR: "what did I say earlier?" (in this channel), "what happened in chat?", recent channel-specific context.
 DO NOT USE FOR: Memories from DMs, past conversations from other channels, or long-term memory recall.
 
-For memories across all contexts (DMs, other channels), use search_specific_memories instead."""
+For memories across all contexts (DMs, other channels), use mem_search instead."""
     args_schema: Type[BaseModel] = SearchChannelMessagesInput
     
     # Injected at runtime
@@ -107,7 +107,7 @@ class SearchUserMessagesInput(BaseModel):
     limit: int = Field(default=20, description="Max messages to return (default 20)")
 
 class SearchUserMessagesTool(BaseTool):
-    name: str = "search_user_messages"
+    name: str = "user_search"
     description: str = "Find recent messages from a specific user. Use when asked 'what did Mark say?' or 'find Sarah's last message'."
     args_schema: Type[BaseModel] = SearchUserMessagesInput
     
@@ -166,7 +166,7 @@ class GetMessageContextInput(BaseModel):
     after: int = Field(default=5, description="Number of messages after (default 5)")
 
 class GetMessageContextTool(BaseTool):
-    name: str = "get_message_context"
+    name: str = "msg_context"
     description: str = "Get messages surrounding a specific message ID. Use when user replies to an old message and you need context, or to understand what led to a specific message."
     args_schema: Type[BaseModel] = GetMessageContextInput
     
@@ -220,7 +220,7 @@ class GetRecentMessagesInput(BaseModel):
     limit: int = Field(default=15, description="Number of recent messages to fetch (default 15, max 50)")
 
 class GetRecentMessagesTool(BaseTool):
-    name: str = "get_recent_messages"
+    name: str = "recent_msgs"
     description: str = "Get the most recent messages in the channel without filtering. Use for 'catch me up', 'what's happening?', or general channel context."
     args_schema: Type[BaseModel] = GetRecentMessagesInput
     
