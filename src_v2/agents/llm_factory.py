@@ -10,7 +10,8 @@ def create_llm(
     temperature: Optional[float] = None, 
     mode: str = "main", 
     model_name: Optional[str] = None,
-    request_timeout: Optional[float] = None
+    request_timeout: Optional[float] = None,
+    max_tokens: Optional[int] = None
 ) -> BaseChatModel:
     """
     Creates a LangChain Chat Model based on the configuration.
@@ -37,6 +38,8 @@ def create_llm(
               "reflective" for reflective mode, "utility" for structured tasks.
         model_name: Specific model name to use (overrides settings).
         request_timeout: Request timeout in seconds. Defaults to 180s for local models, 60s for cloud APIs.
+        max_tokens: Maximum tokens to generate. Use this to prevent runaway generation in local models.
+                    Recommended: 512 for Cypher/SQL generation, 1024 for summaries, None for conversations.
     """
     # Determine which settings to use
     if mode == "reflective" and settings.REFLECTIVE_LLM_PROVIDER:
@@ -77,12 +80,15 @@ def create_llm(
     timeout = request_timeout or (180 if is_local else 60)
 
     if provider == "openai":
-        return ChatOpenAI(
-            api_key=api_key,
-            model=_model,
-            temperature=temp,
-            request_timeout=timeout
-        )
+        kwargs = {
+            "api_key": api_key,
+            "model": _model,
+            "temperature": temp,
+            "request_timeout": timeout
+        }
+        if max_tokens:
+            kwargs["max_tokens"] = max_tokens
+        return ChatOpenAI(**kwargs)
     
     elif provider == "openrouter":
         # OpenRouter is OpenAI-compatible
@@ -91,25 +97,31 @@ def create_llm(
             "HTTP-Referer": "https://github.com/whisperengine-ai/whisperengine-v2"
         }
         
-        return ChatOpenAI(
-            api_key=api_key,
-            base_url=base_url or "https://openrouter.ai/api/v1",
-            model=_model,
-            temperature=temp,
-            default_headers=headers,
-            request_timeout=timeout
-        )
+        kwargs = {
+            "api_key": api_key,
+            "base_url": base_url or "https://openrouter.ai/api/v1",
+            "model": _model,
+            "temperature": temp,
+            "default_headers": headers,
+            "request_timeout": timeout
+        }
+        if max_tokens:
+            kwargs["max_tokens"] = max_tokens
+        return ChatOpenAI(**kwargs)
         
     elif provider == "lmstudio":
         # LM Studio is OpenAI-compatible with native tool support
         # Best models: Qwen2.5-Instruct, Llama 3.1/3.2-Instruct, Ministral-Instruct
-        return ChatOpenAI(
-            api_key="lm-studio",  # Required but ignored
-            base_url=base_url or "http://localhost:1234/v1",
-            model=_model,
-            temperature=temp,
-            request_timeout=timeout
-        )
+        kwargs = {
+            "api_key": "lm-studio",  # Required but ignored
+            "base_url": base_url or "http://localhost:1234/v1",
+            "model": _model,
+            "temperature": temp,
+            "request_timeout": timeout
+        }
+        if max_tokens:
+            kwargs["max_tokens"] = max_tokens
+        return ChatOpenAI(**kwargs)
     
     elif provider == "ollama":
         # Ollama via OpenAI-compatible endpoint with native tool support
@@ -117,13 +129,16 @@ def create_llm(
         # Best models: qwen2.5, llama3.1, llama3.2, llama3.3, mistral, mistral-nemo
         # See: https://ollama.com/blog/tool-support
         ollama_base = base_url or "http://localhost:11434"
-        return ChatOpenAI(
-            api_key="ollama",  # Required but ignored by Ollama
-            base_url=f"{ollama_base}/v1",
-            model=_model,
-            temperature=temp,
-            request_timeout=timeout
-        )
+        kwargs = {
+            "api_key": "ollama",  # Required but ignored by Ollama
+            "base_url": f"{ollama_base}/v1",
+            "model": _model,
+            "temperature": temp,
+            "request_timeout": timeout
+        }
+        if max_tokens:
+            kwargs["max_tokens"] = max_tokens
+        return ChatOpenAI(**kwargs)
     
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}. Supported: openai, openrouter, ollama, lmstudio")

@@ -1,6 +1,5 @@
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, timezone
-from uuid import UUID
 from loguru import logger
 from src_v2.core.database import db_manager
 
@@ -98,13 +97,13 @@ class SessionManager:
 
         try:
             async with db_manager.postgres_pool.acquire() as conn:
-                # Convert string to UUID if needed
-                session_uuid = UUID(session_id) if isinstance(session_id, str) else session_id
+                # Ensure session_id is a string (asyncpg expects str for UUID columns)
+                session_id_str = str(session_id)
                 await conn.execute("""
                     UPDATE v2_conversation_sessions
                     SET is_active = FALSE, end_time = NOW()
                     WHERE id = $1
-                """, session_uuid)
+                """, session_id_str)
                 logger.debug(f"Closed session {session_id}")
         except Exception as e:
             logger.error(f"Failed to close session: {e}")
@@ -116,11 +115,12 @@ class SessionManager:
 
         try:
             async with db_manager.postgres_pool.acquire() as conn:
+                session_id_str = str(session_id)
                 await conn.execute("""
                     UPDATE v2_conversation_sessions
                     SET updated_at = NOW()
                     WHERE id = $1
-                """, session_id)
+                """, session_id_str)
         except Exception as e:
             logger.error(f"Failed to update session activity: {e}")
 
@@ -131,11 +131,12 @@ class SessionManager:
 
         try:
             async with db_manager.postgres_pool.acquire() as conn:
+                session_id_str = str(session_id)
                 start_time = await conn.fetchval("""
                     SELECT start_time 
                     FROM v2_conversation_sessions 
                     WHERE id = $1
-                """, session_id)
+                """, session_id_str)
                 return start_time
         except Exception as e:
             logger.error(f"Failed to get session start time: {e}")
@@ -175,15 +176,15 @@ class SessionManager:
 
         try:
             async with db_manager.postgres_pool.acquire() as conn:
-                # Convert string to UUID if needed
-                session_uuid = UUID(session_id) if isinstance(session_id, str) else session_id
+                # Ensure session_id is a string (asyncpg expects str for UUID columns)
+                session_id_str = str(session_id)
                 
                 # Get session details
                 session = await conn.fetchrow("""
                     SELECT user_id, character_name, start_time, updated_at, end_time, is_active
                     FROM v2_conversation_sessions 
                     WHERE id = $1
-                """, session_uuid)
+                """, session_id_str)
                 
                 if not session:
                     return []

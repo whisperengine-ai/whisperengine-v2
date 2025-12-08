@@ -19,7 +19,9 @@ class KnowledgeManager:
     def __init__(self):
         self.extractor = FactExtractor()
         # Use reflective LLM for Cypher generation (utility task, not character response)
-        self.llm = create_llm(temperature=0.0, mode="reflective")
+        # CRITICAL: max_tokens=512 prevents runaway generation loops in local models (Qwen, etc.)
+        # Cypher queries should never exceed ~300 tokens; 512 gives headroom for edge cases
+        self.llm = create_llm(temperature=0.0, mode="reflective", max_tokens=512, request_timeout=30)
         
         self.cypher_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert Neo4j Cypher developer.
@@ -211,6 +213,33 @@ PRIVACY RESTRICTION ENABLED:
             # Handle "NO_ANSWER" case
             if 'RETURN "NO_ANSWER"' in cypher_query or "NO_ANSWER" in cypher_query:
                 return "No relevant information found in the graph (out of scope)."
+
+            # === RUNAWAY GENERATION DETECTION ===
+            # Local models (Qwen, Llama, etc.) can enter repetition loops, generating
+            # massive queries with repeated UNION clauses. Detect and reject these.
+            
+            # 1. Length check: Valid Cypher queries rarely exceed 1500 chars
+            if len(cypher_query) > 1500:
+                logger.warning(f"Rejecting oversized Cypher query ({len(cypher_query)} chars). Likely runaway generation.")
+                return "No relevant information found in the graph (query too complex)."
+            
+            # 2. UNION repetition check: More than 3 UNIONs suggests runaway pattern
+            union_count = cypher_query.upper().count("UNION")
+            if union_count > 3:
+                logger.warning(f"Rejecting Cypher with {union_count} UNIONs. Likely runaway generation loop.")
+                return "No relevant information found in the graph (query too complex)."
+            
+            # 3. Repetition pattern detection: Same substring repeated multiple times
+            # Check if any 50+ char substring appears more than twice (indicates loop)
+            if len(cypher_query) > 200:
+                chunk_size = 50
+                seen_chunks = {}
+                for i in range(0, len(cypher_query) - chunk_size, 20):  # Sliding window
+                    chunk = cypher_query[i:i+chunk_size]
+                    seen_chunks[chunk] = seen_chunks.get(chunk, 0) + 1
+                    if seen_chunks[chunk] > 2:
+                        logger.warning(f"Rejecting Cypher with repeated patterns ({len(cypher_query)} chars). Likely runaway generation.")
+                        return "No relevant information found in the graph (query too complex)."
 
             # Basic validation: Ensure it starts with a valid Cypher keyword
             valid_starts = ["MATCH", "CALL", "RETURN", "WITH", "OPTIONAL MATCH"]
