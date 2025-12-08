@@ -10,6 +10,7 @@ from langgraph.graph import StateGraph, END
 from src_v2.agents.llm_factory import create_llm
 from src_v2.tools.insight_tools import get_insight_tools_with_existing
 from src_v2.config.settings import settings
+from src_v2.utils.llm_retry import invoke_with_retry
 
 # Define State
 class InsightAgentState(TypedDict):
@@ -22,11 +23,81 @@ class InsightAgentState(TypedDict):
 class InsightGraphAgent:
     """
     Executes a ReAct loop for background analysis of user conversations using LangGraph.
+    
+    IMPORTANT: This agent requires an LLM that supports native tool/function calling.
+    All supported providers (openai, openrouter, ollama, lmstudio) use OpenAI-compatible
+    endpoints with tool calling support.
+    
+    LOCAL LLM OPTIONS:
+    1. LM Studio (provider="lmstudio") - Use Qwen2.5-Instruct, Llama 3.1+, or Ministral
+       NOTE: Qwen3 is NOT supported by LM Studio for tool calling (as of June 2025)
+    2. Ollama (provider="ollama") - Use qwen2.5, qwen3, llama3.1, mistral, etc.
+       NOTE: Ollama has native tool support for Qwen3 via their parser
+    
+    CLOUD OPTIONS: OpenRouter/OpenAI with Claude, GPT-4, or Gemini.
     """
+    
+    # Models with LM Studio NATIVE tool parsing support (not just model capability)
+    # LM Studio requires their parser to support the model's tool format
+    # See: https://lmstudio.ai/docs/developer/openai-compat/tools#native-tool-use-support
+    LMSTUDIO_NATIVE_TOOLS = {
+        "qwen2.5",  # Qwen2.5-Instruct ONLY (Qwen3 NOT supported yet)
+        "llama3.1", "llama3.2", "llama3.3",
+        "mistral", "ministral",
+    }
+    
+    # Models with Ollama native tool support (more comprehensive)
+    # See: https://ollama.com/search?c=tools
+    OLLAMA_NATIVE_TOOLS = {
+        "qwen2.5", "qwen3", "qwen3-coder",  # Ollama supports Qwen3!
+        "llama3.1", "llama3.2", "llama3.3", "llama4",
+        "mistral", "mistral-nemo", "mistral-small", "mistral-large", "ministral",
+        "deepseek-r1", "command-r", "hermes3", "granite3", "cogito", "nemotron",
+    }
     
     def __init__(self):
         # Use reflective model for insight analysis - needs good tool use and reasoning
         self.llm = create_llm(temperature=0.3, mode="reflective")
+        
+        # Check tool calling support for local providers
+        provider = settings.REFLECTIVE_LLM_PROVIDER or settings.LLM_PROVIDER
+        model = settings.REFLECTIVE_LLM_MODEL_NAME or settings.LLM_MODEL_NAME
+        
+        if provider == "lmstudio":
+            model_base = model.split(":")[0].lower().split("/")[-1]
+            is_native = any(m in model_base for m in self.LMSTUDIO_NATIVE_TOOLS)
+            
+            # Special check for Qwen3 - common confusion point
+            if "qwen3" in model_base and "qwen2.5" not in model_base:
+                logger.error(
+                    f"InsightGraphAgent: LM Studio does NOT have native tool parsing for Qwen3! "
+                    f"Model '{model}' will fail to call tools correctly. "
+                    f"Use Qwen2.5-Instruct instead, or switch to Ollama which supports Qwen3 tools."
+                )
+            elif is_native:
+                logger.info(
+                    f"InsightGraphAgent using LM Studio with native tool support for '{model}'."
+                )
+            else:
+                logger.warning(
+                    f"InsightGraphAgent: LM Studio may not have native tool parsing for '{model}'. "
+                    f"Recommended models: Qwen2.5-Instruct, Llama 3.1/3.2, Ministral. "
+                    f"Or use Ollama which has broader model support."
+                )
+                
+        elif provider == "ollama":
+            model_base = model.split(":")[0].lower()
+            is_native = any(m in model_base for m in self.OLLAMA_NATIVE_TOOLS)
+            
+            if is_native:
+                logger.info(
+                    f"InsightGraphAgent using Ollama with tool-capable model '{model}'."
+                )
+            else:
+                logger.warning(
+                    f"InsightGraphAgent: Ollama model '{model}' may not support tools. "
+                    f"Recommended: qwen2.5, qwen3, llama3.1, llama3.2, mistral."
+                )
     
     def _construct_prompt(self, character_name: str, trigger: str) -> str:
         """Builds the system prompt for insight analysis."""
@@ -112,7 +183,8 @@ When done, provide a brief summary of what you learned."""
         llm_with_tools = self.llm.bind_tools(tools)
         
         try:
-            response = await llm_with_tools.ainvoke(messages)
+            # LLM call with retry for transient errors (500s, rate limits, etc.)
+            response = await invoke_with_retry(llm_with_tools.ainvoke, messages, max_retries=3)
             return {"messages": [response], "steps": state['steps'] + 1}
         except Exception as e:
             logger.error(f"Insight Agent LLM failed: {e}")

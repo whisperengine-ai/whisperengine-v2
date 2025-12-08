@@ -12,6 +12,7 @@ from langgraph.graph import StateGraph, END
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.settings import settings
 from src_v2.config.constants import should_use_base64
+from src_v2.utils.llm_retry import invoke_with_retry
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, 
     SearchEpisodesTool, 
@@ -295,7 +296,8 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
         router_with_tools = self.router_llm.bind_tools(state['tools'])
         
         try:
-            response = await router_with_tools.ainvoke(messages)
+            # LLM call with retry for transient errors
+            response = await invoke_with_retry(router_with_tools.ainvoke, messages, max_retries=3)
             return {"router_response": response}
         except Exception as e:
             logger.error(f"Router LLM failed: {e}")
@@ -358,7 +360,8 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             messages.append(SystemMessage(content="The user shared an image with you. Make sure to describe or comment on what you see in the image."))
 
         try:
-            response = await self.llm.ainvoke(messages)
+            # LLM call with retry for transient errors
+            response = await invoke_with_retry(self.llm.ainvoke, messages, max_retries=3)
             response_content = str(response.content) if response.content else ""
             
             # --- Check for "promised but not delivered" ---
@@ -394,9 +397,9 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
                                "Call the tool immediately."
                     ))
                     
-                    # Force another router call
+                    # Force another router call (with retry)
                     router_with_tools = self.router_llm.bind_tools(state['tools'])
-                    retry_response = await router_with_tools.ainvoke(messages)
+                    retry_response = await invoke_with_retry(router_with_tools.ainvoke, messages, max_retries=3)
                     
                     if retry_response.tool_calls:
                         # Execute the tool
@@ -405,16 +408,16 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
                                 tool_result = await self._execute_tool_wrapper(
                                     tool_call, state['tools'], state['callback']
                                 )
-                                # Now generate final response with tool result
+                                # Now generate final response with tool result (with retry)
                                 messages.append(retry_response)
                                 messages.append(tool_result)
-                                final_response = await self.llm.ainvoke(messages)
+                                final_response = await invoke_with_retry(self.llm.ainvoke, messages, max_retries=3)
                                 return {"final_response": str(final_response.content)}
             
             # Handle tool chaining attempt (not supported in Tier 2)
             if isinstance(response, AIMessage) and response.tool_calls and not response.content:
                 messages.append(SystemMessage(content="You have used your allowed tool. Please provide a response to the user now based on the information you have."))
-                response = await self.llm.ainvoke(messages)
+                response = await invoke_with_retry(self.llm.ainvoke, messages, max_retries=3)
                 
             return {"final_response": str(response.content)}
         except Exception as e:

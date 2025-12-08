@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     # --- LLM Configuration ---
     # Supported providers: openai, openrouter, ollama, lmstudio
+    # All providers use OpenAI-compatible endpoints with native tool calling support
     LLM_PROVIDER: Literal["openai", "openrouter", "ollama", "lmstudio"] = "openai"
     LLM_API_KEY: Optional[SecretStr] = Field(
         default=None, 

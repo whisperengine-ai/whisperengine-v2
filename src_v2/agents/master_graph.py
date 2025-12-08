@@ -17,6 +17,7 @@ from src_v2.agents.classifier import ComplexityClassifier
 from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_graph import CharacterGraphAgent
 from src_v2.agents.context_builder import ContextBuilder
+from src_v2.utils.llm_retry import invoke_with_retry
 
 # Managers for Context Node
 from src_v2.memory.manager import memory_manager
@@ -370,7 +371,8 @@ class MasterGraphAgent:
             messages.append(HumanMessage(content=user_input))
 
         try:
-            response = await self.fast_llm.ainvoke(messages)
+            # LLM call with retry for transient errors (500s, rate limits, etc.)
+            response = await invoke_with_retry(self.fast_llm.ainvoke, messages, max_retries=3)
             return {"final_response": response.content}
         except Exception as e:
             logger.error(f"Fast responder failed: {e}")

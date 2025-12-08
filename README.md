@@ -281,6 +281,53 @@ Syntax: `./bot.sh [command] [target]`
 ./bot.sh up infra         # Start databases only
 ```
 
+### Background Workers
+
+Workers handle async cognitive tasks: narrative generation (diaries, dreams), insight analysis, reflections, and knowledge extraction.
+
+**Start/Stop Workers:**
+```bash
+./bot.sh up workers       # Start worker container
+./bot.sh restart workers  # Restart after code changes
+./bot.sh logs workers     # View worker logs
+./bot.sh down workers     # Stop workers
+```
+
+**Worker Configuration (`.env.worker`):**
+
+Workers need their own LLM configuration. Copy the example and configure:
+
+```bash
+cp .env.example_worker .env.worker
+```
+
+**Cloud LLM (recommended for production):**
+```dotenv
+LLM_PROVIDER=openrouter
+LLM_API_KEY=sk-or-v1-your-key
+LLM_MODEL_NAME=anthropic/claude-haiku-4.5
+```
+
+**Local LLM with LM Studio:**
+```dotenv
+LLM_PROVIDER=lmstudio
+LLM_BASE_URL=http://host.docker.internal:1234/v1
+LLM_MODEL_NAME=qwen2.5-7b-instruct
+# Requires: LM Studio running with Qwen2.5-Instruct loaded
+# Native tool support: Qwen2.5, Llama 3.1+, Ministral
+```
+
+**Local LLM with Ollama:**
+```dotenv
+LLM_PROVIDER=ollama
+LLM_BASE_URL=http://host.docker.internal:11434
+LLM_MODEL_NAME=qwen2.5:7b
+# Requires: ollama serve && ollama pull qwen2.5:7b
+# Native tool support: qwen2.5, qwen3, llama3.1+, mistral
+```
+
+> ⚠️ **Tool Calling Note:** The InsightGraphAgent requires models with native tool calling support. LM Studio supports Qwen2.5 (not Qwen3). Ollama supports both Qwen2.5 and Qwen3. See `.env.example_worker` for full model compatibility list.
+
 ### Database Migrations
 
 ```bash

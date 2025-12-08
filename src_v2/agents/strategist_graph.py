@@ -19,6 +19,7 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.core.database import db_manager
 from src_v2.core.behavior import load_behavior_profile
 from src_v2.config.settings import settings
+from src_v2.utils.llm_retry import invoke_with_retry
 
 
 # ============================================================================
@@ -407,7 +408,8 @@ When you have enough information, stop using tools and I will ask for your final
         if state["steps"] == 0:
             messages = messages + [HumanMessage(content="Analyze the goals and decide if you need more information about any users. Use tools to gather context, then stop when ready.")]
         
-        response = await llm_with_tools.ainvoke(messages)
+        # LLM call with retry for transient errors
+        response = await invoke_with_retry(llm_with_tools.ainvoke, messages, max_retries=3)
         new_messages: List[BaseMessage] = [response]
         
         # Execute any tool calls
@@ -459,7 +461,8 @@ Provide a brief summary of what you accomplished."""
         messages = state["messages"] + [HumanMessage(content=synthesis_prompt)]
         
         try:
-            output = await self.structured_llm.ainvoke(messages)
+            # LLM call with retry for transient errors
+            output = await invoke_with_retry(self.structured_llm.ainvoke, messages, max_retries=3)
             return {"output": output}
         except Exception as e:
             logger.error(f"Synthesis failed: {e}")

@@ -16,11 +16,27 @@ def create_llm(
     Creates a LangChain Chat Model based on the configuration.
     Supports: openai, openrouter, ollama, lmstudio
     
+    All providers support tool/function calling via OpenAI-compatible endpoints.
+    
+    LOCAL PROVIDERS:
+    
+    LM Studio (provider="lmstudio"):
+      - Native tool support: Qwen2.5-Instruct, Llama 3.1/3.2-Instruct, Ministral-Instruct
+      - Default tool support: Other models (uses custom prompt format)
+      - See: https://lmstudio.ai/docs/advanced/tool-use
+    
+    Ollama (provider="ollama"):
+      - Uses OpenAI-compatible endpoint (/v1/chat/completions) for tool support
+      - Models: qwen2.5, qwen3, llama3.1, llama3.2, llama3.3, mistral, mistral-nemo,
+                deepseek-r1, command-r, hermes3, firefunction-v2
+      - See: https://ollama.com/blog/tool-support
+    
     Args:
         temperature: The temperature to use for the model.
-        mode: "main" for the character model, "router" for the cognitive router, "reflective" for reflective mode, "utility" for structured tasks.
+        mode: "main" for the character model, "router" for the cognitive router, 
+              "reflective" for reflective mode, "utility" for structured tasks.
         model_name: Specific model name to use (overrides settings).
-        request_timeout: Request timeout in seconds. Defaults to 120s for local models, 60s for cloud APIs.
+        request_timeout: Request timeout in seconds. Defaults to 180s for local models, 60s for cloud APIs.
     """
     # Determine which settings to use
     if mode == "reflective" and settings.REFLECTIVE_LLM_PROVIDER:
@@ -85,23 +101,29 @@ def create_llm(
         )
         
     elif provider == "lmstudio":
-        # LM Studio is OpenAI-compatible
+        # LM Studio is OpenAI-compatible with native tool support
+        # Best models: Qwen2.5-Instruct, Llama 3.1/3.2-Instruct, Ministral-Instruct
         return ChatOpenAI(
-            api_key="lm-studio", # Usually ignored
+            api_key="lm-studio",  # Required but ignored
             base_url=base_url or "http://localhost:1234/v1",
-            model=_model, # Usually ignored by local server but good to pass
+            model=_model,
             temperature=temp,
-            request_timeout=timeout  # Local models need longer timeout
+            request_timeout=timeout
         )
     
     elif provider == "ollama":
-        from langchain_community.chat_models import ChatOllama
-        return ChatOllama(
-            base_url=base_url or "http://localhost:11434",
+        # Ollama via OpenAI-compatible endpoint with native tool support
+        # Uses /v1/chat/completions which supports the tools parameter
+        # Best models: qwen2.5, llama3.1, llama3.2, llama3.3, mistral, mistral-nemo
+        # See: https://ollama.com/blog/tool-support
+        ollama_base = base_url or "http://localhost:11434"
+        return ChatOpenAI(
+            api_key="ollama",  # Required but ignored by Ollama
+            base_url=f"{ollama_base}/v1",
             model=_model,
             temperature=temp,
-            request_timeout=timeout  # Local models need longer timeout
+            request_timeout=timeout
         )
     
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider}")
+        raise ValueError(f"Unsupported LLM provider: {provider}. Supported: openai, openrouter, ollama, lmstudio")

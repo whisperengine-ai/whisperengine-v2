@@ -11,6 +11,7 @@ from langgraph.graph import StateGraph, END
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.constants import should_use_base64
+from src_v2.utils.llm_retry import invoke_with_retry
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, SearchEpisodesTool, LookupFactsTool,
     UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool, RecallBotConversationTool,
@@ -304,7 +305,8 @@ TOOL USAGE GUIDE:
         llm_with_tools = self.llm.bind_tools(tools)
         
         try:
-            response = await llm_with_tools.ainvoke(safe_messages)
+            # LLM call with retry for transient errors (500s, rate limits, etc.)
+            response = await invoke_with_retry(llm_with_tools.ainvoke, safe_messages, max_retries=3)
         except Exception as e:
             logger.error(f"LLM invocation failed: {e}")
             return {"messages": [AIMessage(content="I encountered an error while thinking.")], "steps": state['steps'] + 1}
