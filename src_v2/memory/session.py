@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 from loguru import logger
 from src_v2.core.database import db_manager
 
@@ -97,15 +98,14 @@ class SessionManager:
 
         try:
             async with db_manager.postgres_pool.acquire() as conn:
+                # Convert string to UUID if needed
+                session_uuid = UUID(session_id) if isinstance(session_id, str) else session_id
                 await conn.execute("""
                     UPDATE v2_conversation_sessions
                     SET is_active = FALSE, end_time = NOW()
                     WHERE id = $1
-                """, session_id)
+                """, session_uuid)
                 logger.debug(f"Closed session {session_id}")
-                
-                # TODO: Trigger summarization here?
-                # For now, we'll let the caller handle triggers or use a background task.
         except Exception as e:
             logger.error(f"Failed to close session: {e}")
 
@@ -140,6 +140,87 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Failed to get session start time: {e}")
             return None
+
+    async def get_stale_sessions(self, timeout_minutes: int = 30) -> List[Dict[str, Any]]:
+        """
+        Finds active sessions that have been inactive for longer than timeout_minutes.
+        """
+        if not db_manager.postgres_pool:
+            return []
+
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Calculate cutoff time
+                # Use UTC now
+                cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+                
+                rows = await conn.fetch("""
+                    SELECT id, user_id, character_name, start_time, updated_at
+                    FROM v2_conversation_sessions 
+                    WHERE is_active = TRUE AND updated_at < $1
+                """, cutoff)
+                
+                return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Failed to get stale sessions: {e}")
+            return []
+
+    async def get_session_messages(self, session_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieves messages belonging to a session based on time range.
+        Returns list of dicts with role, content, timestamp, user_name.
+        """
+        if not db_manager.postgres_pool:
+            return []
+
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Convert string to UUID if needed
+                session_uuid = UUID(session_id) if isinstance(session_id, str) else session_id
+                
+                # Get session details
+                session = await conn.fetchrow("""
+                    SELECT user_id, character_name, start_time, updated_at, end_time, is_active
+                    FROM v2_conversation_sessions 
+                    WHERE id = $1
+                """, session_uuid)
+                
+                if not session:
+                    return []
+                
+                # Determine time range
+                start_time = session['start_time']
+                end_time = session['end_time'] if not session['is_active'] else session['updated_at']
+                
+                # Add a small buffer to end_time to ensure we catch the last message
+                # if timestamps are slightly off or if updated_at was set before message insert committed
+                if end_time:
+                    end_time_buffer = end_time + timedelta(seconds=5)
+                else:
+                    end_time_buffer = datetime.now(timezone.utc)
+
+                rows = await conn.fetch("""
+                    SELECT role, content, timestamp, user_name
+                    FROM v2_chat_history 
+                    WHERE user_id = $1 
+                    AND character_name = $2
+                    AND timestamp >= $3
+                    AND timestamp <= $4
+                    ORDER BY timestamp ASC
+                """, session['user_id'], session['character_name'], start_time, end_time_buffer)
+                
+                return [
+                    {
+                        "role": row['role'], 
+                        "content": row['content'],
+                        "timestamp": row['timestamp'].isoformat() if row['timestamp'] else None,
+                        "user_name": row['user_name']
+                    } 
+                    for row in rows
+                ]
+        except Exception as e:
+            logger.error(f"Failed to get session messages: {e}")
+            return []
 
 # Global instance
 session_manager = SessionManager()

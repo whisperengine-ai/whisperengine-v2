@@ -1,9 +1,9 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 3.2  
+**Document Version:** 3.3  
 **Created:** November 24, 2025  
-**Last Updated:** December 7, 2025 (Added S6, S7 proposed work)
-**Status:** Phase 1 Complete, Phase 2 Proposed
+**Last Updated:** December 8, 2025 (S6 Session Timeout Processing complete)
+**Status:** Phase 1 Complete, Observing Emergent Behavior
 
 ### Status Legend
 | Icon | Meaning |
@@ -88,10 +88,11 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | ✅ Complete |
 | 🟡 Medium | **E30** | **Ambient Graph Memory** | **1-2 days** | E19 ✅ | ✅ Complete |
+| 🟡 Medium | **S6** | **Session Timeout Processing** | **2-3 hours** | arq ✅ | ✅ Complete |
 
 ---
 
-### 🎉 Phase 1 Complete (December 7, 2025)
+### 🎉 Phase 1 Complete (December 8, 2025)
 
 All proposed roadmap items have been implemented. The system is feature-complete for:
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
@@ -100,21 +101,13 @@ All proposed roadmap items have been implemented. The system is feature-complete
 - **LangGraph Orchestration** (Supergraph, specialized workers, advanced queues)
 - **Safety & Observability** (Content safety, classifier metrics, InfluxDB analytics)
 - **User Transparency** (User-facing graph, recommendations)
+- **Session Processing** (Timeout detection, batch analysis for all sessions)
 
 ---
 
 ### 📋 Proposed Work (Phase 2)
 
-| Priority | Phase | Description | Time | Deps | Spec |
-|----------|-------|-------------|------|------|------|
-| 🟡 Medium | **S6** | **Session Timeout Processing** | **2-3 hours** | arq ✅ | [SPEC-S06](./spec/SPEC-S06-SHORT_SESSION_PROCESSING.md) |
-
-**S6: Session Timeout Processing**
-- Problem: Short conversations (<20 messages) that timeout are never processed for goal analysis, knowledge extraction
-- Solution: Cron job every 5 min closes stale sessions and triggers batch processing
-- Impact: 100% of sessions processed (vs ~60% today)
-
----
+No active proposed work. All Phase 1 items complete.
 
 **Next Phase Planning:** Additional items to consider:
 - Production deployment and stability monitoring
@@ -134,6 +127,7 @@ All proposed roadmap items have been implemented. The system is feature-complete
 
 | Phase | Description | Completed |
 |-------|-------------|--------|
+| S6 | Session Timeout Processing | Dec 2025 |
 | E15 | Autonomous Server Activity (all 4 phases) | Dec 2025 |
 | E25 | Graph Enrichment Agent | Dec 2025 |
 | E17 | Supergraph Architecture | Dec 2025 |

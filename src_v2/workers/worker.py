@@ -60,7 +60,8 @@ from src_v2.workers.tasks.cron_tasks import (
     run_nightly_diary_generation,
     run_nightly_dream_generation,
     run_nightly_goal_strategist,
-    run_weekly_drift_observation
+    run_weekly_drift_observation,
+    run_session_timeout_processing
 )
 
 
@@ -170,6 +171,12 @@ class WorkerSettings:
             hour=3,     # 3 AM UTC (quiet time)
             minute=0,
             run_at_startup=False
+        ),
+        # Session timeout processing - runs every 5 minutes (Phase S6)
+        cron(
+            run_session_timeout_processing,
+            minute=set(range(0, 60, 5)),
+            run_at_startup=True
         ),
     ]
     

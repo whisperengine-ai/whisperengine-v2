@@ -5,6 +5,8 @@ from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.core.behavior import get_character_timezone
+from src_v2.memory.session import session_manager
+from src_v2.workers.task_queue import task_queue
 # Note: Tasks are enqueued by name string, so we don't need to import the functions directly
 # from src_v2.workers.tasks.diary_tasks import run_diary_generation, run_agentic_diary_generation
 # from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_agentic_dream_generation
@@ -416,3 +418,103 @@ async def run_nightly_goal_strategist(ctx: Dict[str, Any]) -> Dict[str, Any]:
             "success": False,
             "error": str(e)
         }
+
+
+async def run_session_timeout_processing(ctx: Dict[str, Any]) -> Dict[str, Any]:  # noqa: ARG001
+    """
+    Cron job that runs every 5 minutes to find stale sessions, close them,
+    and trigger post-session processing (summarization, goal analysis, etc.).
+    
+    Args:
+        ctx: arq context (required by arq cron interface, unused here)
+    """
+    logger.info("Running session timeout processing...")
+    
+    # 1. Find stale sessions (inactive > 30 mins)
+    stale_sessions = await session_manager.get_stale_sessions(timeout_minutes=30)
+    
+    if not stale_sessions:
+        logger.info("No stale sessions found.")
+        return {"success": True, "processed_count": 0}
+    
+    logger.info(f"Found {len(stale_sessions)} stale sessions to process.")
+    processed_count = 0
+    
+    for session in stale_sessions:
+        session_id = str(session['id'])
+        user_id = session['user_id']
+        character_name = session['character_name']
+        
+        try:
+            # 2. Get messages for the session BEFORE closing it (to get correct time range)
+            messages = await session_manager.get_session_messages(session_id)
+            
+            # 3. Close the session
+            await session_manager.close_session(session_id)
+            
+            if not messages:
+                logger.warning(f"Session {session_id} has no messages, skipping processing.")
+                continue
+                
+            # 4. Trigger post-session processing
+            # We replicate the logic from enqueue_post_conversation_tasks here
+            # to avoid circular imports with message_handler
+            
+            user_name = messages[-1].get('user_name', 'User') if messages else 'User'
+            
+            # Batch Knowledge Extraction
+            if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
+                await task_queue.enqueue_batch_knowledge_extraction(
+                    user_id=user_id,
+                    messages=messages,
+                    character_name=character_name,
+                    session_id=session_id
+                )
+            
+            # Batch Preference Extraction
+            if settings.ENABLE_PREFERENCE_EXTRACTION:
+                await task_queue.enqueue_batch_preference_extraction(
+                    user_id=user_id,
+                    messages=messages,
+                    character_name=character_name,
+                    session_id=session_id
+                )
+            
+            # Batch Goal Analysis
+            await task_queue.enqueue_batch_goal_analysis(
+                user_id=user_id,
+                messages=messages,
+                character_name=character_name,
+                session_id=session_id
+            )
+            
+            # Summarization
+            await task_queue.enqueue_summarization(
+                user_id=user_id,
+                character_name=character_name,
+                session_id=session_id,
+                messages=messages,
+                user_name=user_name
+            )
+            
+            # Reflection
+            await task_queue.enqueue_reflection(
+                user_id=user_id,
+                character_name=character_name
+            )
+            
+            # Insight Analysis
+            await task_queue.enqueue_insight_analysis(
+                user_id=user_id,
+                character_name=character_name,
+                trigger="session_timeout",
+                priority=5
+            )
+            
+            processed_count += 1
+            logger.info(f"Processed timeout for session {session_id} (User: {user_id}, Bot: {character_name})")
+            
+        except Exception as e:
+            logger.error(f"Failed to process timeout for session {session_id}: {e}")
+            
+    return {"success": True, "processed_count": processed_count}

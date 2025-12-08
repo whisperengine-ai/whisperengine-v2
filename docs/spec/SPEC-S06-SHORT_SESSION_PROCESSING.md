@@ -1,9 +1,9 @@
 # SPEC-S06: Session Timeout Processing
 
-**Document Version:** 3.0  
+**Document Version:** 3.1  
 **Created:** December 7, 2025  
-**Updated:** December 7, 2025  
-**Status:** 📋 Proposed  
+**Updated:** December 8, 2025  
+**Status:** ✅ Complete  
 **Priority:** 🟡 Medium  
 **Dependencies:** PostgreSQL, arq task queue
 
