@@ -432,8 +432,17 @@ class LookupFactsTool(BaseTool):
             # <@123456789> -> "user with id 123456789"
             cleaned_query = re.sub(r'<@!?(\d+)>', r'user with id \1', query)
             
-            # Use the new smart query method
+            # Use the smart query method first
             result = await knowledge_manager.query_graph(self.user_id, cleaned_query, self.bot_name)
+            
+            # If the LLM-generated query found nothing, fall back to default fact retrieval
+            # This handles cases where the query was too vague or LLM generated poor Cypher
+            if "No relevant information found" in result or not result.strip():
+                default_facts = await knowledge_manager.get_user_knowledge(self.user_id, query=None, limit=10)
+                if default_facts:
+                    return f"Graph Query Result: {default_facts}"
+                return "Graph Query Result: No facts stored for this user yet."
+            
             return f"Graph Query Result: {result}"
         except Exception as e:
             return f"Error looking up facts: {e}"
