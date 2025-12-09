@@ -297,30 +297,64 @@ class ServerActivityMonitor:
             return False
     
     async def release_conversation_lock(self, guild_id: str, bot_name: str) -> None:
-        """Release conversation lock (only if we own it)."""
+        """Release conversation lock (only if we own it).
+        
+        Uses atomic check-and-delete via Lua script to prevent race conditions.
+        """
         if not db_manager.redis_client:
             return
             
         lock_key = f"{REDIS_PREFIX_AUTONOMOUS}guild:{guild_id}:conversation_lock"
         
         try:
-            current = await db_manager.redis_client.get(lock_key)
-            if current:
-                if isinstance(current, bytes):
-                    current = current.decode()
-                if current.startswith(f"{bot_name}:"):
-                    await db_manager.redis_client.delete(lock_key)
-                    logger.debug(f"[Activity] Released conversation lock for guild {guild_id}")
+            # Atomic check-and-delete using Lua script
+            # Only deletes if the value starts with our bot name
+            lua_script = """
+            local current = redis.call('GET', KEYS[1])
+            if current and string.find(current, ARGV[1]) == 1 then
+                return redis.call('DEL', KEYS[1])
+            end
+            return 0
+            """
+            result = await db_manager.redis_client.eval(lua_script, 1, lock_key, f"{bot_name}:")
+            if result:
+                logger.debug(f"[Activity] Released conversation lock for guild {guild_id}")
         except Exception as e:
             logger.debug(f"Failed to release conversation lock: {e}")
+
+    async def clear_post_cooldown(self, guild_id: str) -> None:
+        """Clear the post cooldown for a guild (used when post generation fails)."""
+        if not db_manager.redis_client:
+            return
+            
+        cooldown_key = f"{REDIS_PREFIX_AUTONOMOUS}guild:{guild_id}:post_cooldown"
+        
+        try:
+            await db_manager.redis_client.delete(cooldown_key)
+            logger.debug(f"[Activity] Cleared post cooldown for guild {guild_id}")
+        except Exception as e:
+            logger.debug(f"Failed to clear post cooldown: {e}")
 
     # ========== Legacy methods for backwards compatibility ==========
     # These wrap the new atomic methods
     
     async def record_autonomous_post(self, guild_id: str, bot_name: str, cooldown_minutes: int = 10) -> None:
-        """Legacy: Record a post. Now just sets the cooldown key if not already set."""
+        """Legacy: Force-set a post cooldown (overwrites any existing)."""
+        if not db_manager.redis_client:
+            return
+            
         cooldown_seconds = cooldown_minutes * 60
-        await self.try_acquire_post_slot(guild_id, bot_name, cooldown_seconds)
+        cooldown_key = f"{REDIS_PREFIX_AUTONOMOUS}guild:{guild_id}:post_cooldown"
+        
+        try:
+            # Force set (no NX) - overwrites any existing cooldown
+            await db_manager.redis_client.set(
+                cooldown_key,
+                f"{bot_name}:{datetime.now(timezone.utc).isoformat()}",
+                ex=cooldown_seconds
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record autonomous post: {e}")
     
     async def check_autonomous_post_cooldown(self, guild_id: str, cooldown_minutes: int = 10) -> tuple[bool, str | None]:
         """Legacy: Check if on cooldown. Returns (is_on_cooldown, bot_name)."""

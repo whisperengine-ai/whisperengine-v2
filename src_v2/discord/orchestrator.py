@@ -186,6 +186,11 @@ class ActivityOrchestrator:
         
         if success:
             logger.info(f"Successfully scheduled autonomous post for {character_name}")
+        else:
+            # Clear the cooldown since we didn't actually post
+            # This allows another bot to try, or this bot to retry next cycle
+            await server_monitor.clear_post_cooldown(str(guild.id))
+            logger.warning(f"Post generation failed for {character_name}, cleared cooldown for retry")
 
     async def trigger_conversation(
         self, 

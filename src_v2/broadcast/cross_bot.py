@@ -324,21 +324,29 @@ class CrossBotManager:
             return False
     
     async def release_response_lock(self, channel_id: str) -> None:
-        """Release the response lock for a channel (only if we own it)."""
+        """Release the response lock for a channel (only if we own it).
+        
+        Uses atomic check-and-delete via Lua script to prevent race conditions.
+        """
         if not db_manager.redis_client:
             return
         
         lock_key = _redis_key(f"{REDIS_PREFIX_LOCK}{channel_id}")
         
         try:
-            # Only release if we own the lock (prevents releasing another bot's lock)
-            current = await db_manager.redis_client.get(lock_key)
-            if current and current.startswith(f"{self._bot_name}:"):
-                await db_manager.redis_client.delete(lock_key)
+            # Atomic check-and-delete using Lua script
+            # Only deletes if the value starts with our bot name
+            lua_script = """
+            local current = redis.call('GET', KEYS[1])
+            if current and string.find(current, ARGV[1]) == 1 then
+                return redis.call('DEL', KEYS[1])
+            end
+            return 0
+            """
+            result = await db_manager.redis_client.eval(lua_script, 1, lock_key, f"{self._bot_name}:")
+            if result:
                 logger.debug(f"[CrossBot] Released response lock for channel {channel_id}")
-            elif current:
-                logger.warning(f"[CrossBot] Lock owned by another bot, not releasing: {current}")
-            # If current is None, lock already expired - nothing to release
+            # If result is 0, either lock expired or owned by another bot - both are fine
         except Exception as e:
             logger.debug(f"[CrossBot] Lock release failed: {e}")
 
@@ -731,9 +739,10 @@ Trust your instincts - there's no pressure either way.]"""
                 # Atomic increment - this is the critical fix for the race condition
                 new_count = await db_manager.redis_client.incr(count_key)
                 
-                # Set TTL on first message
-                if new_count == 1:
-                    await db_manager.redis_client.expire(count_key, CHAIN_EXPIRE_MINUTES * 60)
+                # Always refresh TTL on activity (keeps chain alive during active conversation)
+                # This prevents chains from expiring mid-conversation if they take a while
+                ttl_seconds = CHAIN_EXPIRE_MINUTES * 60
+                await db_manager.redis_client.expire(count_key, ttl_seconds)
                 
                 # Update metadata (last bot, participants) - less critical for race conditions
                 meta = {
@@ -743,7 +752,7 @@ Trust your instincts - there's no pressure either way.]"""
                 }
                 await db_manager.redis_client.setex(
                     meta_key, 
-                    CHAIN_EXPIRE_MINUTES * 60, 
+                    ttl_seconds, 
                     json.dumps(meta)
                 )
                 
