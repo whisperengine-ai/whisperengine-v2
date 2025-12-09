@@ -567,7 +567,7 @@ class MessageHandler:
                             linked_msg = await message.channel.fetch_message(int(message_id_str))
                             if linked_msg and linked_msg.content:
                                 linked_author = linked_msg.author.display_name
-                                linked_content = smart_truncate(linked_msg.content, 500)
+                                linked_content = smart_truncate(linked_msg.content, 2000)
                                 
                                 # Inject context about the linked message
                                 user_message = f"[User shared a link to an earlier message from {linked_author}: \"{linked_content}\"]\n{user_message}"
@@ -589,7 +589,7 @@ class MessageHandler:
                                         linked_msg = await linked_channel.fetch_message(int(message_id_str))
                                         if linked_msg and linked_msg.content:
                                             linked_author = linked_msg.author.display_name
-                                            linked_content = smart_truncate(linked_msg.content, 500)
+                                            linked_content = smart_truncate(linked_msg.content, 2000)
                                             channel_name = linked_channel.name
                                             user_message = f"[User shared a link to a message from #{channel_name} by {linked_author}: \"{linked_content}\"]\n{user_message}"
                                             logger.info(f"Injected cross-channel Discord message link context from #{channel_name}")
@@ -628,7 +628,7 @@ class MessageHandler:
                             ))
 
                             if content or ref_has_images:
-                                ref_text = smart_truncate(content, 500) if content else ""
+                                ref_text = smart_truncate(content, 2000) if content else ""
                                 ref_author = ref_msg.author.display_name
                                 
                                 # Add image marker for refinement detection
@@ -686,7 +686,7 @@ class MessageHandler:
                                 fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
 
                             if fwd_content:
-                                fwd_text = smart_truncate(fwd_content, 500)
+                                fwd_text = smart_truncate(fwd_content, 2000)
                                 
                                 user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
                                 logger.info(f"Injected forwarded context: {user_message}")
