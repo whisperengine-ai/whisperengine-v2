@@ -196,6 +196,18 @@ When done, provide a brief summary of what you learned."""
             logger.error(f"Insight Agent LLM failed: {e}")
             return {"messages": [AIMessage(content="Analysis failed due to error.")], "steps": state['steps'] + 1}
 
+    # Phrases that indicate tools found no meaningful data to analyze
+    NO_DATA_INDICATORS = [
+        "no clear themes",
+        "more conversation data needed",
+        "not enough data",
+        "no patterns found",
+        "insufficient data",
+        "no insights available",
+        "no memories found",
+        "no existing insights",
+    ]
+
     async def tools_node(self, state: InsightAgentState):
         messages = state['messages']
         last_message = messages[-1]
@@ -212,11 +224,28 @@ When done, provide a brief summary of what you learned."""
         
         tool_messages = []
         new_artifacts = []
+        all_tools_empty = True  # Track if all tools returned "no data"
         
         for msg, artifact in results:
             tool_messages.append(msg)
             if artifact:
                 new_artifacts.append(artifact)
+            
+            # Check if this tool returned meaningful data
+            content_lower = msg.content.lower() if isinstance(msg.content, str) else ""
+            has_no_data = any(indicator in content_lower for indicator in self.NO_DATA_INDICATORS)
+            if not has_no_data and len(content_lower) > 50:
+                all_tools_empty = False
+        
+        # If all tools returned "no data" responses, mark for early exit
+        # by setting a high step count to trigger should_continue → "end"
+        if all_tools_empty and not new_artifacts:
+            logger.info("All insight tools returned 'no data' - skipping final LLM synthesis")
+            return {
+                "messages": tool_messages, 
+                "artifacts_generated": state['artifacts_generated'] + new_artifacts,
+                "steps": state['max_steps']  # Force early exit
+            }
                 
         return {
             "messages": tool_messages, 
