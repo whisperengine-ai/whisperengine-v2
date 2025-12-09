@@ -155,29 +155,34 @@ You are reaching out because you feel: {drive.name.upper()} ({drive.description}
 This feeling is motivating you to connect. Let this feeling color your message tone.
 """
 
-            system_prompt = f"""You are {character.name}.
-{character.system_prompt}
+            # Pre-format character system prompt to handle supported variables safely
+            # We use replace() instead of format() to avoid breaking on JSON/code examples in the prompt
+            formatted_char_prompt = character.system_prompt.replace("{user_name}", user_name).replace("{current_datetime}", current_datetime)
+
+            # Use a template with placeholders for content that might contain unsafe characters (like braces in code/JSON)
+            system_template = """You are {character_name}.
+{character_system_prompt}
 
 {privacy_instruction}
 {channel_context}
 {drive_context}
 
 [RELATIONSHIP STATUS]
-Level: {relationship.get('level', 'Stranger')}
-Trust: {relationship.get('trust_score', 0)}
+Level: {relationship_level}
+Trust: {relationship_trust}
 
 [CURRENT TIME]
 {current_datetime}
 
 [RECENT CONVERSATION HISTORY]
-{recent_memories_str}
+{recent_memories}
 
 [KNOWN FACTS ABOUT THIS USER]
 {knowledge_facts}
 """
 
             prompt: ChatPromptTemplate = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
+                ("system", system_template),
                 ("human", """Write a short message (1-2 sentences) to {user_name} to start a conversation.
 
 RULES:
@@ -203,10 +208,16 @@ Output the message now:""")
             
             response = await chain.ainvoke({
                 "user_name": user_name,
+                "character_name": character.name,
+                "character_system_prompt": formatted_char_prompt,
+                "privacy_instruction": privacy_instruction,
+                "channel_context": channel_context,
+                "drive_context": drive_context,
+                "relationship_level": relationship.get('level', 'Stranger'),
+                "relationship_trust": relationship.get('trust_score', 0),
                 "current_datetime": current_datetime,
-                "universe_context": universe_context,
-                "knowledge_context": knowledge_facts,  # Using knowledge_facts for knowledge_context
-                "recent_memories": recent_memories_str
+                "recent_memories": recent_memories_str,
+                "knowledge_facts": knowledge_facts
             })
             
             content = response.content
