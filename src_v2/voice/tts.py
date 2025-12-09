@@ -8,9 +8,15 @@ from src_v2.config.settings import settings
 
 class TTSManager:
     def __init__(self):
+        # Check if voice is enabled first
+        if not settings.ENABLE_VOICE_RESPONSES:
+            self.client = None
+            logger.debug("Voice responses disabled in settings. TTSManager initialized in inactive state.")
+            return
+
         self.api_key = settings.ELEVENLABS_API_KEY.get_secret_value() if settings.ELEVENLABS_API_KEY else None
         if not self.api_key:
-            logger.warning("ELEVENLABS_API_KEY not set. TTS will be disabled.")
+            logger.warning("ELEVENLABS_API_KEY not set but ENABLE_VOICE_RESPONSES is True. TTS will be disabled.")
             self.client = None
         else:
             self.client = AsyncElevenLabs(api_key=self.api_key)
