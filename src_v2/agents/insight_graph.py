@@ -117,12 +117,18 @@ YOUR GOALS:
 3. GENERATE epiphanies - spontaneous realizations that {character_name} can reference later
 4. STORE reasoning traces - successful approaches for similar future queries. IMPORTANT: Estimate the complexity (SIMPLE, COMPLEX_LOW, COMPLEX_MID, COMPLEX_HIGH) of the query so we can allocate resources correctly next time.
 5. LEARN response patterns - what styles resonate with this user
+6. SELF-OBSERVE - Notice patterns in how YOU ({character_name}) responded:
+   - What approaches felt authentic to your character?
+   - Did you use recurring metaphors, themes, or styles with this user?
+   - What worked well vs. fell flat?
+   Store these as epiphanies about yourself: "I notice I tend to..." or "With this user, I find myself..."
 
 RULES:
 - Be thoughtful but efficient (max 5 tool calls)
 - Only generate artifacts if you find something meaningful
 - Epiphanies should feel natural, not robotic ("I just realized..." not "Analysis shows...")
 - Focus on emotional and relational insights, not just facts
+- Self-observations should emerge naturally, not forced - only note genuine patterns
 - When storing reasoning traces, accurately estimate complexity (e.g. multi-step research is COMPLEX_HIGH, simple lookups are COMPLEX_LOW)
 
 When done, provide a brief summary of what you learned."""

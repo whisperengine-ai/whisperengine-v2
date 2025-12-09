@@ -34,9 +34,9 @@ class InferredGoal(BaseModel):
 
 
 class ReflectionOutput(BaseModel):
-    insights: List[str] = Field(description="High-level insights about the user")
-    updated_traits: List[str] = Field(description="Personality traits observed")
-    inferred_goals: List[InferredGoal] = Field(default_factory=list, description="Goals inferred from patterns")
+    insights: List[str] = Field(description="High-level insights about the USER's personality, values, and behavior patterns")
+    updated_traits: List[str] = Field(description="Personality traits observed in the USER (not the character)")
+    inferred_goals: List[InferredGoal] = Field(default_factory=list, description="Goals the character should pursue with this user, inferred from patterns")
 
 
 # ============================================================================
@@ -287,23 +287,25 @@ class ReflectionGraphAgent:
         
         return {
             "messages": [
-                SystemMessage(content=f"""You are analyzing patterns for {state['character_name']}.
+                SystemMessage(content=f"""You are analyzing patterns about USER {state['user_id']} from the perspective of {state['character_name']}.
 
-CHARACTER IDENTITY:
+IMPORTANT: You are analyzing THE USER, not the character. The character context below is provided so you understand the relationship dynamic and can phrase goals in the character's voice.
+
+CHARACTER CONTEXT (for voice/perspective, NOT the subject of analysis):
 {state['character_identity']}
 
-GATHERED DATA:
+GATHERED DATA ABOUT THE USER:
 
-## Recent Summaries:
+## Recent Conversation Summaries (user's interactions with this character):
 {summaries_text}
 
-## Knowledge Graph Facts:
+## Knowledge Graph Facts (what we know about the user):
 {facts_text}
 
-## Observations from Bots:
+## Observations from Bots (patterns noticed about the user):
 {observations_text}
 
-## Existing Insights (avoid duplicates):
+## Existing User Insights (avoid duplicates):
 {existing_text}
 """)
             ]
@@ -313,28 +315,32 @@ GATHERED DATA:
     async def synthesize_insights(self, state: ReflectionState) -> Dict[str, Any]:
         """Synthesize insights from gathered data."""
         
-        synthesis_prompt = f"""Based on the data gathered, generate a ReflectionOutput for this user.
+        synthesis_prompt = f"""Based on the data gathered, generate a ReflectionOutput analyzing THE USER (not {state['character_name']}).
+
+CRITICAL: You are profiling the HUMAN USER, not the AI character. The insights and traits describe the user's personality.
 
 RULES:
-1. Insights should be HIGH-LEVEL observations (not just facts we already know)
-   - Good: "Values authenticity and dislikes small talk"
-   - Bad: "Has a cat named Whiskers" (this is a fact, not an insight)
+1. Insights should be HIGH-LEVEL observations about THE USER (not just facts we already know)
+   - Good: "The user values authenticity and dislikes small talk"
+   - Bad: "The user has a cat named Whiskers" (this is a fact, not an insight)
+   - Bad: "{state['character_name']} values connection" (this describes the character, not the user)
 
-2. Traits should be PERSONALITY characteristics
+2. Traits should be THE USER's PERSONALITY characteristics
    - Good: "Introverted", "Analytical", "Empathetic"
-   - Bad: "Works in tech" (this is a fact)
+   - Bad: "Works in tech" (this is a fact about the user)
+   - Bad: "Warm and curious" (unless this describes THE USER, not the character)
 
-3. Inferred Goals should:
-   - Only be generated if there's a CLEAR pattern (mentioned 3+ times, expressed need)
-   - Align with {state['character_name']}'s identity and drives
-   - Be specific to THIS user (not generic)
-   - Use the character's voice/style
+3. Inferred Goals should be things {state['character_name']} should work towards WITH this user:
+   - Only generate if there's a CLEAR pattern in the user's behavior (mentioned 3+ times, expressed need)
+   - Goals describe what the CHARACTER should do FOR/WITH the user
+   - Use the character's voice/style in the goal descriptions
+   - Example: "Help the user explore their interest in philosophy" (goal for character to pursue)
 
 4. Avoid duplicating existing insights.
 
-5. If you don't have enough data for meaningful insights, return empty lists.
+5. If you don't have enough data for meaningful insights about the user, return empty lists.
 
-Generate the structured output now."""
+Generate the structured output now, focusing on THE USER's patterns and personality."""
 
         messages = state["messages"] + [HumanMessage(content=synthesis_prompt)]
         
