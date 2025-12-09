@@ -1,4 +1,5 @@
 import operator
+import re
 from typing import List, Optional, Dict, Any, TypedDict, Annotated, Literal
 from loguru import logger
 from langsmith import traceable
@@ -160,8 +161,15 @@ Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - fi
         # First-person check
         first_sentences = ' '.join(dream_text.split('.')[:3]).lower()
         bot_name = (settings.DISCORD_BOT_NAME or "").lower()
-        third_person_indicators = ["she ", "he ", "they ", "the character ", f"{bot_name} "]
-        if any(ind in first_sentences for ind in third_person_indicators):
+        
+        third_person_words = ["she", "he", "they", "the character"]
+        if bot_name:
+            third_person_words.append(bot_name)
+            
+        # Use regex to match whole words only (avoids matching "he" in "the")
+        pattern = r'\b(' + '|'.join(map(re.escape, third_person_words)) + r')\b'
+        
+        if re.search(pattern, first_sentences):
             critiques.append("Write in first person ('I am...', 'I see...'), not third person. This is YOUR dream experience.")
             
         # Literalness check

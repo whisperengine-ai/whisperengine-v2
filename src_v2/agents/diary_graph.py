@@ -1,4 +1,5 @@
 import operator
+import re
 from typing import List, Optional, Dict, Any, TypedDict, Annotated, Literal
 from loguru import logger
 from langsmith import traceable
@@ -165,14 +166,22 @@ Write your diary entry now. Be creative and authentic - avoid starting with "Tod
             critiques.append("The entry is too short. Please expand on your feelings and the day's events.")
             
         # Tone check (basic keyword heuristic)
-        if "User" in entry_text or "user" in entry_text:
+        # Use regex to avoid matching "user" in "trousers", "abuser", etc.
+        if re.search(r'\b(User|user|Users|users)\b', entry_text):
             critiques.append("Do not refer to people as 'User' or 'users'. Use their names or 'someone'.")
         
         # First-person check
         first_sentences = ' '.join(entry_text.split('.')[:3]).lower()
         bot_name = (settings.DISCORD_BOT_NAME or "").lower()
-        third_person_indicators = ["she ", "he ", "they ", "the character ", f"{bot_name} "]
-        if any(ind in first_sentences for ind in third_person_indicators):
+        
+        third_person_words = ["she", "he", "they", "the character"]
+        if bot_name:
+            third_person_words.append(bot_name)
+            
+        # Use regex to match whole words only (avoids matching "he" in "the")
+        pattern = r'\b(' + '|'.join(map(re.escape, third_person_words)) + r')\b'
+        
+        if re.search(pattern, first_sentences):
             critiques.append("Write in first person ('I felt...', 'I wondered...'), not third person. This is YOUR private diary.")
             
         if "summary of" in entry_text.lower() or "i had a conversation" in entry_text.lower():
