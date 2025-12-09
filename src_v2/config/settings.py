@@ -137,6 +137,7 @@ class Settings(BaseSettings):
 
     # --- Web Search ---
     ENABLE_WEB_SEARCH: bool = True  # Feature flag to enable/disable web search capability
+    ENABLE_WEB_READER: bool = True  # Enable reading specific URLs
     WEB_SEARCH_MAX_RESULTS: int = 5  # Maximum results per search query
 
     # --- Image Generation ---

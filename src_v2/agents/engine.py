@@ -193,6 +193,12 @@ class AgentEngine:
             complexity_result = "COMPLEX_MID"
             _complexity = "COMPLEX_MID"
 
+        # "read_url" intent requires ReadWebPageTool which is only in Reflective Mode (COMPLEX_MID+)
+        if "read_url" in detected_intents and complexity_result not in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+            logger.info("Promoting complexity to COMPLEX_MID due to 'read_url' intent")
+            complexity_result = "COMPLEX_MID"
+            _complexity = "COMPLEX_MID"
+
         # Handle image-related complexity:
         # - Image GENERATION intents → promote to COMPLEX_MID (needs tools)
         # - Image UPLOADS (image_urls present) → cap at COMPLEX_LOW (CharacterAgent can view images)

@@ -30,6 +30,7 @@ from src_v2.tools.insight_tools import (
 from src_v2.tools.image_tools import GenerateImageTool
 from src_v2.tools.math_tools import CalculatorTool
 from src_v2.tools.web_search import WebSearchTool
+from src_v2.tools.web_reader import ReadWebPageTool
 from src_v2.config.settings import settings
 from src_v2.memory.traces import trace_retriever
 
@@ -127,6 +128,9 @@ class ReflectiveGraphAgent:
         # Conditionally add web search tool
         if settings.ENABLE_WEB_SEARCH:
             tools.append(WebSearchTool())
+        
+        if settings.ENABLE_WEB_READER:
+            tools.append(ReadWebPageTool())
         
         # Add Discord search tools if channel is available
         if channel:

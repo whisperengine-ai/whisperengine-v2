@@ -165,6 +165,7 @@ class ComplexityClassifier:
 
         # Build dynamic intent section
         intent_section = "INTENT DETECTION:\n- \"search\": User asks to search for information or look something up."
+        intent_section += '\n- "read_url": User provides a specific URL and asks to read/summarize/discuss it (e.g. "read this article", "what does this link say", "summarize https://..."). ALSO detect this if the user message is JUST a URL or mostly a URL.'
         intent_section += '\n- "memory": User explicitly asks to remember, forget, update, or correct a fact/preference (e.g. "I moved to NY", "Forget that", "Remember this").'
         intent_section += '\n- "math": User asks for a calculation, unit conversion, equation solving, or quantitative analysis (e.g. "what is 2+2", "solve for x", "convert 5 miles to km").'
         
@@ -240,6 +241,7 @@ COMPLEXITY LEVELS:
    - "What channels can you see?" (planet context lookup)
    - "What is 25 * 4?" (simple math)
    - "Do a search for X" (explicit simple search command)
+   - "Read this article: https://..." (simple URL reading)
 3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, moderate reasoning, OR image generation.
 {image_gen_example}
    - "What are the pros and cons of X?" (analysis)
