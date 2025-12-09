@@ -1453,23 +1453,35 @@ class MessageHandler:
             if not mention:
                 return
             
-            # Check if we should respond (probabilistic + chain limits)
-            if not await cross_bot_manager.should_respond(mention):
-                logger.debug("Decided not to respond to cross-bot mention")
+            channel_id = str(message.channel.id)
+            
+            # CRITICAL FIX: Use atomic try_claim_turn BEFORE making any other decisions
+            # This prevents the race condition where both bots decide to respond simultaneously
+            # The old flow was: detect -> should_respond -> acquire_lock (race window between 2 and 3!)
+            # New flow: detect -> try_claim_turn (atomic check + lock acquisition)
+            can_respond, reason = await cross_bot_manager.try_claim_turn(
+                channel_id, 
+                mention.mentioning_bot or "unknown"
+            )
+            
+            if not can_respond:
+                logger.info(f"[CrossBot] Turn denied: {reason}")
                 return
             
-            # CRITICAL: Acquire distributed lock to prevent race conditions
-            # This ensures only ONE bot responds at a time in this channel
-            channel_id = str(message.channel.id)
-            if not await cross_bot_manager.acquire_response_lock(channel_id):
-                logger.info(f"[CrossBot] Another bot is responding in channel {channel_id}, skipping")
+            # Now do probabilistic check AFTER acquiring the lock
+            # This ensures only one bot does the probability roll
+            if not await cross_bot_manager.should_respond(mention):
+                logger.debug("Decided not to respond to cross-bot mention (probability)")
+                # Release the lock since we're not responding
+                await cross_bot_manager.release_response_lock(channel_id)
                 return
             
             try:
                 logger.info(f"Responding to cross-bot mention from {mention.mentioning_bot}")
                 
-                # Add natural delay (2-5 seconds) to simulate reading/thinking
-                delay = random.uniform(2.0, 5.0)
+                # Add natural delay (5-10 seconds) to simulate reading/thinking
+                # Increased from 2-5 to give other bots more time to see our lock
+                delay = random.uniform(5.0, 10.0)
                 await asyncio.sleep(delay)
                 
                 # Get character

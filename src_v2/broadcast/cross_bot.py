@@ -41,6 +41,7 @@ REDIS_PREFIX_LOCK = "crossbot:lock:"              # Distributed lock for chain o
 CHAIN_EXPIRE_MINUTES = 10  # Chains expire after 10 min of inactivity
 BURST_EXPIRE_SECONDS = 30  # Burst detection window
 LOCK_EXPIRE_SECONDS = 30   # Max time a lock can be held (prevents deadlocks)
+INTER_BOT_DELAY_SECONDS = 10  # Minimum delay between ANY bot response in channel (prevents rapid fire)
 
 
 def _redis_key(key: str) -> str:
@@ -349,6 +350,134 @@ class CrossBotManager:
             # If result is 0, either lock expired or owned by another bot - both are fine
         except Exception as e:
             logger.debug(f"[CrossBot] Lock release failed: {e}")
+
+    async def try_claim_turn(self, channel_id: str, mentioning_bot: str) -> tuple[bool, str]:
+        """
+        Atomically check if it's our turn AND acquire the lock in one operation.
+        
+        This is THE critical fix for the infinite loop problem. Previously:
+        1. Bot A checks "is it my turn?" -> yes
+        2. Bot B checks "is it my turn?" -> yes (race condition!)
+        3. Both bots respond -> infinite loop
+        
+        Now we use a Lua script to atomically:
+        1. Check if another response happened in the last N seconds (inter-bot delay)
+        2. Check if WE were the last responder (can't respond to ourselves twice in a row)
+        3. Check if the chain limit is reached
+        4. If all checks pass, acquire the lock AND update last_responder
+        
+        Returns:
+            (success: bool, reason: str) - True if we can respond, reason explains why not
+        """
+        if not db_manager.redis_client:
+            # No Redis = no coordination, allow (single bot mode)
+            return (True, "no_redis")
+        
+        lock_key = _redis_key(f"{REDIS_PREFIX_LOCK}{channel_id}")
+        count_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:count")
+        meta_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:meta")
+        last_response_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:last_response_ts")
+        
+        try:
+            # Lua script for atomic turn-taking
+            # KEYS: [lock_key, count_key, meta_key, last_response_key]
+            # ARGV: [bot_name, max_chain, lock_ttl, inter_bot_delay]
+            lua_script = """
+            local lock_key = KEYS[1]
+            local count_key = KEYS[2]
+            local meta_key = KEYS[3]
+            local last_response_key = KEYS[4]
+            
+            local bot_name = ARGV[1]
+            local max_chain = tonumber(ARGV[2])
+            local lock_ttl = tonumber(ARGV[3])
+            local inter_bot_delay = tonumber(ARGV[4])
+            
+            -- Check 1: Is the lock already held by another bot?
+            local current_lock = redis.call('GET', lock_key)
+            if current_lock and string.find(current_lock, bot_name .. ':') ~= 1 then
+                return {'0', 'lock_held_by_' .. (current_lock or 'unknown')}
+            end
+            
+            -- Check 2: Is there a recent response (inter-bot delay)?
+            local last_ts = redis.call('GET', last_response_key)
+            if last_ts then
+                local now = redis.call('TIME')
+                local now_seconds = tonumber(now[1])
+                local last_seconds = tonumber(last_ts)
+                if last_seconds and (now_seconds - last_seconds) < inter_bot_delay then
+                    return {'0', 'inter_bot_delay:' .. (inter_bot_delay - (now_seconds - last_seconds)) .. 's_remaining'}
+                end
+            end
+            
+            -- Check 3: Chain limit reached?
+            local count = redis.call('GET', count_key)
+            count = count and tonumber(count) or 0
+            if count >= max_chain then
+                return {'0', 'chain_limit_reached:' .. count .. '/' .. max_chain}
+            end
+            
+            -- Check 4: Were we the last responder? (can't double-respond)
+            local meta = redis.call('GET', meta_key)
+            if meta then
+                -- Simple string match for last_bot (JSON parsing in Lua is complex)
+                if string.find(meta, '"last_bot":"' .. bot_name .. '"') then
+                    return {'0', 'we_were_last_responder'}
+                end
+            end
+            
+            -- All checks passed! Acquire the lock
+            local lock_value = bot_name .. ':' .. redis.call('TIME')[1]
+            redis.call('SET', lock_key, lock_value, 'EX', lock_ttl)
+            
+            return {'1', 'turn_claimed'}
+            """
+            
+            result = await db_manager.redis_client.eval(
+                lua_script,
+                4,  # Number of keys
+                lock_key, count_key, meta_key, last_response_key,
+                self._bot_name or "unknown",
+                str(settings.CROSS_BOT_MAX_CHAIN),
+                str(LOCK_EXPIRE_SECONDS),
+                str(INTER_BOT_DELAY_SECONDS)
+            )
+            
+            success = result[0] == '1' if result else False
+            reason = result[1] if result and len(result) > 1 else "unknown"
+            
+            if success:
+                logger.info(f"[CrossBot] Turn claimed for channel {channel_id}")
+            else:
+                logger.info(f"[CrossBot] Turn denied for channel {channel_id}: {reason}")
+            
+            return (success, reason)
+            
+        except Exception as e:
+            logger.warning(f"[CrossBot] try_claim_turn failed: {e}")
+            # On error, be conservative and skip
+            return (False, f"error:{str(e)}")
+
+    async def record_response_timestamp(self, channel_id: str) -> None:
+        """Record when we responded to enforce inter-bot delay."""
+        if not db_manager.redis_client:
+            return
+        
+        last_response_key = _redis_key(f"{REDIS_PREFIX_CHAIN}{channel_id}:last_response_ts")
+        
+        try:
+            # Get current Redis server time and store it
+            time_result = await db_manager.redis_client.time()
+            timestamp = str(time_result[0])  # seconds since epoch
+            
+            # Store with TTL slightly longer than chain expiry
+            await db_manager.redis_client.setex(
+                last_response_key,
+                CHAIN_EXPIRE_MINUTES * 60 + 60,  # Chain expiry + 1 minute buffer
+                timestamp
+            )
+        except Exception as e:
+            logger.debug(f"[CrossBot] Failed to record response timestamp: {e}")
 
     async def _get_atomic_chain_count(self, channel_id: str) -> int:
         """Get the current chain count using the atomic counter key."""
@@ -665,44 +794,40 @@ Trust your instincts - there's no pressure either way.]"""
         """
         Decide whether to respond to a cross-bot mention.
         
-        Responses are ALWAYS made when:
-        1. It's a direct reply to our message
-        2. Chain just started (first exchange)
-        3. We're in an active chain and it's our turn (other bot just spoke)
+        NOTE: This is called AFTER try_claim_turn() has already atomically verified:
+        - Inter-bot delay has passed
+        - Chain limit not reached  
+        - We weren't the last responder
+        - Lock is acquired
         
-        Probabilistic only for random @mentions outside of active chains.
+        So this function only handles:
+        1. Direct replies (always respond)
+        2. Active chain continuations (always respond)
+        3. Probabilistic response for new/random mentions
         """
         # Always respond to direct replies to our messages
         if mention.is_direct_reply:
             logger.debug("[CrossBot] should_respond=True (direct reply)")
             return True
         
-        # Get chain state (use atomic count for consistency with record_response)
+        # Get chain state to check if we're in an active conversation
         channel_id = mention.channel_id
         current_count = await self._get_atomic_chain_count(channel_id)
-        last_bot = await self._get_last_bot(channel_id)
         chain = await self._get_chain_from_redis(channel_id)
         
-        # Always respond if chain just started (first bot-to-bot exchange)
-        if current_count == 0:
-            logger.debug("[CrossBot] should_respond=True (chain just started)")
-            return True
-        
-        # ALWAYS respond if we're in an active chain and it's our turn
-        # This is the key fix: don't be probabilistic within active conversations
+        # Always respond if we're in an active chain (someone is talking to us)
         in_active_chain = (
             chain is not None and
             not chain.is_expired() and
-            current_count > 0 and
-            last_bot != self._bot_name  # Other bot just spoke, it's our turn
+            current_count > 0
         )
         
         if in_active_chain:
-            logger.debug(f"[CrossBot] should_respond=True (in active chain, our turn, count={current_count})")
+            logger.debug(f"[CrossBot] should_respond=True (in active chain, count={current_count})")
             return True
         
-        # For random mentions outside of active chains, use probabilistic response
-        # Lower probability for name-in-text mentions (e.g., "Dream Journal")
+        # For NEW conversations (not replies, not in chain), use probabilistic response
+        # This prevents every @mention from starting a bot conversation
         base_chance = settings.CROSS_BOT_RESPONSE_CHANCE
         if not mention.is_direct_mention:
             # 30% of the normal chance for name-in-text mentions
@@ -757,6 +882,9 @@ Trust your instincts - there's no pressure either way.]"""
                 )
                 
                 logger.info(f"[CrossBot] Atomic increment: chain count = {new_count}/{settings.CROSS_BOT_MAX_CHAIN}")
+                
+                # Record response timestamp for inter-bot delay enforcement
+                await self.record_response_timestamp(channel_id)
                 
             except Exception as e:
                 logger.warning(f"[CrossBot] Atomic increment failed: {e}, falling back to non-atomic")
