@@ -6,7 +6,6 @@ from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.core.behavior import get_character_timezone
 from src_v2.memory.session import session_manager
-from src_v2.workers.task_queue import task_queue
 # Note: Tasks are enqueued by name string, so we don't need to import the functions directly
 # from src_v2.workers.tasks.diary_tasks import run_diary_generation, run_agentic_diary_generation
 # from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_agentic_dream_generation
@@ -428,6 +427,9 @@ async def run_session_timeout_processing(ctx: Dict[str, Any]) -> Dict[str, Any]:
     Args:
         ctx: arq context (required by arq cron interface, unused here)
     """
+    # Import here to avoid circular imports at module level
+    from src_v2.discord.handlers.message_handler import enqueue_post_conversation_tasks
+    
     logger.info("Running session timeout processing...")
     
     # 1. Find stale sessions (inactive > 30 mins)
@@ -456,59 +458,16 @@ async def run_session_timeout_processing(ctx: Dict[str, Any]) -> Dict[str, Any]:
                 logger.warning(f"Session {session_id} has no messages, skipping processing.")
                 continue
                 
-            # 4. Trigger post-session processing
-            # We replicate the logic from enqueue_post_conversation_tasks here
-            # to avoid circular imports with message_handler
-            
+            # 4. Trigger post-session processing using the canonical pipeline
             user_name = messages[-1].get('user_name', 'User') if messages else 'User'
             
-            # Batch Knowledge Extraction
-            if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
-                await task_queue.enqueue_batch_knowledge_extraction(
-                    user_id=user_id,
-                    messages=messages,
-                    character_name=character_name,
-                    session_id=session_id
-                )
-            
-            # Batch Preference Extraction
-            if settings.ENABLE_PREFERENCE_EXTRACTION:
-                await task_queue.enqueue_batch_preference_extraction(
-                    user_id=user_id,
-                    messages=messages,
-                    character_name=character_name,
-                    session_id=session_id
-                )
-            
-            # Batch Goal Analysis
-            await task_queue.enqueue_batch_goal_analysis(
-                user_id=user_id,
-                messages=messages,
-                character_name=character_name,
-                session_id=session_id
-            )
-            
-            # Summarization
-            await task_queue.enqueue_summarization(
+            await enqueue_post_conversation_tasks(
                 user_id=user_id,
                 character_name=character_name,
                 session_id=session_id,
                 messages=messages,
-                user_name=user_name
-            )
-            
-            # Reflection
-            await task_queue.enqueue_reflection(
-                user_id=user_id,
-                character_name=character_name
-            )
-            
-            # Insight Analysis
-            await task_queue.enqueue_insight_analysis(
-                user_id=user_id,
-                character_name=character_name,
-                trigger="session_timeout",
-                priority=5
+                user_name=user_name,
+                trigger="session_timeout"
             )
             
             processed_count += 1

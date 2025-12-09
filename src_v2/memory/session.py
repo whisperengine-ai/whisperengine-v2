@@ -50,7 +50,8 @@ class SessionManager:
                     
                     if (now - last_activity) > timedelta(minutes=self.SESSION_TIMEOUT_MINUTES):
                         logger.info(f"Session {session_id} timed out. Closing and creating new one.")
-                        await self.close_session(session_id)
+                        # Trigger post-session processing for the stale session
+                        await self._process_stale_session(session_id, user_id, character_name)
                         return await self.create_session(user_id, character_name)
                     else:
                         # Update activity timestamp
@@ -107,6 +108,50 @@ class SessionManager:
                 logger.debug(f"Closed session {session_id}")
         except Exception as e:
             logger.error(f"Failed to close session: {e}")
+
+    async def _process_stale_session(
+        self, 
+        session_id: str, 
+        user_id: str, 
+        character_name: str
+    ) -> None:
+        """
+        Process a stale session: get messages, close it, and trigger post-session tasks.
+        Called when immediate timeout detection finds a stale session during get_active_session.
+        """
+        try:
+            # Import here to avoid circular imports at module level
+            from src_v2.discord.handlers.message_handler import enqueue_post_conversation_tasks
+            
+            # 1. Get messages BEFORE closing (to get correct time range)
+            messages = await self.get_session_messages(session_id)
+            
+            # 2. Close the session
+            await self.close_session(session_id)
+            
+            if not messages:
+                logger.debug(f"Session {session_id} has no messages, skipping post-processing.")
+                return
+            
+            # 3. Trigger post-session processing
+            user_name = messages[-1].get('user_name', 'User') if messages else 'User'
+            
+            await enqueue_post_conversation_tasks(
+                user_id=user_id,
+                character_name=character_name,
+                session_id=session_id,
+                messages=messages,
+                user_name=user_name,
+                trigger="session_timeout_immediate"
+            )
+            
+            logger.info(f"Processed immediate timeout for session {session_id}")
+            
+        except Exception as e:
+            # Don't fail the whole get_active_session call if post-processing fails
+            logger.error(f"Failed to process stale session {session_id}: {e}")
+            # Still try to close the session
+            await self.close_session(session_id)
 
     async def update_session_activity(self, session_id: str):
         """Updates the updated_at timestamp of a session."""
