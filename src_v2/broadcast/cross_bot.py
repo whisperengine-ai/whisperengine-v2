@@ -594,14 +594,26 @@ Trust your instincts - there's no pressure either way.]"""
             return None
         
         # Get chain from Redis (shared state)
+        # NOTE: We use both the chain object (for expiry check) AND atomic count/metadata
+        # because record_response uses atomic keys, not the chain object's message_count
         chain = await self._get_or_create_chain_async(channel_id)
         mentioning_bot = self.get_bot_name(message.author.id)
         
+        # Use atomic count for accurate state (record_response updates this, not chain.message_count)
+        current_count = await self._get_atomic_chain_count(channel_id)
+        last_bot = await self._get_last_bot(channel_id)
+        
         # Check if we're in an active chain and it's our turn
+        # Use atomic count instead of chain.message_count for consistency
         in_active_chain = (
             not chain.is_expired() and 
-            chain.message_count > 0 and 
-            chain.last_bot != self._bot_name  # Other bot just spoke
+            current_count > 0 and 
+            last_bot != self._bot_name  # Other bot just spoke
+        )
+        
+        logger.debug(
+            f"[CrossBot] Chain state: count={current_count}, last_bot={last_bot}, "
+            f"in_active_chain={in_active_chain}, is_reply={is_direct_reply}"
         )
         
         # Skip cooldown check if:
@@ -619,14 +631,10 @@ Trust your instincts - there's no pressure either way.]"""
                     logger.debug(f"Skipping: burst detection for {mentioning_bot} (within 30s, not in chain)")
                     return None
         
-        # Check chain limit using atomic count (prevents race conditions)
-        current_count = await self._get_atomic_chain_count(channel_id)
+        # Check chain limit (already fetched current_count above)
         if current_count >= settings.CROSS_BOT_MAX_CHAIN:
             logger.info(f"[CrossBot] Chain limit reached in channel {channel_id} (count: {current_count})")
             return None
-        
-        # Get last bot from metadata to check if it's our turn
-        last_bot = await self._get_last_bot(channel_id)
         
         # Don't respond if we were the last bot in the chain
         # BUT: if this is a direct reply to our message, the other bot just spoke - so we CAN respond
@@ -647,26 +655,56 @@ Trust your instincts - there's no pressure either way.]"""
     
     async def should_respond(self, mention: CrossBotMention) -> bool:
         """
-        Decide probabilistically whether to respond to a cross-bot mention.
+        Decide whether to respond to a cross-bot mention.
+        
+        Responses are ALWAYS made when:
+        1. It's a direct reply to our message
+        2. Chain just started (first exchange)
+        3. We're in an active chain and it's our turn (other bot just spoke)
+        
+        Probabilistic only for random @mentions outside of active chains.
         """
         # Always respond to direct replies to our messages
         if mention.is_direct_reply:
+            logger.debug("[CrossBot] should_respond=True (direct reply)")
             return True
+        
+        # Get chain state (use atomic count for consistency with record_response)
+        channel_id = mention.channel_id
+        current_count = await self._get_atomic_chain_count(channel_id)
+        last_bot = await self._get_last_bot(channel_id)
+        chain = await self._get_chain_from_redis(channel_id)
         
         # Always respond if chain just started (first bot-to-bot exchange)
-        chain = await self._get_chain_from_redis(mention.channel_id)
-        if chain and chain.message_count == 0:
+        if current_count == 0:
+            logger.debug("[CrossBot] should_respond=True (chain just started)")
             return True
         
+        # ALWAYS respond if we're in an active chain and it's our turn
+        # This is the key fix: don't be probabilistic within active conversations
+        in_active_chain = (
+            chain is not None and
+            not chain.is_expired() and
+            current_count > 0 and
+            last_bot != self._bot_name  # Other bot just spoke, it's our turn
+        )
+        
+        if in_active_chain:
+            logger.debug(f"[CrossBot] should_respond=True (in active chain, our turn, count={current_count})")
+            return True
+        
+        # For random mentions outside of active chains, use probabilistic response
         # Lower probability for name-in-text mentions (e.g., "Dream Journal")
-        # This reduces spam while still allowing occasional organic responses
         base_chance = settings.CROSS_BOT_RESPONSE_CHANCE
         if not mention.is_direct_mention:
             # 30% of the normal chance for name-in-text mentions
             base_chance *= 0.3
             logger.debug(f"Name-in-text mention: reduced probability to {base_chance:.2f}")
         
-        return random.random() < base_chance
+        roll = random.random()
+        should = roll < base_chance
+        logger.debug(f"[CrossBot] should_respond={should} (probabilistic: roll={roll:.2f}, chance={base_chance:.2f})")
+        return should
     
     async def record_response(
         self,
