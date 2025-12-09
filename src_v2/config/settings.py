@@ -197,6 +197,7 @@ class Settings(BaseSettings):
     ENABLE_BOT_CONVERSATIONS: bool = False  # Start conversations with other bots
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations
+    ACTIVITY_CHECK_INTERVAL_MINUTES: int = 30  # How often to check activity levels for autonomous posting/conversations
 
     # --- Manipulation Detection & Timeout ---
     # Split into two categories for emergence research:

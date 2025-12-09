@@ -15,12 +15,17 @@ class ActivityOrchestrator:
     """
     Coordinates autonomous server activity based on engagement levels.
     Scales bot activity inversely to human activity.
+    
+    Activity probabilities are kept LOW to avoid spam:
+    - Dead quiet: 15% conversation, 10% post (prioritize conversations)
+    - Quiet: 5% post only
+    - Active: No autonomous posts (let humans lead)
     """
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.is_running = False
-        self.check_interval_minutes = 15  # Check every 15 minutes
+        self.check_interval_minutes = settings.ACTIVITY_CHECK_INTERVAL_MINUTES  # Default 30 min
         self.posting_agent = PostingAgent()
         self._task: Optional[asyncio.Task] = None
 
@@ -76,7 +81,16 @@ class ActivityOrchestrator:
             await self.manage_guild_activity(guild)
 
     async def manage_guild_activity(self, guild: discord.Guild) -> None:
-        """Decide on actions for a specific guild."""
+        """Decide on actions for a specific guild.
+        
+        Probability design:
+        - Dead Quiet: 15% conversation, 10% post (conversations preferred)
+        - Quiet: 5% post only
+        - Active: No autonomous posting (let humans lead)
+        
+        These low probabilities prevent spam when multiple bots are in a server.
+        With 10 bots at 15% each, ~1-2 will act per check cycle.
+        """
         # 1. Get Activity Level (msgs/min over last 30 mins)
         rate = await server_monitor.get_activity_level(str(guild.id))
         
@@ -90,30 +104,35 @@ class ActivityOrchestrator:
         
         logger.info(
             f"[Orchestrator] Guild={guild.name} rate={rate:.3f} msg/min "
-            f"quiet={is_dead_quiet} conversations={settings.ENABLE_BOT_CONVERSATIONS}"
+            f"dead_quiet={is_dead_quiet} quiet={is_quiet} conversations={settings.ENABLE_BOT_CONVERSATIONS}"
         )
 
         # 3. Decide Action
+        # Use low probabilities to prevent spam with multiple bots
         if is_dead_quiet:
-            # High chance to post or start conversation
             roll = random.random()
             logger.debug(f"[Orchestrator] Dead quiet roll={roll:.2f}")
-            if roll < 0.3 and settings.ENABLE_BOT_CONVERSATIONS:
-                # 30% chance to start a bot-to-bot conversation
-                # Add random delay (0-60 sec) to prevent all bots triggering at once
-                delay = random.uniform(0, 60)
+            
+            # Prioritize bot-to-bot conversations over solo posts
+            if roll < 0.15 and settings.ENABLE_BOT_CONVERSATIONS:
+                # 15% chance to start a bot-to-bot conversation
+                # Add random delay (0-120 sec) to stagger bots
+                delay = random.uniform(0, 120)
                 logger.debug(f"[Orchestrator] Conversation delay: {delay:.1f}s")
                 await asyncio.sleep(delay)
                 await self.trigger_conversation(guild, activity_rate=rate, roll_value=roll)
-            elif roll < 0.7 and settings.ENABLE_AUTONOMOUS_POSTING:
-                # 40% chance to post (if conversation wasn't triggered)
+            elif roll < 0.25 and settings.ENABLE_AUTONOMOUS_POSTING:
+                # 10% chance to post (if conversation wasn't triggered)
+                # Add delay to stagger posts too
+                delay = random.uniform(0, 60)
+                await asyncio.sleep(delay)
                 await self.trigger_post(guild)
         elif is_quiet:
-            # Low chance to post
-            if random.random() < 0.3 and settings.ENABLE_AUTONOMOUS_POSTING:
+            # Very low chance to post when somewhat active
+            if random.random() < 0.05 and settings.ENABLE_AUTONOMOUS_POSTING:
                 await self.trigger_post(guild)
         else:
-            # Active - do nothing, let ReactionAgent handle reactions (which runs on_message)
+            # Active - do nothing, let ReactionAgent handle reactions
             pass
 
     async def trigger_post(self, guild: discord.Guild) -> None:
@@ -189,9 +208,8 @@ class ActivityOrchestrator:
         available_bots = self._get_available_bots_in_guild(guild)
         if len(available_bots) < 2:
             logger.debug(f"Not enough bots in {guild.name} for conversation (found {len(available_bots)})")
-            # Fall back to posting instead
-            if settings.ENABLE_AUTONOMOUS_POSTING:
-                await self.trigger_post(guild)
+            # Don't fall back to posting - this was causing too many musings
+            # Let the normal post probability handle that separately
             return
 
         # Select a conversation partner and topic WITH DECISION TRACE
@@ -208,9 +226,9 @@ class ActivityOrchestrator:
         trace.log()
         
         if not pair:
-            # Fall back to posting
-            if settings.ENABLE_AUTONOMOUS_POSTING:
-                await self.trigger_post(guild)
+            # Don't fall back to posting - this was causing too many musings
+            # The separate post probability check handles autonomous posts
+            logger.debug(f"No suitable conversation pair found for {character_name}")
             return
 
         target_bot, topic = pair
