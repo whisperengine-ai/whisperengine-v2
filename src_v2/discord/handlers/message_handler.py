@@ -263,12 +263,20 @@ class MessageHandler:
 
         # Cross-bot detection (Phase E6) - Handle bot messages differently
         if message.author.bot:
-            # Check for cross-bot mentions if enabled (requires master switch)
-            if settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_CROSS_BOT_CHAT:
-                await self._handle_cross_bot_message(message)
-            # Don't respond to other bots unless cross-bot chat is enabled
-            # But still continue to observation/learning below
-            return
+            # EXCEPTION: Allow broadcast channel posts from OTHER bots to flow through
+            # This enables bots to "pounce" on each other's dreams/diaries via lurk detector
+            is_broadcast_from_other_bot = (
+                message.guild and 
+                str(message.channel.id) in settings.bot_broadcast_channel_ids_list
+            )
+            
+            if not is_broadcast_from_other_bot:
+                # Normal bot handling: only respond to explicit mentions
+                if settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_CROSS_BOT_CHAT:
+                    await self._handle_cross_bot_message(message)
+                return
+            
+            # Fall through to lurk detector below for broadcast channel messages
 
         # Ignore messages from blocked users (including blocked bots)
         if str(message.author.id) in settings.blocked_user_ids_list:
@@ -1799,6 +1807,7 @@ Do NOT treat their message as if they are sharing their own dream or diary.
             channel_threshold = await self.bot.lurk_detector.get_channel_threshold(channel_id)
             
             # Analyze message for relevance
+            is_broadcast = str(message.channel.id) in settings.bot_broadcast_channel_ids_list
             lurk_result = await self.bot.lurk_detector.analyze(
                 message=message_content,
                 channel_id=channel_id,
@@ -1806,7 +1815,8 @@ Do NOT treat their message as if they are sharing their own dream or diary.
                 author_is_bot=message.author.bot,
                 has_mentions=bool(message.mentions),
                 channel_lurk_enabled=True,  # Already checked above
-                custom_threshold=channel_threshold
+                custom_threshold=channel_threshold,
+                is_broadcast_channel=is_broadcast
             )
             
             if not lurk_result.should_respond:

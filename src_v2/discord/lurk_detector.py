@@ -329,10 +329,11 @@ class LurkDetector:
         
         return self._topic_embeddings or []
     
-    def _should_ignore_message(self, content: str, author_is_bot: bool, has_mentions: bool = False) -> Tuple[bool, str]:
+    def _should_ignore_message(self, content: str, author_is_bot: bool, has_mentions: bool = False, is_broadcast_channel: bool = False) -> Tuple[bool, str]:
         """Check if message should be ignored entirely."""
-        # Ignore bot messages
-        if author_is_bot:
+        # Ignore bot messages UNLESS they're from broadcast channel
+        # This enables cross-bot discovery (Dream pouncing on Elena's dreams, etc.)
+        if author_is_bot and not is_broadcast_channel:
             return True, "bot_message"
             
         # Ignore messages mentioning others (politeness)
@@ -475,7 +476,8 @@ class LurkDetector:
         has_mentions: bool = False,
         user_trust_score: Optional[int] = None,
         channel_lurk_enabled: bool = True,
-        custom_threshold: Optional[float] = None
+        custom_threshold: Optional[float] = None,
+        is_broadcast_channel: bool = False
     ) -> LurkResult:
         """
         Analyze a message to determine if the bot should respond.
@@ -489,6 +491,7 @@ class LurkDetector:
             user_trust_score: Optional trust score for personalization
             channel_lurk_enabled: Whether lurking is enabled for this channel
             custom_threshold: Override default threshold
+            is_broadcast_channel: If True, allows bot messages (for cross-bot discovery)
         
         Returns:
             LurkResult with decision and scores
@@ -506,7 +509,7 @@ class LurkDetector:
             )
         
         # Check if message should be ignored
-        should_ignore, ignore_reason = self._should_ignore_message(message, author_is_bot, has_mentions)
+        should_ignore, ignore_reason = self._should_ignore_message(message, author_is_bot, has_mentions, is_broadcast_channel)
         if should_ignore:
             return LurkResult(
                 should_respond=False,
