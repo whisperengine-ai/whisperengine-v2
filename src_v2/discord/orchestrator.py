@@ -141,7 +141,7 @@ class ActivityOrchestrator:
         if not character_name:
             return
 
-        # Find a suitable channel to post in
+        # Find a suitable channel to post in FIRST (before acquiring lock)
         # Requires explicit channel config - no auto-detect to prevent posting in random channels
         target_channel = None
         posting_channel_id = settings.AUTONOMOUS_POSTING_CHANNEL_ID or settings.BOT_CONVERSATION_CHANNEL_ID
@@ -158,9 +158,27 @@ class ActivityOrchestrator:
             logger.debug(f"No posting channel configured for {character_name} - skipping autonomous post")
             return
 
+        # ATOMIC: Try to acquire the post slot using Redis SET NX EX
+        # This combines check + record into one atomic operation with TTL
+        # If another bot already has the slot, we skip immediately
+        cooldown_seconds = settings.AUTONOMOUS_POST_COOLDOWN_MINUTES * 60
+        acquired = await server_monitor.try_acquire_post_slot(
+            str(guild.id),
+            character_name,
+            cooldown_seconds
+        )
+        
+        if not acquired:
+            logger.info(
+                f"[Orchestrator] Skipping autonomous post for {character_name} - "
+                f"another bot has the slot in {guild.name}"
+            )
+            return
+
         logger.info(f"Triggering autonomous post for {character_name} in {guild.name} (#{target_channel.name})")
         
         # Run generation (this puts it in the broadcast queue)
+        # The cooldown is already set via try_acquire_post_slot with TTL
         success = await self.posting_agent.generate_and_schedule_post(
             character_name, 
             target_channel_id=str(target_channel.id)
@@ -194,69 +212,75 @@ class ActivityOrchestrator:
             logger.debug(f"No conversation channel configured for {character_name} - skipping bot conversation")
             return
 
-        # Check cooldown for this channel (use cross_bot_manager with async Redis check)
-        if await cross_bot_manager.is_on_cooldown_async(str(target_channel.id)):
-            logger.info(f"Channel {target_channel.name} is on cooldown for cross-bot chat")
+        # ATOMIC: Acquire distributed lock for conversation initiation
+        # This prevents multiple bots from trying to start conversations at the same time
+        if not await server_monitor.acquire_conversation_lock(str(guild.id), character_name):
+            logger.info(f"[Orchestrator] Another bot is initiating conversation in {guild.name} - skipping")
             return
         
-        # Check if there's already an active conversation in this channel (Redis-backed)
-        if await cross_bot_manager.has_active_conversation_async(str(target_channel.id)):
-            logger.info(f"Channel {target_channel.name} already has active bot conversation - skipping")
-            return
-
-        # Get list of known bots in this guild
-        available_bots = self._get_available_bots_in_guild(guild)
-        if len(available_bots) < 2:
-            logger.debug(f"Not enough bots in {guild.name} for conversation (found {len(available_bots)})")
-            # Don't fall back to posting - this was causing too many musings
-            # Let the normal post probability handle that separately
-            return
-
-        # Select a conversation partner and topic WITH DECISION TRACE
-        pair, trace = await conversation_agent.select_conversation_pair_with_trace(
-            available_bots=available_bots,
-            initiator_name=character_name,
-            guild_name=guild.name,
-            channel_name=target_channel.name,
-            activity_rate=activity_rate,
-            roll_value=roll_value
-        )
-        
-        # Log the decision trace
-        trace.log()
-        
-        if not pair:
-            # Don't fall back to posting - this was causing too many musings
-            # The separate post probability check handles autonomous posts
-            logger.debug(f"No suitable conversation pair found for {character_name}")
-            return
-
-        target_bot, topic = pair
-
-        # Generate the opening message
-        opener = await conversation_agent.generate_opener(character_name, target_bot, topic)
-        if not opener:
-            logger.warning(f"Failed to generate conversation opener for {character_name} -> {target_bot}")
-            return
-
-        # Send the opener to the channel
         try:
-            sent_message = await target_channel.send(opener.content)
+            # Check cooldown for this channel (use cross_bot_manager with async Redis check)
+            if await cross_bot_manager.is_on_cooldown_async(str(target_channel.id)):
+                logger.info(f"Channel {target_channel.name} is on cooldown for cross-bot chat")
+                return
             
-            # Record this as the start of a conversation chain
-            await cross_bot_manager.record_response(
-                str(target_channel.id), 
-                str(sent_message.id)
+            # Check if there's already an active conversation in this channel (Redis-backed)
+            if await cross_bot_manager.has_active_conversation_async(str(target_channel.id)):
+                logger.info(f"Channel {target_channel.name} already has active bot conversation - skipping")
+                return
+
+            # Get list of known bots in this guild
+            available_bots = self._get_available_bots_in_guild(guild)
+            if len(available_bots) < 2:
+                logger.debug(f"Not enough bots in {guild.name} for conversation (found {len(available_bots)})")
+                return
+
+            # Select a conversation partner and topic WITH DECISION TRACE
+            pair, trace = await conversation_agent.select_conversation_pair_with_trace(
+                available_bots=available_bots,
+                initiator_name=character_name,
+                guild_name=guild.name,
+                channel_name=target_channel.name,
+                activity_rate=activity_rate,
+                roll_value=roll_value
             )
             
-            logger.info(
-                f"Started bot conversation: {character_name} -> {target_bot} "
-                f"in {guild.name} (#{target_channel.name})"
-            )
-        except discord.Forbidden:
-            logger.warning(f"Permission denied to send message in {target_channel.name}")
-        except discord.HTTPException as e:
-            logger.error(f"Failed to send conversation opener: {e}")
+            # Log the decision trace
+            trace.log()
+            
+            if not pair:
+                logger.debug(f"No suitable conversation pair found for {character_name}")
+                return
+
+            target_bot, topic = pair
+
+            # Generate the opening message
+            opener = await conversation_agent.generate_opener(character_name, target_bot, topic)
+            if not opener:
+                logger.warning(f"Failed to generate conversation opener for {character_name} -> {target_bot}")
+                return
+
+            # Send the opener to the channel
+            try:
+                sent_message = await target_channel.send(opener.content)
+                
+                # Record this as the start of a conversation chain
+                await cross_bot_manager.record_response(
+                    str(target_channel.id), 
+                    str(sent_message.id)
+                )
+                
+                logger.info(
+                    f"Started bot conversation: {character_name} -> {target_bot} "
+                    f"in {guild.name} (#{target_channel.name})"
+                )
+            except discord.Forbidden:
+                logger.warning(f"Permission denied to send message in {target_channel.name}")
+            except discord.HTTPException as e:
+                logger.error(f"Failed to send conversation opener: {e}")
+        finally:
+            # Always release the conversation lock when done
+            await server_monitor.release_conversation_lock(str(guild.id), character_name)
 
     def _get_available_bots_in_guild(self, guild: discord.Guild) -> List[str]:
         """Get list of known bots that are members of this guild."""

@@ -194,6 +194,7 @@ class Settings(BaseSettings):
     
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Post new thoughts in quiet channels (Phase E15)
     AUTONOMOUS_POSTING_CHANNEL_ID: Optional[str] = None  # Channel for autonomous musings (falls back to BOT_CONVERSATION_CHANNEL_ID)
+    AUTONOMOUS_POST_COOLDOWN_MINUTES: int = 10  # Cross-bot cooldown: if ANY bot posted, others wait this long
     ENABLE_BOT_CONVERSATIONS: bool = False  # Start conversations with other bots
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations
