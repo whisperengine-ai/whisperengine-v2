@@ -70,6 +70,8 @@ RULES:
 - Do NOT use UNION queries. Instead, use a single MATCH with OR conditions or multiple patterns separated by commas.
 - NEVER respond with a conversational message. Only output Cypher or RETURN "NO_ANSWER".
 - NEVER use CREATE or MERGE - this is a READ-ONLY query function. Only use MATCH/OPTIONAL MATCH/RETURN.
+- Do not include any explanation or text before or after the query.
+- Do not use markdown code blocks.
 
 {privacy_instructions}
 """),
@@ -481,12 +483,12 @@ PRIVACY RESTRICTION ENABLED:
             if db_manager.postgres_pool:
                 async with db_manager.postgres_pool.acquire() as conn:
                     row = await conn.fetchrow(
-                        "SELECT display_name FROM v2_users WHERE user_id = $1",
+                        "SELECT user_name FROM v2_chat_history WHERE user_id = $1 AND user_name IS NOT NULL ORDER BY timestamp DESC LIMIT 1",
                         user_id
                     )
-                    if row and row['display_name']:
+                    if row and row['user_name']:
                         # Add variations of the username
-                        name = row['display_name'].lower().strip()
+                        name = row['user_name'].lower().strip()
                         user_names_to_block.add(name)
                         # Also block without spaces/underscores
                         user_names_to_block.add(name.replace(" ", ""))
