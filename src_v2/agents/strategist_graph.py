@@ -458,7 +458,14 @@ For new goals:
 
 Provide a brief summary of what you accomplished."""
 
-        messages = state["messages"] + [HumanMessage(content=synthesis_prompt)]
+        messages = list(state["messages"])
+        
+        # Mistral requires an AIMessage after ToolMessages before a HumanMessage
+        # If the last message is a ToolMessage, add a bridge AIMessage
+        if messages and isinstance(messages[-1], ToolMessage):
+            messages.append(AIMessage(content="I've gathered the information I need. I'm ready to synthesize my recommendations."))
+        
+        messages = messages + [HumanMessage(content=synthesis_prompt)]
         
         try:
             # LLM call with retry for transient errors
