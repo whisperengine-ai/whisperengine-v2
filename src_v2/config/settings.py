@@ -193,6 +193,7 @@ class Settings(BaseSettings):
     PROACTIVE_SILENCE_THRESHOLD_HOURS: int = 24
     
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Post new thoughts in quiet channels (Phase E15)
+    AUTONOMOUS_POSTING_CHANNEL_ID: Optional[str] = None  # Channel for autonomous musings (falls back to BOT_CONVERSATION_CHANNEL_ID)
     ENABLE_BOT_CONVERSATIONS: bool = False  # Start conversations with other bots
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations

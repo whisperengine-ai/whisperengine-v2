@@ -123,9 +123,20 @@ class ActivityOrchestrator:
             return
 
         # Find a suitable channel to post in
-        target_channel = self._get_target_channel(guild)
+        # Requires explicit channel config - no auto-detect to prevent posting in random channels
+        target_channel = None
+        posting_channel_id = settings.AUTONOMOUS_POSTING_CHANNEL_ID or settings.BOT_CONVERSATION_CHANNEL_ID
+        
+        if posting_channel_id:
+            try:
+                target_channel = self.bot.get_channel(int(posting_channel_id))
+                if not target_channel:
+                    logger.warning(f"Configured posting channel {posting_channel_id} not found")
+            except ValueError:
+                logger.error(f"Invalid posting channel ID: {posting_channel_id}")
+        
         if not target_channel:
-            logger.warning(f"No suitable channel found in {guild.name} for autonomous post")
+            logger.debug(f"No posting channel configured for {character_name} - skipping autonomous post")
             return
 
         logger.info(f"Triggering autonomous post for {character_name} in {guild.name} (#{target_channel.name})")
@@ -150,18 +161,18 @@ class ActivityOrchestrator:
         if not character_name:
             return
 
-        # Find target channel - use override if set, otherwise auto-detect
+        # Find target channel - requires explicit config, no auto-detect
         target_channel = None
         if settings.BOT_CONVERSATION_CHANNEL_ID:
-            target_channel = self.bot.get_channel(int(settings.BOT_CONVERSATION_CHANNEL_ID))
-            if not target_channel:
-                logger.warning(f"Configured BOT_CONVERSATION_CHANNEL_ID {settings.BOT_CONVERSATION_CHANNEL_ID} not found")
+            try:
+                target_channel = self.bot.get_channel(int(settings.BOT_CONVERSATION_CHANNEL_ID))
+                if not target_channel:
+                    logger.warning(f"Configured BOT_CONVERSATION_CHANNEL_ID {settings.BOT_CONVERSATION_CHANNEL_ID} not found")
+            except ValueError:
+                logger.error(f"Invalid BOT_CONVERSATION_CHANNEL_ID: {settings.BOT_CONVERSATION_CHANNEL_ID}")
         
         if not target_channel:
-            target_channel = self._get_target_channel(guild)
-        
-        if not target_channel:
-            logger.warning(f"No suitable channel found in {guild.name} for bot conversation")
+            logger.debug(f"No conversation channel configured for {character_name} - skipping bot conversation")
             return
 
         # Check cooldown for this channel (use cross_bot_manager with async Redis check)
