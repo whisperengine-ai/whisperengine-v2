@@ -52,6 +52,7 @@ class DailyLifeState(TypedDict):
     # ── Derived Flags ──
     has_relevant_content: bool  # Did embedding filter find anything?
     has_pending_internal_tasks: bool  # Any internal life tasks due?
+    wants_to_socialize: bool  # Spontaneity trigger
     should_skip: bool  # Skip LLM entirely?
     
     # ── Planning & Execution ──

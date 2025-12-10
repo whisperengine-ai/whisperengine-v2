@@ -142,6 +142,10 @@ def format_internal_state(state: DailyLifeState) -> str:
         lines.append(f"- 🎯 Goals: STALE (last review: {last})")
     else:
         lines.append("- 🎯 Goals: fresh")
+        
+    # Spontaneity
+    if state.get("wants_to_socialize"):
+        lines.append("- 🗣️ Social Battery: You feel like reaching out or starting a conversation.")
     
     return "\n".join(lines)
 

@@ -676,14 +676,29 @@ async def gather_context(
         has_pending_internal = (
             internal_state.diary_overdue or 
             internal_state.goals_stale or 
-            internal_state.dreams_could_generate
+            internal_state.dreams_could_generate or
+            bool(concerning_absences)  # Wake up if we miss our friends
         )
         
-        should_skip = not has_relevant_content and not has_pending_internal
+        # Spontaneity check for quiet times
+        # If no relevant content, maybe we just want to say something?
+        # Only during waking hours (morning/midday/evening)
+        is_waking_hours = time_of_day in ["morning", "midday", "evening"]
+        wants_to_socialize = False
         
-        logger.info(f"[DailyLife] Internal: diary_overdue={internal_state.diary_overdue}, goals_stale={internal_state.goals_stale}, dreams_due={internal_state.dreams_could_generate}")
+        if is_waking_hours and not has_relevant_content and not has_pending_internal:
+             # 1% chance per check (every 7 mins) -> ~1 post every 11 hours
+             # This is conservative to avoid spam.
+             import random
+             if random.random() < 0.01:
+                 wants_to_socialize = True
+                 logger.info("[DailyLife] Spontaneity trigger! Waking up to socialize.")
+
+        should_skip = not has_relevant_content and not has_pending_internal and not wants_to_socialize
+        
+        logger.info(f"[DailyLife] Internal: diary_overdue={internal_state.diary_overdue}, goals_stale={internal_state.goals_stale}, dreams_due={internal_state.dreams_could_generate}, absences={len(concerning_absences)}")
         logger.info(f"[DailyLife] Discord: {len(channel_states)} channels, {len(mentions)} mentions, max_relevance={max_relevance:.2f}")
-        logger.info(f"[DailyLife] Decision: relevant={has_relevant_content}, pending={has_pending_internal} -> should_skip={should_skip}")
+        logger.info(f"[DailyLife] Decision: relevant={has_relevant_content}, pending={has_pending_internal}, social={wants_to_socialize} -> should_skip={should_skip}")
         
         if should_skip:
             logger.info(f"[DailyLife] Skipping LLM - nothing relevant, no pending tasks")
@@ -713,6 +728,7 @@ async def gather_context(
             # Derived flags
             "has_relevant_content": has_relevant_content,
             "has_pending_internal_tasks": has_pending_internal,
+            "wants_to_socialize": wants_to_socialize,
             "should_skip": should_skip,
         }
     except Exception as e:
