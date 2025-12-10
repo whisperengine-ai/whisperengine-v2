@@ -82,25 +82,49 @@ class GraphEnrichmentAgent:
     """
     
     # Minimum occurrences before creating an edge
-    MIN_TOPIC_MENTIONS = 2      # User mentions topic N times before DISCUSSED edge
-    MIN_COOCCURRENCE = 2        # Entities appear together N times before RELATED_TO edge
-    MIN_INTERACTION = 1         # Users interact N times before CONNECTED_TO edge
+    MIN_TOPIC_MENTIONS = 3      # User mentions topic N times before DISCUSSED edge
+    MIN_COOCCURRENCE = 5        # Entities appear together N times before RELATED_TO edge
+    MIN_INTERACTION = 2         # Users interact N times before CONNECTED_TO edge
+    MAX_ENTITIES_PER_MSG = 10   # Cap entity extraction to prevent O(n²) explosion
     
-    # Topics to ignore (too generic)
+    # Topics to ignore (too generic) - expanded list
     IGNORE_TOPICS = {
+        # Articles/prepositions
         "the", "a", "an", "is", "are", "was", "were", "be", "been",
         "have", "has", "had", "do", "does", "did", "will", "would",
         "could", "should", "may", "might", "must", "shall",
+        # Pronouns
         "i", "you", "he", "she", "it", "we", "they", "me", "him", "her",
         "this", "that", "these", "those", "what", "which", "who", "whom",
+        # Common filler words
         "yes", "no", "not", "just", "only", "also", "very", "really",
         "okay", "ok", "yeah", "yep", "nope", "hmm", "hm", "uh", "um",
+        # Common verbs that aren't meaningful topics
+        "think", "know", "want", "need", "like", "make", "made", "take",
+        "going", "come", "came", "give", "gave", "tell", "told", "said",
+        "look", "looking", "feel", "feeling", "seems", "seem", "mean",
+        "means", "meant", "being", "getting", "gets", "thing", "things",
+        "something", "anything", "everything", "nothing", "someone",
+        # Common adjectives/adverbs
+        "good", "great", "nice", "cool", "awesome", "amazing", "actually",
+        "probably", "maybe", "definitely", "certainly", "basically",
+        "literally", "honestly", "pretty", "quite", "much", "more",
+        "well", "still", "even", "though", "however", "about", "around",
+        # Time words (not meaningful as topics)
+        "time", "times", "today", "tomorrow", "yesterday", "always",
+        "never", "sometimes", "often", "usually", "when", "then", "now",
+        # Conversational filler
+        "sorry", "thanks", "thank", "please", "sure", "right", "wrong",
+        "true", "false", "here", "there", "where", "back", "away",
+        "because", "since", "although", "while", "until", "after", "before",
     }
     
     def __init__(self):
         self.min_topic_mentions = getattr(settings, 'ENRICHMENT_MIN_TOPIC_MENTIONS', self.MIN_TOPIC_MENTIONS)
         self.min_cooccurrence = getattr(settings, 'ENRICHMENT_MIN_COOCCURRENCE', self.MIN_COOCCURRENCE)
         self.min_interaction = getattr(settings, 'ENRICHMENT_MIN_INTERACTION', self.MIN_INTERACTION)
+        self.max_entities_per_msg = getattr(settings, 'ENRICHMENT_MAX_ENTITIES_PER_MSG', self.MAX_ENTITIES_PER_MSG)
+        self.enable_entity_linking = getattr(settings, 'ENABLE_ENTITY_LINKING', False)
     
     async def enrich_from_conversation(
         self,
@@ -193,10 +217,14 @@ class GraphEnrichmentAgent:
             result.user_user_edges = user_result
             result.edges_created += user_result
             
-            # Entity-Entity edges
-            entity_result = await self._create_entity_entity_edges(cooccurrences)
-            result.entity_entity_edges = entity_result
-            result.edges_created += entity_result
+            # Entity-Entity edges (gated - this is the expensive O(n²) operation)
+            if self.enable_entity_linking:
+                entity_result = await self._create_entity_entity_edges(cooccurrences)
+                result.entity_entity_edges = entity_result
+                result.edges_created += entity_result
+            else:
+                # Skip entity linking to prevent graph explosion
+                result.entity_entity_edges = 0
             
         except Exception as e:
             logger.error(f"Graph enrichment failed: {e}")
@@ -239,11 +267,14 @@ class GraphEnrichmentAgent:
         """
         Extract meaningful words from text that could be topics.
         Simple heuristic approach - no LLM needed.
+        
+        Caps output to max_entities_per_msg to prevent O(n²) explosion
+        when finding co-occurrences.
         """
         import re
         
-        # Clean and tokenize
-        words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
+        # Clean and tokenize - require 5+ characters for more meaningful words
+        words = re.findall(r'\b[a-zA-Z]{5,}\b', text.lower())
         
         # Filter out common words
         topics = [w for w in words if w not in self.IGNORE_TOPICS]
@@ -256,7 +287,8 @@ class GraphEnrichmentAgent:
                 seen.add(t)
                 unique_topics.append(t)
         
-        return unique_topics
+        # Cap to prevent O(n²) explosion in _find_cooccurrences
+        return unique_topics[:self.max_entities_per_msg]
     
     def _find_cooccurrences(
         self,

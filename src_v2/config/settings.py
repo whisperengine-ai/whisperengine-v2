@@ -157,11 +157,13 @@ class Settings(BaseSettings):
     
     # --- Graph Enrichment (Phase E25) ---
     ENABLE_GRAPH_ENRICHMENT: bool = True  # Proactive graph enrichment from conversations
-    ENRICHMENT_MIN_TOPIC_MENTIONS: int = 2  # User mentions topic N times before DISCUSSED edge
-    ENRICHMENT_MIN_COOCCURRENCE: int = 2    # Entities appear together N times before RELATED_TO edge
-    ENRICHMENT_MIN_INTERACTION: int = 1     # Users interact N times before CONNECTED_TO edge
+    ENABLE_ENTITY_LINKING: bool = False    # Entity-entity LINKED_TO edges (EXPENSIVE - disabled by default)
+    ENRICHMENT_MIN_TOPIC_MENTIONS: int = 3  # User mentions topic N times before DISCUSSED edge
+    ENRICHMENT_MIN_COOCCURRENCE: int = 5    # Entities appear together N times before RELATED_TO edge
+    ENRICHMENT_MIN_INTERACTION: int = 2     # Users interact N times before CONNECTED_TO edge
     ENRICHMENT_MIN_MESSAGES: int = 4        # Minimum messages before queueing enrichment job
     ENRICHMENT_MAX_MESSAGES: int = 120      # Cap message batch size for enrichment
+    ENRICHMENT_MAX_ENTITIES_PER_MSG: int = 10  # Cap entity extraction per message to prevent O(n²) explosion
 
     # --- Preference Extraction ---
     ENABLE_PREFERENCE_EXTRACTION: bool = True
