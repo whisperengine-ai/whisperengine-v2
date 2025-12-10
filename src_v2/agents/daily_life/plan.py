@@ -76,19 +76,21 @@ def format_channel_states(channel_states: List[ChannelState]) -> str:
     chain_limit = getattr(settings, "DISCORD_CHECK_CHAIN_LIMIT", 5)
     lines = []
     for cs in channel_states:
-        # Skip channels with no activity
-        if cs.message_count == 0:
-            continue
-        
         # Check if at chain limit
         if cs.consecutive_bot_messages >= chain_limit:
-            lines.append(f"\n### #{cs.channel_name} 🚫 SKIPPED ({cs.consecutive_bot_messages} bot msgs in a row)")
+            lines.append(f"\n### #{cs.channel_name} (ID: {cs.channel_id}) 🚫 SKIPPED ({cs.consecutive_bot_messages} bot msgs in a row)")
+            continue
+        
+        # Handle quiet channels
+        if cs.message_count == 0:
+            lines.append(f"\n### #{cs.channel_name} (ID: {cs.channel_id})")
+            lines.append("Channel is quiet (no recent messages).")
             continue
         
         human_age = format_time_ago(cs.last_human_message_age_minutes)
         chain_warning = f" ⚠️ {cs.consecutive_bot_messages} bot msgs in a row" if cs.consecutive_bot_messages >= 3 else ""
         
-        lines.append(f"\n### #{cs.channel_name}{chain_warning}")
+        lines.append(f"\n### #{cs.channel_name} (ID: {cs.channel_id}){chain_warning}")
         lines.append(f"Last human: {human_age} | Max relevance: {cs.max_relevance_score:.2f}")
         
         # Show top 5 most relevant messages

@@ -214,7 +214,7 @@ class Settings(BaseSettings):
     DISCORD_CHECK_MIN_POST_INTERVAL_MINUTES: int = 15  # Don't post twice in this window
     DISCORD_CHECK_RELEVANCE_THRESHOLD: float = 0.6  # Min embedding similarity to consider message relevant
     DISCORD_CHECK_WATCH_CHANNELS: str = ""  # Comma-separated list of channel IDs to watch (falls back to BOT_CONVERSATION_CHANNEL_ID)
-    DISCORD_CHECK_MESSAGE_LOOKBACK: int = 100  # How many messages to look back per channel (higher = catches older mentions)
+    DISCORD_CHECK_MESSAGE_LOOKBACK: int = 50  # How many messages to look back per channel (higher = catches older mentions)
 
     # --- Manipulation Detection & Timeout ---
     # Split into two categories for emergence research:
