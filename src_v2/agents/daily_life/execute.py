@@ -166,16 +166,21 @@ async def execute_post(
         # If target_bot_name is provided, we need to find their ID to mention them
         mention_text = ""
         if action.target_bot_name:
-            # Try to find the bot in the guild
-            target_member = discord.utils.find(
-                lambda m: m.name == action.target_bot_name or m.display_name == action.target_bot_name, 
-                channel.guild.members
-            )
-            if target_member:
-                mention_text = target_member.mention
+            # Check if bot conversations are enabled
+            if not getattr(settings, "ENABLE_BOT_CONVERSATIONS", False):
+                logger.info(f"[DailyLife] Ignoring target_bot_name={action.target_bot_name}: ENABLE_BOT_CONVERSATIONS is False")
+                action.target_bot_name = None  # Clear it so we just post without mentioning
             else:
-                # Fallback to just name if not found
-                mention_text = f"@{action.target_bot_name}"
+                # Try to find the bot in the guild
+                target_member = discord.utils.find(
+                    lambda m: m.name == action.target_bot_name or m.display_name == action.target_bot_name, 
+                    channel.guild.members
+                )
+                if target_member:
+                    mention_text = target_member.mention
+                else:
+                    # Fallback to just name if not found
+                    mention_text = f"@{action.target_bot_name}"
         
         # We need to pass this mention context to the posting agent
         # Currently PostingAgent doesn't accept a prompt override, so we might need to extend it
