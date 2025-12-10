@@ -55,10 +55,18 @@ async def run_diary_generation(
         character_description = ""
         try:
             from src_v2.core.character import CharacterManager
+            from src_v2.core.goals import goal_manager
+            
             char_manager = CharacterManager()
             character = char_manager.load_character(character_name)
             if character:
                 character_description = character.system_prompt
+                
+            # Inject goals (Phase E2)
+            goals = goal_manager.load_goals(character_name)
+            if goals:
+                character_description += "\n\n## CURRENT GOALS\n" + "\n".join([f"- {g.description}" for g in goals])
+                
         except Exception as e:
             logger.warning(f"Failed to load full character prompt for {character_name}: {e}")
             # Fallback to behavior profile only

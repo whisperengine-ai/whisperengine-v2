@@ -628,7 +628,7 @@ services:
       context: .
       dockerfile: Dockerfile
     deploy:
-      replicas: 1
+      replicas: 3
     restart: unless-stopped
     volumes:
       - .:/app

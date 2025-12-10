@@ -370,7 +370,16 @@ class CrossBotManager:
             (success: bool, reason: str) - True if we can respond, reason explains why not
         """
         if not db_manager.redis_client:
-            # No Redis = no coordination, allow (single bot mode)
+            # No Redis = no coordination.
+            # Fallback: Check local cache to prevent infinite loops in single-bot mode
+            # or when Redis is down. Use a stricter limit (3) to be safe.
+            chain = self._chain_cache.get(channel_id)
+            local_count = chain.message_count if chain else 0
+            fallback_limit = 3
+            
+            if local_count >= fallback_limit:
+                return (False, f"no_redis_fallback_limit:{local_count}/{fallback_limit}")
+                
             return (True, "no_redis")
         
         lock_key = _redis_key(f"{REDIS_PREFIX_LOCK}{channel_id}")

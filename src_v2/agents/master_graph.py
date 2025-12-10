@@ -109,8 +109,9 @@ class MasterGraphAgent:
             # We'll await this separately or add to tasks if we want full parallelism
             # But memory_manager.search_memories is already async.
             # Let's group memory fetches
-            tasks["user_memories"] = memory_manager.search_memories(user_input, user_id, limit=5)
-            tasks["broadcast_memories"] = memory_manager.search_memories(user_input, "__broadcast__", limit=2)
+            collection_name = f"whisperengine_memory_{character.name}" if character.name else None
+            tasks["user_memories"] = memory_manager.search_memories(user_input, user_id, limit=5, collection_name=collection_name)
+            tasks["broadcast_memories"] = memory_manager.search_memories(user_input, "__broadcast__", limit=2, collection_name=collection_name)
 
         # 2. Evolution (Trust, Mood, Feedback)
         tasks["evolution"] = self.context_builder.get_evolution_context(user_id, character.name)
@@ -305,7 +306,8 @@ class MasterGraphAgent:
             detected_intents=intents,
             callback=callback,
             guild_id=context_variables.get("guild_id"),
-            channel=context_variables.get("channel")
+            channel=context_variables.get("channel"),
+            character_name=state["character"].name
         )
         return {"final_response": response}
 

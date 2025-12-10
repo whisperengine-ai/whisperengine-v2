@@ -1370,10 +1370,7 @@ class MessageHandler:
                     pass
                 await message.channel.send(error_msg)
 
-        # Channel Lurking: Respond to relevant messages without being mentioned
-        # Requires master switch + lurking flag
-        elif settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_CHANNEL_LURKING and self.bot.lurk_detector and message.guild:
-            await self._handle_lurk_response(message, sticker_text)
+
 
         # Autonomous Reactions: Maybe react with emoji to the message (Phase E12)
         # This runs independently of lurk/respond - just adds reactions
@@ -1785,225 +1782,31 @@ Do NOT treat their message as if they are sharing their own dream or diary.
         except Exception as e:
             logger.error(f"Failed to handle cross-bot message: {e}")
 
-    async def _handle_lurk_response(self, message: discord.Message, sticker_text: str = "") -> None:
-        """Handle potential lurk response for a channel message.
-        
-        This is called for guild messages where the bot was NOT mentioned.
-        We analyze the message for relevance and decide whether to jump in.
-        
-        Args:
-            message: Discord message object
-            sticker_text: Processed sticker text if any
-        """
-        if not self.bot.lurk_detector:
-            return
+
+
+
             
-        channel_id = str(message.channel.id)
-        user_id = str(message.author.id)
-        
-        # Check if lurking is enabled for this channel
-        channel_enabled = await self.bot.lurk_detector.is_channel_enabled(channel_id)
-        if not channel_enabled:
-            return
-        
-        # Combine message content with sticker text
-        message_content = message.content
-        if sticker_text:
-            message_content += sticker_text
+
             
-        if not message_content.strip():
-            return
-            
-        try:
-            # Get channel-specific threshold
-            channel_threshold = await self.bot.lurk_detector.get_channel_threshold(channel_id)
-            
-            # Analyze message for relevance
-            is_broadcast = str(message.channel.id) in settings.bot_broadcast_channel_ids_list
-            lurk_result = await self.bot.lurk_detector.analyze(
-                message=message_content,
-                channel_id=channel_id,
-                user_id=user_id,
-                author_is_bot=message.author.bot,
-                has_mentions=bool(message.mentions),
-                channel_lurk_enabled=True,  # Already checked above
-                custom_threshold=channel_threshold,
-                is_broadcast_channel=is_broadcast
-            )
-            
-            if not lurk_result.should_respond:
-                logger.debug(f"Lurk: Not responding to message (score={lurk_result.confidence:.2f}, reason={lurk_result.trigger_reason})")
-                return
+
                 
-            logger.info(f"Lurk: Responding to message (score={lurk_result.confidence:.2f}, trigger={lurk_result.trigger_reason})")
-            
-            # Typing indicator delayed
-            if True:
-                # Get the character
-                character = character_manager.get_character(self.bot.character_name)
-                if not character:
-                    logger.error(f"Character '{self.bot.character_name}' not loaded for lurk response.")
-                    return
+
+                        
+
+                        
+
+                
+
+                        
+
+                
+
+                
+
                     
-                # Session management
-                session_id = await session_manager.get_active_session(user_id, self.bot.character_name)
-                if not session_id:
-                    session_id = await session_manager.create_session(user_id, self.bot.character_name)
+
                 
-                # Context retrieval (simplified for lurk - less aggressive)
-                async def get_memories():
-                    try:
-                        mems = await memory_manager.search_memories(message_content, user_id)
-                        if mems:
-                            return "\n".join([f"- {m['content']} ({m.get('relative_time', 'unknown time')})" for m in mems[:3]])
-                        return "No relevant memories found."
-                    except Exception as e:
-                        logger.error(f"Failed to search memories for lurk: {e}")
-                        return "No relevant memories found."
-                        
-                async def get_knowledge():
-                    try:
-                        facts = await knowledge_manager.get_user_knowledge(user_id)
-                        if "name" not in facts.lower():
-                            facts += f"\n- User's Discord Display Name: {message.author.display_name}"
-                        return facts
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve knowledge for lurk: {e}")
-                        return ""
-                        
-                async def get_history():
-                    try:
-                        return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id, limit=5)
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve history for lurk: {e}")
-                        return []
-                
-                async def get_user_nickname():
-                    """Fetch user's preferred nickname from relationship preferences."""
-                    try:
-                        trust_data = await trust_manager.get_relationship_level(user_id, self.bot.character_name)
-                        preferences = trust_data.get('preferences', {})
-                        return preferences.get('nickname')
-                    except Exception as e:
-                        logger.debug(f"Failed to fetch user nickname for lurk: {e}")
-                        return None
-                        
-                formatted_memories, knowledge_facts, chat_history, preferred_nickname = await asyncio.gather(
-                    get_memories(),
-                    get_knowledge(),
-                    get_history(),
-                    get_user_nickname()
-                )
-                
-                # Use preferred nickname if set
-                effective_user_name = preferred_nickname or message.author.display_name
-                
-                # Build context for lurk response
-                # Add special lurk instruction to guide the response style
-                lurk_instruction = (
-                    "\n\n[LURK MODE]: You're jumping into an ongoing conversation organically. "
-                    "The user did NOT mention you directly - you noticed something relevant to your expertise/interests. "
-                    "Be natural, helpful, and non-intrusive. Don't over-explain your presence. "
-                    f"You're responding because: {lurk_result.trigger_reason}."
-                )
-                
-                context_vars = {
-                    "user_name": effective_user_name,
-                    "discord_display_name": message.author.display_name,
-                    "recent_memories": formatted_memories,
-                    "knowledge_facts": knowledge_facts,
-                    "lurk_instruction": lurk_instruction,
-                    "guild_id": str(message.guild.id) if message.guild else None
-                }
-                
-                # Generate response (use simpler path, no reflective mode for lurk)
-                start_time = time.time()
-                
-                # Humanize Lurk: Wait for "reading" time
-                reading_delay = min(len(message_content) * 0.05, 3.0)
-                reading_delay += random.uniform(0, 1.0)
-                await asyncio.sleep(reading_delay)
-                
-                async with message.channel.typing():
-                    response = await self.bot.agent_engine.generate_response(
-                        character=character,
-                        user_message=message_content + lurk_instruction,
-                        chat_history=chat_history,
-                        context_variables=context_vars,
-                        user_id=user_id
-                    )
-                
-                processing_time_ms = (time.time() - start_time) * 1000
-                
-                # Send response (chunked if needed)
-                message_chunks = chunk_message(response)
-                sent_messages = []
-                for chunk in message_chunks:
-                    sent_msg = await message.channel.send(chunk)
-                    sent_messages.append(sent_msg)
-                    
-                # Record activity for lurk response scaling (Phase E15)
-                # This ensures bot lurk replies count toward channel activity levels
-                if message.guild:
-                    try:
-                        await server_monitor.record_message(str(message.guild.id))
-                        logger.debug(f"Recorded activity for lurk response in guild {message.guild.id}")
-                    except Exception as e:
-                        logger.debug(f"Failed to record activity for lurk response: {e}")
-                
-                # Record the lurk response
-                await self.bot.lurk_detector.record_response(
-                    channel_id=channel_id,
-                    user_id=user_id,
-                    message_id=str(message.id),
-                    confidence=lurk_result.confidence,
-                    trigger_type=lurk_result.trigger_reason
-                )
-                
-                # Save messages to memory
-                await memory_manager.add_message(
-                    user_id,
-                    character.name,
-                    'human',
-                    message_content,
-                    channel_id=channel_id,
-                    message_id=str(message.id),
-                    user_name=message.author.display_name
-                )
-                
-                if sent_messages:
-                    await memory_manager.add_message(
-                        user_id,
-                        character.name,
-                        'ai',
-                        response,
-                        channel_id=channel_id,
-                        message_id=str(sent_messages[-1].id),
-                        user_name=message.author.display_name
-                    )
-                    
-                # Trust update (smaller for lurk responses)
-                async def handle_lurk_trust():
-                    try:
-                        # Use integer 1 for trust update to avoid type conflicts in DBs
-                        await trust_manager.update_trust(user_id, character.name, 1)
-                    except Exception as e:
-                        logger.error(f"Failed to update trust for lurk: {e}")
-                        
-                self.bot.loop.create_task(handle_lurk_trust())
-                
-                # Unified background learning - lurk interactions are first class!
-                await enqueue_background_learning(
-                    user_id=user_id,
-                    message_content=message_content,
-                    character_name=self.bot.character_name,
-                    context="lurk"
-                )
-                
-                logger.info(f"Lurk response sent in {processing_time_ms:.0f}ms (confidence={lurk_result.confidence:.2f})")
-                
-        except Exception as e:
-            logger.error(f"Error in lurk handler: {e}")
+
 
     async def _check_and_summarize(
         self,

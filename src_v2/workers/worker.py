@@ -50,6 +50,7 @@ from src_v2.workers.tasks.batch_preference_tasks import run_batch_preference_ext
 from src_v2.workers.tasks.batch_goal_tasks import run_batch_goal_analysis
 from src_v2.workers.tasks.vision_tasks import run_vision_analysis
 from src_v2.workers.tasks.posting_tasks import run_posting_agent
+from src_v2.workers.tasks.daily_life_tasks import process_daily_life
 from src_v2.workers.tasks.enrichment_tasks import (
     run_graph_enrichment,
     run_batch_enrichment,
@@ -130,6 +131,7 @@ class WorkerSettings:
         run_graph_enrichment,   # Phase E25: Graph Enrichment
         run_batch_enrichment,   # Phase E25: Batch Graph Enrichment
         run_proactive_message,  # Phase E24: Proactive Message (Action Queue)
+        arq.func(process_daily_life, timeout=300), # Phase E31: Daily Life Graph
     ]
     
     # Cron jobs (scheduled tasks)

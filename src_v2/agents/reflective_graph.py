@@ -81,23 +81,23 @@ class ReflectiveGraphAgent:
         
         return sanitized
 
-    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, channel: Optional[Any] = None) -> List[BaseTool]:
-        character_name = settings.DISCORD_BOT_NAME or "default"
+    def _get_tools(self, user_id: str, guild_id: Optional[str] = None, channel: Optional[Any] = None, character_name: Optional[str] = None) -> List[BaseTool]:
+        bot_name = character_name or settings.DISCORD_BOT_NAME or "default"
         tools = [
             # Memory & Knowledge Tools
             SearchSummariesTool(user_id=user_id),
             SearchEpisodesTool(user_id=user_id),
-            LookupFactsTool(user_id=user_id, bot_name=character_name),
+            LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),
-            UpdatePreferencesTool(user_id=user_id, character_name=character_name),
-            AnalyzeTopicTool(user_id=user_id, bot_name=character_name),
+            UpdatePreferencesTool(user_id=user_id, character_name=bot_name),
+            AnalyzeTopicTool(user_id=user_id, bot_name=bot_name),
             
             # Document Tool
-            ReadDocumentTool(user_id=user_id, character_name=character_name),
+            ReadDocumentTool(user_id=user_id, character_name=bot_name),
             ReadFullMemoryTool(),
             
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
-            SearchMyThoughtsTool(character_name=character_name),
+            SearchMyThoughtsTool(character_name=bot_name),
             
             # Cross-Bot Memory Recall (what did I talk about with other bots?)
             RecallBotConversationTool(character_name=character_name),
@@ -571,13 +571,14 @@ TOOL USAGE GUIDE:
         max_steps_override: Optional[int] = None,
         guild_id: Optional[str] = None,
         channel: Optional[Any] = None,
-        detected_intents: Optional[List[str]] = None
+        detected_intents: Optional[List[str]] = None,
+        character_name: Optional[str] = None
     ) -> Tuple[str, List[BaseMessage]]:
         """
         Runs the ReAct loop using LangGraph.
         """
         # 1. Initialize Tools
-        tools = self._get_tools(user_id, guild_id, channel)
+        tools = self._get_tools(user_id, guild_id, channel, character_name)
         
         # 2. Construct System Prompt
         full_prompt = self._construct_prompt(system_prompt, detected_intents or [])
@@ -585,7 +586,8 @@ TOOL USAGE GUIDE:
         # Inject few-shot examples (same as original)
         if settings.ENABLE_TRACE_LEARNING:
             try:
-                collection_name = f"whisperengine_memory_{settings.DISCORD_BOT_NAME or 'default'}"
+                bot_name = character_name or settings.DISCORD_BOT_NAME or "default"
+                collection_name = f"whisperengine_memory_{bot_name}"
                 traces = await trace_retriever.get_relevant_traces(
                     query=user_input,
                     user_id=user_id,

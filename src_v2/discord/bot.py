@@ -7,7 +7,8 @@ from src_v2.config.settings import settings
 from src_v2.agents.engine import AgentEngine
 from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.orchestrator import ActivityOrchestrator
-from src_v2.discord.lurk_detector import get_lurk_detector, LurkDetector
+from src_v2.discord.daily_life import DailyLifeScheduler, ActionPoller
+from src_v2.discord.lurk_detector import LurkDetector
 from src_v2.discord.handlers.event_handler import EventHandler
 from src_v2.discord.handlers.message_handler import MessageHandler
 from src_v2.discord.tasks import BotTasks
@@ -36,6 +37,8 @@ class WhisperBot(commands.Bot):
         self.agent_engine = AgentEngine()
         self.scheduler = ProactiveScheduler(self)
         self.orchestrator = ActivityOrchestrator(self)
+        self.daily_scheduler = DailyLifeScheduler(self)
+        self.action_poller = ActionPoller(self)
         self.lurk_detector: Optional[LurkDetector] = None
         
         # Validate Bot Identity
@@ -50,14 +53,14 @@ class WhisperBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """Async setup hook called before the bot starts."""
-        # Start Activity Orchestrator
-        self.orchestrator.start()
+        # Start Activity Orchestrator (DISABLED for Daily Life Graph)
+        # self.orchestrator.start()
+        
+        # Start Daily Life System
+        self.daily_scheduler.start()
+        self.action_poller.start()
 
-        # Initialize Lurk Detector
-        if settings.ENABLE_CHANNEL_LURKING:
-            self.lurk_detector = get_lurk_detector(self.character_name)
-            logger.info(f"Lurk detector initialized for {self.character_name}")
-            
+
         # Load slash commands
         from src_v2.discord.commands import setup as setup_commands
         await setup_commands(self)
