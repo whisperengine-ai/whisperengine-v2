@@ -61,7 +61,8 @@ We verified that Bot-to-Bot interactions (e.g., Elena talking to Dream) are trea
 
 ### D. Graph Query Integration
 - **Trust Scores:** Modified `DailyLifeGraph` to fetch Trust Scores from `TrustManager` during the planning phase.
-- **Impact:** The "Remote Brain" now knows the relationship level (e.g., "Close Friend", "Stranger") of the users it is observing, allowing for socially aware autonomous decisions.
+- **Knowledge Graph:** Modified `DailyLifeGraph` to fetch recent facts from `KnowledgeManager` (Neo4j) during the planning phase.
+- **Impact:** The "Remote Brain" now knows the relationship level (e.g., "Close Friend", "Stranger") and relevant facts about the users it is observing, allowing for socially aware autonomous decisions.
 
 ## 6. Next Steps
 - Monitor production logs to ensure the worker eventually catches up and processes the Daily Life tasks.

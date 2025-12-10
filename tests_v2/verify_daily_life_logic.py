@@ -80,92 +80,98 @@ async def test_daily_life_logic():
                 mock_random.random.return_value = 0.05 
                 mock_random.choice.side_effect = lambda x: x[0] if x else None 
 
-                # Patch TrustManager (NEW)
+                # Patch TrustManager
                 with patch("src_v2.agents.daily_life.graph.trust_manager") as mock_trust:
                     async def mock_get_trust(*args, **kwargs):
                         return {"level_label": "Friend", "trust_score": 50}
                     mock_trust.get_relationship_level = mock_get_trust
-
-                    # 2. Scenario: Quiet Channel (Expect 'post')
-                    print("\n2. Scenario: Quiet Channel (Expect 'post')")
-                    snapshot = SensorySnapshot(
-                        bot_name="elena",
-                        timestamp=datetime.now(timezone.utc),
-                        mentions=[],
-                        channels=[
-                            ChannelSnapshot(
-                                channel_id="123456789",
-                                channel_name="general",
-                                messages=[] # Empty/Quiet
-                            )
-                        ]
-                    )
                     
-                    try:
-                        print("   Running graph...")
-                        result = await graph.run(snapshot)
-                        print(f"   Result: {result}")
+                    # Patch KnowledgeManager (NEW)
+                    with patch("src_v2.agents.daily_life.graph.knowledge_manager") as mock_knowledge:
+                        async def mock_query_graph(*args, **kwargs):
+                            return [{"fact": "User likes AI."}]
+                        mock_knowledge.query_graph = mock_query_graph
+
+                        # 2. Scenario: Quiet Channel (Expect 'post')
+                        print("\n2. Scenario: Quiet Channel (Expect 'post')")
+                        snapshot = SensorySnapshot(
+                            bot_name="elena",
+                            timestamp=datetime.now(timezone.utc),
+                            mentions=[],
+                            channels=[
+                                ChannelSnapshot(
+                                    channel_id="123456789",
+                                    channel_name="general",
+                                    messages=[] # Empty/Quiet
+                                )
+                            ]
+                        )
                         
-                        if result and len(result) > 0:
-                            cmd = result[0]
-                            if cmd.action_type == "post":
-                                print("   ✅ SUCCESS: Graph decided to POST.")
-                                print(f"   Content: {cmd.content}")
-                            else:
-                                print(f"   ❌ FAILURE: Graph decided to {cmd.action_type}.")
-                        else:
-                            print("   ❌ FAILURE: Graph returned no commands.")
+                        try:
+                            print("   Running graph...")
+                            result = await graph.run(snapshot)
+                            print(f"   Result: {result}")
                             
-                    except Exception as e:
-                        print(f"   ❌ Error running graph: {e}")
-                        import traceback
-                        traceback.print_exc()
-
-                    # 3. Scenario: Active Channel (Expect 'reply')
-                    print("\n3. Scenario: Active Channel (Expect 'reply')")
-                    snapshot_active = SensorySnapshot(
-                        bot_name="elena",
-                        timestamp=datetime.now(timezone.utc),
-                        mentions=[],
-                        channels=[
-                            ChannelSnapshot(
-                                channel_id="123456789",
-                                channel_name="general",
-                                messages=[
-                                    MessageSnapshot(
-                                        id="111",
-                                        content="I wonder if Elena is listening?",
-                                        author_id="999",
-                                        author_name="User",
-                                        is_bot=False,
-                                        created_at=datetime.now(timezone.utc),
-                                        mentions_bot=False,
-                                        channel_id="123456789"
-                                    )
-                                ]
-                            )
-                        ]
-                    )
-
-                    try:
-                        print("   Running graph...")
-                        result = await graph.run(snapshot_active)
-                        print(f"   Result: {result}")
-                        
-                        if result and len(result) > 0:
-                            cmd = result[0]
-                            if cmd.action_type == "reply":
-                                print("   ✅ SUCCESS: Graph decided to REPLY.")
-                                print(f"   Content: {cmd.content}")
+                            if result and len(result) > 0:
+                                cmd = result[0]
+                                if cmd.action_type == "post":
+                                    print("   ✅ SUCCESS: Graph decided to POST.")
+                                    print(f"   Content: {cmd.content}")
+                                else:
+                                    print(f"   ❌ FAILURE: Graph decided to {cmd.action_type}.")
                             else:
-                                print(f"   ❌ FAILURE: Graph decided to {cmd.action_type}.")
-                        else:
-                             print("   ⚠️ Graph returned no commands.")
+                                print("   ❌ FAILURE: Graph returned no commands.")
+                                
+                        except Exception as e:
+                            print(f"   ❌ Error running graph: {e}")
+                            import traceback
+                            traceback.print_exc()
 
-                    except Exception as e:
-                        print(f"   ❌ Error running graph: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        # 3. Scenario: Active Channel (Expect 'reply')
+                        print("\n3. Scenario: Active Channel (Expect 'reply')")
+                        snapshot_active = SensorySnapshot(
+                            bot_name="elena",
+                            timestamp=datetime.now(timezone.utc),
+                            mentions=[],
+                            channels=[
+                                ChannelSnapshot(
+                                    channel_id="123456789",
+                                    channel_name="general",
+                                    messages=[
+                                        MessageSnapshot(
+                                            id="111",
+                                            content="I wonder if Elena is listening?",
+                                            author_id="999",
+                                            author_name="User",
+                                            is_bot=False,
+                                            created_at=datetime.now(timezone.utc),
+                                            mentions_bot=False,
+                                            channel_id="123456789"
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
+
+                        try:
+                            print("   Running graph...")
+                            result = await graph.run(snapshot_active)
+                            print(f"   Result: {result}")
+                            
+                            if result and len(result) > 0:
+                                cmd = result[0]
+                                if cmd.action_type == "reply":
+                                    print("   ✅ SUCCESS: Graph decided to REPLY.")
+                                    print(f"   Content: {cmd.content}")
+                                else:
+                                    print(f"   ❌ FAILURE: Graph decided to {cmd.action_type}.")
+                            else:
+                                 print("   ⚠️ Graph returned no commands.")
+
+                        except Exception as e:
+                            print(f"   ❌ Error running graph: {e}")
+                            import traceback
+                            traceback.print_exc()
 
 if __name__ == "__main__":
     asyncio.run(test_daily_life_logic())
