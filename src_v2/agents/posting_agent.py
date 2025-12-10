@@ -90,9 +90,19 @@ class PostingAgent:
         
         return True, f"{len(goals)} goals available"
 
-    async def generate_and_schedule_post(self, character_name: str, target_channel_id: Optional[str] = None) -> bool:
+    async def generate_and_schedule_post(
+        self, 
+        character_name: str, 
+        target_channel_id: Optional[str] = None,
+        context_override: Optional[str] = None
+    ) -> bool:
         """
         Generates a post and schedules it via BroadcastManager.
+        
+        Args:
+            character_name: Name of the character posting
+            target_channel_id: Discord channel ID to post to
+            context_override: Optional prompt override (e.g. "Mention @Elena and ask about...")
         """
         # Check data availability before LLM call
         has_data, reason = self._check_data_availability(character_name)
@@ -134,7 +144,27 @@ class PostingAgent:
         
         system_prompt = character.system_prompt
         
-        prompt = f"""
+        # Use override if provided, otherwise standard prompt
+        if context_override:
+            prompt = f"""
+You are posting a message to a public Discord channel.
+{context_override}
+
+Your current goal/topic is: {topic}
+Category: {category}
+{search_context}
+
+Instructions:
+1. Write a short, engaging message (1-3 sentences).
+2. Stay in character.
+3. Do NOT use hashtags.
+4. Do NOT act like a robot or assistant. Be casual.
+5. If you have search results, use them to share a cool fact or news item, but keep it conversational.
+
+Write ONLY the message content.
+"""
+        else:
+            prompt = f"""
 You are posting a message to a public Discord channel where your friends hang out.
 The server has been quiet, so you want to share a thought to spark conversation.
 

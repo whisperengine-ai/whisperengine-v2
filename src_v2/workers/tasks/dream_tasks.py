@@ -5,6 +5,9 @@ from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
 from datetime import datetime, timedelta
 
+# Import shared artifact recorder
+from src_v2.workers.tasks.diary_tasks import record_artifact
+
 
 async def run_dream_generation(
     ctx: Dict[str, Any],
@@ -40,32 +43,39 @@ async def run_dream_generation(
         from src_v2.memory.dreams import get_dream_manager
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
+        from src_v2.core.database import db_manager
+        from src_v2.agents.daily_life.gather import get_local_time
         from datetime import timezone
         
         dream_manager = get_dream_manager(character_name)
         
-        # Check if dream already exists for today
+        # Check if dream already exists for today (use character_artifacts as source of truth)
         if not override:
-            last_dream = await dream_manager.get_last_character_dream()
-            if last_dream:
-                last_ts = last_dream.get("timestamp", "")
-                if last_ts:
-                    try:
-                        if isinstance(last_ts, str):
-                            last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
-                        else:
-                            last_dt = last_ts
-                        today = datetime.now(timezone.utc).date()
-                        if last_dt.date() == today:
-                            logger.info(f"Dream already exists for {character_name} today, skipping")
-                            return {
-                                "success": True,
-                                "skipped": True,
-                                "reason": "already_exists",
-                                "character_name": character_name
-                            }
-                    except Exception:
-                        pass
+            try:
+                now = get_local_time()
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                async with db_manager.postgres_pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        """
+                        SELECT 1 FROM character_artifacts
+                        WHERE character_name = $1 AND artifact_type = 'dream'
+                          AND created_at >= $2
+                        LIMIT 1
+                        """,
+                        character_name,
+                        today_start,
+                    )
+                    if row:
+                        logger.info(f"Dream already exists for {character_name} today, skipping")
+                        return {
+                            "success": True,
+                            "skipped": True,
+                            "reason": "already_exists",
+                            "character_name": character_name
+                        }
+            except Exception as e:
+                logger.warning(f"Failed to check dream existence: {e}, continuing anyway")
         
         # Get character description for the agent
         character_description = ""
@@ -198,6 +208,15 @@ async def run_dream_generation(
             
         # Save
         point_id = await dream_manager.save_dream(user_id="__character__", dream=dream, provenance=provenance_data)
+        
+        # Record artifact for Daily Life Graph staleness detection (E31)
+        if point_id:
+            await record_artifact(
+                character_name=character_name,
+                artifact_type="dream",
+                artifact_id=point_id,
+                metadata={"mood": dream.mood}
+            )
         
         # Phase E22: Check for absence resolution (dream succeeded after previous failures)
         try:

@@ -63,6 +63,10 @@ from src_v2.workers.tasks.cron_tasks import (
     run_weekly_drift_observation,
     run_session_timeout_processing
 )
+from src_v2.workers.tasks.daily_life_tasks import (
+    run_daily_life_cycle,
+    run_single_bot_daily_life,
+)
 
 
 async def startup(ctx: Dict[str, Any]) -> None:
@@ -130,31 +134,19 @@ class WorkerSettings:
         run_graph_enrichment,   # Phase E25: Graph Enrichment
         run_batch_enrichment,   # Phase E25: Batch Graph Enrichment
         run_proactive_message,  # Phase E24: Proactive Message (Action Queue)
+        # Phase E31: Daily Life Graph
+        arq.func(run_single_bot_daily_life, timeout=300),  # Single bot check (5 min timeout)
     ]
     
     # Cron jobs (scheduled tasks)
     # These run periodically and check each character's timezone to determine if
     # it's the right local time for that character's scheduled task.
     cron_jobs = [
-        # Check every 30 minutes for characters where it's diary time (default: 8:30 PM local)
+        # Phase E31: Daily Life Graph - runs every 7 minutes (unified stigmergic loop)
+        # This replaces individual diary/dream/goal cron jobs
         cron(
-            run_nightly_diary_generation,
-            hour=None,  # Run every hour
-            minute={0, 30},  # Check on the hour and half-hour
-            run_at_startup=False  # Don't run immediately on worker start
-        ),
-        # Check every 30 minutes for characters where it's dream time (default: 6:30 AM local)
-        cron(
-            run_nightly_dream_generation,
-            hour=None,  # Run every hour
-            minute={0, 30},  # Check on the hour and half-hour
-            run_at_startup=False
-        ),
-        # Check every 30 minutes for characters where it's goal strategist time (default: 11:00 PM local)
-        cron(
-            run_nightly_goal_strategist,
-            hour=None,  # Run every hour
-            minute={0, 30},  # Check on the hour and half-hour
+            run_daily_life_cycle,
+            minute=set(range(0, 60, 7)),  # Every 7 minutes: 0, 7, 14, 21, 28, 35, 42, 49, 56
             run_at_startup=False
         ),
         # Weekly drift observation - runs Sunday at midnight UTC (Phase E16)

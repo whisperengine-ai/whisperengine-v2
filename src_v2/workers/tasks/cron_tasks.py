@@ -93,6 +93,10 @@ async def run_nightly_diary_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     Uses the LangGraph Diary Agent for narrative generation.
     """
+    # E31: If Daily Life Graph is enabled, disable this legacy cron
+    if settings.ENABLE_DAILY_LIFE_GRAPH:
+        return {"success": False, "reason": "ENABLE_DAILY_LIFE_GRAPH is True"}
+
     if not settings.ENABLE_CHARACTER_DIARY:
         logger.info("Character diary feature disabled, skipping nightly generation")
         return {"success": False, "reason": "disabled"}
@@ -183,6 +187,10 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     Uses the LangGraph Dream Agent for narrative generation.
     """
+    # E31: If Daily Life Graph is enabled, disable this legacy cron
+    if settings.ENABLE_DAILY_LIFE_GRAPH:
+        return {"success": False, "reason": "ENABLE_DAILY_LIFE_GRAPH is True"}
+
     if not settings.ENABLE_DREAM_SEQUENCES:
         logger.info("Dream sequences feature disabled, skipping nightly generation")
         return {"success": False, "reason": "disabled"}
@@ -339,6 +347,10 @@ async def run_nightly_goal_strategist(ctx: Dict[str, Any]) -> Dict[str, Any]:
     
     This is part of Autonomous Agents Phase 3.1.
     """
+    # E31: If Daily Life Graph is enabled, disable this legacy cron
+    if settings.ENABLE_DAILY_LIFE_GRAPH:
+        return {"success": False, "reason": "ENABLE_DAILY_LIFE_GRAPH is True"}
+
     if not settings.ENABLE_GOAL_STRATEGIST:
         logger.info("Goal strategist feature disabled, skipping nightly run")
         return {"success": False, "reason": "disabled"}

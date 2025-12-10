@@ -390,15 +390,29 @@ Syntax: `./bot.sh [command] [target]`
 
 **Targets:** `all` | `infra` | `bots` | `workers` | `<name>` (e.g., `elena`, `postgres`)
 
+**⚠️ CRITICAL: bot.sh accepts ONLY ONE bot name at a time!**
+
 ```bash
 ./bot.sh up elena         # Start bot in Docker (recommended, even for dev)
 ./bot.sh up all           # Start all bots + workers
 ./bot.sh logs elena       # Stream logs
-./bot.sh restart elena    # Restart a single bot
+./bot.sh restart elena    # Restart a single bot (code changes only)
 ./bot.sh restart bots     # Restart all bots (not infra/workers)
 ./bot.sh restart workers  # Restart all workers
 ./bot.sh up infra         # Infrastructure only (for local Python debugging)
 python run_v2.py elena    # Local Python run (only for debugging, requires infra up)
+```
+
+**⚠️ IMPORTANT: `.env` file changes require stop/start, NOT restart!**
+```bash
+# For .env changes (env vars are loaded at container creation, not restart):
+./bot.sh stop elena && ./bot.sh start elena
+
+# For multiple bots - run SEPARATELY:
+./bot.sh stop marcus && ./bot.sh start marcus
+./bot.sh stop ryan && ./bot.sh start ryan
+./bot.sh stop jake && ./bot.sh start jake
+./bot.sh stop sophia && ./bot.sh start sophia
 ```
 
 ## ⚙️ Settings & Feature Flags

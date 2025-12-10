@@ -1,13 +1,37 @@
 # SPEC-E31: Daily Life Graph (Stigmergic Agent Loop)
 
-**Document Version:** 2.0  
+**Document Version:** 2.1  
 **Created:** December 9, 2025  
 **Updated:** December 9, 2025  
-**Status:** 📋 Proposed  
+**Status:** ✅ Implemented  
 **Priority:** 🟢 High  
-**Dependencies:** LangGraph infrastructure, arq workers, Discord.py, existing datastores
+**Dependencies:** LangGraph infrastructure, Discord.py, existing datastores
 
 > ✅ **Emergence Check:** Like ants following pheromone trails, the bot senses its environment and decides what to do. No central scheduler—the environment IS the task list. The character "notices" what needs doing by querying its own history.
+
+---
+
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Core Graph** | ✅ Done | `src_v2/agents/daily_life/graph.py` |
+| **Gather (Sense)** | ✅ Done | Discord, Postgres artifacts, Neo4j relationships |
+| **Plan (Decide)** | ✅ Done | Uses `router` model (gemini-flash-lite) for cost efficiency |
+| **Execute (Act)** | ✅ Done | All action types via `ConversationService` |
+| **Summarize (Trace)** | ✅ Done | InfluxDB metrics |
+| **Scheduler** | ✅ Done | In-bot timer via `DailyLifeScheduler` (not worker cron) |
+| **Relevance Embedding** | ✅ Done | FastEmbed local embeddings ($0) |
+| **Rate Limiting** | ✅ Done | `DISCORD_CHECK_MAX_ACTIONS_PER_SESSION` |
+| **Chain Limit** | ✅ Done | Skip channels at 5+ consecutive bot messages |
+| **Unanswered Mentions** | ✅ Done | Only mentions after our last message |
+| **Diary "Today" Check** | ✅ Done | Aligns gather with execute to prevent wasted LLM calls |
+| **Dream "Today" Check** | ✅ Done | Aligns gather with execute to prevent wasted LLM calls |
+| `hours_since_last_check` | ⏸️ Deferred | Low priority, graph runs on fixed interval |
+| `my_recent_activity` | ⏸️ Deferred | Chain limit check handles this case |
+| `recent_epiphanies` | ⏸️ Deferred | Would add context but not critical |
+
+**Key Implementation Decision:** Uses in-bot `DailyLifeScheduler` instead of worker cron because the graph needs direct Discord bot access for `channel.history()`, `message.reply()`, etc.
 
 ---
 

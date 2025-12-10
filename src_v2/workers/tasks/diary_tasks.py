@@ -1,9 +1,47 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
+
+
+async def record_artifact(
+    character_name: str,
+    artifact_type: str,
+    artifact_id: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> None:
+    """Record artifact creation in Postgres for Daily Life Graph staleness detection."""
+    from src_v2.core.database import db_manager
+    import json
+    
+    if not db_manager.postgres_pool:
+        return
+    
+    try:
+        # Serialize metadata to JSON string for asyncpg
+        metadata_json = None
+        if metadata:
+            if isinstance(metadata, str):
+                metadata_json = metadata
+            else:
+                metadata_json = json.dumps(metadata)
+        
+        async with db_manager.postgres_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO character_artifacts (character_name, artifact_type, artifact_id, metadata)
+                VALUES ($1, $2, $3, $4::jsonb)
+                """,
+                character_name,
+                artifact_type,
+                artifact_id,
+                metadata_json,
+            )
+        logger.debug(f"Recorded {artifact_type} artifact for {character_name}")
+    except Exception as e:
+        logger.warning(f"Failed to record artifact: {e} (metadata_type={type(metadata)})")
 
 
 async def run_diary_generation(
@@ -206,6 +244,15 @@ async def run_diary_generation(
         
         # Save
         point_id = await diary_manager.save_diary_entry(entry, provenance=provenance_data)
+        
+        # Record artifact for Daily Life Graph staleness detection (E31)
+        if point_id:
+            await record_artifact(
+                character_name=character_name,
+                artifact_type="diary",
+                artifact_id=point_id,
+                metadata={"mood": entry.mood, "themes": entry.themes}
+            )
         
         # Phase E22: Check for absence resolution (diary succeeded after previous failures)
         try:

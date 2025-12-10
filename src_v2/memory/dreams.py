@@ -218,6 +218,42 @@ class DreamManager:
         self.llm = base_llm.with_structured_output(DreamContent)
         # Note: Character-level dream generation now uses DreamGraphAgent (LangGraph)
         # Legacy prompt/chain removed - see src_v2/agents/dream_graph.py
+
+    async def check_material_sufficiency(self, hours: int = 24) -> bool:
+        """
+        Quick check if we have enough material to generate a dream.
+        Used by Daily Life Graph to decide whether to attempt dream generation.
+        
+        Returns:
+            True if sufficient material exists
+        """
+        from src_v2.memory.manager import MemoryManager
+        
+        try:
+            memory_manager = MemoryManager(bot_name=self.bot_name)
+            
+            # Quick parallel count queries - reuse existing private methods
+            results = await asyncio.gather(
+                self._get_memories(memory_manager, hours),
+                self._get_facts(),
+                return_exceptions=True
+            )
+            
+            memories = results[0] if not isinstance(results[0], Exception) else []
+            facts = results[1] if not isinstance(results[1], Exception) else []
+            
+            # Same check as DreamMaterial.is_sufficient(): total_items >= 3
+            total_items = len(memories) + len(facts)
+            sufficient = total_items >= 3
+            
+            logger.debug(f"[DreamManager] Material sufficiency check: {sufficient} "
+                        f"(memories={len(memories)}, facts={len(facts)}, total={total_items})")
+            
+            return sufficient
+            
+        except Exception as e:
+            logger.error(f"[DreamManager] Error checking material sufficiency: {e}")
+            return False
         
         # Legacy prompt for user-specific dreams (backward compatibility)
         self.user_prompt = ChatPromptTemplate.from_messages([
@@ -295,7 +331,24 @@ Create a surreal dream echoing these experiences.""")
             if not isinstance(results[5], Exception):
                 material.goals = results[5]
             
+            # Check if material is sufficient BEFORE invoking GraphWalker
+            # No point in expensive LLM call if we already know we'll skip dream generation
+            if not material.is_sufficient():
+                logger.info(
+                    f"Material insufficient before GraphWalker - skipping graph enrichment "
+                    f"(sufficient={material.is_sufficient()}, "
+                    f"memories={len(material.memories)}, facts={len(material.facts)})"
+                )
+                # Still log what we gathered
+                logger.info(
+                    f"Gathered dream material for {self.bot_name}: "
+                    f"{len(material.memories)} memories, {len(material.facts)} facts, "
+                    f"{len(material.observations)} observations, {len(material.gossip)} gossip"
+                )
+                return material
+            
             # Optional: GraphWalker integration for discovering hidden connections
+            # Only runs if we have sufficient base material
             if settings.ENABLE_GRAPH_WALKER:
                 try:
                     from src_v2.knowledge.walker import GraphWalkerAgent

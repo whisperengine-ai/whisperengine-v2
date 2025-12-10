@@ -32,12 +32,24 @@ async def run_goal_strategist(_ctx: Dict[str, Any], bot_name: str) -> Dict[str, 
     # Use the LangGraph-based strategist agent
     logger.info(f"Running LangGraph Strategist Agent for {bot_name}")
     from src_v2.agents.strategist_graph import strategist_graph_agent, save_strategist_output
+    from src_v2.workers.tasks.diary_tasks import record_artifact
     
     try:
         output = await strategist_graph_agent.run(bot_name)
         
         if output:
             results = await save_strategist_output(bot_name, output)
+            
+            # Record artifact for Daily Life Graph staleness detection (E31)
+            await record_artifact(
+                character_name=bot_name,
+                artifact_type="goal_review",
+                metadata={
+                    "strategies_applied": results["strategies_applied"],
+                    "goals_created": results["goals_created"],
+                }
+            )
+            
             logger.info(
                 f"Strategist complete for {bot_name}: "
                 f"{results['strategies_applied']} strategies, "

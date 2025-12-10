@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     STATUS_UPDATE_INTERVAL_SECONDS: int = 300  # 5 minutes
     TYPING_SPEED_CHAR_PER_SEC: float = 0.05  # Seconds per character
     TYPING_MAX_DELAY_SECONDS: float = 4.0  # Maximum typing delay
+    
+    # --- Timezone Configuration ---
+    TZ: str = Field(default="UTC", description="IANA timezone for time-of-day calculations (e.g., 'America/Los_Angeles')")
 
     # --- Databases ---
     # PostgreSQL
@@ -200,6 +203,18 @@ class Settings(BaseSettings):
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations
     ACTIVITY_CHECK_INTERVAL_MINUTES: int = 30  # How often to check activity levels for autonomous posting/conversations
+
+    # --- Daily Life Graph (Phase E31) ---
+    # Unified stigmergic loop replacing scattered cron jobs and reactive handlers
+    ENABLE_DAILY_LIFE_GRAPH: bool = False  # Master switch for new daily life system (when True, replaces old autonomy)
+    DISCORD_CHECK_INTERVAL_MINUTES: int = 7  # How often to run daily life check
+    DISCORD_CHECK_STAGGER_SECONDS: int = 30  # Delay between bots to avoid rate limits
+    DISCORD_CHECK_MAX_ACTIONS_PER_SESSION: int = 3  # Limit actions per check
+    DISCORD_CHECK_CHAIN_LIMIT: int = 5  # Skip channel if this many consecutive bot messages
+    DISCORD_CHECK_MIN_POST_INTERVAL_MINUTES: int = 15  # Don't post twice in this window
+    DISCORD_CHECK_RELEVANCE_THRESHOLD: float = 0.6  # Min embedding similarity to consider message relevant
+    DISCORD_CHECK_WATCH_CHANNELS: str = ""  # Comma-separated list of channel IDs to watch (falls back to BOT_CONVERSATION_CHANNEL_ID)
+    DISCORD_CHECK_MESSAGE_LOOKBACK: int = 100  # How many messages to look back per channel (higher = catches older mentions)
 
     # --- Manipulation Detection & Timeout ---
     # Split into two categories for emergence research:

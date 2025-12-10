@@ -193,6 +193,53 @@ class DiaryManager:
         # Note: Diary generation now uses DiaryGraphAgent (LangGraph)
         # Legacy prompt/chain removed - see src_v2/agents/diary_graph.py
 
+    async def check_material_richness(self, hours: int = 24) -> int:
+        """
+        Quick check of material richness without full gathering.
+        Used by Daily Life Graph to decide whether to attempt diary generation.
+        
+        Returns:
+            Richness score (same formula as DiaryMaterial.richness_score)
+        """
+        from src_v2.memory.manager import MemoryManager
+        
+        try:
+            memory_manager = MemoryManager(bot_name=self.bot_name)
+            
+            # Quick parallel count queries
+            results = await asyncio.gather(
+                memory_manager.get_summaries_since(hours=hours, limit=50),
+                self._get_observations(),
+                self._get_gossip(hours),
+                self._get_new_facts(hours),
+                self._get_epiphanies(hours),
+                return_exceptions=True
+            )
+            
+            summaries = results[0] if not isinstance(results[0], Exception) else []
+            observations = results[1] if not isinstance(results[1], Exception) else []
+            gossip = results[2] if not isinstance(results[2], Exception) else []
+            facts = results[3] if not isinstance(results[3], Exception) else []
+            epiphanies = results[4] if not isinstance(results[4], Exception) else []
+            
+            richness = (
+                len(summaries) * 3 +
+                len(observations) * 2 +
+                len(gossip) * 2 +
+                len(epiphanies) * 2 +
+                len(facts) * 1
+            )
+            
+            logger.debug(f"[DiaryManager] Material richness check: {richness} "
+                        f"(summaries={len(summaries)}, obs={len(observations)}, "
+                        f"gossip={len(gossip)}, facts={len(facts)}, epiphanies={len(epiphanies)})")
+            
+            return richness
+            
+        except Exception as e:
+            logger.error(f"[DiaryManager] Error checking material richness: {e}")
+            return 0
+
     async def gather_diary_material(self, hours: int = None) -> DiaryMaterial:
         """
         Gathers material from all available sources for diary generation.
@@ -271,7 +318,25 @@ class DiaryManager:
             if not isinstance(results[5], Exception):
                 material.goals = results[5]
             
+            # Check if material is sufficient BEFORE invoking GraphWalker
+            # No point in expensive LLM call if we already know we'll skip diary generation
+            if not material.is_sufficient() or not material.is_rich_enough():
+                logger.info(
+                    f"Material insufficient before GraphWalker - skipping graph enrichment "
+                    f"(sufficient={material.is_sufficient()}, rich_enough={material.is_rich_enough()}, "
+                    f"richness={material.richness_score()})"
+                )
+                # Still log what we gathered
+                logger.info(
+                    f"Gathered diary material for {self.bot_name}: "
+                    f"{len(material.summaries)} summaries, {len(material.observations)} observations, "
+                    f"{len(material.gossip)} gossip, {len(material.new_facts)} facts, "
+                    f"{len(material.epiphanies)} epiphanies"
+                )
+                return material
+            
             # Optional: GraphWalker integration for discovering hidden connections
+            # Only runs if we have sufficient base material
             if settings.ENABLE_GRAPH_WALKER:
                 try:
                     from src_v2.knowledge.walker import GraphWalkerAgent
@@ -855,36 +920,30 @@ class DiaryManager:
         """
         Checks if a diary entry already exists for today.
         
+        Uses character_artifacts table as single source of truth (not Qdrant).
+        
         Returns:
             True if diary exists for today, False otherwise
         """
-        if not db_manager.qdrant_client:
-            return False
-        
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        from src_v2.agents.daily_life.gather import get_local_time
         
         try:
-            results = await db_manager.qdrant_client.scroll(
-                collection_name=self.collection_name,
-                scroll_filter=Filter(
-                    must=[
-                        FieldCondition(key="type", match=MatchValue(value="diary")),
-                        FieldCondition(key="bot_name", match=MatchValue(value=self.bot_name)),
-                        FieldCondition(key="date", match=MatchValue(value=today))
-                    ]
-                ),
-                limit=1,
-                with_payload=False,
-                with_vectors=False
-            )
+            now = get_local_time()
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             
-            # Defensive: check results tuple
-            if not results or not isinstance(results, tuple) or len(results) < 1:
-                return False
-            
-            points = results[0] or []
-            return len(points) > 0
-            
+            async with db_manager.postgres_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT 1 FROM character_artifacts
+                    WHERE character_name = $1 AND artifact_type = 'diary'
+                      AND created_at >= $2
+                    LIMIT 1
+                    """,
+                    self.bot_name,
+                    today_start,
+                )
+                return row is not None
+                
         except Exception as e:
             logger.error(f"Failed to check for today's diary: {type(e).__name__}: {e}")
             return False
