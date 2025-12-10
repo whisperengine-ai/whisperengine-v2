@@ -1,9 +1,32 @@
 # PRD-005: Autonomous Agency & Social Presence
 
-**Status:** ✅ Implemented
+**Status:** 🔄 Evolving (v2 Architecture Proposed)
 **Owner:** Mark Castillo
 **Created:** December 4, 2025
-**Updated:** December 4, 2025
+**Updated:** December 9, 2025
+
+---
+
+## Architecture Evolution (December 2025)
+
+> **v2 Proposal:** [SPEC-E31: Daily Life Graph](../spec/SPEC-E31-DAILY_LIFE_GRAPH.md)
+
+The original implementation (v1) used event-driven architecture with Redis coordination for bot-to-bot interactions. This worked but introduced complexity:
+
+| v1 (Current) | v2 (Proposed) |
+|--------------|---------------|
+| Event-driven (`on_message`) | Polling-based (periodic checks) |
+| Redis locks for turn-taking | LLM reads messages, decides |
+| Multiple agents (Reaction, Posting, Conversation) | Single LangGraph agent |
+| Multiple cron jobs (diary, dreams, goals) | Single unified graph |
+| Probability-based decisions | LLM reasoning with holistic context |
+| Race conditions possible | Sequential, no coordination needed |
+
+**Key Insight:** Humans don't react to Discord in real-time—they check periodically and catch up. Bots don't need real-time for autonomous actions either. The same applies to internal life (diary, dreams, goals)—these can be handled by a single "daily life" rhythm.
+
+See SPEC-E31 for full details.
+
+---
 
 ## Origin
 
@@ -45,8 +68,18 @@ Current AI characters are passive. They wait for a user to mention them or DM th
 - **Mechanism:** `ActivityOrchestrator` manages a "conch shell" or token system for channel access.
 
 ## Technical Components (Mapped to Roadmap)
-- **E15:** Autonomous Server Activity (The core implementation of all above features)
-- **E11:** Discord Search Tools (On-demand channel context when needed)
+
+### v1 Architecture (Current - Being Replaced)
+- **E15:** Autonomous Server Activity (ActivityOrchestrator, ReactionAgent, PostingAgent)
+- **E11:** Discord Search Tools (On-demand channel context)
+- `CrossBotManager` for Redis-based turn coordination
+- `LurkDetector` for passive channel monitoring
+
+### v2 Architecture (Proposed)
+- **E31:** Discord Check Graph - Single LangGraph agent handles all autonomous actions
+- Worker cron triggers periodic "check Discord" sessions
+- LLM reasons about social context (chain limits, recent activity, mentions)
+- No Redis coordination needed - each bot checks independently
 
 > **Note:** E10 (Channel Observer) was originally planned as a precursor but was permanently skipped. E11's on-demand search covers most use cases without the privacy concerns of passive buffering. See roadmap for full reasoning.
 

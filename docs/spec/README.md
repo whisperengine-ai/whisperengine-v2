@@ -32,6 +32,7 @@
 | [SPEC-E19](./SPEC-E19-GRAPH_WALKER_AGENT.md) | E19 | Graph Walker Agent | ✅ Complete | Dynamic graph exploration |
 | [SPEC-E22](./SPEC-E22-ABSENCE_TRACKING.md) | E22 | Absence Tracking | ✅ Complete | Memory decay patterns |
 | [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | ✅ Complete | Enrichment, temporal, user-facing |
+| [SPEC-E31](./SPEC-E31-DAILY_LIFE_GRAPH.md) | E31 | Daily Life Graph | 📋 Proposed | Stigmergic autonomous rhythm |
 | [SPEC-B05](./SPEC-B05-TRACE_LEARNING.md) | B5 | Trace Learning | ✅ Complete | Few-shot injection |
 | [SPEC-C02](./SPEC-C02-CHANNEL_LURKING.md) | C2 | Channel Lurking | ✅ Complete | Passive engagement |
 | [SPEC-S01](./SPEC-S01-CONTENT_SAFETY_REVIEW.md) | S1 | Content Safety Review | ✅ Complete | Output safety checks |
