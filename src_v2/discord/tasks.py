@@ -15,6 +15,7 @@ class BotTasks:
         self._background_tasks = [
             self.bot.loop.create_task(self.process_broadcast_queue_loop(), name="broadcast_queue"),
             self.bot.loop.create_task(self.refresh_endpoint_registration_loop(), name="endpoint_registration"),
+            self.bot.loop.create_task(self.refresh_bot_registry_loop(), name="bot_registry"),
             self.bot.loop.create_task(self.update_status_loop(), name="status_update"),
             self.bot.loop.create_task(self.weekly_graph_pruning_loop(), name="graph_pruning"),
         ]
@@ -81,6 +82,22 @@ class BotTasks:
             
             # Refresh every 30 minutes (TTL is 1 hour)
             await asyncio.sleep(1800)
+
+    async def refresh_bot_registry_loop(self) -> None:
+        """Background task to keep bot registered in Redis for discovery by other bots."""
+        await self.bot.wait_until_ready()
+        
+        while not self.bot.is_closed():
+            try:
+                from src_v2.core.bot_registry import register_bot
+                if self.bot.user:
+                    await register_bot(self.bot.character_name, str(self.bot.user.id))
+                    logger.debug(f"Refreshed bot registry for {self.bot.character_name}")
+            except Exception as e:
+                logger.debug(f"Bot registry refresh failed: {e}")
+            
+            # Refresh every hour (TTL is 24 hours, but refresh often for reliability)
+            await asyncio.sleep(3600)
 
     async def update_status_loop(self) -> None:
         """Background task to periodically update bot status with statistics."""

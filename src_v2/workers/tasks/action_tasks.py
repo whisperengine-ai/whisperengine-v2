@@ -59,6 +59,11 @@ async def run_proactive_message(
     Returns:
         Dict with success status and content
     """
+    from src_v2.config.settings import settings
+    if not settings.ENABLE_PROACTIVE_MESSAGING:
+        logger.info(f"Skipping proactive message for {user_id}: ENABLE_PROACTIVE_MESSAGING is False")
+        return {"success": False, "reason": "disabled"}
+
     logger.info(f"Running proactive message task for {user_id} (reason: {reason})")
     
     agent = ProactiveAgent()

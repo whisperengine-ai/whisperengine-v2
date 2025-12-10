@@ -687,12 +687,14 @@ async def gather_context(
         wants_to_socialize = False
         
         if is_waking_hours and not has_relevant_content and not has_pending_internal:
-             # 1% chance per check (every 7 mins) -> ~1 post every 11 hours
-             # This is conservative to avoid spam.
-             import random
-             if random.random() < 0.01:
-                 wants_to_socialize = True
-                 logger.info("[DailyLife] Spontaneity trigger! Waking up to socialize.")
+             # Check if autonomous posting is enabled
+             if getattr(settings, "ENABLE_AUTONOMOUS_POSTING", False):
+                 # 1% chance per check (every 7 mins) -> ~1 post every 11 hours
+                 # This is conservative to avoid spam.
+                 import random
+                 if random.random() < 0.01:
+                     wants_to_socialize = True
+                     logger.info("[DailyLife] Spontaneity trigger! Waking up to socialize.")
 
         should_skip = not has_relevant_content and not has_pending_internal and not wants_to_socialize
         

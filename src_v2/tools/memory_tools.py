@@ -669,10 +669,10 @@ For human conversations, use the regular memory search tools."""
 
     async def _arun(self, bot_name: str, topic: str = "", limit: int = 5) -> str:
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
+            # Get list of registered WhisperEngine bots
+            from src_v2.core.bot_registry import get_known_bots
             
-            # Get known bots
-            known_bots = cross_bot_manager.known_bots
+            known_bots = await get_known_bots()
             
             if not known_bots:
                 return "I don't have access to other bot information right now. They might not be online."

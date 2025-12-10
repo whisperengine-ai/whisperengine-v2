@@ -146,6 +146,10 @@ async def execute_post(
 ) -> ActionResult:
     """Post a new message to a channel using PostingAgent."""
     
+    from src_v2.config.settings import settings
+    if not getattr(settings, "ENABLE_AUTONOMOUS_POSTING", False):
+        return ActionResult(action=action, success=False, error="ENABLE_AUTONOMOUS_POSTING is False")
+    
     if not action.channel_id:
         return ActionResult(action=action, success=False, error="Missing channel_id")
     

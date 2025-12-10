@@ -450,16 +450,17 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
         This prevents the LLM from mentioning bots that aren't in the current server.
         """
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
             from src_v2.core.behavior import load_behavior_profile
             from src_v2.api.internal_routes import get_discord_bot
+            from src_v2.core.bot_registry import get_known_bots
             import os
 
-            # Ensure we have the latest list of bots
-            if not cross_bot_manager.known_bots:
-                await cross_bot_manager.load_known_bots()
+            # Get all registered WhisperEngine bots (live bots only via Redis TTL)
+            known_bots = await get_known_bots()
             
-            known_bots = cross_bot_manager.known_bots
+            if not known_bots:
+                logger.debug("No bots found in registry")
+                return ""
             
             # If we have guild context, filter to only bots in this guild
             bots_in_guild = set()
@@ -468,16 +469,19 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
                 if discord_bot:
                     try:
                         guild_id_int = int(guild_id)
-                    except (ValueError, TypeError):
-                        logger.debug(f"Invalid guild_id format: {guild_id}, skipping guild filtering")
-                        guild_id_int = None
-                    guild = discord_bot.get_guild(guild_id_int) if guild_id_int else None
-                    if guild:
-                        for bot_name, discord_id in known_bots.items():
-                            member = guild.get_member(discord_id)
-                            if member:
-                                bots_in_guild.add(bot_name.lower())
-                        logger.debug(f"Filtered known bots to {len(bots_in_guild)} in guild {guild_id}")
+                        guild = discord_bot.get_guild(guild_id_int)
+                        if guild:
+                            # Check which registered bots are actually in this guild
+                            for bot_name, discord_id in known_bots.items():
+                                try:
+                                    member = guild.get_member(int(discord_id))
+                                    if member:
+                                        bots_in_guild.add(bot_name.lower())
+                                except (ValueError, TypeError):
+                                    continue
+                            logger.debug(f"Filtered to {len(bots_in_guild)} bots in guild {guild_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to filter bots by guild: {e}")
             
             context = "\n\n[KNOWN ASSOCIATES (Other AI Entities)]\n"
             context += "You are aware of the following other AI entities in this digital space:\n"

@@ -121,10 +121,10 @@ Returns: List of sibling bots, or detailed info about a specific bot including:
 
     async def _arun(self, bot_name: Optional[str] = None) -> str:
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
+            # Get list of registered WhisperEngine bots
+            from src_v2.core.bot_registry import get_known_bots
             
-            # Get list of known bots
-            known_bots = cross_bot_manager.known_bots
+            known_bots = await get_known_bots()
             
             if not known_bots:
                 return "I don't have information about any sibling bots at the moment. They may not be online or registered yet."

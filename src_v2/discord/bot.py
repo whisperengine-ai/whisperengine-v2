@@ -111,6 +111,13 @@ class WhisperBot(commands.Bot):
         """Override close to cancel background tasks first."""
         logger.info("Closing WhisperBot...")
         
+        # Unregister from bot registry
+        try:
+            from src_v2.core.bot_registry import unregister_bot
+            await unregister_bot(self.character_name)
+        except Exception as e:
+            logger.debug(f"Error unregistering bot: {e}")
+        
         # Cancel background tasks
         if hasattr(self, 'tasks') and self.tasks:
             await self.tasks.cancel_all_tasks()

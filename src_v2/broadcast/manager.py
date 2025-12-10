@@ -674,6 +674,12 @@ class BroadcastManager:
                     
                     # Handle DM if target_user_id is present
                     if target_user_id_str:
+                        # Check DM allowlist if DM blocking is enabled
+                        if settings.ENABLE_DM_BLOCK:
+                            if target_user_id_str not in settings.dm_allowed_user_ids_list:
+                                logger.info(f"Skipping queued DM to {target_user_id_str}: not in DM allowlist")
+                                continue
+                        
                         try:
                             user_id = int(target_user_id_str)
                             user = await self._bot.fetch_user(user_id)
