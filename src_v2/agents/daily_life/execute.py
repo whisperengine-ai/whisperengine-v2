@@ -153,10 +153,16 @@ async def execute_post(
     if not action.channel_id:
         return ActionResult(action=action, success=False, error="Missing channel_id")
     
+    # If this is a bot-to-bot conversation, force it to BOT_CONVERSATION_CHANNEL_ID
+    target_channel_id = action.channel_id
+    if action.target_bot_name and settings.BOT_CONVERSATION_CHANNEL_ID:
+        target_channel_id = settings.BOT_CONVERSATION_CHANNEL_ID
+        logger.info(f"[DailyLife] Bot-to-bot post redirected to BOT_CONVERSATION_CHANNEL_ID: {target_channel_id}")
+    
     try:
-        channel = bot.get_channel(int(action.channel_id))
+        channel = bot.get_channel(int(target_channel_id))
         if not channel or not isinstance(channel, discord.TextChannel):
-            return ActionResult(action=action, success=False, error=f"Channel {action.channel_id} not found")
+            return ActionResult(action=action, success=False, error=f"Channel {target_channel_id} not found")
         
         # Use PostingAgent to generate and post content
         from src_v2.agents.posting_agent import PostingAgent
@@ -192,7 +198,7 @@ async def execute_post(
 
         success = await posting_agent.generate_and_schedule_post(
             character_name=character.name,
-            target_channel_id=action.channel_id,
+            target_channel_id=target_channel_id,
             context_override=context_override
         )
         
@@ -300,30 +306,37 @@ async def execute_write_diary(
     action: PlannedAction,
     character: "Character",
 ) -> ActionResult:
-    """Generate a diary entry using DiaryGraph."""
+    """Enqueue diary generation to the worker queue."""
     
     try:
-        from src_v2.workers.tasks.diary_tasks import run_diary_generation
+        from src_v2.workers.task_queue import task_queue
         
-        # Run diary generation directly (not via queue, since we're already in worker context)
-        result = await run_diary_generation({}, character.name)
+        # Enqueue to worker - let the background worker handle the heavy LLM work
+        job_id = await task_queue.enqueue(
+            "run_diary_generation",
+            _queue_name=task_queue.QUEUE_COGNITION,
+            _job_id=f"diary_{character.name}_{action.action_id}",  # Dedup by action
+            character_name=character.name,
+        )
         
-        if result.get("success"):
-            logger.info(f"[DailyLife] Executed: write_diary (artifact created)")
+        if job_id:
+            logger.info(f"[DailyLife] Enqueued: write_diary for {character.name} (job_id: {job_id})")
             return ActionResult(
                 action=action,
                 success=True,
-                artifact_id=result.get("point_id") or result.get("artifact_id"),
+                artifact_id=job_id,  # Return job_id as artifact reference
             )
         else:
+            # Job already queued (duplicate)
+            logger.info(f"[DailyLife] write_diary already queued for {character.name}")
             return ActionResult(
                 action=action,
-                success=False,
-                error=result.get("error", "Diary generation returned failure"),
+                success=True,
+                artifact_id=None,
             )
         
     except Exception as e:
-        logger.error(f"[DailyLife] Write diary failed: {e}")
+        logger.error(f"[DailyLife] Failed to enqueue write_diary: {e}")
         return ActionResult(action=action, success=False, error=str(e))
 
 
@@ -331,29 +344,37 @@ async def execute_generate_dream(
     action: PlannedAction,
     character: "Character",
 ) -> ActionResult:
-    """Generate a dream using DreamGraph."""
+    """Enqueue dream generation to the worker queue."""
     
     try:
-        from src_v2.workers.tasks.dream_tasks import run_dream_generation
+        from src_v2.workers.task_queue import task_queue
         
-        result = await run_dream_generation({}, character.name)
+        # Enqueue to worker - let the background worker handle the heavy LLM work
+        job_id = await task_queue.enqueue(
+            "run_dream_generation",
+            _queue_name=task_queue.QUEUE_COGNITION,
+            _job_id=f"dream_{character.name}_{action.action_id}",  # Dedup by action
+            character_name=character.name,
+        )
         
-        if result.get("success"):
-            logger.info(f"[DailyLife] Executed: generate_dream (artifact created)")
+        if job_id:
+            logger.info(f"[DailyLife] Enqueued: generate_dream for {character.name} (job_id: {job_id})")
             return ActionResult(
                 action=action,
                 success=True,
-                artifact_id=result.get("point_id") or result.get("artifact_id"),
+                artifact_id=job_id,  # Return job_id as artifact reference
             )
         else:
+            # Job already queued (duplicate)
+            logger.info(f"[DailyLife] generate_dream already queued for {character.name}")
             return ActionResult(
                 action=action,
-                success=False,
-                error=result.get("error", "Dream generation returned failure"),
+                success=True,
+                artifact_id=None,
             )
         
     except Exception as e:
-        logger.error(f"[DailyLife] Generate dream failed: {e}")
+        logger.error(f"[DailyLife] Failed to enqueue generate_dream: {e}")
         return ActionResult(action=action, success=False, error=str(e))
 
 
@@ -361,29 +382,36 @@ async def execute_review_goals(
     action: PlannedAction,
     character: "Character",
 ) -> ActionResult:
-    """Review and update goals using GoalStrategist."""
+    """Enqueue goal review to the worker queue."""
     
     try:
-        from src_v2.workers.strategist import run_goal_strategist
+        from src_v2.workers.task_queue import task_queue
         
-        result = await run_goal_strategist({}, character.name)
+        # Enqueue to worker - let the background worker handle the heavy LLM work
+        job_id = await task_queue.enqueue(
+            "run_goal_strategist",
+            _queue_name=task_queue.QUEUE_COGNITION,
+            _job_id=f"goals_{character.name}_{action.action_id}",  # Dedup by action
+            character_name=character.name,
+        )
         
-        if result.get("success"):
-            logger.info(f"[DailyLife] Executed: review_goals")
+        if job_id:
+            logger.info(f"[DailyLife] Enqueued: review_goals for {character.name} (job_id: {job_id})")
             return ActionResult(
                 action=action,
                 success=True,
-                artifact_id=result.get("point_id") or result.get("artifact_id"),
+                artifact_id=job_id,
             )
         else:
+            logger.info(f"[DailyLife] review_goals already queued for {character.name}")
             return ActionResult(
                 action=action,
-                success=False,
-                error=result.get("error", "Goal review returned failure"),
+                success=True,
+                artifact_id=None,
             )
         
     except Exception as e:
-        logger.error(f"[DailyLife] Review goals failed: {e}")
+        logger.error(f"[DailyLife] Failed to enqueue review_goals: {e}")
         return ActionResult(action=action, success=False, error=str(e))
 
 

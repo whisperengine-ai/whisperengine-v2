@@ -970,10 +970,16 @@ Create a surreal dream echoing these experiences.""")
         if not dream or not dream.dream:
             return None
         
-        # Add timestamp
-        now = datetime.now(timezone.utc)
+        # Add timestamp using configured timezone
+        from zoneinfo import ZoneInfo
+        try:
+            tz = ZoneInfo(settings.TZ)
+        except Exception:
+            tz = timezone.utc
+        
+        now = datetime.now(tz)
         date_str = now.strftime("%B %d, %Y")
-        time_str = now.strftime("%I:%M %p UTC")
+        time_str = now.strftime("%I:%M %p")
         
         # Format as a dream journal entry
         

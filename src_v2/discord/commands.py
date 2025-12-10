@@ -70,6 +70,16 @@ class CharacterCommands(app_commands.Group):
             user_id = str(interaction.user.id)
             character_name = settings.DISCORD_BOT_NAME or "default"
             
+            # Discord embed field limit is 1024 characters
+            MAX_FIELD_LENGTH = 1024
+            
+            def truncate_field(text: str, max_len: int = MAX_FIELD_LENGTH) -> str:
+                """Truncate text to fit Discord embed field limit."""
+                if len(text) <= max_len:
+                    return text
+                # Leave room for truncation indicator
+                return text[:max_len - 20] + "\n...*(truncated)*"
+            
             # 1. Get Facts (Global)
             facts = await knowledge_manager.get_user_knowledge(user_id, limit=20)
             if not facts:
@@ -77,6 +87,7 @@ class CharacterCommands(app_commands.Group):
             else:
                 # Format facts nicely
                 facts = "\n".join([f"• {f}" for f in facts.split("\n")])
+                facts = truncate_field(facts)
 
             # 2. Get Preferences & Trust (Character Specific)
             relationship = await trust_manager.get_relationship_level(user_id, character_name)
@@ -88,6 +99,7 @@ class CharacterCommands(app_commands.Group):
             prefs_text = "No specific preferences set."
             if prefs:
                 prefs_text = "\n".join([f"• **{k}**: {v}" for k, v in prefs.items()])
+                prefs_text = truncate_field(prefs_text)
 
             insights_text = "No specific insights yet."
             if insights:
@@ -96,6 +108,7 @@ class CharacterCommands(app_commands.Group):
                 insights_text = "\n".join([f"• {i}" for i in display_insights])
                 if len(insights) > 5:
                     insights_text += f"\n...and {len(insights) - 5} more."
+                insights_text = truncate_field(insights_text)
 
             # Build Response
             embed = discord.Embed(title=f"User Profile: {interaction.user.display_name}", color=0x00ff00)

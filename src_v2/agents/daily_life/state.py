@@ -75,11 +75,11 @@ class InternalLifeState:
     
     # Diary state
     last_diary_date: Optional[datetime] = None
-    diary_overdue: bool = False  # last_diary > 24 hours
+    diary_overdue: bool = False  # no diary today + evening time (6pm-10pm)
     
     # Dream state
     last_dream_date: Optional[datetime] = None
-    dreams_could_generate: bool = False  # night + no dream today
+    dreams_could_generate: bool = False  # morning time (6am-12pm) + no dream today
     
     # Goals state
     last_goal_review: Optional[datetime] = None
@@ -130,6 +130,7 @@ class ChannelState:
     channel_name: str
     message_count: int  # Messages in fetch window
     last_human_message_age_minutes: float
+    last_message_age_minutes: float  # Age of last message (human OR bot) - for quiet detection
     consecutive_bot_messages: int  # How many bot messages in a row?
     scored_messages: List["ScoredMessage"] = field(default_factory=list)
     max_relevance_score: float = 0.0  # Highest relevance in this channel

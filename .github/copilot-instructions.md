@@ -394,7 +394,8 @@ Syntax: `./bot.sh [command] [target]`
 
 ```bash
 ./bot.sh up elena         # Start bot in Docker (recommended, even for dev)
-./bot.sh up all           # Start all bots + workers
+./bot.sh up all           # Start all bots + workers + infra
+./bot.sh up bots          # Start all bots only (not infra/workers)
 ./bot.sh logs elena       # Stream logs
 ./bot.sh restart elena    # Restart a single bot (code changes only)
 ./bot.sh restart bots     # Restart all bots (not infra/workers)
@@ -403,10 +404,20 @@ Syntax: `./bot.sh [command] [target]`
 python run_v2.py elena    # Local Python run (only for debugging, requires infra up)
 ```
 
+**⚠️ Code location determines restart target:**
+| Code Location | Restart Command |
+|---------------|-----------------|
+| `src_v2/agents/`, `src_v2/discord/`, `src_v2/api/` | `./bot.sh restart bots` |
+| `src_v2/workers/`, `src_v2/memory/diary.py`, `src_v2/memory/dreams.py` | `./bot.sh restart workers` |
+| Both bot + worker code changed | `./bot.sh restart bots && ./bot.sh restart workers` |
+
 **⚠️ IMPORTANT: `.env` file changes require stop/start, NOT restart!**
 ```bash
 # For .env changes (env vars are loaded at container creation, not restart):
 ./bot.sh stop elena && ./bot.sh start elena
+
+# For all bots .env changes:
+./bot.sh stop bots && ./bot.sh start bots
 
 # For multiple bots - run SEPARATELY:
 ./bot.sh stop marcus && ./bot.sh start marcus

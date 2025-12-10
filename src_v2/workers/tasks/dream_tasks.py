@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from loguru import logger
 from src_v2.config.settings import settings
-from src_v2.memory.manager import memory_manager
+from src_v2.memory.manager import MemoryManager  # Import class, not singleton
 from src_v2.memory.models import MemorySourceType
 from datetime import datetime, timedelta
 
@@ -99,6 +99,10 @@ async def run_dream_generation(
         if not character_description:
             character_description = f"You are {character_name.title()}, an AI companion."
         
+        # Create character-specific memory manager (not global singleton)
+        # Worker doesn't have DISCORD_BOT_NAME, so we must use the passed character_name
+        char_memory_manager = MemoryManager(bot_name=character_name)
+        
         # Run LangGraph Dream Agent
         logger.info(f"Using LangGraph Dream Agent for {character_name}")
         graph_agent = DreamGraphAgent()
@@ -114,7 +118,7 @@ async def run_dream_generation(
             try:
                 # 1. Find previous absence to calculate streak
                 # We search for recent "absence" type memories
-                recent_absences = await memory_manager.search_memories_advanced(
+                recent_absences = await char_memory_manager.search_memories_advanced(
                     query="absence of dream material",
                     metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
                     limit=1,
@@ -134,7 +138,7 @@ async def run_dream_generation(
                 # 2. Store new absence memory
                 content = f"I tried to dream tonight, but the day felt thin. Not enough to weave. (Streak: {streak})"
                 
-                await memory_manager.save_typed_memory(
+                await char_memory_manager.save_typed_memory(
                     user_id=character_name, # Self-memory
                     memory_type="absence",
                     content=content,
@@ -220,7 +224,7 @@ async def run_dream_generation(
         
         # Phase E22: Check for absence resolution (dream succeeded after previous failures)
         try:
-            recent_absences = await memory_manager.search_memories_advanced(
+            recent_absences = await char_memory_manager.search_memories_advanced(
                 query="absence of dream material",
                 metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
                 limit=1,
@@ -235,7 +239,7 @@ async def run_dream_generation(
                 # Store resolution memory
                 resolution_content = f"Tonight I finally dreamed. After {absence_streak} {'nights' if absence_streak > 1 else 'night'} of reaching for something that wasn't there, the images finally came."
                 
-                await memory_manager.save_typed_memory(
+                await char_memory_manager.save_typed_memory(
                     user_id=character_name,
                     memory_type="absence_resolution",
                     content=resolution_content,

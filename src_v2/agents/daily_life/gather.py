@@ -209,6 +209,7 @@ async def gather_channel_state(
             channel_name=channel.name,
             message_count=0,
             last_human_message_age_minutes=float("inf"),
+            last_message_age_minutes=float("inf"),
             consecutive_bot_messages=0,
         )
     except Exception as e:
@@ -218,6 +219,7 @@ async def gather_channel_state(
             channel_name=channel.name,
             message_count=0,
             last_human_message_age_minutes=float("inf"),
+            last_message_age_minutes=float("inf"),
             consecutive_bot_messages=0,
         )
     
@@ -227,6 +229,7 @@ async def gather_channel_state(
             channel_name=channel.name,
             message_count=0,
             last_human_message_age_minutes=float("inf"),
+            last_message_age_minutes=float("inf"),
             consecutive_bot_messages=0,
         )
     
@@ -236,6 +239,13 @@ async def gather_channel_state(
         age_minutes = (now - last_human_msg.created_at.replace(tzinfo=timezone.utc)).total_seconds() / 60
     else:
         age_minutes = float("inf")
+    
+    # Find last message of any kind (human or bot) - for quiet detection
+    last_any_msg = messages[0] if messages else None
+    if last_any_msg:
+        last_any_age_minutes = (now - last_any_msg.created_at.replace(tzinfo=timezone.utc)).total_seconds() / 60
+    else:
+        last_any_age_minutes = float("inf")
     
     # Count consecutive bot messages at top (most recent)
     consecutive_bot = 0
@@ -273,6 +283,7 @@ async def gather_channel_state(
         channel_name=channel.name,
         message_count=len(messages),
         last_human_message_age_minutes=age_minutes,
+        last_message_age_minutes=last_any_age_minutes,
         consecutive_bot_messages=consecutive_bot,
         scored_messages=scored_messages,
         max_relevance_score=max_relevance,
@@ -428,8 +439,9 @@ async def gather_internal_state(character_name: str) -> InternalLifeState:
     except Exception as e:
         logger.error(f"[DailyLife] Error checking diary state: {e}")
     
-    # If no diary today, check if we have enough material BEFORE setting diary_overdue
-    if no_diary_today:
+    # If no diary today AND it's evening, check if we have enough material
+    # Diaries should be written in the evening (6pm-10pm) to reflect on the day
+    if no_diary_today and time_of_day == "evening":
         try:
             diary_manager = get_diary_manager(character_name)
             richness = await diary_manager.check_material_richness(hours=24)
@@ -467,8 +479,9 @@ async def gather_internal_state(character_name: str) -> InternalLifeState:
     except Exception as e:
         logger.error(f"[DailyLife] Error checking dream state: {e}")
     
-    # If it's night and no dream today, check if we have enough material
-    if time_of_day == "night" and no_dream_today:
+    # If it's morning and no dream today, check if we have enough material
+    # Dreams should be posted in the morning (6am-12pm) - "waking up and sharing the night's dreams"
+    if time_of_day == "morning" and no_dream_today:
         try:
             dream_manager = get_dream_manager(character_name)
             has_material = await dream_manager.check_material_sufficiency(hours=24)
@@ -683,23 +696,51 @@ async def gather_context(
         # Spontaneity check for quiet times
         # If no relevant content, maybe we just want to say something?
         # Only during waking hours (morning/midday/evening)
+        # AND only if channel has been actually quiet (no messages from anyone, including bots)
         is_waking_hours = time_of_day in ["morning", "midday", "evening"]
         wants_to_socialize = False
         
-        if is_waking_hours and not has_relevant_content and not has_pending_internal:
-             # Check if autonomous posting is enabled
-             if getattr(settings, "ENABLE_AUTONOMOUS_POSTING", False):
-                 # 1% chance per check (every 7 mins) -> ~1 post every 11 hours
-                 # This is conservative to avoid spam.
-                 import random
-                 if random.random() < 0.01:
-                     wants_to_socialize = True
-                     logger.info("[DailyLife] Spontaneity trigger! Waking up to socialize.")
+        # Check if any channel has had recent activity (human OR bot)
+        # Use minimum post interval as the "quiet" threshold (default 15 mins)
+        min_quiet_minutes = getattr(settings, "DISCORD_CHECK_MIN_POST_INTERVAL_MINUTES", 15)
+        min_last_message_age = min((cs.last_message_age_minutes for cs in channel_states), default=float("inf"))
+        channel_is_quiet = min_last_message_age >= min_quiet_minutes
+        
+        # Check if another bot recently posted a musing (within 60 mins)
+        # This prevents musing storms where multiple bots pile on
+        recent_bot_musing = False
+        musing_cooldown_minutes = 60
+        for cs in channel_states:
+            for sm in cs.scored_messages:
+                if sm.author_is_bot and "💭 MUSING" in sm.content:
+                    # Check age of this musing
+                    if hasattr(sm, 'created_at') and sm.created_at:
+                        msg_age = (datetime.now(timezone.utc) - sm.created_at).total_seconds() / 60
+                        if msg_age < musing_cooldown_minutes:
+                            recent_bot_musing = True
+                            logger.debug(f"[DailyLife] Recent musing detected ({msg_age:.1f}m ago), suppressing spontaneity")
+                            break
+            if recent_bot_musing:
+                break
+        
+        if is_waking_hours and not has_relevant_content and not has_pending_internal and channel_is_quiet and not recent_bot_musing:
+            # Check if autonomous posting is enabled
+            if getattr(settings, "ENABLE_AUTONOMOUS_POSTING", False):
+                # Spontaneity chance per check (default 1% every 7 mins -> ~1 post every 11 hours)
+                import random
+                spontaneity_chance = getattr(settings, "DAILY_LIFE_SPONTANEITY_CHANCE", 0.01)
+                if random.random() < spontaneity_chance:
+                    wants_to_socialize = True
+                    logger.info(f"[DailyLife] Spontaneity trigger! (chance={spontaneity_chance:.0%}, last_msg={min_last_message_age:.1f}m ago) Waking up to socialize.")
+        elif is_waking_hours and recent_bot_musing and not has_relevant_content:
+            logger.debug(f"[DailyLife] Skipping spontaneity - another bot mused recently (within {musing_cooldown_minutes}m)")
+        elif is_waking_hours and not channel_is_quiet and not has_relevant_content:
+            logger.debug(f"[DailyLife] Skipping spontaneity - channel active (last msg {min_last_message_age:.1f}m ago < {min_quiet_minutes}m threshold)")
 
         should_skip = not has_relevant_content and not has_pending_internal and not wants_to_socialize
         
         logger.info(f"[DailyLife] Internal: diary_overdue={internal_state.diary_overdue}, goals_stale={internal_state.goals_stale}, dreams_due={internal_state.dreams_could_generate}, absences={len(concerning_absences)}")
-        logger.info(f"[DailyLife] Discord: {len(channel_states)} channels, {len(mentions)} mentions, max_relevance={max_relevance:.2f}")
+        logger.info(f"[DailyLife] Discord: {len(channel_states)} channels, {len(mentions)} mentions, max_relevance={max_relevance:.2f}, last_msg={min_last_message_age:.1f}m")
         logger.info(f"[DailyLife] Decision: relevant={has_relevant_content}, pending={has_pending_internal}, social={wants_to_socialize} -> should_skip={should_skip}")
         
         if should_skip:

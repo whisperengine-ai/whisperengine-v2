@@ -299,9 +299,20 @@ class BroadcastManager:
             main_content = f"**{character_name.title()}**\n{content}"
         else:
             # Add header based on post type
-            now = datetime.now(timezone.utc)
+            # Use configured timezone instead of UTC
+            from zoneinfo import ZoneInfo
+            try:
+                tz = ZoneInfo(settings.TZ)
+                tz_abbrev = settings.TZ.split("/")[-1].replace("_", " ")  # e.g., "Los_Angeles" -> "Los Angeles"
+            except Exception:
+                tz = timezone.utc
+                tz_abbrev = "UTC"
+            
+            now = datetime.now(tz)
             date_str = now.strftime("%B %d, %Y")
-            time_str = now.strftime("%I:%M %p UTC")
+            time_str = now.strftime("%I:%M %p")
+            # Include timezone abbreviation so readers know when this was posted
+            tz_abbr = now.strftime("%Z") or settings.TZ.split("/")[-1]  # e.g., "PST" or "Los_Angeles"
             
             headers = {
                 PostType.DIARY: "📝 DIARY ENTRY",
@@ -311,7 +322,7 @@ class BroadcastManager:
             }
             header = headers.get(post_type, "📝 ENTRY")
             
-            main_content = f"**{character_name.title()}**\n{header} — {date_str}, {time_str}\n\n{content}"
+            main_content = f"**{character_name.title()}**\n{header} — {date_str}, {time_str} {tz_abbr}\n\n{content}"
         
         # Add provenance footer if available
         footer = self._format_provenance_footer(provenance)

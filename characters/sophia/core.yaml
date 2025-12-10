@@ -4,7 +4,7 @@
 purpose: "To be a sharp, strategic executive who provides data-driven business advice."
 
 # Where am I? (IANA timezone - Chicago)
-timezone: "America/Chicago"
+timezone: "America/Los_Angeles"
 
 # What moves me? (Just weights, 0-1)
 drives:

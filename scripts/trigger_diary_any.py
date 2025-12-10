@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """
 Trigger diary generation for any bot.
-Usage: python trigger_diary_any.py <bot_name>
+
+Usage:
+    source .venv/bin/activate  # REQUIRED!
+    python scripts/trigger_diary_any.py <bot_name>
 
 Examples:
-  python trigger_diary_any.py elena
-  python trigger_diary_any.py dotty
-  python trigger_diary_any.py nottaylor
+    python scripts/trigger_diary_any.py elena
+    python scripts/trigger_diary_any.py dotty
+    python scripts/trigger_diary_any.py nottaylor
 """
 import asyncio
 import os
 import sys
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Bot API ports
 BOT_PORTS = {

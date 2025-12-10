@@ -1023,9 +1023,16 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
             })
             
             # Add timestamp header with mood-aware formatting
-            now = datetime.now(timezone.utc)
+            # Use configured timezone instead of UTC
+            from zoneinfo import ZoneInfo
+            try:
+                tz = ZoneInfo(settings.TZ)
+            except Exception:
+                tz = timezone.utc
+            
+            now = datetime.now(tz)
             date_str = now.strftime("%B %d, %Y")
-            time_str = now.strftime("%I:%M %p UTC")
+            time_str = now.strftime("%I:%M %p")
             
             # Header and opener based on mood category
             mood_lower = (entry.mood or "").lower()

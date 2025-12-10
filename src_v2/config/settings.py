@@ -217,6 +217,7 @@ class Settings(BaseSettings):
     DISCORD_CHECK_RELEVANCE_THRESHOLD: float = 0.6  # Min embedding similarity to consider message relevant
     DISCORD_CHECK_WATCH_CHANNELS: str = ""  # Comma-separated list of channel IDs to watch (falls back to BOT_CONVERSATION_CHANNEL_ID)
     DISCORD_CHECK_MESSAGE_LOOKBACK: int = 50  # How many messages to look back per channel (higher = catches older mentions)
+    DAILY_LIFE_SPONTANEITY_CHANCE: float = 0.01  # Chance of spontaneously posting when quiet (0.01 = 1%, 0.10 = 10%)
 
     # --- Manipulation Detection & Timeout ---
     # Split into two categories for emergence research:

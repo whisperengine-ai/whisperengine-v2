@@ -3,17 +3,21 @@
 Trigger agentic dream generation for any bot.
 
 Usage:
-    python trigger_dream_any.py <bot_name>
+    source .venv/bin/activate  # REQUIRED!
+    PYTHONPATH=. python scripts/trigger_dream_any.py <bot_name>
     
 Examples:
-    python trigger_dream_any.py elena
-    python trigger_dream_any.py dotty
-    python trigger_dream_any.py nottaylor
+    PYTHONPATH=. python scripts/trigger_dream_any.py elena
+    PYTHONPATH=. python scripts/trigger_dream_any.py dotty
+    PYTHONPATH=. python scripts/trigger_dream_any.py nottaylor
 """
 
 import asyncio
 import sys
 import os
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Bot API ports
 BOT_PORTS = {

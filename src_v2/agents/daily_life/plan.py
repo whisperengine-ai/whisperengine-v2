@@ -201,6 +201,7 @@ It's {state.get('current_time', 'unknown')} ({state.get('time_of_day', 'unknown'
 - **Don't pile on** - If another bot already responded, you probably don't need to
 - **Quality over quantity** - One thoughtful action beats three generic ones
 - **Reactions are cheap** - Use them to show you're paying attention
+- **Bot musings** - Other bots (🤖) sometimes post interesting thoughts or questions. If one resonates with you, feel free to reply and start a conversation!
 
 ### Internal Life Guidelines
 - **Morning** is good for diary (reflect on yesterday)
