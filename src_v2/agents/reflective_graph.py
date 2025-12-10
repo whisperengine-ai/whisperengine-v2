@@ -1,7 +1,7 @@
 import asyncio
-import base64
 import httpx
 import operator
+import re
 from typing import List, Optional, Callable, Awaitable, Tuple, Dict, Any, TypedDict, Annotated, Union, Literal
 from loguru import logger
 from langsmith import traceable
@@ -11,7 +11,8 @@ from langgraph.graph import StateGraph, END
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.constants import should_use_base64
-from src_v2.utils.llm_retry import invoke_with_retry
+from src_v2.utils.image_utils import process_image_for_llm
+from src_v2.utils.llm_retry import invoke_with_retry, get_image_error_message
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, SearchEpisodesTool, LookupFactsTool,
     UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool, RecallBotConversationTool,
@@ -313,6 +314,10 @@ TOOL USAGE GUIDE:
             response = await invoke_with_retry(llm_with_tools.ainvoke, safe_messages, max_retries=3)
         except Exception as e:
             logger.error(f"LLM invocation failed: {e}")
+            # Check for image-specific errors (animated GIF, format issues, etc.)
+            image_error = get_image_error_message(e)
+            if image_error:
+                return {"messages": [AIMessage(content=image_error)], "steps": state['steps'] + 1}
             return {"messages": [AIMessage(content="I encountered an error while thinking.")], "steps": state['steps'] + 1}
 
         # Stream thought if callback exists and the model is reasoning (has content)
@@ -606,8 +611,9 @@ TOOL USAGE GUIDE:
                         try:
                             img_response = await client.get(img_url, timeout=10.0)
                             img_response.raise_for_status()
-                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                            # Process image (handles animated GIFs by extracting first frame)
                             mime_type = img_response.headers.get("content-type", "image/png")
+                            img_b64, mime_type = process_image_for_llm(img_response.content, mime_type)
                             user_message_content.append({
                                 "type": "image_url",
                                 "image_url": {"url": f"data:{mime_type};base64,{img_b64}"}

@@ -27,6 +27,7 @@ from influxdb_client.client.write.point import Point
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.config.constants import should_use_base64
+from src_v2.utils.image_utils import process_image_for_llm
 from src_v2.core.character import Character
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.classifier import ComplexityClassifier
@@ -39,6 +40,7 @@ from src_v2.evolution.feedback import feedback_analyzer
 from src_v2.evolution.goals import goal_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.utils.validation import ValidationError, validator
+from src_v2.utils.llm_retry import get_image_error_message
 from src_v2.evolution.manager import get_evolution_manager
 from src_v2.moderation.timeout_manager import timeout_manager
 
@@ -446,7 +448,11 @@ class AgentEngine:
             logger.exception(f"Error generating response ({error_type}): {e}")
             
             # Provide context-specific fallback messages
-            if "rate" in str(e).lower() or "quota" in str(e).lower():
+            # Check for image-specific errors first (animated GIF, format issues, etc.)
+            image_error = get_image_error_message(e)
+            if image_error:
+                return image_error
+            elif "rate" in str(e).lower() or "quota" in str(e).lower():
                 return "I'm experiencing high demand right now. Please try again in a moment."
             elif "context" in str(e).lower() or "token" in str(e).lower():
                 return "That's quite a lot to process at once. Could you break that down into smaller parts?"
@@ -818,7 +824,12 @@ class AgentEngine:
         except Exception as e:
             error_type = type(e).__name__
             logger.exception(f"Error generating streaming response ({error_type}): {e}")
-            yield "I'm having a bit of trouble thinking right now. Could you try rephrasing that?"
+            # Check for image-specific errors (animated GIF, format issues, etc.)
+            image_error = get_image_error_message(e)
+            if image_error:
+                yield image_error
+            else:
+                yield "I'm having a bit of trouble thinking right now. Could you try rephrasing that?"
 
 
 
@@ -1157,8 +1168,9 @@ Using the information above, formulate a final response to the user in my authen
                             img_response = await client.get(img_url, timeout=10.0)
                             img_response.raise_for_status()
                             
-                            img_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                            # Process image (handles animated GIFs by extracting first frame)
                             mime_type = img_response.headers.get("content-type", "image/png")
+                            img_b64, mime_type = process_image_for_llm(img_response.content, mime_type)
                             
                             input_content.append({
                                 "type": "image_url",

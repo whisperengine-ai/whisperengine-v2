@@ -21,6 +21,34 @@ RETRYABLE_STATUS_CODES = {
 }
 
 
+def get_image_error_message(error: Exception) -> Optional[str]:
+    """
+    Check if an error is related to image processing and return a user-friendly message.
+    
+    Returns:
+        A friendly error message if this is an image-related error, None otherwise.
+    """
+    error_str = str(error).lower()
+    
+    # Animated GIF error (Mistral, Claude, etc.)
+    if "animated gif" in error_str:
+        return "I can't process animated GIFs - could you send a still image instead? 🖼️"
+    
+    # Image format errors
+    if "unsupported image" in error_str or "invalid image" in error_str:
+        return "I had trouble processing that image format. Try sending a PNG or JPEG?"
+    
+    # Image too large
+    if "image too large" in error_str or "exceeds maximum" in error_str:
+        return "That image is too large for me to process. Could you try a smaller one?"
+    
+    # Image URL errors
+    if "could not fetch image" in error_str or "failed to download" in error_str:
+        return "I couldn't access that image. It might be private or expired."
+    
+    return None
+
+
 def is_retryable_error(error: Exception) -> bool:
     """Check if an error is transient and should be retried."""
     error_str = str(error).lower()
