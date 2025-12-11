@@ -33,6 +33,11 @@
 | [SPEC-E22](./SPEC-E22-ABSENCE_TRACKING.md) | E22 | Absence Tracking | ✅ Complete | Memory decay patterns |
 | [SPEC-E25](./SPEC-E25-GRAPH_WALKER_EXTENSIONS.md) | E25-29 | Graph Walker Extensions | ✅ Complete | Enrichment, temporal, user-facing |
 | [SPEC-E31](./SPEC-E31-DAILY_LIFE_GRAPH.md) | E31 | Daily Life Graph | 📋 Proposed | Stigmergic autonomous rhythm |
+| [SPEC-E34](./SPEC-E34-THE_DREAM_ACTIVE_IDLE.md) | E34 | The Dream (Active Idle) | 📋 Proposed | Background memory consolidation |
+| [SPEC-E35](./SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md) | E35 | The Synapse (Graph Unification) | ✅ Complete | Dual-write & Vector-First Traversal |
+| [SPEC-E36](./SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md) | E36 | The Stream (Real-time) | 📋 Proposed | Hybrid event-driven autonomy |
+| [SPEC-E37](./SPEC-E37-THE_SOUL_SELF_EDITING_IDENTITY.md) | E37 | The Soul (Self-Editing) | 📋 Proposed | Dynamic character evolution |
+| [SPEC-F01](./SPEC-F01-EMERGENT_UNIVERSE.md) | F1 | Emergent Universe | 📋 Future | Multi-bot ecosystem |
 | [SPEC-B05](./SPEC-B05-TRACE_LEARNING.md) | B5 | Trace Learning | ✅ Complete | Few-shot injection |
 | [SPEC-C02](./SPEC-C02-CHANNEL_LURKING.md) | C2 | Channel Lurking | ✅ Complete | Passive engagement |
 | [SPEC-S01](./SPEC-S01-CONTENT_SAFETY_REVIEW.md) | S1 | Content Safety Review | ✅ Complete | Output safety checks |
