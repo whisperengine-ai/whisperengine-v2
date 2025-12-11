@@ -7,6 +7,7 @@ Enables cross-bot discovery and reactions for emergent character awareness.
 
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 from enum import Enum
 import discord
@@ -324,18 +325,15 @@ class BroadcastManager:
             main_content = f"**{character_name.title()}**\n{content}"
         else:
             # Add header based on post type
-            now = datetime.now(timezone.utc)
-            
-            # Convert to Pacific Time
             try:
-                import pytz
-                pacific = pytz.timezone('America/Los_Angeles')
-                now_pacific = now.astimezone(pacific)
-                date_str = now_pacific.strftime("%B %d, %Y")
-                time_str = now_pacific.strftime("%I:%M %p PT")
-            except ImportError:
-                date_str = now.strftime("%B %d, %Y")
-                time_str = now.strftime("%I:%M %p UTC")
+                tz = ZoneInfo(settings.TIMEZONE)
+            except Exception:
+                logger.warning(f"Invalid timezone {settings.TIMEZONE}, falling back to UTC")
+                tz = timezone.utc
+                
+            now = datetime.now(tz)
+            date_str = now.strftime("%B %d, %Y")
+            time_str = now.strftime("%I:%M %p %Z")
             
             headers = {
                 PostType.DIARY: "📝 DIARY ENTRY",
