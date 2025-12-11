@@ -361,6 +361,8 @@ Format:
                     target_channel_ids = [cid.strip() for cid in settings.AUTONOMOUS_POSTING_CHANNEL_ID.split(",") if cid.strip()]
                 elif settings.BOT_CONVERSATION_CHANNEL_ID:
                     target_channel_ids = [cid.strip() for cid in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if cid.strip()]
+                elif settings.DISCORD_CHECK_WATCH_CHANNELS:
+                    target_channel_ids = [cid.strip() for cid in settings.DISCORD_CHECK_WATCH_CHANNELS.split(",") if cid.strip()]
                 
                 # If no specific channels set, consider all in snapshot (risky, maybe limit to known safe ones?)
                 # For now, if no target set, we don't post to avoid spamming random channels.
@@ -400,9 +402,9 @@ Format:
                     import random
                     target_ch = random.choice(eligible_channels)
                     
-                    # 10% chance to post if quiet (don't post EVERY time we check)
+                    # Use configured spontaneity chance (default 0.15)
                     # This prevents spamming exactly every X minutes
-                    if random.random() < 0.1: 
+                    if random.random() < settings.DAILY_LIFE_SPONTANEITY_CHANCE: 
                         actions.append(PlannedAction(
                             intent="post",
                             channel_id=target_ch.channel_id,

@@ -308,6 +308,19 @@ class Settings(BaseSettings):
     GRAPH_PRUNE_CONFIDENCE_GRACE_DAYS: int = 14  # Days before low-confidence facts are pruned
     GRAPH_PRUNE_DRY_RUN: bool = False  # If True, report what would be pruned without deleting
 
+    # --- Daily Life Graph (Phase E31) ---
+    ENABLE_DAILY_LIFE_GRAPH: bool = True
+    DISCORD_CHECK_WATCH_CHANNELS: str = ""  # Comma-separated list of channel IDs to watch
+    DISCORD_CHECK_INTERVAL_MINUTES: int = 7
+    DISCORD_CHECK_RELEVANCE_THRESHOLD: float = 0.55
+    DISCORD_CHECK_MAX_ACTIONS_PER_SESSION: int = 3
+    DAILY_LIFE_SPONTANEITY_CHANCE: float = 0.15  # Chance to initiate action when quiet
+
+    @property
+    def discord_check_watch_channels_list(self) -> list[str]:
+        """Parse watch channels from comma-separated string."""
+        return self._parse_list_string(self.DISCORD_CHECK_WATCH_CHANNELS)
+
     def _parse_list_string(self, value: str) -> list[str]:
         """Helper to parse comma-separated string or JSON list."""
         if not value.strip():

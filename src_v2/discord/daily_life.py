@@ -67,15 +67,18 @@ class DailyLifeScheduler:
         logger.info("Taking sensory snapshot...")
         
         # 1. Identify channels to watch
-        # For now, watch all channels the bot can see and has sent messages in recently?
-        # Or just all text channels in allowed guilds?
-        # Let's stick to a simple heuristic: All text channels in the main guild(s)
-        # where the bot has permission to read/send.
+        # If DISCORD_CHECK_WATCH_CHANNELS is set, only watch those.
+        # Otherwise, watch all text channels where we have permissions.
         
+        watch_list = settings.discord_check_watch_channels_list
         channels_data = []
         
         for guild in self.bot.guilds:
             for channel in guild.text_channels:
+                # Filter by watch list if configured
+                if watch_list and str(channel.id) not in watch_list:
+                    continue
+
                 if not channel.permissions_for(guild.me).read_messages:
                     continue
                 if not channel.permissions_for(guild.me).send_messages:
