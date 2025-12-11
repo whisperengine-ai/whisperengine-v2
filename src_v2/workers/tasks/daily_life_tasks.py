@@ -33,7 +33,25 @@ async def process_daily_life(ctx, snapshot_data: dict):
             
         key = f"{settings.REDIS_KEY_PREFIX}pending_actions:{bot_name}"
         
+        # Fetch existing pending actions to prevent duplicates
+        pending_items = await redis.lrange(key, 0, -1)
+        pending_target_ids = set()
+        for item in pending_items:
+            try:
+                if isinstance(item, bytes):
+                    item = item.decode('utf-8')
+                existing_cmd = json.loads(item)
+                if "target_message_id" in existing_cmd and existing_cmd["target_message_id"]:
+                    pending_target_ids.add(existing_cmd["target_message_id"])
+            except Exception:
+                pass
+        
         for cmd in commands:
+            # Skip if we already have a pending action for this message
+            if cmd.target_message_id and cmd.target_message_id in pending_target_ids:
+                logger.info(f"Skipping duplicate action for message {cmd.target_message_id}")
+                continue
+                
             # Serialize command
             cmd_json = cmd.model_dump_json()
             await redis.rpush(key, cmd_json)

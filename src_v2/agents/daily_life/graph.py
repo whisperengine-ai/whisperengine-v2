@@ -108,6 +108,7 @@ class DailyLifeGraph:
 
         snapshot = state["snapshot"]
         bot_name = snapshot.bot_name
+        bot_id = getattr(snapshot, "bot_id", None)
         
         interests = self._load_interests(bot_name)
         
@@ -115,7 +116,13 @@ class DailyLifeGraph:
         replied_to_ids = set()
         for channel in snapshot.channels:
             for msg in channel.messages:
-                if msg.author_name.lower() == bot_name.lower() and msg.reference_id:
+                is_own_message = False
+                if bot_id and msg.author_id == bot_id:
+                    is_own_message = True
+                elif msg.author_name.lower() == bot_name.lower():
+                    is_own_message = True
+                    
+                if is_own_message and msg.reference_id:
                     replied_to_ids.add(msg.reference_id)
 
         # Flatten messages from all channels
@@ -123,7 +130,13 @@ class DailyLifeGraph:
         for channel in snapshot.channels:
             for msg in channel.messages:
                 # Skip own messages
-                if msg.author_name.lower() == bot_name.lower():
+                is_own_message = False
+                if bot_id and msg.author_id == bot_id:
+                    is_own_message = True
+                elif msg.author_name.lower() == bot_name.lower():
+                    is_own_message = True
+                
+                if is_own_message:
                     continue
                 
                 # Skip other bots if bot conversations are disabled

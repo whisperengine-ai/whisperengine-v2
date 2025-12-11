@@ -21,6 +21,7 @@ class ChannelSnapshot(BaseModel):
 class SensorySnapshot(BaseModel):
     """Raw text data from Discord environment."""
     bot_name: str
+    bot_id: Optional[str] = None
     timestamp: datetime
     channels: List[ChannelSnapshot]
     mentions: List[MessageSnapshot]
