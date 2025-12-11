@@ -623,6 +623,29 @@ PRIVACY RESTRICTION ENABLED:
                      confidence=fact.confidence,
                      bot_name=bot_name)
 
+    @require_db("neo4j", default_return=[])
+    async def get_recent_observations_by(self, bot_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get recent observations (facts) extracted by a specific bot.
+        Used for dreams and diaries to reflect on what the bot has learned recently.
+        """
+        query = """
+        MATCH (u:User)-[r:FACT]->(o:Entity)
+        WHERE r.source_bot = $bot_name
+        RETURN u.id as user_id, r.predicate as predicate, o.name as object, toString(r.created_at) as created_at
+        ORDER BY r.created_at DESC
+        LIMIT $limit
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(query, bot_name=bot_name, limit=limit)
+                records = await result.data()
+                return records
+        except Exception as e:
+            logger.error(f"Failed to get recent observations by {bot_name}: {e}")
+            return []
+
     @require_db("neo4j", default_return="")
     async def get_user_knowledge(self, user_id: str, query: Optional[str] = None, limit: int = 10) -> str:
         """

@@ -300,8 +300,17 @@ class BroadcastManager:
         else:
             # Add header based on post type
             now = datetime.now(timezone.utc)
-            date_str = now.strftime("%B %d, %Y")
-            time_str = now.strftime("%I:%M %p UTC")
+            
+            # Convert to Pacific Time
+            try:
+                import pytz
+                pacific = pytz.timezone('America/Los_Angeles')
+                now_pacific = now.astimezone(pacific)
+                date_str = now_pacific.strftime("%B %d, %Y")
+                time_str = now_pacific.strftime("%I:%M %p PT")
+            except ImportError:
+                date_str = now.strftime("%B %d, %Y")
+                time_str = now.strftime("%I:%M %p UTC")
             
             headers = {
                 PostType.DIARY: "📝 DIARY ENTRY",
