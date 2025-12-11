@@ -1,4 +1,4 @@
-# WhisperEngine v3 Evolution Roadmap: The "Ship of Theseus"
+# WhisperEngine v2.5 Evolution Roadmap: The "Ship of Theseus"
 
 **Status:** Draft Proposal  
 **Date:** December 11, 2025  
@@ -10,19 +10,19 @@
 
 WhisperEngine v2 is a sophisticated **Reactive System**. It waits for input (message or timer), retrieves context, processes it, and responds. It is a "Dual-Process" architecture (Fast/Slow thinking).
 
-WhisperEngine v3 represents a shift to a **Predictive Processing System**. The agent should be "always on," constantly predicting the state of its world, optimizing its memory, and generating internal experiences (dreams) even when no user is present.
+WhisperEngine v2.5 represents a shift to a **Predictive Processing System**. The agent should be "always on," constantly predicting the state of its world, optimizing its memory, and generating internal experiences (dreams) even when no user is present.
 
-**The Key Insight:** We do not need a rewrite. The "Remote Brain" architecture (Phase E31) successfully decoupled cognition from the event loop. We can now evolve v2 into v3 component by component—a "Ship of Theseus" upgrade.
+**The Key Insight:** We do not need a rewrite. The "Remote Brain" architecture (Phase E31) successfully decoupled cognition from the event loop. We can now evolve v2 into v2.5 component by component—a "Ship of Theseus" upgrade within the same codebase.
 
 ### Guiding Principle: Observe First, Constrain Later
 
-Per ADR-003, we build infrastructure for emergence and observe what happens before adding constraints. The v3 phases follow this principle—each phase adds capability, not restriction.
+Per ADR-003, we build infrastructure for emergence and observe what happens before adding constraints. The v2.5 phases follow this principle—each phase adds capability, not restriction.
 
 ---
 
 ## 2. The Phased Evolution
 
-### Phase 3.1: The Synapse (Graph Unification) ⭐ PRIORITY
+### Phase 2.5.1: The Synapse (Graph Unification) ⭐ PRIORITY
 **Goal:** Unify Vector (Qdrant) and Graph (Neo4j) into a single "Holographic" memory system.  
 **Effort:** Medium | **Risk:** Low | **Status:** Recommended First
 
@@ -38,7 +38,7 @@ Currently, `MemoryManager` and `KnowledgeManager` are separate silos. We will gl
     - Low risk—additive code, doesn't break existing flows.
     - Clear deliverable—can be tested in isolation.
 
-### Phase 3.2: The Stream (Real-time Nervous System)
+### Phase 2.5.2: The Stream (Real-time Nervous System)
 **Goal:** Move from "Polling" to "Event Streaming" for true autonomy.  
 **Effort:** High | **Risk:** Medium | **Status:** Consider Simplification
 
@@ -59,7 +59,7 @@ Currently, `DailyLifeScheduler` polls every ~7 minutes. This creates a "stutteri
     3.  **Benefit:** 80% of the responsiveness with 20% of the complexity. No consumer groups, offset management, or dead-letter handling.
     4.  **The Poller remains as the safety net.**
 
-### Phase 3.3: The Dream (Active Idle State) ⭐ PRIORITY
+### Phase 2.5.3: The Dream (Active Idle State) ⭐ PRIORITY
 **Goal:** Make the bot productive when silent.  
 **Effort:** Medium | **Risk:** Low | **Status:** Recommended Second
 
@@ -75,9 +75,9 @@ Currently, if the bot decides "Ignore," the worker goes back to sleep.
     - Just the consolidation part—no synthetic bridging yet.
     - Observe effects before adding complexity.
 
-### Phase 3.4: The Soul (Standardization & Self-Editing)
+### Phase 2.5.4: The Soul (Standardization & Self-Editing)
 **Goal:** Make characters portable and capable of growth.  
-**Effort:** Low | **Risk:** High (Behavioral) | **Status:** Defer Until 3.1 & 3.3 Observed
+**Effort:** Low | **Risk:** High (Behavioral) | **Status:** Defer Until 2.5.1 & 2.5.3 Observed
 
 Currently, character identity is static (`character.md`).
 
@@ -104,7 +104,7 @@ Currently, character identity is static (`character.md`).
 
 ---
 
-## 3. Future Considerations (Phase 3.5+)
+## 3. Future Considerations (Phase 2.6+)
 
 These are not in the immediate roadmap but are worth documenting for future exploration.
 
@@ -134,7 +134,7 @@ Give agents simulated internal states:
 
 ## 4. Architecture Comparison
 
-| Feature | v2 (Current) | v3 (Target) |
+| Feature | v2.0 (Current) | v2.5 (Target) |
 | :--- | :--- | :--- |
 | **Core Loop** | Reactive (Stimulus → Response) | Predictive (Prediction → Error → Update) |
 | **Memory** | Dual (Vector OR Graph) | Holographic (Vector AND Graph) |
@@ -161,13 +161,13 @@ Based on the "Observe First" philosophy and solo-dev constraints:
 
 | Order | Phase | Rationale |
 |-------|-------|-----------|
-| 1 | **3.1 The Synapse** | Highest leverage, low risk, clear deliverable |
-| 2 | **3.3 The Dream (Lite)** | Low risk, natural extension of existing diary/dream system |
+| 1 | **2.5.1 The Synapse** | Highest leverage, low risk, clear deliverable |
+| 2 | **2.5.3 The Dream (Lite)** | Low risk, natural extension of existing diary/dream system |
 | — | *Observation Period* | Watch behavior before proceeding |
-| 3 | **3.2 Simplified Streams** | Only if polling feels too slow after observing 3.1 & 3.3 |
-| 4 | **3.4 The Soul** | Only after observing emergent behavior patterns |
-| 5+ | **3.5 Future Phases** | Observer, Forgetting, Proprioception—based on research findings |
+| 3 | **2.5.2 Simplified Streams** | Only if polling feels too slow after observing 2.5.1 & 2.5.3 |
+| 4 | **2.5.4 The Soul** | Only after observing emergent behavior patterns |
+| 5+ | **2.6 Future Phases** | Observer, Forgetting, Proprioception—based on research findings |
 
 ---
 
-**Next Step:** Begin **Phase 3.1 (The Synapse)** by adding `vector_id` to Neo4j nodes during the next memory refactor.
+**Next Step:** Begin **Phase 2.5.1 (The Synapse)** by adding `vector_id` to Neo4j nodes during the next memory refactor.

@@ -123,6 +123,10 @@ RULES:
                 # Entity name should be indexed/unique
                 await session.run("CREATE CONSTRAINT entity_name_unique IF NOT EXISTS FOR (e:Entity) REQUIRE e.name IS UNIQUE")
                 
+                # Phase 2.5.1: Memory node constraint for Graph Unification
+                # Memory id (vector_id from Qdrant) must be unique
+                await session.run("CREATE CONSTRAINT memory_id_unique IF NOT EXISTS FOR (m:Memory) REQUIRE m.id IS UNIQUE")
+                
                 # Register relationship types and properties to avoid warnings
                 # Create a dummy pattern and delete it immediately
                 await session.run("""
@@ -312,6 +316,87 @@ PRIVACY RESTRICTION ENABLED:
         except Exception as e:
             logger.error(f"Fact correction failed: {e}")
             return "Failed to update fact."
+
+    async def add_memory_node(self, user_id: str, vector_id: str, content: str, timestamp: str, source_type: str, bot_name: Optional[str] = None):
+        """
+        Creates a (:Memory) node in the graph linked to the user.
+        This enables 'Vector-First Traversal' (Phase 2.5.1).
+        """
+        if not db_manager.neo4j_driver:
+            return
+
+        query = """
+        MERGE (u:User {id: $user_id})
+        CREATE (m:Memory {
+            id: $vector_id,
+            content: $content,
+            timestamp: $timestamp,
+            source_type: $source_type,
+            bot_name: $bot_name
+        })
+        MERGE (u)-[:HAS_MEMORY]->(m)
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                await session.run(
+                    query, 
+                    user_id=user_id, 
+                    vector_id=vector_id, 
+                    content=content, 
+                    timestamp=timestamp, 
+                    source_type=source_type,
+                    bot_name=bot_name
+                )
+                logger.debug(f"Created graph memory node {vector_id}")
+        except Exception as e:
+            logger.error(f"Failed to create memory node: {e}")
+
+    async def get_memory_neighborhood(self, vector_ids: List[str], max_depth: int = 2) -> List[Dict[str, Any]]:
+        """
+        Given vector IDs from Qdrant search, retrieves the graph neighborhood.
+        This is the 'Vector-First Search' part of Phase 2.5.1.
+        
+        Returns facts and entities connected to the memories.
+        """
+        if not db_manager.neo4j_driver or not vector_ids:
+            return []
+        
+        # Query: Starting from Memory nodes, find connected User, then their Facts
+        query = """
+        MATCH (m:Memory)<-[:HAS_MEMORY]-(u:User)
+        WHERE m.id IN $vector_ids
+        OPTIONAL MATCH (u)-[r:FACT]->(e:Entity)
+        RETURN DISTINCT 
+            m.id as memory_id,
+            u.id as user_id,
+            e.name as entity,
+            r.predicate as predicate,
+            r.confidence as confidence
+        LIMIT 20
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(query, vector_ids=vector_ids)
+                records = await result.data()
+                
+                # Group by memory_id for easier consumption
+                neighborhood = []
+                for record in records:
+                    if record.get("entity"):
+                        neighborhood.append({
+                            "memory_id": record["memory_id"],
+                            "user_id": record["user_id"],
+                            "entity": record["entity"],
+                            "predicate": record["predicate"],
+                            "confidence": record.get("confidence", 1.0)
+                        })
+                
+                return neighborhood
+        except Exception as e:
+            logger.error(f"Failed to get memory neighborhood: {e}")
+            return []
 
     async def find_common_ground(self, user_id: str, bot_name: str) -> str:
         """

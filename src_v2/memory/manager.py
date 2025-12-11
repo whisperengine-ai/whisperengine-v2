@@ -244,11 +244,17 @@ class MemoryManager:
                 
                 # Ensure we have a parent ID for grouping chunks (use message_id or generate new UUID)
                 chunk_group_id = str(message_id) if message_id else str(uuid.uuid4())
+                timestamp_str = datetime.datetime.now().isoformat()
                 
                 points_to_upsert = []
+                vector_ids = []  # Track IDs for graph nodes
                 for chunk_content, chunk_idx in chunks:
                     # Generate embedding for this chunk
                     embedding = await self.embedding_service.embed_query_async(chunk_content)
+                    
+                    # Generate vector ID upfront for dual-write (Phase 2.5.1)
+                    vector_id = str(uuid.uuid4())
+                    vector_ids.append((vector_id, chunk_content))
                     
                     # Prepare payload with chunk metadata
                     payload = {
@@ -256,7 +262,7 @@ class MemoryManager:
                         "user_id": str(user_id),
                         "role": role,
                         "content": chunk_content,
-                        "timestamp": datetime.datetime.now().isoformat(),
+                        "timestamp": timestamp_str,
                         "channel_id": str(channel_id) if channel_id else None,
                         "message_id": str(message_id) if message_id else None,
                         "importance_score": importance_score,
@@ -279,7 +285,7 @@ class MemoryManager:
                     
                     points_to_upsert.append(
                         PointStruct(
-                            id=str(uuid.uuid4()),
+                            id=vector_id,
                             vector=embedding,
                             payload=payload
                         )
@@ -291,10 +297,30 @@ class MemoryManager:
                     points=points_to_upsert
                 )
                 
+                # Phase 2.5.1: Dual-write to Neo4j for Graph Unification
+                # Create graph nodes for each chunk
+                try:
+                    from src_v2.knowledge.manager import knowledge_manager
+                    for vid, chunk_content in vector_ids:
+                        await knowledge_manager.add_memory_node(
+                            user_id=str(user_id),
+                            vector_id=vid,
+                            content=smart_truncate(chunk_content, 500),
+                            timestamp=timestamp_str,
+                            source_type=source_type.value,
+                            bot_name=settings.DISCORD_BOT_NAME
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to create memory graph nodes for chunks: {e}")
+                
             else:
                 # Original path for short messages
                 # Generate embedding
                 embedding = await self.embedding_service.embed_query_async(content)
+                
+                # Generate vector ID upfront for dual-write (Phase 2.5.1)
+                vector_id = str(uuid.uuid4())
+                timestamp_str = datetime.datetime.now().isoformat()
                 
                 # Prepare payload
                 payload = {
@@ -302,7 +328,7 @@ class MemoryManager:
                     "user_id": str(user_id),
                     "role": role,
                     "content": content,
-                    "timestamp": datetime.datetime.now().isoformat(),
+                    "timestamp": timestamp_str,
                     "channel_id": str(channel_id) if channel_id else None,
                     "message_id": str(message_id) if message_id else None,
                     "importance_score": importance_score,
@@ -322,12 +348,28 @@ class MemoryManager:
                     collection_name=target_collection,
                     points=[
                         PointStruct(
-                            id=str(uuid.uuid4()),
+                            id=vector_id,
                             vector=embedding,
                             payload=payload
                         )
                     ]
                 )
+                
+                # Phase 2.5.1: Dual-write to Neo4j for Graph Unification
+                # Creates a (:Memory) node linked to the User for vector-first traversal
+                try:
+                    from src_v2.knowledge.manager import knowledge_manager
+                    await knowledge_manager.add_memory_node(
+                        user_id=str(user_id),
+                        vector_id=vector_id,
+                        content=smart_truncate(content, 500),  # Truncate for graph storage
+                        timestamp=timestamp_str,
+                        source_type=source_type.value,
+                        bot_name=settings.DISCORD_BOT_NAME
+                    )
+                except Exception as e:
+                    # Non-blocking: log but don't fail the memory write
+                    logger.warning(f"Failed to create memory graph node: {e}")
             
             # Log metrics
             if db_manager.influxdb_write_api:

@@ -28,7 +28,7 @@ docs/
 ├── IMPLEMENTATION_ROADMAP_OVERVIEW.md # Master roadmap & status
 │
 ├── roadmaps/                          # 🗺️ Future Planning
-│   ├── ROADMAP_V3_EVOLUTION.md        # The path to v3 (Predictive Processing)
+│   ├── ROADMAP_V2.5_EVOLUTION.md      # The path to v2.5 (Predictive Processing)
 │   └── PHASE_2_ROADMAP.md             # Detailed Phase 2 items
 │
 ├── adr/                               # 🏗️ Architecture Decision Records

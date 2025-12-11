@@ -31,10 +31,10 @@ AI agents develop rich behavior through **graph traversal and emergence**, not t
 
 **We're building the foundation for understanding how autonomous agents develop authentic behavior.**
 
-### 🔮 Future Roadmap: v3 Evolution
+### 🔮 Future Roadmap: v2.5 Evolution
 
 We have defined the path for the next major evolution of WhisperEngine.
-See: [`docs/roadmaps/ROADMAP_V3_EVOLUTION.md`](./roadmaps/ROADMAP_V3_EVOLUTION.md)
+See: [`docs/roadmaps/ROADMAP_V2.5_EVOLUTION.md`](./roadmaps/ROADMAP_V2.5_EVOLUTION.md)
 
 **Key Shifts:**
 - **Reactive → Predictive:** From "Stimulus-Response" to "Active Inference".
