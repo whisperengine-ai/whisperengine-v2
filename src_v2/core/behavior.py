@@ -13,6 +13,7 @@ class BehaviorProfile(BaseModel):
     drives: Dict[str, float] = Field(default_factory=dict, description="Intrinsic motivations (0.0-1.0).")
     constitution: List[str] = Field(default_factory=list, description="Hard constraints and ethical rules.")
     timezone: str = Field(default="America/Los_Angeles", description="Character's local timezone (IANA format).")
+    anchors: List[str] = Field(default_factory=list, description="Thematic anchors for knowledge graph exploration.")
 
     def to_prompt_section(self) -> str:
         """

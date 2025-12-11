@@ -353,6 +353,8 @@ Create a surreal dream echoing these experiences.""")
                             f"Graph walker found {len(graph_result.nodes)} nodes, "
                             f"{len(graph_result.clusters)} clusters (seeds: {len(all_seeds)} users/bots)"
                         )
+                        if material.graph_walk_interpretation:
+                            logger.info(f"Graph Walk Interpretation for {self.bot_name}: {material.graph_walk_interpretation[:200]}...")
                 except Exception as e:
                     logger.warning(f"GraphWalker failed (continuing without): {e}")
             

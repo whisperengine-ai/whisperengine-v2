@@ -103,14 +103,6 @@ class GraphWalker:
     """
     
     def __init__(self):
-        # Character-specific thematic anchors (boost scores for these topics)
-        self.thematic_anchors: Dict[str, List[str]] = {
-            "elena": ["ocean", "marine", "fish", "coral", "sea", "water", "biology"],
-            "aetheris": ["consciousness", "philosophy", "existence", "meaning", "ai"],
-            "dotty": ["art", "music", "theater", "performance", "creativity"],
-            "gabriel": ["history", "tea", "adventure", "outdoors", "nature"],
-            "nottaylor": ["music", "songwriting", "emotion", "authenticity"],
-        }
         # Cache for trust trajectories (E26)
         self._trust_trajectory_cache: Dict[str, List[float]] = {}
     
@@ -144,6 +136,7 @@ class GraphWalker:
         seed_ids: List[str],
         user_id: Optional[str] = None,
         bot_name: Optional[str] = None,
+        anchors: Optional[List[str]] = None,
         max_depth: int = 3,
         max_nodes: int = 50,
         serendipity: float = 0.1,
@@ -156,6 +149,7 @@ class GraphWalker:
             seed_ids: Starting node IDs (can be user IDs, entity names, etc.)
             user_id: Current user ID (for user-centric exploration)
             bot_name: Bot name (for thematic anchors)
+            anchors: Optional list of thematic anchors to boost scores
             max_depth: Maximum hops from seed nodes
             max_nodes: Maximum nodes to collect
             serendipity: Probability of keeping low-score nodes (0.0-1.0)
@@ -180,11 +174,81 @@ class GraphWalker:
         all_nodes: List[WalkedNode] = []
         all_edges: List[WalkedEdge] = []
         
-        # Get thematic anchors for this character
-        anchors = self.thematic_anchors.get(bot_name.lower(), []) if bot_name else []
+        # Use provided anchors or empty list
+        current_anchors = anchors or []
         
         # Cache for trust trajectories (E26)
         trust_trajectories: Dict[str, List[float]] = {}
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                while frontier and depth < max_depth and len(all_nodes) < max_nodes:
+                    # Get neighbors of all frontier nodes in one query
+                    new_nodes, new_edges = await self._expand_frontier(
+                        session=session,
+                        frontier=frontier,
+                        visited=visited,
+                        user_id=user_id,
+                        limit=max_nodes - len(all_nodes)
+                    )
+                    
+                    if not new_nodes:
+                        break
+                        
+                    # Score and filter nodes
+                    scored_nodes = []
+                    for node in new_nodes:
+                        score = await self._score_node(
+                            node, 
+                            user_id, 
+                            current_anchors, 
+                            depth, 
+                            trust_trajectories
+                        )
+                        node.score = score
+                        node.depth = depth + 1
+                        
+                        # Serendipity check: keep some low-score nodes
+                        is_serendipitous = False
+                        if score < min_score:
+                            if random.random() < serendipity:
+                                is_serendipitous = True
+                                node.is_serendipitous = True
+                            else:
+                                continue
+                        
+                        scored_nodes.append(node)
+                    
+                    # Sort by score
+                    scored_nodes.sort(key=lambda x: x.score, reverse=True)
+                    
+                    # Add to results
+                    all_nodes.extend(scored_nodes)
+                    all_edges.extend(new_edges)
+                    
+                    # Update frontier
+                    frontier = [n.id for n in scored_nodes]
+                    visited.update(frontier)
+                    
+                    depth += 1
+            
+            # Cluster results
+            clusters = self._cluster_nodes(all_nodes, all_edges)
+            
+            return GraphWalkResult(
+                nodes=all_nodes,
+                edges=all_edges,
+                clusters=clusters,
+                walk_stats={
+                    "total_nodes": len(all_nodes),
+                    "clusters_found": len(clusters),
+                    "serendipitous_nodes": sum(1 for n in all_nodes if n.is_serendipitous)
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Graph walk failed: {e}")
+            return GraphWalkResult(nodes=[], edges=[], clusters=[])
         
         try:
             async with db_manager.neo4j_driver.session() as session:
@@ -848,6 +912,17 @@ class GraphWalkerAgent:
         self.walker = GraphWalker()
         # Use main LLM for interpretation (it's a creative task)
         self.llm = create_llm(mode="main")
+        
+        # Load thematic anchors dynamically
+        self.anchors = []
+        try:
+            from src_v2.core.behavior import load_behavior_profile
+            # Assuming characters are in "characters/{name}"
+            profile = load_behavior_profile(f"characters/{character_name}")
+            if profile and profile.anchors:
+                self.anchors = profile.anchors
+        except Exception as e:
+            logger.warning(f"Failed to load anchors for {character_name}: {e}")
     
     async def explore_for_dream(
         self,
@@ -885,6 +960,7 @@ class GraphWalkerAgent:
             seed_ids=seed_ids,
             user_id=user_id,
             bot_name=self.character_name,
+            anchors=self.anchors,
             max_depth=3,
             max_nodes=getattr(settings, 'GRAPH_WALKER_MAX_NODES', 50),
             serendipity=0.15  # 15% chance for random exploration
@@ -915,6 +991,7 @@ class GraphWalkerAgent:
             seed_ids=seed_ids,
             user_id=user_id,
             bot_name=self.character_name,
+            anchors=self.anchors,
             max_depth=2,  # Shallower for diary (focused on today)
             max_nodes=30,
             serendipity=0.05  # Less serendipity for diary (more focused)
@@ -941,6 +1018,7 @@ class GraphWalkerAgent:
             seed_ids=seed_ids,
             user_id=user_id,
             bot_name=self.character_name,
+            anchors=self.anchors,
             max_depth=2,
             max_nodes=20,
             serendipity=0.0  # No serendipity for focused context
