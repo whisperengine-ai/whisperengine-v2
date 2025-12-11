@@ -114,8 +114,8 @@ class ActivityOrchestrator:
             logger.debug(f"[Orchestrator] Dead quiet roll={roll:.2f}")
             
             # Prioritize bot-to-bot conversations over solo posts
-            if roll < 0.15 and settings.ENABLE_BOT_CONVERSATIONS:
-                # 15% chance to start a bot-to-bot conversation
+            if roll < settings.BOT_CONVERSATION_CHANCE and settings.ENABLE_BOT_CONVERSATIONS:
+                # Chance to start a bot-to-bot conversation
                 # Add random delay (0-120 sec) to stagger bots
                 delay = random.uniform(0, 120)
                 logger.debug(f"[Orchestrator] Conversation delay: {delay:.1f}s")
