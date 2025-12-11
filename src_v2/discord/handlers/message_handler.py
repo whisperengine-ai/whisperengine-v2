@@ -230,8 +230,6 @@ class MessageHandler:
         
         # Fallback (should not happen if bot initialized correctly)
         return False
-            
-        return should_reply
 
     async def on_message(self, message: discord.Message) -> None:
         """Handles incoming Discord messages and generates AI responses.

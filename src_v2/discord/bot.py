@@ -142,6 +142,19 @@ class WhisperBot(commands.Bot):
             except Exception as e:
                 logger.debug(f"Error stopping orchestrator: {e}")
         
+        # Stop Daily Life schedulers
+        if hasattr(self, 'daily_scheduler') and self.daily_scheduler:
+            try:
+                await self.daily_scheduler.stop()
+            except Exception as e:
+                logger.debug(f"Error stopping daily scheduler: {e}")
+                
+        if hasattr(self, 'action_poller') and self.action_poller:
+            try:
+                await self.action_poller.stop()
+            except Exception as e:
+                logger.debug(f"Error stopping action poller: {e}")
+        
         # Call parent close
         await super().close()
         logger.info("WhisperBot closed")

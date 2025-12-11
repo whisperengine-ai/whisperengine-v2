@@ -1,16 +1,16 @@
 import asyncio
-import operator
+import json
 import os
 import yaml
 import random
 import numpy as np
-from typing import List, Dict, Any, TypedDict, Annotated, Literal, Optional
+from typing import List, Dict, Any, TypedDict, Literal, Optional
 from datetime import datetime, timedelta, timezone
 from loguru import logger
 from pydantic import BaseModel
 
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.runnables import Runnable
 
 from src_v2.agents.daily_life.models import SensorySnapshot, ActionCommand, MessageSnapshot
@@ -66,7 +66,7 @@ class DailyLifeGraph:
         try:
             path = f"characters/{bot_name}/lurk_triggers.yaml"
             if os.path.exists(path):
-                with open(path, "r") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
                     keywords = data.get("keywords", {})
                     return keywords.get("high_relevance", []) + keywords.get("medium_relevance", [])
@@ -180,7 +180,7 @@ class DailyLifeGraph:
                 # Embed messages
                 msg_texts = [str(m.content) for m in relevant_messages if m.content]
                 if not msg_texts:
-                     return {"scored_messages": []}
+                    return {"scored_messages": []}
 
                 msg_embeddings = list(self.embedding_service.model.embed(msg_texts))
                 
@@ -211,7 +211,6 @@ class DailyLifeGraph:
             except Exception as e:
                 logger.error(f"Embedding failed: {e}")
                 # Fallback: just add recent ones if we failed
-                pass
         
         # Sort by score
         scored.sort(key=lambda x: x.score, reverse=True)
@@ -330,7 +329,6 @@ Format:
                     ])
                     
                     # Parse JSON (simplified for now, ideally use structured output)
-                    import json
                     content = self._get_content_str(response.content)
                     if "```json" in content:
                         content = content.split("```json")[1].split("```")[0]
@@ -423,7 +421,6 @@ Format:
                 # Decide to post
                 if eligible_channels:
                     # Pick one random channel
-                    import random
                     target_ch = random.choice(eligible_channels)
                     
                     # Use configured spontaneity chance (default 0.15)
@@ -585,7 +582,6 @@ Output ONLY the emoji. No text.
                 
                 # 3. Decide engagement mode
                 interests = self._load_interests(snapshot.bot_name)
-                import random
                 topic = random.choice(interests) if interests else "life"
                 
                 # --- RICH CONTEXT FETCHING (The "Brain" Upgrade) ---

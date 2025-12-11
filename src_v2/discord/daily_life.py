@@ -1,8 +1,8 @@
 import asyncio
 import random
 import json
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime
+from typing import Optional
 from loguru import logger
 import discord
 from discord.ext import commands
@@ -211,7 +211,7 @@ class ActionPoller:
                 # Try fetching if not in cache
                 try:
                     channel = await self.bot.fetch_channel(int(cmd.channel_id))
-                except:
+                except (discord.NotFound, discord.Forbidden):
                     logger.warning(f"Channel {cmd.channel_id} not found.")
                     return
             
@@ -232,7 +232,7 @@ class ActionPoller:
                             message_id=int(cmd.target_message_id),
                             channel_id=channel.id
                         )
-                    except:
+                    except ValueError:
                         pass
                 
                 kwargs = {"content": cmd.content}
