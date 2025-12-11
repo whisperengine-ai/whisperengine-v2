@@ -62,6 +62,7 @@ from src_v2.workers.tasks.cron_tasks import (
     run_nightly_dream_generation,
     run_nightly_goal_strategist,
     run_weekly_drift_observation,
+    run_weekly_graph_pruning,
     run_session_timeout_processing
 )
 
@@ -164,6 +165,14 @@ class WorkerSettings:
             run_weekly_drift_observation,
             weekday=6,  # Sunday (0=Monday, 6=Sunday)
             hour=0,     # Midnight UTC
+            minute=0,
+            run_at_startup=False
+        ),
+        # Weekly graph pruning - runs Sunday at 2 AM UTC (Phase E24)
+        cron(
+            run_weekly_graph_pruning,
+            weekday=6,  # Sunday (0=Monday, 6=Sunday)
+            hour=2,     # 2 AM UTC (after drift observation)
             minute=0,
             run_at_startup=False
         ),

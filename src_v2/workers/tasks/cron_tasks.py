@@ -253,6 +253,52 @@ async def run_nightly_dream_generation(ctx: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
+async def run_weekly_graph_pruning(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Weekly cron job to run knowledge graph pruning.
+    
+    Runs once per week to clean up:
+    - Orphaned nodes
+    - Stale facts
+    - Duplicate entities
+    - Low-confidence facts
+    """
+    if not settings.ENABLE_GRAPH_PRUNING:
+        logger.info("Graph pruning disabled, skipping")
+        return {"success": False, "reason": "disabled"}
+    
+    try:
+        from src_v2.knowledge.pruning import run_scheduled_prune
+        
+        logger.info("Starting weekly knowledge graph pruning...")
+        stats = await run_scheduled_prune()
+        
+        total = (
+            stats.orphans_removed + 
+            stats.stale_facts_removed + 
+            stats.duplicates_merged + 
+            stats.low_confidence_removed
+        )
+        logger.info(
+            f"Graph pruning complete: {total} items cleaned "
+            f"(orphans={stats.orphans_removed}, stale={stats.stale_facts_removed}, "
+            f"duplicates={stats.duplicates_merged}, low_conf={stats.low_confidence_removed})"
+        )
+        
+        return {
+            "success": True,
+            "stats": {
+                "orphans": stats.orphans_removed,
+                "stale": stats.stale_facts_removed,
+                "duplicates": stats.duplicates_merged,
+                "low_confidence": stats.low_confidence_removed
+            }
+        }
+    except Exception as e:
+        logger.error(f"Graph pruning failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
 async def run_weekly_drift_observation(ctx: Dict[str, Any]) -> Dict[str, Any]:
     """
     Weekly cron job that observes personality drift for all active characters.

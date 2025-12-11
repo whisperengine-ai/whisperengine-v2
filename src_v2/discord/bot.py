@@ -5,7 +5,6 @@ from typing import Optional
 
 from src_v2.config.settings import settings
 from src_v2.agents.engine import AgentEngine
-from src_v2.discord.scheduler import ProactiveScheduler
 from src_v2.discord.orchestrator import ActivityOrchestrator
 from src_v2.discord.daily_life import DailyLifeScheduler, ActionPoller
 from src_v2.discord.lurk_detector import LurkDetector
@@ -17,7 +16,6 @@ class WhisperBot(commands.Bot):
     """Discord bot with AI character personality and memory systems."""
     
     agent_engine: AgentEngine
-    scheduler: ProactiveScheduler
     character_name: str
     
     def __init__(self) -> None:
@@ -35,7 +33,6 @@ class WhisperBot(commands.Bot):
         )
         
         self.agent_engine = AgentEngine()
-        self.scheduler = ProactiveScheduler(self)
         self.orchestrator = ActivityOrchestrator(self)
         self.daily_scheduler = DailyLifeScheduler(self)
         self.action_poller = ActionPoller(self)
