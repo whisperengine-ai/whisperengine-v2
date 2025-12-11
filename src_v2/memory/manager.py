@@ -397,7 +397,14 @@ class MemoryManager:
             logger.error(f"Failed to save summary vector: {e}")
             return None
 
-    async def search_memories(self, query: str, user_id: str, limit: int = 5, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def search_memories(
+        self, 
+        query: str, 
+        user_id: str, 
+        limit: int = 5, 
+        collection_name: Optional[str] = None,
+        time_range: Optional[Dict[str, str]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Searches for relevant episode memories in Qdrant with recency weighting.
         
@@ -406,6 +413,13 @@ class MemoryManager:
         - Recency: Exponential decay (1.0 for today → 0.5 for 7 days ago for episodes)
         
         Episodes decay faster than summaries since they're raw conversation fragments.
+        
+        Args:
+            query: Search query (use extracted search_terms for long messages)
+            user_id: User ID to filter by
+            limit: Max results to return
+            collection_name: Qdrant collection override
+            time_range: Optional {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"} for temporal filtering (SPEC-E32)
         """
         start_time = time.time()
         if not db_manager.qdrant_client:
@@ -508,6 +522,38 @@ class MemoryManager:
             # Log deduplication stats
             if len(results) > len(deduplicated):
                 logger.debug(f"Deduplicated {len(results) - len(deduplicated)} chunk duplicates from {len(results)} results")
+            
+            # Apply temporal filtering if time_range specified (SPEC-E32)
+            if time_range:
+                try:
+                    start_date = datetime.datetime.fromisoformat(time_range.get("start", "1970-01-01"))
+                    end_date = datetime.datetime.fromisoformat(time_range.get("end", "2099-12-31"))
+                    # Make end_date inclusive (end of day)
+                    end_date = end_date.replace(hour=23, minute=59, second=59)
+                    
+                    pre_filter_count = len(deduplicated)
+                    filtered = []
+                    for res in deduplicated:
+                        ts_str = res.get("timestamp")
+                        if ts_str:
+                            try:
+                                ts = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                                # Normalize to naive for comparison
+                                if ts.tzinfo:
+                                    ts = ts.replace(tzinfo=None)
+                                if start_date <= ts <= end_date:
+                                    filtered.append(res)
+                            except (ValueError, TypeError):
+                                # Can't parse timestamp, include anyway
+                                filtered.append(res)
+                        else:
+                            # No timestamp, include anyway
+                            filtered.append(res)
+                    
+                    deduplicated = filtered
+                    logger.debug(f"Time filter ({time_range['start']} to {time_range['end']}): {pre_filter_count} → {len(deduplicated)} results")
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Invalid time_range format, skipping filter: {e}")
             
             # Log metrics
             if db_manager.influxdb_write_api:

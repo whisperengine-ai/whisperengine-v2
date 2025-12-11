@@ -66,10 +66,10 @@ class MasterGraphAgent:
         workflow.add_node("character_agent", self.character_subgraph_node)
         workflow.add_node("fast_responder", self.fast_responder_node) # Fallback/Simple
         
-        # Edges
-        workflow.set_entry_point("context_fetcher")
-        workflow.add_edge("context_fetcher", "classifier")
-        workflow.add_edge("classifier", "prompt_builder")
+        # Edges - Classifier FIRST so extraction can inform context fetch
+        workflow.set_entry_point("classifier")
+        workflow.add_edge("classifier", "context_fetcher")
+        workflow.add_edge("context_fetcher", "prompt_builder")
         
         # Conditional Routing
         workflow.add_conditional_edges(
@@ -95,6 +95,20 @@ class MasterGraphAgent:
         character = state["character"]
         context_variables = state.get("context_variables", {})
         
+        # Use extracted search terms if available from classifier (SPEC-E32)
+        classification = state.get("classification", {})
+        query_extraction = classification.get("query") if classification else None
+        
+        # Determine the best query for memory search
+        if query_extraction and query_extraction.get("search_terms"):
+            search_query = query_extraction["search_terms"]
+            logger.debug(f"Using extracted search terms: {search_query}")
+        else:
+            search_query = user_input
+        
+        # Extract time range filter if present
+        time_range = query_extraction.get("time_range") if query_extraction else None
+        
         # Check if memories were pre-fetched (e.g., cross-bot pipeline)
         prefetched_memories = context_variables.get("prefetched_memories")
         
@@ -106,12 +120,14 @@ class MasterGraphAgent:
             logger.debug(f"Using {len(prefetched_memories)} pre-fetched memories")
             memories = prefetched_memories
         else:
-            # We'll await this separately or add to tasks if we want full parallelism
-            # But memory_manager.search_memories is already async.
-            # Let's group memory fetches
+            # Use extracted search_query instead of raw user_input
             collection_name = f"whisperengine_memory_{character.name}" if character.name else None
-            tasks["user_memories"] = memory_manager.search_memories(user_input, user_id, limit=5, collection_name=collection_name)
-            tasks["broadcast_memories"] = memory_manager.search_memories(user_input, "__broadcast__", limit=2, collection_name=collection_name)
+            tasks["user_memories"] = memory_manager.search_memories(
+                search_query, user_id, limit=5, collection_name=collection_name, time_range=time_range
+            )
+            tasks["broadcast_memories"] = memory_manager.search_memories(
+                search_query, "__broadcast__", limit=2, collection_name=collection_name, time_range=time_range
+            )
 
         # 2. Evolution (Trust, Mood, Feedback)
         tasks["evolution"] = self.context_builder.get_evolution_context(user_id, character.name)

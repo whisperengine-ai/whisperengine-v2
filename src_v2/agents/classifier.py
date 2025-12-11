@@ -1,5 +1,6 @@
 from typing import Literal, List, Optional, Dict, Any
 import time
+from datetime import datetime, timedelta
 from loguru import logger
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from pydantic import BaseModel, Field
@@ -17,9 +18,38 @@ from src_v2.image_gen.session import image_session, is_refinement_request
 # CONSCIOUSNESS_PROBING is observed but NOT blocked - character responds naturally
 ClassificationResult = Literal["SIMPLE", "COMPLEX_LOW", "COMPLEX_MID", "COMPLEX_HIGH", "JAILBREAK", "CONSCIOUSNESS_PROBING"]
 
+
+class QueryExtraction(BaseModel):
+    """Extracted query components for improved memory/knowledge retrieval.
+    
+    Only populated when relevant — most messages won't need extraction.
+    Ref: SPEC-E32-QUERY_EXTRACTION.md
+    """
+    search_terms: Optional[str] = Field(
+        default=None,
+        description="For messages >500 chars: extract key search terms (names, topics, events). Max 50 words."
+    )
+    time_range: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="If temporal reference detected (yesterday, last week, 3 days ago), ISO date range {start, end}."
+    )
+    entity_names: Optional[List[str]] = Field(
+        default=None,
+        description="Specific names of people, places, pets, or things mentioned for knowledge graph lookup."
+    )
+    memory_type: Optional[str] = Field(
+        default=None,
+        description="If user asks about specific memory type: 'dream', 'diary', 'conversation', 'summary', 'epiphany', 'gossip'."
+    )
+
+
 class ClassificationOutput(BaseModel):
     complexity: ClassificationResult = Field(description="The complexity level of the user request")
     intents: List[str] = Field(default_factory=list, description="List of detected intents (e.g., 'voice', 'image_self', 'search')")
+    query: Optional[QueryExtraction] = Field(
+        default=None,
+        description="Query extraction for improved retrieval. Only populate if message needs extraction."
+    )
 
 
 def _record_classification_metric(
@@ -228,6 +258,11 @@ NOTE: Only detect these for genuinely significant emotional expressions or life 
    - The word "emergence" in context of project discussion or legitimate technical talk
 """
 
+        # Calculate dates for temporal query extraction
+        today = datetime.now().strftime("%Y-%m-%d")
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+
         system_prompt = f"""Analyze the user input given the recent conversation context. 
 Classify the complexity and detect specific intents.
 
@@ -263,7 +298,29 @@ IMPORTANT CONTEXT RULES:
 - If recent history mentions documents, files, or images, and the user asks a follow-up question (like "search", "look for X", "what about Y", "can you see them", "pros and cons", "thoughts?"), classify as COMPLEX_MID since they likely refer to the document content and require analysis.
 - Short imperative commands like "do a search", "look it up", "find it" after document discussion = COMPLEX_LOW (needs memory search tool).
 
-Return a JSON object with "complexity" and "intents" (list of strings)."""
+QUERY EXTRACTION (for improved memory retrieval):
+When relevant, extract query components into the "query" field to help find the right memories:
+
+- search_terms: If message is long (>500 chars), extract the key search terms (names, topics, dates, events mentioned). Max 50 words. Focus on WHAT the user is asking about, not the full message.
+  Example: "I had an amazing day at the beach with my dog Max and we built sandcastles..." → "beach dog Max sandcastles"
+
+- time_range: If user references a time period for memory lookup, convert to ISO dates. Today is {today}.
+  - "yesterday" → {{"start": "{yesterday}", "end": "{today}"}}
+  - "last week" → {{"start": "{week_ago}", "end": "{today}"}}
+  - "3 days ago" → convert appropriately
+  - "in November" → {{"start": "2025-11-01", "end": "2025-11-30"}}
+
+- entity_names: If user mentions specific people, pets, places by name that should be looked up.
+  Example: "Do you remember my sister Sarah and her cat Luna?" → ["Sarah", "Luna"]
+
+- memory_type: If user asks about a specific type of memory.
+  Example: "What did I dream about?" → "dream"
+  Example: "Check your diary" → "diary"
+  Valid types: dream, diary, conversation, summary, epiphany, gossip
+
+Only include "query" field if extraction is relevant. Most short messages need no extraction.
+
+Return a JSON object with "complexity", "intents" (list of strings), and optionally "query" (QueryExtraction object)."""
 
         try:
             structured_llm = self.llm.with_structured_output(ClassificationOutput)
@@ -284,9 +341,14 @@ Return a JSON object with "complexity" and "intents" (list of strings)."""
                 has_documents=history_has_documents
             )
             
+            # Log query extraction if present (SPEC-E32)
+            if result.query:
+                logger.info(f"Query extraction: search_terms={result.query.search_terms}, time_range={result.query.time_range}, entity_names={result.query.entity_names}, memory_type={result.query.memory_type}")
+            
             return {
                 "complexity": result.complexity,
-                "intents": result.intents
+                "intents": result.intents,
+                "query": result.query.model_dump() if result.query else None
             }
             
         except Exception as e:
