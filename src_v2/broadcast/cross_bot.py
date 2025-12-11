@@ -40,8 +40,8 @@ REDIS_PREFIX_LOCK = "crossbot:lock:"              # Distributed lock for chain o
 # TTL constants
 CHAIN_EXPIRE_MINUTES = 10  # Chains expire after 10 min of inactivity
 BURST_EXPIRE_SECONDS = 30  # Burst detection window
-LOCK_EXPIRE_SECONDS = 30   # Max time a lock can be held (prevents deadlocks)
-INTER_BOT_DELAY_SECONDS = 10  # Minimum delay between ANY bot response in channel (prevents rapid fire)
+LOCK_EXPIRE_SECONDS = 60   # Max time a lock can be held (prevents deadlocks)
+INTER_BOT_DELAY_SECONDS = 5   # Minimum delay between ANY bot response in channel (prevents rapid fire)
 
 
 def _redis_key(key: str) -> str:

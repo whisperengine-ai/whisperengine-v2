@@ -1476,9 +1476,9 @@ class MessageHandler:
             try:
                 logger.info(f"Responding to cross-bot mention from {mention.mentioning_bot}")
                 
-                # Add natural delay (5-10 seconds) to simulate reading/thinking
-                # Increased from 2-5 to give other bots more time to see our lock
-                delay = random.uniform(5.0, 10.0)
+                # Add natural delay (30-45 seconds) to simulate reading/thinking
+                # Increased to prevent rapid-fire conversations
+                delay = random.uniform(30.0, 45.0)
                 await asyncio.sleep(delay)
                 
                 # Get character
