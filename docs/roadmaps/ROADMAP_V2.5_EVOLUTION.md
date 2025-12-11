@@ -33,6 +33,11 @@ Currently, `MemoryManager` and `KnowledgeManager` are separate silos. We will gl
     2.  **Vector-First Search:** Instead of just retrieving text chunks, we retrieve the *Node ID* from Qdrant, then query Neo4j for that node's neighborhood.
     3.  **Benefit:** Solves the context window problem. We don't just retrieve "what happened," we retrieve "what is related to what happened" (the structure).
 
+    > **Note on Scope (Dec 2025):**
+    > Initial implementation covers **Conversation Memories** only.
+    > Specialized memory types (Dreams, Diaries, Summaries) currently remain Vector-only.
+    > Future work will extend the graph schema to support these types (likely requiring a `(:Bot)` node anchor).
+
 *   **Why This First:**
     - Highest leverage change—unlocks explanation, serendipity, and compression.
     - Low risk—additive code, doesn't break existing flows.
