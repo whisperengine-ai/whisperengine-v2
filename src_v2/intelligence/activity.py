@@ -238,8 +238,7 @@ class ServerActivityMonitor:
             # Results are interleaved: [count1, guild1, count2, guild2, ...]
             for i, (channel_id, last_active) in enumerate(active_channels):
                 count = results[i * 2]
-                guild_id_bytes = results[i * 2 + 1]
-                guild_id = guild_id_bytes.decode() if guild_id_bytes else None
+                guild_id = results[i * 2 + 1]
                 
                 if count > 0:
                     signals.append(ActivitySignal(
