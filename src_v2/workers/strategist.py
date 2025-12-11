@@ -8,8 +8,53 @@ Note: The legacy GoalStrategist class was removed in Dec 2024.
 All strategy generation now uses the LangGraph-based strategist_graph_agent.
 """
 from typing import Dict, Any
+from datetime import datetime
 from loguru import logger
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
+
+# Redis key prefix for goal strategist locks
+STRATEGIST_LOCK_PREFIX = "strategist:generation:lock:"
+STRATEGIST_LOCK_TTL = 600  # 10 minutes - enough for strategist run
+
+
+async def _acquire_strategist_lock(bot_name: str) -> bool:
+    """
+    Acquire a distributed lock for goal strategist.
+    
+    Uses Redis SET NX (set if not exists) with TTL to prevent
+    multiple strategist runs for the same character on the same day.
+    
+    Returns:
+        True if lock acquired, False if another job is already running
+    """
+    if not db_manager.redis_client:
+        logger.warning("Redis not available, skipping lock")
+        return True  # Allow to proceed without lock
+    
+    try:
+        # Use today's date (UTC) in the lock key so it resets daily
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        lock_key = f"{STRATEGIST_LOCK_PREFIX}{bot_name}:{today}"
+        
+        # SET NX with TTL - atomic operation
+        result = await db_manager.redis_client.set(
+            lock_key,
+            datetime.utcnow().isoformat(),
+            nx=True,  # Only set if not exists
+            ex=STRATEGIST_LOCK_TTL  # Expire after 10 minutes
+        )
+        
+        if result:
+            logger.debug(f"Acquired strategist lock for {bot_name} on {today}")
+            return True
+        else:
+            logger.info(f"Strategist lock already held for {bot_name} on {today}, skipping")
+            return False
+            
+    except Exception as e:
+        logger.warning(f"Failed to acquire strategist lock: {e}")
+        return True  # Allow to proceed on error
 
 
 async def run_goal_strategist(_ctx: Dict[str, Any], bot_name: str) -> Dict[str, Any]:
@@ -28,6 +73,15 @@ async def run_goal_strategist(_ctx: Dict[str, Any], bot_name: str) -> Dict[str, 
     if not settings.ENABLE_GOAL_STRATEGIST:
         logger.debug("Goal strategist is disabled, skipping")
         return {"success": False, "reason": "disabled"}
+    
+    # Acquire distributed lock to prevent duplicate runs
+    if not await _acquire_strategist_lock(bot_name):
+        return {
+            "success": True,
+            "skipped": True,
+            "reason": "lock_held",
+            "character_name": bot_name
+        }
     
     # Use the LangGraph-based strategist agent
     logger.info(f"Running LangGraph Strategist Agent for {bot_name}")

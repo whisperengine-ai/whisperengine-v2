@@ -4,6 +4,64 @@ from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
+from src_v2.core.database import db_manager
+
+# Redis key prefix for diary generation locks
+DIARY_LOCK_PREFIX = "diary:generation:lock:"
+DIARY_LOCK_TTL = 600  # 10 minutes - enough for diary generation
+
+
+async def _acquire_diary_lock(character_name: str) -> bool:
+    """
+    Acquire a distributed lock for diary generation.
+    
+    Uses Redis SET NX (set if not exists) with TTL to prevent
+    multiple diary generations for the same character on the same day.
+    
+    Returns:
+        True if lock acquired, False if another job is already running
+    """
+    if not db_manager.redis_client:
+        logger.warning("Redis not available, skipping lock")
+        return True  # Allow to proceed without lock
+    
+    try:
+        # Use today's date (UTC) in the lock key so it resets daily
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        lock_key = f"{DIARY_LOCK_PREFIX}{character_name}:{today}"
+        
+        # SET NX with TTL - atomic operation
+        result = await db_manager.redis_client.set(
+            lock_key,
+            datetime.utcnow().isoformat(),
+            nx=True,  # Only set if not exists
+            ex=DIARY_LOCK_TTL  # Expire after 10 minutes
+        )
+        
+        if result:
+            logger.debug(f"Acquired diary lock for {character_name} on {today}")
+            return True
+        else:
+            logger.info(f"Diary lock already held for {character_name} on {today}, skipping")
+            return False
+            
+    except Exception as e:
+        logger.warning(f"Failed to acquire diary lock: {e}")
+        return True  # Allow to proceed on error
+
+
+async def _release_diary_lock(character_name: str) -> None:
+    """Release the diary generation lock (optional - TTL handles cleanup)."""
+    if not db_manager.redis_client:
+        return
+    
+    try:
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        lock_key = f"{DIARY_LOCK_PREFIX}{character_name}:{today}"
+        await db_manager.redis_client.delete(lock_key)
+        logger.debug(f"Released diary lock for {character_name}")
+    except Exception as e:
+        logger.debug(f"Failed to release diary lock: {e}")
 
 
 async def run_diary_generation(
@@ -31,6 +89,16 @@ async def run_diary_generation(
     """
     if not settings.ENABLE_CHARACTER_DIARY:
         return {"success": False, "reason": "disabled"}
+    
+    # Acquire distributed lock to prevent duplicate diaries
+    if not override:
+        if not await _acquire_diary_lock(character_name):
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "lock_held",
+                "character_name": character_name
+            }
     
     logger.info(f"Generating diary entry for {character_name} (override={override})")
     
