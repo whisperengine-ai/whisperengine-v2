@@ -200,54 +200,35 @@ class MessageHandler:
         if activity_level > 1.0: # > 30 msgs/30min (Very Active)
             return False
             
-        # 2. Check Character Relevance
-        character = character_manager.get_character(self.bot.character_name)
-        if not character:
-            return False
-            
-        # Get keywords from goals and drives
-        keywords = set()
+        # 2. Use LurkDetector (Phase 4) - Enforces cooldowns and relevance scoring
+        if self.bot.lurk_detector:
+            try:
+                # Get trust score for context boost
+                trust_score = await trust_manager.get_trust_score(str(message.author.id), self.bot.character_name)
+                
+                result = await self.bot.lurk_detector.analyze(
+                    message=message.content,
+                    channel_id=str(message.channel.id),
+                    user_id=str(message.author.id),
+                    author_is_bot=message.author.bot,
+                    has_mentions=len(message.mentions) > 0,
+                    user_trust_score=trust_score,
+                    channel_lurk_enabled=True  # We could check channel settings here
+                )
+                
+                if result.should_respond:
+                    logger.info(f"Lurk triggered: {result.trigger_reason} (conf={result.confidence:.2f})")
+                    # CRITICAL: Record the response to enforce cooldowns!
+                    await self.bot.lurk_detector.record_response(str(message.channel.id), str(message.author.id))
+                    return True
+                    
+                return False
+            except Exception as e:
+                logger.error(f"Lurk detector failed: {e}")
+                return False
         
-        # From drives (keys)
-        if character.behavior and character.behavior.drives:
-            keywords.update(character.behavior.drives.keys())
-            
-        # From goals
-        goals = goal_manager.load_goals(self.bot.character_name)
-        if goals:
-            for goal in goals:
-                # Add significant words from description (simple heuristic)
-                words = [w.lower() for w in goal.description.split() if len(w) > 4]
-                keywords.update(words)
-                keywords.add(goal.category.lower())
-        
-        # Calculate relevance score
-        content_lower = message.content.lower()
-        words = content_lower.split()
-        if not words:
-            return False
-            
-        matches = sum(1 for w in words if w in keywords)
-        relevance = matches / len(words) if len(words) > 0 else 0
-        
-        # 3. Probabilistic Decision
-        base_chance = 0.02  # 2% chance by default
-        
-        if "?" in message.content:
-            base_chance += 0.05  # +5% if it's a question
-            
-        if relevance > 0.05:
-            base_chance += 0.1  # +10% if relevant
-            
-        if relevance > 0.2:
-            base_chance += 0.2  # +20% if very relevant
-            
-        # Cap at 30%
-        chance = min(0.3, base_chance)
-        
-        should_reply = random.random() < chance
-        if should_reply:
-            logger.info(f"Autonomous reply triggered: chance={chance:.2f}, relevance={relevance:.2f}")
+        # Fallback (should not happen if bot initialized correctly)
+        return False
             
         return should_reply
 

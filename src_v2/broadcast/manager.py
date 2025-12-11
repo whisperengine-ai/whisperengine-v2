@@ -199,6 +199,19 @@ class BroadcastManager:
             # Update rate limit tracker
             self._last_post_times[character_name] = datetime.now(timezone.utc)
             
+            # Update Redis for persistence across restarts
+            if db_manager.redis_client:
+                try:
+                    key = _redis_key(f"broadcast:last_post:{character_name}")
+                    # Set with TTL
+                    await db_manager.redis_client.setex(
+                        key,
+                        settings.BOT_BROADCAST_MIN_INTERVAL_MINUTES * 60,
+                        datetime.now(timezone.utc).isoformat()
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to update broadcast rate limit in Redis: {e}")
+            
             if len(sent_messages) < len(channel_ids):
                 logger.warning(f"Broadcast partially failed for {character_name}: posted to {len(sent_messages)}/{len(channel_ids)} channels")
             else:
@@ -208,6 +221,18 @@ class BroadcastManager:
     
     async def _can_post(self, character_name: str) -> bool:
         """Check if character can post (respects rate limit)."""
+        # Use Redis if available for persistence across restarts
+        if db_manager.redis_client:
+            try:
+                key = _redis_key(f"broadcast:last_post:{character_name}")
+                ttl = await db_manager.redis_client.ttl(key)
+                if ttl > 0:
+                    return False
+                return True
+            except Exception as e:
+                logger.warning(f"Redis rate limit check failed: {e}")
+        
+        # Fallback to in-memory
         last_post = self._last_post_times.get(character_name)
         if not last_post:
             return True
