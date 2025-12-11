@@ -326,6 +326,9 @@ TOOL USAGE GUIDE:
         # thinking/status message, as it will be streamed as the actual response.
         if isinstance(response, AIMessage) and response.content and callback:
             if response.tool_calls:
+                # Log the raw content for debugging (some models include tool syntax in content)
+                content_str = str(response.content)
+                logger.debug(f"AIMessage with tool_calls - content preview: {content_str[:200]}...")
                 # Show the reasoning that explains why the tool is being called
                 await callback(f"💭 {response.content}")
 
@@ -699,7 +702,11 @@ TOOL USAGE GUIDE:
         last_message = messages[-1]
         
         if isinstance(last_message, AIMessage):
-            return str(last_message.content), messages
+            final_content = str(last_message.content)
+            # Log for debugging: detect if final response contains tool-like syntax
+            if any(marker in final_content for marker in ['{"', '"}', 'search_my_thoughts', 'mem_search', 'full_memory']):
+                logger.warning(f"Final AIMessage contains tool-like syntax. Has tool_calls: {bool(last_message.tool_calls)}. Preview: {final_content[:300]}...")
+            return final_content, messages
         
         # Fallback if we ended on a tool message or something else
         # Try to find the last AI message in the chain
