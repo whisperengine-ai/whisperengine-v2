@@ -439,6 +439,37 @@ PRIVACY RESTRICTION ENABLED:
 
         await self.save_facts(user_id, facts, bot_name)
 
+    async def _get_known_bot_names(self) -> set:
+        """
+        Get known bot names from Redis cache or filesystem.
+        Used to prevent storing bot names as entities in the Knowledge Graph.
+        """
+        cache_key = "system:known_bot_names"
+        
+        # 1. Try Redis
+        cached_names = await cache_manager.get_json(cache_key)
+        if cached_names:
+            return set(cached_names)
+            
+        # 2. Fallback to Filesystem
+        bot_names = {
+            "sage", "becky", "silas", "liln"  # External/Aliases
+        }
+        try:
+            char_dir = Path("characters")
+            if char_dir.exists():
+                for p in char_dir.iterdir():
+                    if p.is_dir() and (p / "character.md").exists():
+                        bot_names.add(p.name.lower())
+            
+            # Cache for 1 hour
+            await cache_manager.set_json(cache_key, list(bot_names), ttl=3600)
+            
+        except Exception as e:
+            logger.warning(f"Failed to load dynamic bot names: {e}")
+            
+        return bot_names
+
     @retry_db_operation(max_retries=3)
     @require_db("neo4j")
     async def save_facts(self, user_id: str, facts: List[Fact], bot_name: str = "unknown"):
@@ -453,12 +484,8 @@ PRIVACY RESTRICTION ENABLED:
         # Filter out common LLM hallucinations before saving to Neo4j
         valid_facts = []
         
-        # Known bot/character names that should never be entities
-        BOT_NAMES = {
-            "elena", "nottaylor", "dotty", "aria", "dream", "jake", 
-            "marcus", "ryan", "sophia", "gabriel", "aethys", "aetheris",
-            "sage", "becky", "silas", "liln"  # Include character aliases
-        }
+        # Get known bot names (cached)
+        BOT_NAMES = await self._get_known_bot_names()
         
         # Meta-categories that are useless as facts
         INVALID_OBJECTS = {
