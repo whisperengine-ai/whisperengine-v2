@@ -44,6 +44,8 @@ class EmbeddingService:
 
     def embed_query(self, text: str) -> List[float]:
         """Embed a single string query."""
+        if not text or not isinstance(text, str):
+            raise ValueError(f"embed_query requires a non-empty string, got: {type(text)}")
         model, lock = self._model_entry
         with lock:
             # list(model.embed([text])) returns a generator of numpy arrays

@@ -501,7 +501,7 @@ async def run_session_timeout_processing(ctx: Dict[str, Any]) -> Dict[str, Any]:
             await session_manager.close_session(session_id)
             
             if not messages:
-                logger.warning(f"Session {session_id} has no messages, skipping processing.")
+                logger.debug(f"Session {session_id} has no messages, skipping processing.")
                 continue
                 
             # 4. Trigger post-session processing using the canonical pipeline
