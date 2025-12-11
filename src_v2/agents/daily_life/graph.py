@@ -673,6 +673,19 @@ RESPOND NATURALLY - either:
 Stay in character. Be conversational, not preachy. 1-3 sentences max.
 
 YOUR MESSAGE (just the message, no meta-commentary):"""
+                    
+                    resp = await self.executor_llm.ainvoke([
+                        SystemMessage(content=full_system_prompt),
+                        HumanMessage(content=prompt)
+                    ])
+                    
+                    # UPGRADE TO REPLY: If we are responding to a specific bot, make it a real reply
+                    commands.append(ActionCommand(
+                        action_type="reply",
+                        channel_id=plan.channel_id,
+                        target_message_id=recent_bot.id,
+                        content=self._get_content_str(resp.content)
+                    ))
                 else:
                     # No other bots - spark a new conversation
                     prompt = f"""You're in a quiet channel and want to start a conversation.
@@ -690,15 +703,15 @@ Stay in character. 1-3 sentences max.
 
 YOUR MESSAGE (just the message, no meta-commentary):"""
                 
-                resp = await self.executor_llm.ainvoke([
-                    SystemMessage(content=full_system_prompt),
-                    HumanMessage(content=prompt)
-                ])
-                commands.append(ActionCommand(
-                    action_type="post",
-                    channel_id=plan.channel_id,
-                    content=self._get_content_str(resp.content)
-                ))
+                    resp = await self.executor_llm.ainvoke([
+                        SystemMessage(content=full_system_prompt),
+                        HumanMessage(content=prompt)
+                    ])
+                    commands.append(ActionCommand(
+                        action_type="post",
+                        channel_id=plan.channel_id,
+                        content=self._get_content_str(resp.content)
+                    ))
         
         return {"final_commands": commands}
 
