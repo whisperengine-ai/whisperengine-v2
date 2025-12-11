@@ -646,7 +646,7 @@ async def find_similar_users(
 
 - `src_v2/knowledge/recommendations.py` — Recommendation logic
 - `src_v2/knowledge/walker.py` — Add `find_similar_users()` method
-- `src_v2/discord/scheduler.py` — Optional: proactive recommendation messages
+- `src_v2/discord/daily_life.py` — Optional: proactive recommendation messages
 
 ---
 

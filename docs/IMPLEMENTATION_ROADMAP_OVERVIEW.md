@@ -1423,7 +1423,7 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 **Key Changes:**
 - Add `timezone`, `quiet_hours_start/end` columns to database
 - Timezone inference from message activity patterns
-- `_is_appropriate_time()` check in `ProactiveScheduler`
+- `_is_appropriate_time()` check in Daily Life system
 - Optional `/timezone` command for explicit setting
 
 **Spec:** [PROACTIVE_TIMEZONE_AWARENESS.md](./spec/SPEC-S04-PROACTIVE_TIMEZONE_AWARENESS.md)
@@ -1901,7 +1901,9 @@ def get_jittered_time(base_hour: int, base_minute: int, jitter_minutes: int) -> 
 
 **Files:**
 - `src_v2/config/settings.py` (add jitter settings)
-- `src_v2/discord/scheduler.py` (apply jitter to cron schedules)
+- `src_v2/workers/tasks/cron_tasks.py` (jitter applied in worker cron schedules)
+
+> **Note:** Proactive scheduling moved from `src_v2/discord/scheduler.py` (removed) to `src_v2/discord/daily_life.py` (Daily Life system).
 
 ---
 

@@ -287,7 +287,7 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### Discord Integration
 - `src_v2/discord/bot.py`: Event handlers (`on_message`, `on_reaction_add`), message routing
-- `src_v2/discord/scheduler.py`: Proactive engagement (Phase 13 complete)
+- `src_v2/discord/daily_life.py`: DailyLifeScheduler and ActionPoller for autonomous activity
 - `src_v2/discord/orchestrator.py`: ActivityOrchestrator for autonomous server activity (E15)
 - `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
 - `src_v2/agents/reaction_agent.py`: Autonomous emoji reactions (Phase E15.1)

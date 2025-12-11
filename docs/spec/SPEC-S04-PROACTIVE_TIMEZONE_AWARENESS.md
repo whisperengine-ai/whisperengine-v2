@@ -28,7 +28,7 @@ The proactive messaging system can reach out to users based on drives (concern, 
 **Implementation:**
 1. **Migration:** Added `timezone`, `timezone_confidence`, `quiet_hours_start`, `quiet_hours_end` columns to `v2_user_relationships`
 2. **Inference:** `src_v2/intelligence/timezone.py` - Analyzes message timestamps to infer user timezone
-3. **Enforcement:** `src_v2/discord/scheduler.py` - Checks quiet hours before proactive messages
+3. **Enforcement:** Daily Life system (`src_v2/discord/daily_life.py`) - Checks quiet hours before proactive messages
 4. **Background:** Timezone inference runs during `run_relationship_update` worker task
 
 **The Problem (Solved):**
@@ -106,10 +106,10 @@ class TimezoneInferrer:
 
 ### 3. Quiet Hours Check
 
-Update `src_v2/discord/scheduler.py`:
+Update `src_v2/discord/daily_life.py` (or the proactive action handler):
 
 ```python
-// In ProactiveScheduler.check_user()
+// In the Daily Life action evaluation
 async def check_user(self, user_id: str, ...) -> None:
     // ... existing drive evaluation ...
     
@@ -244,6 +244,7 @@ proactive_timing = {
 
 ## 📚 Related Documents
 
-- `src_v2/discord/scheduler.py` - Proactive scheduler implementation
+- `src_v2/discord/daily_life.py` - Daily Life system (proactive messaging)
+- `src_v2/intelligence/timezone.py` - Timezone inference
 - `docs/roadmaps/USER_TIMEZONE_SUPPORT.md` - General timezone support (E7)
 - `docs/roadmaps/completed/ROADMAP_V2_PHASE13.md` - Proactive engagement phase

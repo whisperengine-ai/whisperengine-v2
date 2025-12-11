@@ -285,15 +285,17 @@ Session ends (20+ messages OR cross-bot chain completes)
 
 ## Scheduled Tasks (Cron)
 
-Some tasks run on a schedule rather than being triggered by events:
+All scheduled tasks run in the **worker process**, not in individual bot processes. This ensures tasks run exactly once regardless of how many bot instances are active.
 
 | Task | Schedule | What It Does |
 |------|----------|--------------|
-| Diary Generation | Nightly (configurable) | Each bot writes a diary entry |
-| Dream Generation | Nightly (configurable) | Each bot generates a dream |
-| Goal Strategist | Nightly | Analyzes goals and generates strategies |
-| Graph Pruning | Weekly | Cleans up stale graph edges |
-| Drift Observation | Daily | Monitors character behavior drift |
+| Diary Generation | Every 30 min (timezone-aware) | Each bot writes a diary entry at their local 8:30 PM |
+| Dream Generation | Every 30 min (timezone-aware) | Each bot generates a dream at their local 6:30 AM |
+| Goal Strategist | Every 30 min (timezone-aware) | Analyzes goals and generates strategies at local 11 PM |
+| Graph Pruning | Sunday @ 2 AM UTC | Cleans up stale graph edges (shared Neo4j) |
+| Drift Observation | Sunday @ midnight UTC | Monitors character behavior drift |
+| Graph Enrichment | Daily @ 3 AM UTC | Discovers implicit graph relationships |
+| Session Timeout | Every 5 min | Processes stale sessions |
 
 ---
 
@@ -323,6 +325,7 @@ Some tasks run on a schedule rather than being triggered by events:
 | `enrichment_tasks.py` | `run_graph_enrichment`, `run_batch_enrichment` |
 | `action_tasks.py` | `run_proactive_message` |
 | `posting_tasks.py` | `run_posting_agent` |
+| `cron_tasks.py` | `run_nightly_diary_generation`, `run_nightly_dream_generation`, `run_nightly_goal_strategist`, `run_weekly_drift_observation`, `run_weekly_graph_pruning`, `run_session_timeout_processing` |
 
 ---
 

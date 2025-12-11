@@ -117,7 +117,7 @@ When the bot initiates conversation without being prompted.
 | `PROACTIVE_MIN_IDLE_MINUTES` | 30 | Channel must be idle this long |
 | `PROACTIVE_DAILY_MAX` | 5 | Max proactive posts per day |
 
-**Implementation:** `src_v2/discord/scheduler.py`
+**Implementation:** `src_v2/discord/daily_life.py`
 
 ---
 

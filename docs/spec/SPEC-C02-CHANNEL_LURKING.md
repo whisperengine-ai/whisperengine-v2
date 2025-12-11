@@ -964,7 +964,7 @@ If `Manage Messages` isn't granted, bot will only warn (not delete).
 
 - `docs/guide/GUIDE-006-THINKING_INDICATORS.md` - Existing proactive engagement (DM-focused)
 - `docs/roadmaps/RESPONSE_PATTERN_LEARNING.md` - Learning from feedback
-- `src_v2/discord/scheduler.py` - Existing proactive scheduler (can share patterns)
+- `src_v2/discord/daily_life.py` - Daily Life system (proactive activity)
 
 ---
 

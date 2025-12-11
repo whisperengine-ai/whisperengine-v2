@@ -182,7 +182,7 @@ in salt and syntax, in the space between.
 
 - Dream system: [`src_v2/memory/dreams.py`](../../src_v2/memory/dreams.py)
 - Diary system: [`src_v2/memory/diary.py`](../../src_v2/memory/diary.py)
-- Scheduler: [`src_v2/discord/scheduler.py`](../../src_v2/discord/scheduler.py)
+- Daily Life system: [`src_v2/discord/daily_life.py`](../../src_v2/discord/daily_life.py)
 - Graph Walker: [`src_v2/knowledge/walker.py`](../../src_v2/knowledge/walker.py)
 - Artifact provenance: [`docs/roadmaps/ARTIFACT_PROVENANCE.md`](../roadmaps/ARTIFACT_PROVENANCE.md)
 - Agentic dreams spec: [`docs/roadmaps/completed/AGENTIC_DREAMS.md`](../roadmaps/completed/AGENTIC_DREAMS.md)

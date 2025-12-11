@@ -124,14 +124,15 @@ Slash commands for managing the bot.
 *   `/join`: Join the user's voice channel.
 *   `/leave`: Leave the voice channel.
 
-## Proactive Messaging (`src_v2/discord/scheduler.py`)
+## Proactive Messaging (Daily Life System)
 
 The bot isn't just reactive. It can initiate conversations based on:
 *   **Time**: "Good morning" messages.
 *   **Events**: "I just remembered..." (Epiphanies).
 *   **Inactivity**: "Hey, haven't heard from you in a while."
 
-**Mechanism**:
-*   A background loop checks for scheduled tasks.
-*   If a task is due, it triggers the `AgentEngine` to generate an opening message.
-*   The message is sent to the user's DM.
+**Mechanism (Daily Life Graph)**:
+*   `DailyLifeScheduler` periodically snapshots channel activity and sends to the worker.
+*   The worker's Remote Brain agent decides on autonomous actions (posts, reactions).
+*   `ActionPoller` polls Redis for action instructions and executes them.
+*   See `src_v2/discord/daily_life.py` for implementation.
