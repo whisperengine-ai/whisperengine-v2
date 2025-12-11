@@ -195,73 +195,6 @@ class GraphWalker:
                     if not new_nodes:
                         break
                         
-                    # Score and filter nodes
-                    scored_nodes = []
-                    for node in new_nodes:
-                        score = await self._score_node(
-                            node, 
-                            user_id, 
-                            current_anchors, 
-                            depth, 
-                            trust_trajectories
-                        )
-                        node.score = score
-                        node.depth = depth + 1
-                        
-                        # Serendipity check: keep some low-score nodes
-                        is_serendipitous = False
-                        if score < min_score:
-                            if random.random() < serendipity:
-                                is_serendipitous = True
-                                node.is_serendipitous = True
-                            else:
-                                continue
-                        
-                        scored_nodes.append(node)
-                    
-                    # Sort by score
-                    scored_nodes.sort(key=lambda x: x.score, reverse=True)
-                    
-                    # Add to results
-                    all_nodes.extend(scored_nodes)
-                    all_edges.extend(new_edges)
-                    
-                    # Update frontier
-                    frontier = [n.id for n in scored_nodes]
-                    visited.update(frontier)
-                    
-                    depth += 1
-            
-            # Cluster results
-            clusters = self._cluster_nodes(all_nodes, all_edges)
-            
-            return GraphWalkResult(
-                nodes=all_nodes,
-                edges=all_edges,
-                clusters=clusters,
-                walk_stats={
-                    "total_nodes": len(all_nodes),
-                    "clusters_found": len(clusters),
-                    "serendipitous_nodes": sum(1 for n in all_nodes if n.is_serendipitous)
-                }
-            )
-            
-        except Exception as e:
-            logger.error(f"Graph walk failed: {e}")
-            return GraphWalkResult(nodes=[], edges=[], clusters=[])
-        
-        try:
-            async with db_manager.neo4j_driver.session() as session:
-                while frontier and depth < max_depth and len(all_nodes) < max_nodes:
-                    # Get neighbors of all frontier nodes in one query
-                    new_nodes, new_edges = await self._expand_frontier(
-                        session=session,
-                        frontier=frontier,
-                        visited=visited,
-                        user_id=user_id,
-                        limit=max_nodes - len(all_nodes)
-                    )
-                    
                     # Build node->edge lookup for temporal scoring
                     node_edge_map = {}
                     for edge in new_edges:
@@ -275,16 +208,6 @@ class GraphWalker:
                         # Get edges connecting to this node
                         edges_to_node = node_edge_map.get(node.id, [])
                         
-                        # Base score from node properties
-                        base_score = self._score_node(
-                            node=node,
-                            depth=depth,
-                            anchors=anchors
-                        )
-                        
-                        # Temporal score from edge evolution (E26)
-                        edge = edges_to_node[0] if edges_to_node else None
-                        
                         # Get trust trajectory for User nodes
                         trust_traj = None
                         if node.label == "User" and bot_name:
@@ -297,6 +220,18 @@ class GraphWalker:
                                 )
                             trust_traj = trust_trajectories.get(cache_key)
                         
+                        # Base score from node properties
+                        base_score = await self._score_node(
+                            node=node,
+                            user_id=user_id,
+                            anchors=current_anchors,
+                            depth=depth,
+                            trust_trajectories=trust_trajectories
+                        )
+                        
+                        # Temporal score from edge evolution (E26)
+                        edge = edges_to_node[0] if edges_to_node else None
+                        
                         temporal_score = self._score_temporal(
                             node=node,
                             edge=edge,
@@ -306,7 +241,7 @@ class GraphWalker:
                         # Combine scores
                         score = round(base_score * temporal_score, 3)
                         node.score = score
-                        node.depth = depth
+                        node.depth = depth + 1
                         
                         # Filter
                         keep = False
@@ -319,6 +254,9 @@ class GraphWalker:
                         if keep:
                             scored_nodes.append(node)
                             visited.add(node.id)
+                    
+                    # Sort by score
+                    scored_nodes.sort(key=lambda x: x.score, reverse=True)
                     
                     # Add to results
                     all_nodes.extend(scored_nodes)

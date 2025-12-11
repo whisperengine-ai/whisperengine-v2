@@ -111,6 +111,13 @@ class DailyLifeGraph:
         
         interests = self._load_interests(bot_name)
         
+        # Collect IDs of messages the bot has already replied to
+        replied_to_ids = set()
+        for channel in snapshot.channels:
+            for msg in channel.messages:
+                if msg.author_name.lower() == bot_name.lower() and msg.reference_id:
+                    replied_to_ids.add(msg.reference_id)
+
         # Flatten messages from all channels
         all_messages = []
         for channel in snapshot.channels:
@@ -151,6 +158,10 @@ class DailyLifeGraph:
             if m.mentions_bot:
                 continue
                 
+            # Skip if already replied to
+            if m.id in replied_to_ids:
+                continue
+
             # Special handling for Bot Conversation Channel
             # If we are in the special channel, we ALLOW bot messages even if globally disabled
             is_special_channel = m.channel_id in bot_conv_channels
