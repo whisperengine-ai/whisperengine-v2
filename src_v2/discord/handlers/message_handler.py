@@ -226,7 +226,10 @@ class MessageHandler:
         if message.guild:
             try:
                 # Record activity for autonomous scaling (Phase E15)
-                asyncio.create_task(server_monitor.record_message(str(message.guild.id)))
+                asyncio.create_task(server_monitor.record_message(
+                    guild_id=str(message.guild.id),
+                    channel_id=str(message.channel.id)
+                ))
 
                 from src_v2.universe.manager import universe_manager
                 # task_queue is already imported globally

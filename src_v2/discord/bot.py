@@ -5,7 +5,6 @@ from typing import Optional
 
 from src_v2.config.settings import settings
 from src_v2.agents.engine import AgentEngine
-from src_v2.discord.orchestrator import ActivityOrchestrator
 from src_v2.discord.daily_life import DailyLifeScheduler, ActionPoller
 from src_v2.discord.handlers.event_handler import EventHandler
 from src_v2.discord.handlers.message_handler import MessageHandler
@@ -32,7 +31,6 @@ class WhisperBot(commands.Bot):
         )
         
         self.agent_engine = AgentEngine()
-        self.orchestrator = ActivityOrchestrator(self)
         self.daily_scheduler = DailyLifeScheduler(self)
         self.action_poller = ActionPoller(self)
         
@@ -48,8 +46,6 @@ class WhisperBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """Async setup hook called before the bot starts."""
-        # Start Activity Orchestrator (DISABLED for Daily Life Graph)
-        # self.orchestrator.start()
         
         # Start Daily Life System
         self.daily_scheduler.start()

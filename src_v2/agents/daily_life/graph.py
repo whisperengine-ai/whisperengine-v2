@@ -270,6 +270,35 @@ class DailyLifeGraph:
             can_reply = settings.ENABLE_AUTONOMOUS_REPLIES
             can_react = settings.ENABLE_AUTONOMOUS_REACTIONS
             
+            # Fatigue Check: Prevent infinite loops
+            # If we have sent > X messages to this channel in the last 15 minutes, ignore
+            # Unless it's a designated bot conversation channel
+            bot_conv_channels = []
+            if settings.BOT_CONVERSATION_CHANNEL_ID:
+                bot_conv_channels = [c.strip() for c in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if c.strip()]
+
+            # Load character for social battery limit
+            character = self.character_manager.load_character(snapshot.bot_name)
+            social_limit = 5
+            if character and character.behavior:
+                social_limit = character.behavior.social_battery_limit
+
+            filtered_scored = []
+            for sm in scored:
+                channel_id = sm.message.channel_id
+                is_special = channel_id in bot_conv_channels
+                
+                if not is_special:
+                    # Check fatigue
+                    recent_count = await memory_manager.get_recent_activity_count(snapshot.bot_name, channel_id, minutes=15)
+                    if recent_count >= social_limit:
+                        logger.info(f"Fatigue: Ignoring channel {channel_id} (sent {recent_count}/{social_limit} msgs in last 15m)")
+                        continue
+                
+                filtered_scored.append(sm)
+            
+            scored = filtered_scored
+            
             if not can_reply and not can_react:
                 # If neither is enabled, we can't do anything reactive
                 pass
@@ -410,8 +439,10 @@ Format:
                 elif settings.DISCORD_CHECK_WATCH_CHANNELS:
                     target_channel_ids = [cid.strip() for cid in settings.DISCORD_CHECK_WATCH_CHANNELS.split(",") if cid.strip()]
                 
-                # If no specific channels set, consider all in snapshot (risky, maybe limit to known safe ones?)
-                # For now, if no target set, we don't post to avoid spamming random channels.
+                # If no specific channels set, consider all in snapshot
+                # This allows for emergent behavior in "Exploration" channels picked by the scheduler
+                if not target_channel_ids:
+                    target_channel_ids = [ch.channel_id for ch in snapshot.channels]
                 
                 if target_channel_ids:
                     for ch in snapshot.channels:

@@ -1,6 +1,8 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List, Optional
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from loguru import logger
+from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 
 # Redis key prefixes for activity tracking
@@ -11,6 +13,14 @@ REDIS_PREFIX_AUTONOMOUS = "whisper:autonomous:"
 ACTIVITY_WINDOW_SECONDS = 30 * 60  # 30 minutes for activity tracking
 AUTONOMOUS_POST_LOCK_SECONDS = 30  # Lock held while generating post
 CONVERSATION_LOCK_SECONDS = 120    # Lock held during conversation initiation
+
+
+@dataclass
+class ActivitySignal:
+    channel_id: str
+    guild_id: Optional[str]
+    message_count: int
+    last_active: float  # timestamp
 
 
 class ActivityModeler:
@@ -128,24 +138,45 @@ class ServerActivityMonitor:
         
     # ========== Activity Level Tracking ==========
         
-    async def record_message(self, guild_id: str) -> None:
-        """Record a message event for the guild. Uses sorted set with auto-expiry."""
+    async def record_message(self, guild_id: str, channel_id: Optional[str] = None) -> None:
+        """
+        Record a message event for the guild and optionally the channel.
+        Uses sorted sets with auto-expiry.
+        """
         if not db_manager.redis_client:
             return
             
         try:
-            key = f"{REDIS_PREFIX_ACTIVITY}guild:{guild_id}:messages"
             now = datetime.now(timezone.utc).timestamp()
+            pipeline = db_manager.redis_client.pipeline()
             
-            # Add timestamp to sorted set (score = timestamp for range queries)
-            await db_manager.redis_client.zadd(key, {str(now): now})
-            
-            # Trim old entries (older than window) - keeps set bounded
+            # 1. Record Guild Activity
+            guild_key = f"{REDIS_PREFIX_ACTIVITY}guild:{guild_id}:messages"
+            pipeline.zadd(guild_key, {str(now): now})
             cutoff = now - ACTIVITY_WINDOW_SECONDS
-            await db_manager.redis_client.zremrangebyscore(key, min="-inf", max=cutoff)
+            pipeline.zremrangebyscore(guild_key, min="-inf", max=cutoff)
+            pipeline.expire(guild_key, ACTIVITY_WINDOW_SECONDS + 300)
             
-            # Set TTL so key auto-cleans if guild goes inactive
-            await db_manager.redis_client.expire(key, ACTIVITY_WINDOW_SECONDS + 300)
+            # 2. Record Channel Activity (if provided)
+            if channel_id:
+                # Channel messages
+                channel_key = f"{REDIS_PREFIX_ACTIVITY}channel:{channel_id}:messages"
+                pipeline.zadd(channel_key, {str(now): now})
+                pipeline.zremrangebyscore(channel_key, min="-inf", max=cutoff)
+                pipeline.expire(channel_key, ACTIVITY_WINDOW_SECONDS + 300)
+                
+                # Global active channels list (score = last active timestamp)
+                # This allows us to find WHICH channels are active without scanning keys
+                global_key = f"{REDIS_PREFIX_ACTIVITY}global_channels"
+                pipeline.zadd(global_key, {channel_id: now})
+                # Also trim global list of very old channels (older than window)
+                pipeline.zremrangebyscore(global_key, min="-inf", max=cutoff)
+                
+                # Store guild mapping for the channel (so we know which guild it belongs to)
+                mapping_key = f"{REDIS_PREFIX_ACTIVITY}channel_map:{channel_id}"
+                pipeline.set(mapping_key, guild_id, ex=86400) # 24h expiry
+            
+            await pipeline.execute()
             
         except Exception as e:
             logger.warning(f"Failed to record activity: {e}")
@@ -164,6 +195,67 @@ class ServerActivityMonitor:
         except Exception as e:
             logger.warning(f"Failed to get activity level: {e}")
             return 0.0
+
+    async def get_activity_signals(self, since_minutes: int = 15) -> List[ActivitySignal]:
+        """
+        Returns channels with activity in the last N minutes.
+        Sorted by activity density (messages / minute).
+        """
+        if not db_manager.redis_client:
+            return []
+            
+        try:
+            now = datetime.now(timezone.utc).timestamp()
+            cutoff = now - (since_minutes * 60)
+            
+            # 1. Get all channels active in the window
+            global_key = f"{REDIS_PREFIX_ACTIVITY}global_channels"
+            # Returns list of (channel_id, score)
+            active_channels = await db_manager.redis_client.zrangebyscore(
+                global_key, min=cutoff, max="+inf", withscores=True
+            )
+            
+            if not active_channels:
+                return []
+                
+            signals = []
+            
+            # 2. For each channel, get message count and guild ID
+            # We can pipeline this for performance
+            pipeline = db_manager.redis_client.pipeline()
+            
+            for channel_id, last_active in active_channels:
+                # Count messages in the window
+                channel_key = f"{REDIS_PREFIX_ACTIVITY}channel:{channel_id}:messages"
+                pipeline.zcount(channel_key, min=cutoff, max="+inf")
+                
+                # Get guild ID
+                mapping_key = f"{REDIS_PREFIX_ACTIVITY}channel_map:{channel_id}"
+                pipeline.get(mapping_key)
+                
+            results = await pipeline.execute()
+            
+            # Results are interleaved: [count1, guild1, count2, guild2, ...]
+            for i, (channel_id, last_active) in enumerate(active_channels):
+                count = results[i * 2]
+                guild_id_bytes = results[i * 2 + 1]
+                guild_id = guild_id_bytes.decode() if guild_id_bytes else None
+                
+                if count > 0:
+                    signals.append(ActivitySignal(
+                        channel_id=channel_id,
+                        guild_id=guild_id,
+                        message_count=count,
+                        last_active=last_active
+                    ))
+            
+            # Sort by message count descending
+            signals.sort(key=lambda x: x.message_count, reverse=True)
+            return signals
+            
+        except Exception as e:
+            logger.warning(f"Failed to get activity signals: {e}")
+            return []
 
     # ========== Autonomous Post Cooldown (TTL-based) ==========
     # Instead of storing timestamps and checking elapsed time,

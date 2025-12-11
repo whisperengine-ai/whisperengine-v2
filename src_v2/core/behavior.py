@@ -14,6 +14,7 @@ class BehaviorProfile(BaseModel):
     constitution: List[str] = Field(default_factory=list, description="Hard constraints and ethical rules.")
     timezone: str = Field(default="America/Los_Angeles", description="Character's local timezone (IANA format).")
     anchors: List[str] = Field(default_factory=list, description="Thematic anchors for knowledge graph exploration.")
+    social_battery_limit: int = Field(default=5, description="Max messages per 15m in a channel before fatigue sets in.")
 
     def to_prompt_section(self) -> str:
         """

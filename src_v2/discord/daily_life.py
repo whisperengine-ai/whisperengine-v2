@@ -13,6 +13,7 @@ from src_v2.workers.task_queue import TaskQueue
 from src_v2.agents.daily_life.models import SensorySnapshot, ChannelSnapshot, MessageSnapshot, ActionCommand
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
+from src_v2.intelligence.activity import server_monitor
 
 class DailyLifeScheduler:
     """
@@ -67,55 +68,96 @@ class DailyLifeScheduler:
         logger.info("Taking sensory snapshot...")
         
         # 1. Identify channels to watch
-        # If DISCORD_CHECK_WATCH_CHANNELS is set, only watch those.
-        # Otherwise, watch all text channels where we have permissions.
+        # Strategy: Watchlist + Active Channels (SPEC-E33)
         
-        watch_list = settings.discord_check_watch_channels_list
+        channels_to_poll = set()
+        
+        # A. Configured Watchlist (Always check these)
+        if settings.discord_check_watch_channels_list:
+            channels_to_poll.update(settings.discord_check_watch_channels_list)
+            
+        # B. Activity-Driven Polling
+        # Get active channels from the last 15 minutes
+        try:
+            signals = await server_monitor.get_activity_signals(since_minutes=15)
+            # Take top 10 active channels
+            for signal in signals[:10]:
+                channels_to_poll.add(signal.channel_id)
+            
+            if signals:
+                logger.info(f"Activity Polling: Found {len(signals)} active channels, polling top {min(len(signals), 10)}")
+        except Exception as e:
+            logger.warning(f"Failed to get activity signals: {e}")
+
+        # C. Exploration (Randomly check 1 quiet channel to allow for boredom/exploration)
+        # This ensures we don't get tunnel vision on active channels and can initiate in quiet ones
+        try:
+            all_candidates = []
+            for guild in self.bot.guilds:
+                for channel in guild.text_channels:
+                    # Only consider channels we can read/send in
+                    perms = channel.permissions_for(guild.me)
+                    if perms.read_messages and perms.send_messages:
+                        if str(channel.id) not in channels_to_poll:
+                            all_candidates.append(channel)
+            
+            if all_candidates:
+                exploration_channel = random.choice(all_candidates)
+                channels_to_poll.add(str(exploration_channel.id))
+                logger.info(f"Activity Polling: Added exploration channel {exploration_channel.name} ({exploration_channel.id})")
+        except Exception as e:
+            logger.warning(f"Failed to select exploration channel: {e}")
+            
         channels_data = []
         
-        for guild in self.bot.guilds:
-            for channel in guild.text_channels:
-                # Filter by watch list if configured
-                if watch_list and str(channel.id) not in watch_list:
-                    continue
-
-                if not channel.permissions_for(guild.me).read_messages:
-                    continue
-                if not channel.permissions_for(guild.me).send_messages:
-                    continue
-                    
-                # Skip channels with "ignore" in topic or name?
-                # For now, just grab them.
+        # Helper to process a channel
+        async def process_channel(channel):
+            if not channel.permissions_for(channel.guild.me).read_messages:
+                return
+            if not channel.permissions_for(channel.guild.me).send_messages:
+                return
+            
+            try:
+                messages = []
+                async for msg in channel.history(limit=20):
+                    if not msg.content and not msg.attachments:
+                        continue
+                    messages.append(MessageSnapshot(
+                        id=str(msg.id),
+                        content=msg.content,
+                        author_id=str(msg.author.id),
+                        author_name=msg.author.display_name,
+                        is_bot=msg.author.bot,
+                        created_at=msg.created_at,
+                        mentions_bot=self.bot.user in msg.mentions,
+                        reference_id=str(msg.reference.message_id) if msg.reference else None,
+                        channel_id=str(channel.id)
+                    ))
                 
+                if messages:
+                    channels_data.append(ChannelSnapshot(
+                        channel_id=str(channel.id),
+                        channel_name=channel.name,
+                        messages=messages
+                    ))
+            except Exception as e:
+                logger.warning(f"Failed to snapshot channel {channel.name}: {e}")
+
+        # If no channels selected (no watchlist, no activity), fallback to ALL (legacy)
+        # This ensures we don't break behavior for new bots with no history
+        if not channels_to_poll and not settings.discord_check_watch_channels_list:
+            for guild in self.bot.guilds:
+                for channel in guild.text_channels:
+                    await process_channel(channel)
+        else:
+            # Targeted polling
+            for channel_id in channels_to_poll:
                 try:
-                    # Fetch last 20 messages
-                    messages = []
-                    async for msg in channel.history(limit=20):
-                        # Skip empty content (images only) unless we handle vision later
-                        if not msg.content and not msg.attachments:
-                            continue
-                            
-                        messages.append(MessageSnapshot(
-                            id=str(msg.id),
-                            content=msg.content,
-                            author_id=str(msg.author.id),
-                            author_name=msg.author.display_name,
-                            is_bot=msg.author.bot,
-                            created_at=msg.created_at,
-                            mentions_bot=self.bot.user in msg.mentions,
-                            reference_id=str(msg.reference.message_id) if msg.reference else None,
-                            channel_id=str(channel.id)
-                        ))
-                    
-                    if messages:
-                        channels_data.append(ChannelSnapshot(
-                            channel_id=str(channel.id),
-                            channel_name=channel.name,
-                            messages=messages
-                        ))
-                        
+                    channel = self.bot.get_channel(int(channel_id))
+                    if channel and isinstance(channel, discord.TextChannel):
+                        await process_channel(channel)
                 except Exception as e:
-                    logger.warning(f"Failed to snapshot channel {channel.name}: {e}")
+                    logger.warning(f"Failed to process channel {channel_id}: {e}")
         
         if not channels_data:
             logger.info("No channels to snapshot.")

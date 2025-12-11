@@ -78,8 +78,8 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟢 High | **E32** | **Activity-Driven Polling** (Universe → Daily Life) | **2-3 days** | E31 ✅ | 📋 Proposed |
-| 🟡 Medium | **Cleanup** | **Remove Deprecated Autonomy Code** | **1 day** | ADR-010 ✅ | 📋 Proposed |
+| 🟢 High | **E33** | **Activity-Driven Polling** (Universe → Daily Life) | **2-3 days** | E31 ✅ | ✅ Complete |
+| 🟡 Medium | **Cleanup** | **Remove Deprecated Autonomy Code** | **1 day** | ADR-010 ✅ | ✅ Complete |
 
 #### ✅ Recently Completed
 

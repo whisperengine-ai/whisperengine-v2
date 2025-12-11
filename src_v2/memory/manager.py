@@ -867,6 +867,30 @@ class MemoryManager:
             
         return messages
 
+    async def get_recent_activity_count(self, character_name: str, channel_id: str, minutes: int = 10) -> int:
+        """
+        Counts how many messages the bot has sent to a channel in the last X minutes.
+        """
+        if not db_manager.postgres_pool:
+            return 0
+            
+        try:
+            # Use naive UTC for now as DB is likely naive
+            cutoff = datetime.datetime.now() - datetime.timedelta(minutes=minutes)
+            async with db_manager.postgres_pool.acquire() as conn:
+                count = await conn.fetchval("""
+                    SELECT COUNT(*)
+                    FROM v2_chat_history
+                    WHERE character_name = $1 
+                    AND channel_id = $2
+                    AND role = 'ai'
+                    AND timestamp > $3
+                """, character_name, str(channel_id), cutoff)
+                return count or 0
+        except Exception as e:
+            logger.error(f"Failed to get activity count: {e}")
+            return 0
+
     async def count_messages_since(self, user_id: str, character_name: str, timestamp: datetime.datetime) -> int:
         """Counts messages since a given timestamp."""
         if not db_manager.postgres_pool:

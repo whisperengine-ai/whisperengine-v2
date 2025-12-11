@@ -188,7 +188,10 @@ class BroadcastManager:
                     # This ensures bot posts count toward channel activity levels
                     if hasattr(first_message, 'guild') and first_message.guild:
                         try:
-                            await server_monitor.record_message(str(first_message.guild.id))
+                            await server_monitor.record_message(
+                                guild_id=str(first_message.guild.id),
+                                channel_id=str(first_message.channel.id)
+                            )
                             logger.debug(f"Recorded activity for autonomous post in guild {first_message.guild.id}")
                         except Exception as e:
                             logger.debug(f"Failed to record activity for broadcast: {e}")
