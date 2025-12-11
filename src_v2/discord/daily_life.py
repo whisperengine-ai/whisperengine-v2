@@ -124,6 +124,7 @@ class DailyLifeScheduler:
         # 2. Create Snapshot
         bot_name = settings.DISCORD_BOT_NAME or "unknown_bot"
         bot_id = str(self.bot.user.id) if self.bot.user else None
+        
         snapshot = SensorySnapshot(
             bot_name=bot_name,
             bot_id=bot_id,
