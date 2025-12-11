@@ -444,62 +444,48 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
 
     async def get_known_bots_context(self, current_bot_name: str, guild_id: Optional[str] = None) -> str:
         """
-        Returns context about other known bots in the system.
-        
-        If guild_id is provided, only includes bots that are members of that guild.
+        [E8] Returns a list of other known AI entities (bots) in the ecosystem.
         This prevents the LLM from mentioning bots that aren't in the current server.
         """
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
-            from src_v2.core.behavior import load_behavior_profile
+            from src_v2.universe.registry import bot_registry
             from src_v2.api.internal_routes import get_discord_bot
-            import os
 
-            # Ensure we have the latest list of bots
-            if not cross_bot_manager.known_bots:
-                await cross_bot_manager.load_known_bots()
+            # 1. Get known bots from Redis Registry
+            known_bots = await bot_registry.get_known_bots()
             
-            known_bots = cross_bot_manager.known_bots
-            
-            # If we have guild context, filter to only bots in this guild
+            # 2. Filter by Guild (if provided)
             bots_in_guild = set()
             if guild_id:
                 discord_bot = get_discord_bot()
                 if discord_bot:
                     try:
                         guild_id_int = int(guild_id)
-                    except (ValueError, TypeError):
-                        logger.debug(f"Invalid guild_id format: {guild_id}, skipping guild filtering")
-                        guild_id_int = None
-                    guild = discord_bot.get_guild(guild_id_int) if guild_id_int else None
-                    if guild:
-                        for bot_name, discord_id in known_bots.items():
-                            member = guild.get_member(discord_id)
-                            if member:
-                                bots_in_guild.add(bot_name.lower())
-                        logger.debug(f"Filtered known bots to {len(bots_in_guild)} in guild {guild_id}")
-            
+                        guild = discord_bot.get_guild(guild_id_int)
+                        if guild:
+                            for bot_name, info in known_bots.items():
+                                # Check if bot is in guild by ID
+                                member = guild.get_member(int(info.discord_id))
+                                if member:
+                                    bots_in_guild.add(bot_name.lower())
+                            
+                            logger.debug(f"Filtered known bots to {len(bots_in_guild)} in guild {guild_id}")
+                    except Exception as e:
+                        logger.warning(f"Guild filtering failed: {e}")
+
             context = "\n\n[KNOWN ASSOCIATES (Other AI Entities)]\n"
             context += "You are aware of the following other AI entities in this digital space:\n"
             
             found_others = False
-            for bot_name in known_bots.keys():
+            for bot_name, info in known_bots.items():
                 if bot_name.lower() == current_bot_name.lower():
                     continue
                 
-                # If we have guild filtering, skip bots not in this guild
+                # If we have guild filtering enabled and successful, use it
                 if guild_id and bots_in_guild and bot_name.lower() not in bots_in_guild:
                     continue
-                    
-                # Load their purpose from core.yaml
-                char_dir = os.path.join("characters", bot_name)
-                profile = load_behavior_profile(char_dir)
                 
-                description = "An AI entity."
-                if profile:
-                    description = profile.purpose
-                
-                context += f"- {bot_name}: {description}\n"
+                context += f"- {bot_name}: {info.purpose}\n"
                 found_others = True
                     
             if found_others:

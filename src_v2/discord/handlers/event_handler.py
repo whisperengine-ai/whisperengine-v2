@@ -48,20 +48,33 @@ class EventHandler:
             except Exception as e:
                 logger.warning(f"Failed to initialize broadcast manager: {e}")
 
-        # Initialize cross-bot manager (Phase E6)
-        if settings.ENABLE_CROSS_BOT_CHAT:
-            try:
-                from src_v2.broadcast.cross_bot import cross_bot_manager
-                cross_bot_manager.set_bot(self.bot)
-                await cross_bot_manager.load_known_bots()
-                # Start background registration refresh (task managed by cross_bot_manager)
-                asyncio.create_task(
-                    cross_bot_manager.start_registration_loop(),
-                    name="cross_bot_registration"
+        # Initialize Bot Registry (Phase E6/E8)
+        # Registers this bot in Redis so others can discover it
+        try:
+            from src_v2.universe.registry import bot_registry
+            
+            # Initial registration
+            if self.bot.user:
+                # Get purpose
+                char = character_manager.get_character(self.bot.character_name)
+                purpose = "An AI entity."
+                if char and char.behavior:
+                    purpose = char.behavior.purpose
+                
+                await bot_registry.register(
+                    self.bot.character_name,
+                    str(self.bot.user.id),
+                    purpose
                 )
-                logger.info("Cross-bot manager initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize cross-bot manager: {e}")
+                
+                # Start heartbeat
+                asyncio.create_task(
+                    bot_registry.start_heartbeat(self.bot),
+                    name="bot_registry_heartbeat"
+                )
+                logger.info("Bot Registry initialized and heartbeat started")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Bot Registry: {e}")
 
         # Check Permissions
         await self._check_permissions()

@@ -669,10 +669,10 @@ For human conversations, use the regular memory search tools."""
 
     async def _arun(self, bot_name: str, topic: str = "", limit: int = 5) -> str:
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
+            from src_v2.universe.registry import bot_registry
             
             # Get known bots
-            known_bots = cross_bot_manager.known_bots
+            known_bots = await bot_registry.get_known_bots()
             
             if not known_bots:
                 return "I don't have access to other bot information right now. They might not be online."
@@ -683,9 +683,9 @@ For human conversations, use the regular memory search tools."""
             # Find the bot ID
             bot_id = None
             matched_name = None
-            for name, bid in known_bots.items():
+            for name, info in known_bots.items():
                 if name.lower() == bot_name_lower or bot_name_lower in name.lower():
-                    bot_id = bid
+                    bot_id = info.discord_id
                     matched_name = name
                     break
             
