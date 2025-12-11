@@ -622,6 +622,56 @@ class MemoryManager:
             logger.error(f"Failed to search memories: {e}")
             return []
 
+    async def get_recent_memories(
+        self,
+        limit: int = 10,
+        collection_name: Optional[str] = None,
+        exclude_types: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieves the most recent memories without semantic search.
+        Useful for dream seeding.
+        """
+        if not db_manager.qdrant_client:
+            return []
+            
+        target_collection = collection_name or self.collection_name
+        
+        try:
+            # Use scroll to fetch recent points
+            # Note: Qdrant scroll order is undefined without order_by, but usually insertion order for UUIDs is random.
+            # However, we fetch a larger batch and sort in Python by timestamp.
+            
+            result, _ = await db_manager.qdrant_client.scroll(
+                collection_name=target_collection,
+                limit=limit * 5, # Fetch more to ensure we get recent ones after sort
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            memories = []
+            for point in result:
+                payload = point.payload or {}
+                if exclude_types and payload.get("type") in exclude_types:
+                    continue
+                    
+                memories.append({
+                    "id": point.id,
+                    "content": payload.get("content"),
+                    "timestamp": payload.get("timestamp"),
+                    "type": payload.get("type"),
+                    "source_type": payload.get("source_type")
+                })
+                
+            # Sort by timestamp desc
+            memories.sort(key=lambda x: x.get("timestamp", "") or "", reverse=True)
+            
+            return memories[:limit]
+            
+        except Exception as e:
+            logger.error(f"Failed to get recent memories: {e}")
+            return []
+
     async def get_full_message_by_discord_id(self, message_id: str) -> Optional[str]:
         """
         Fetch the full message content from Postgres by Discord message_id.

@@ -1,7 +1,7 @@
 import asyncio
 import random
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from loguru import logger
 import discord
@@ -28,6 +28,10 @@ class DailyLifeScheduler:
         # Config
         self.min_interval = 300  # 5 mins
         self.max_interval = 600  # 10 mins
+        
+        # Silence Tracking (Phase E34)
+        self.last_activity_timestamp = datetime.now(timezone.utc)
+        self.dream_threshold_seconds = 7200 # 2 hours
         
     def start(self):
         if self.is_running:
@@ -159,12 +163,41 @@ class DailyLifeScheduler:
                 except Exception as e:
                     logger.warning(f"Failed to process channel {channel_id}: {e}")
         
+        # --- Silence Tracking (Phase E34) ---
+        bot_name = settings.DISCORD_BOT_NAME or "unknown_bot"
+        now = datetime.now(timezone.utc)
+        has_recent_activity = False
+        
+        if channels_data:
+            for ch in channels_data:
+                for msg in ch.messages:
+                    # Check if message is recent (last 15 mins)
+                    if (now - msg.created_at).total_seconds() < 900:
+                        has_recent_activity = True
+                        break
+                if has_recent_activity:
+                    break
+        
+        if has_recent_activity:
+            self.last_activity_timestamp = now
+            logger.debug("Activity detected, resetting silence timer.")
+        else:
+            silence_duration = (now - self.last_activity_timestamp).total_seconds()
+            logger.info(f"No recent activity. Silence duration: {silence_duration:.0f}s")
+            
+            if silence_duration > self.dream_threshold_seconds:
+                logger.info("Silence threshold exceeded. Triggering Active Dream Cycle.")
+                await self.task_queue.enqueue(
+                    "run_active_dream_cycle",
+                    character_name=bot_name
+                )
+                self.last_activity_timestamp = now # Reset to avoid spam
+
         if not channels_data:
             logger.info("No channels to snapshot.")
             return
 
         # 2. Create Snapshot
-        bot_name = settings.DISCORD_BOT_NAME or "unknown_bot"
         bot_id = str(self.bot.user.id) if self.bot.user else None
         
         snapshot = SensorySnapshot(

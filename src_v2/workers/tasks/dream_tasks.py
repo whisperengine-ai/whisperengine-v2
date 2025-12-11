@@ -357,3 +357,51 @@ async def run_dream_generation(
             "error": str(e),
             "character_name": character_name
         }
+
+
+async def run_active_dream_cycle(
+    ctx: Dict[str, Any],
+    character_name: str
+) -> Dict[str, Any]:
+    """
+    Runs the Active Idle Dream cycle (Phase E34).
+    This is a lightweight consolidation process that runs when the bot is idle.
+    """
+    if not settings.ENABLE_DREAM_SEQUENCES:
+        return {"success": False, "reason": "disabled"}
+
+    logger.info(f"Running Active Dream Cycle for {character_name}")
+    
+    try:
+        from src_v2.agents.dream import get_dream_graph
+        
+        graph = get_dream_graph()
+        
+        # Initial state
+        initial_state = {
+            "bot_name": character_name,
+            "seeds": [],
+            "context": [],
+            "dream_result": None,
+            "consolidation_status": "pending"
+        }
+        
+        # Run the graph
+        final_state = await graph.build_graph().ainvoke(initial_state)
+        
+        status = final_state.get("consolidation_status")
+        logger.info(f"Active Dream Cycle finished for {character_name}: {status}")
+        
+        return {
+            "success": status == "success",
+            "status": status,
+            "character_name": character_name
+        }
+        
+    except Exception as e:
+        logger.error(f"Active Dream Cycle failed for {character_name}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "character_name": character_name
+        }
