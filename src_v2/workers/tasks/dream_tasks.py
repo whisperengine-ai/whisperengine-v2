@@ -110,13 +110,16 @@ async def run_dream_generation(
             # Phase E22: Absence Tracking
             # Record the failure to dream as a memory
             try:
+                target_collection = f"whisperengine_memory_{character_name}"
+                
                 # 1. Find previous absence to calculate streak
                 # We search for recent "absence" type memories
                 recent_absences = await memory_manager.search_memories_advanced(
                     query="absence of dream material",
                     metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
                     limit=1,
-                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp() # Look back 48h
+                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp(), # Look back 48h
+                    collection_name=target_collection
                 )
                 
                 streak = 1
@@ -209,11 +212,14 @@ async def run_dream_generation(
         
         # Phase E22: Check for absence resolution (dream succeeded after previous failures)
         try:
+            target_collection = f"whisperengine_memory_{character_name}"
+            
             recent_absences = await memory_manager.search_memories_advanced(
                 query="absence of dream material",
                 metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
                 limit=1,
-                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp()
+                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp(),
+                collection_name=target_collection
             )
             
             if recent_absences:

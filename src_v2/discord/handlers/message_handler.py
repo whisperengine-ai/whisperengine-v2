@@ -204,7 +204,8 @@ class MessageHandler:
         if self.bot.lurk_detector:
             try:
                 # Get trust score for context boost
-                trust_score = await trust_manager.get_trust_score(str(message.author.id), self.bot.character_name)
+                relationship = await trust_manager.get_relationship_level(str(message.author.id), self.bot.character_name)
+                trust_score = relationship.get("trust_score", 0)
                 
                 result = await self.bot.lurk_detector.analyze(
                     message=message.content,

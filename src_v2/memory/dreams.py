@@ -24,6 +24,7 @@ import asyncio
 __all__ = ["DreamContent", "DreamManager", "get_dream_manager"]
 
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
@@ -920,9 +921,15 @@ Create a surreal dream echoing these experiences.""")
             return None
         
         # Add timestamp
-        now = datetime.now(timezone.utc)
+        try:
+            tz = ZoneInfo(settings.TIMEZONE)
+        except Exception:
+            logger.warning(f"Invalid timezone {settings.TIMEZONE}, falling back to UTC")
+            tz = timezone.utc
+            
+        now = datetime.now(tz)
         date_str = now.strftime("%B %d, %Y")
-        time_str = now.strftime("%I:%M %p UTC")
+        time_str = now.strftime("%I:%M %p %Z")
         
         # Format as a dream journal entry
         

@@ -221,11 +221,14 @@ async def run_diary_generation(
         
         # Phase E22: Check for absence resolution (diary succeeded after previous failures)
         try:
+            target_collection = f"whisperengine_memory_{character_name}"
+            
             recent_absences = await memory_manager.search_memories_advanced(
                 query="absence of diary material",
                 metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
                 limit=1,
-                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp()
+                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp(),
+                collection_name=target_collection
             )
             
             if recent_absences:

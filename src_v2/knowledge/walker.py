@@ -460,11 +460,13 @@ class GraphWalker:
             logger.error(f"Frontier expansion failed: {e}")
             return [], []
     
-    def _score_node(
+    async def _score_node(
         self,
         node: WalkedNode,
+        user_id: str,
+        anchors: List[str],
         depth: int,
-        anchors: List[str]
+        trust_trajectories: Optional[Dict[str, List[float]]] = None
     ) -> float:
         """
         Score a node for "interestingness".

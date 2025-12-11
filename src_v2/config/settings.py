@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "production", "testing"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    TIMEZONE: str = "US/Pacific"  # Default timezone for timestamps (e.g. diary, dreams)
 
     # --- LLM Configuration ---
     # Supported providers: openai, openrouter, ollama, lmstudio

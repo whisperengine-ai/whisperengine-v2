@@ -15,6 +15,7 @@ import asyncio
 
 __all__ = ["DiaryEntry", "DiaryManager", "get_diary_manager"]
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
@@ -964,9 +965,15 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
             })
             
             # Add timestamp header with mood-aware formatting
-            now = datetime.now(timezone.utc)
+            try:
+                tz = ZoneInfo(settings.TIMEZONE)
+            except Exception:
+                logger.warning(f"Invalid timezone {settings.TIMEZONE}, falling back to UTC")
+                tz = timezone.utc
+                
+            now = datetime.now(tz)
             date_str = now.strftime("%B %d, %Y")
-            time_str = now.strftime("%I:%M %p UTC")
+            time_str = now.strftime("%I:%M %p %Z")
             
             # Header and opener based on mood category
             mood_lower = (entry.mood or "").lower()
