@@ -7,7 +7,6 @@ from src_v2.config.settings import settings
 from src_v2.agents.engine import AgentEngine
 from src_v2.discord.orchestrator import ActivityOrchestrator
 from src_v2.discord.daily_life import DailyLifeScheduler, ActionPoller
-from src_v2.discord.lurk_detector import LurkDetector
 from src_v2.discord.handlers.event_handler import EventHandler
 from src_v2.discord.handlers.message_handler import MessageHandler
 from src_v2.discord.tasks import BotTasks
@@ -41,10 +40,6 @@ class WhisperBot(commands.Bot):
         if not settings.DISCORD_BOT_NAME:
             raise ValueError("DISCORD_BOT_NAME must be set in environment variables")
         self.character_name = settings.DISCORD_BOT_NAME
-        
-        # Initialize Lurk Detector
-        from src_v2.discord.lurk_detector import get_lurk_detector
-        self.lurk_detector = get_lurk_detector(self.character_name)
         
         # Initialize Handlers
         self.event_handler = EventHandler(self)

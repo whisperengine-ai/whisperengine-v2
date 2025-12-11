@@ -1,9 +1,9 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 3.3  
+**Document Version:** 3.4
 **Created:** November 24, 2025  
-**Last Updated:** December 8, 2025 (S6 Session Timeout Processing complete)
-**Status:** Phase 1 Complete, Observing Emergent Behavior
+**Last Updated:** December 11, 2025 (ADR-010 Unified Autonomy)
+**Status:** Phase 1 Complete, Optimizing Autonomy
 
 ### Status Legend
 | Icon | Meaning |
@@ -74,11 +74,19 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 **Legend:** 🔴 Critical | 🟢 High | 🟡 Medium | ⚪ Low
 
+#### 📋 Immediate Next Steps (Post-ADR-010)
+
+| Priority | Phase | Description | Time | Deps | Status |
+|----------|-------|-------------|------|------|--------|
+| 🟢 High | **E32** | **Activity-Driven Polling** (Universe → Daily Life) | **2-3 days** | E31 ✅ | 📋 Proposed |
+| 🟡 Medium | **Cleanup** | **Remove Deprecated Autonomy Code** | **1 day** | ADR-010 ✅ | 📋 Proposed |
+
 #### ✅ Recently Completed
 
 | Priority | Phase | Description | Time | Deps | Status |
 |----------|-------|-------------|------|------|--------|
-| 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | ✅ Complete (All Phases) |
+| 🟢 High | **E31** | **Daily Life Graph** (Unified Autonomy) | **3-4 days** | E15 ✅ | ✅ Complete (ADR-010) |
+| 🟢 High | **E15** | **Autonomous Server Activity** | **5-8 days** | E6 ✅ | ✅ Unified into E31 |
 | 🟢 High | **E25** | **Graph Enrichment Agent** | **2-3 days** | E19 ✅ | ✅ Complete |
 | 🟡 Medium | **E26** | **Temporal Graph** | **1-2 days** | E19 ✅, E25 ✅ | ✅ Complete |
 | 🟡 Medium | **E27** | **Multi-Character Walks** | **2-3 days** | E19 ✅, E6 ✅ | ✅ Complete |
@@ -92,12 +100,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 ---
 
-### 🎉 Phase 1 Complete (December 8, 2025)
+### 🎉 Phase 1 Complete (December 2025)
 
 All proposed roadmap items have been implemented. The system is feature-complete for:
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
 - **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks + ambient retrieval)
-- **Autonomous Agency** (Lurking, reactions, posting, bot-to-bot conversations)
+- **Autonomous Agency** (Unified via Daily Life Graph - ADR-010)
 
 ---
 
