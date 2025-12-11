@@ -405,10 +405,35 @@ class MessageHandler:
                 return
 
         # Phase 4: Autonomous Replies (Occasional replies without mention)
+        # Phase E36: The Stream (Real-time Nervous System)
         if not is_dm and not is_mentioned and message.guild:
-            if await self._should_autonomous_reply(message):
-                is_mentioned = True
-                logger.info(f"Triggering autonomous reply for message {message.id}")
+            # DEPRECATED: Old autonomous reply logic
+            # if await self._should_autonomous_reply(message):
+            #     is_mentioned = True
+            
+            # NEW: Trigger Daily Life Graph for high-signal events
+            if settings.ENABLE_AUTONOMOUS_ACTIVITY:
+                should_trigger = False
+                trigger_reason = ""
+                
+                # 1. Watchlist Channel Activity
+                if str(message.channel.id) in settings.discord_check_watch_channels_list:
+                    should_trigger = True
+                    trigger_reason = "watchlist_activity"
+                
+                # 2. Trusted User (Level >= 4)
+                if not should_trigger:
+                    try:
+                        rel = await trust_manager.get_relationship_level(str(message.author.id), self.bot.character_name)
+                        if rel.get("level", 1) >= 4:
+                            should_trigger = True
+                            trigger_reason = f"trusted_user_level_{rel.get('level')}"
+                    except Exception as e:
+                        logger.debug(f"Failed to check trust for stream trigger: {e}")
+
+                if should_trigger:
+                    # Fire and forget - don't await the full process, just the enqueue
+                    asyncio.create_task(self.bot.daily_scheduler.trigger_immediate(message, trigger_reason))
 
         if is_dm or is_mentioned:
             # Typing indicator delayed to mimic natural reading time
