@@ -1,13 +1,15 @@
 # SPEC-E31: Daily Life Graph (Remote Brain Architecture)
 
-**Document Version:** 3.0  
+**Document Version:** 3.1  
 **Created:** December 9, 2025  
-**Updated:** December 10, 2025  
-**Status:** ✅ Implemented  
+**Updated:** December 11, 2025  
+**Status:** ✅ Implemented — **THE** autonomous behavior path  
 **Priority:** 🟢 High  
 **Dependencies:** LangGraph infrastructure, arq workers, Discord.py, existing datastores
 
 > ✅ **Emergence Check:** Like ants following pheromone trails, the bot senses its environment and decides what to do. No central scheduler—the environment IS the task list. The character "notices" what needs doing by querying its own history.
+
+> 📌 **ADR-010 (Dec 2025):** This is now the **only** path for autonomous behavior. Real-time lurk detection and cross-bot triggers have been disabled. All autonomous replies, reactions, and posts flow through this 7-minute polling cycle.
 
 ---
 
@@ -21,6 +23,7 @@
 | **Key insight** | Bots should have a coherent "daily life" instead of disconnected cron jobs. Like stigmergic agents, they sense the environment and respond to signals. |
 | **Decision factors** | Current system has scattered cron jobs, complex Redis locking, no unified life cycle. This consolidates everything into one emergent loop. |
 | **Revision v3** | Moved to "Remote Brain" architecture to prevent blocking the bot's event loop with heavy embedding/LLM tasks. |
+| **Revision v3.1** | Confirmed as THE autonomous path. Lurk and cross-bot disabled (ADR-010). |
 
 ---
 

@@ -28,9 +28,10 @@ Characters in WhisperEngine v2 are defined by a set of configuration files that 
 | `background.yaml` | Their semantic memory - facts they "know" about themselves |
 | `evolution.yaml` | How their behavior changes as trust deepens |
 | `ux.yaml` | How they present thinking/processing states |
-| `lurk_triggers.yaml` | Topics that make them want to join conversations |
 | `visual.md` | Their visual appearance for image generation |
 | `.env.{name}` | Their connection to the world (Discord, LLM, databases) |
+
+> ⚠️ **Deprecated:** `lurk_triggers.yaml` is no longer used. Autonomous behavior now flows through the Daily Life Graph, which uses LLM-scored interest detection instead of keyword matching. See ADR-010.
 
 For the full philosophy: See [Multi-Modal Perception](./architecture/MULTI_MODAL_PERCEPTION.md)
 
@@ -63,7 +64,6 @@ characters/mybot/
 ├── background.yaml    # Recommended: Knowledge Graph facts (Neo4j)
 ├── evolution.yaml     # Recommended: Trust-based personality evolution
 ├── ux.yaml            # Optional: Thinking indicators, cold responses
-├── lurk_triggers.yaml # Optional: Channel lurking keywords/topics
 └── visual.md          # Optional: Visual description for image generation
 ```
 
@@ -76,7 +76,6 @@ cp characters/core.yaml.template characters/mybot/core.yaml
 cp characters/background.yaml.template characters/mybot/background.yaml
 cp characters/evolution.yaml.template characters/mybot/evolution.yaml
 cp characters/ux.yaml.template characters/mybot/ux.yaml
-cp characters/lurk_triggers.yaml.template characters/mybot/lurk_triggers.yaml
 
 # Create visual.md manually (no template)
 touch characters/mybot/visual.md

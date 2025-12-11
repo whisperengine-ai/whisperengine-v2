@@ -38,11 +38,14 @@ All `.env*` files in WhisperEngine v2 follow a consistent structure for easy nav
 - Proactive messaging, logging, stats footer
 
 ### 8. **Social Presence & Autonomy** (Lines 141-170)
-- Master switch for autonomous activity
-- Observation (lurking), Reaction (emojis)
-- Response (replies, cross-bot chat)
-- Initiation (proactive messaging, posting)
+- Master switch for autonomous activity (`ENABLE_AUTONOMOUS_ACTIVITY`)
+- Daily Life Graph settings (`ENABLE_DAILY_LIFE_GRAPH`, `DISCORD_CHECK_*`)
 - Privacy & security, spam protection
+
+> ⚠️ **Deprecated (ADR-010):** The following flags are disabled and pending removal:
+> - `ENABLE_AUTONOMOUS_REPLIES` — Replaced by Daily Life Graph
+> - `ENABLE_AUTONOMOUS_REACTIONS` — Replaced by Daily Life Graph
+> - `ENABLE_CROSS_BOT_CHAT` — Replaced by Daily Life Graph
 
 ### 9. **Media Generation** (Lines 161-175)
 - Image generation settings

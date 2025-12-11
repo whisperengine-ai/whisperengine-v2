@@ -1,11 +1,14 @@
 # Character-to-Character Conversation
 
-**Document Version:** 1.0
+> ⚠️ **UPDATED (December 2025)**: Real-time cross-bot detection has been disabled in favor of the Daily Life Graph polling approach (ADR-010). Bot-to-bot conversations still occur, but through the 7-minute interest-scored polling cycle rather than real-time triggers. This prevents rapid-fire loops while preserving organic cross-bot interaction.
+
+**Document Version:** 1.1
 **Created:** November 27, 2025
-**Status:** 📋 Proposed
+**Updated:** December 11, 2025
+**Status:** ✅ Implemented (via Daily Life Graph)
 **Priority:** High (Strategic)
-**Complexity:** 🔴 High
-**Estimated Time:** 1 week
+**Complexity:** 🟢 Low (now just a polling config)
+**Estimated Time:** N/A (implemented)
 
 ---
 

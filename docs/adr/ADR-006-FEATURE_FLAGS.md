@@ -41,7 +41,7 @@ WhisperEngine uses multiple LLM calls per user message:
 
 ### Flag Categories
 
-> **Note (Dec 2025):** With Phase 1 complete, most flags now default to `true`. Only social presence flags remain `false` by default (per-bot decision).
+> **Note (Dec 2025):** With Phase 1 complete, most flags now default to `true`. See ADR-010 for autonomous behavior consolidation.
 
 | Category | Flag | Default | Cost Impact |
 |----------|------|---------|-------------|
@@ -55,7 +55,18 @@ WhisperEngine uses multiple LLM calls per user message:
 | **Graph** | `ENABLE_GRAPH_PRUNING` | `true` | Negligible (scheduled) |
 | **Graph** | `ENABLE_GRAPH_WALKER` | `true` | $0.01-0.02/walk |
 | **Graph** | `ENABLE_UNIVERSE_EVENTS` | `true` | Negligible (cross-bot) |
-| **Social Presence** | `ENABLE_AUTONOMOUS_ACTIVITY` | `false` | $0.01-0.03/autonomous action |
+| **Autonomy** | `ENABLE_AUTONOMOUS_ACTIVITY` | `true` | Master switch |
+| **Autonomy** | `ENABLE_DAILY_LIFE_GRAPH` | `true` | $0.001/poll (7-min cycle) |
+
+### Deprecated Flags (ADR-010)
+
+These flags are disabled and pending removal. All autonomous behavior now flows through Daily Life Graph:
+
+| Flag | Status | Replacement |
+|------|--------|-------------|
+| `ENABLE_AUTONOMOUS_REPLIES` | **Disabled** | Daily Life Graph polling |
+| `ENABLE_AUTONOMOUS_REACTIONS` | **Disabled** | Daily Life Graph polling |
+| `ENABLE_CROSS_BOT_CHAT` | **Disabled** | Daily Life Graph polling |
 
 ### Implementation Pattern
 

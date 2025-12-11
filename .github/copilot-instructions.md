@@ -269,11 +269,18 @@ memories, facts, trust, goals = await asyncio.gather(
 ### Discord Integration
 - `src_v2/discord/bot.py`: Event handlers (`on_message`, `on_reaction_add`), message routing
 - `src_v2/discord/daily_life.py`: DailyLifeScheduler and ActionPoller for autonomous activity
-- `src_v2/discord/orchestrator.py`: ActivityOrchestrator for autonomous server activity (E15)
+- `src_v2/agents/daily_life/graph.py`: **Daily Life Graph** — unified autonomous behavior (replies, reactions, posts)
 - `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
-- `src_v2/agents/reaction_agent.py`: Autonomous emoji reactions (Phase E15.1)
-- `src_v2/agents/posting_agent.py`: Goals-driven autonomous posting (Phase E15.2)
-- `src_v2/agents/conversation_agent.py`: Bot-to-bot conversations (Phase E15.3)
+
+**Autonomous Behavior (ADR-010):** All autonomous activity flows through the Daily Life Graph:
+- 7-minute polling cycle (`DISCORD_CHECK_INTERVAL_MINUTES`)
+- LLM-scored interest (not keyword matching)
+- Handles: replies to users, replies to bots, reactions, proactive posts
+- See `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md`
+
+**Deprecated (disabled, pending removal):**
+- `src_v2/discord/lurk_detector.py` — Real-time keyword-based lurking
+- `src_v2/broadcast/cross_bot.py` — Real-time bot-to-bot triggers
 
 ### API
 - `src_v2/api/app.py`: FastAPI app with Uvicorn
@@ -395,9 +402,20 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - `ENABLE_UNIVERSE_EVENTS` (default: true): Cross-bot gossip system
 - `ENABLE_GRAPH_ENRICHMENT` (default: true): Proactive graph edge creation
 - `ENABLE_GRAPH_PRUNING` (default: true): Graph cleanup
-- `ENABLE_AUTONOMOUS_ACTIVITY` (default: false): Master switch for social presence (per-bot decision)
+- `ENABLE_AUTONOMOUS_ACTIVITY` (default: true): Master switch for autonomous behavior
+- `ENABLE_DAILY_LIFE_GRAPH` (default: true): 7-min polling for all autonomous actions
 - `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
 - `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
+
+**Deprecated flags** (disabled, pending removal — see ADR-010):
+- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection (now via Daily Life Graph)
+- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions (now via Daily Life Graph)
+- `ENABLE_CROSS_BOT_CHAT`: Real-time bot-to-bot triggers (now via Daily Life Graph)
+
+**Daily Life Graph tuning** (the only knobs for autonomous behavior):
+- `DISCORD_CHECK_INTERVAL_MINUTES` (default: 7): How often to poll
+- `DISCORD_CHECK_RELEVANCE_THRESHOLD` (default: 0.4): Interest threshold (0-1)
+- `DAILY_LIFE_SPONTANEITY_CHANCE` (default: 0.6): Probability of acting
 
 **Quotas**:
 - `DAILY_IMAGE_QUOTA` (default: 5): Max images per user per day
