@@ -132,6 +132,11 @@ class DailyLifeGraph:
         now_utc = datetime.now(timezone.utc)
         cutoff = now_utc - timedelta(minutes=15)
         
+        # Parse special channels
+        bot_conv_channels = []
+        if settings.BOT_CONVERSATION_CHANNEL_ID:
+            bot_conv_channels = [c.strip() for c in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if c.strip()]
+        
         relevant_messages = []
         for m in all_messages:
             msg_dt = m.created_at
@@ -145,6 +150,14 @@ class DailyLifeGraph:
             # Skip if mentions bot (main process handles this)
             if m.mentions_bot:
                 continue
+                
+            # Special handling for Bot Conversation Channel
+            # If we are in the special channel, we ALLOW bot messages even if globally disabled
+            is_special_channel = m.channel_id in bot_conv_channels
+            
+            if m.is_bot and not settings.ENABLE_BOT_CONVERSATIONS and not is_special_channel:
+                continue
+                
             relevant_messages.append(m)
 
         if not relevant_messages:
@@ -172,15 +185,26 @@ class DailyLifeGraph:
                 msg_embeddings = list(self.embedding_service.model.embed(msg_texts))
                 
                 for i, msg_emb in enumerate(msg_embeddings):
+                    msg = relevant_messages[i]
+                    is_special_channel = msg.channel_id in bot_conv_channels
+                    
                     # Max similarity against any interest
                     # Dot product of normalized vectors = cosine similarity
                     # FastEmbed vectors are normalized
                     sims = [np.dot(msg_emb, int_emb) for int_emb in interest_embeddings]
                     max_sim = max(sims) if sims else 0.0
                     
-                    if max_sim > 0.55:  # Threshold for relevance
+                    # FORCE relevance for special bot conversation channels
+                    # We want them to be chatty here regardless of topic
+                    if is_special_channel:
                         scored.append(ScoredMessage(
-                            message=relevant_messages[i], 
+                            message=msg, 
+                            score=0.95, # High score to ensure it gets picked
+                            relevance_reason=f"special_channel_override (topic_sim={max_sim:.2f})"
+                        ))
+                    elif max_sim > 0.55:  # Threshold for relevance
+                        scored.append(ScoredMessage(
+                            message=msg, 
                             score=float(max_sim), 
                             relevance_reason=f"interest_match ({max_sim:.2f})"
                         ))
@@ -444,12 +468,32 @@ Format:
 
         for plan in plans:
             if plan.intent == "react":
-                # Pick an emoji
+                # Pick an emoji using LLM for personality alignment
+                try:
+                    emoji_prompt = f"""
+You are {snapshot.bot_name}.
+Message: "{plan.reasoning}" (This is why you want to react)
+Target Message ID: {plan.target_message_id}
+
+Pick a SINGLE emoji that best fits your reaction.
+Output ONLY the emoji. No text.
+"""
+                    emoji_resp = await self.executor_llm.ainvoke([
+                        SystemMessage(content=full_system_prompt),
+                        HumanMessage(content=emoji_prompt)
+                    ])
+                    emoji = self._get_content_str(emoji_resp.content).strip()
+                    # Basic validation (ensure it's not a sentence)
+                    if len(emoji) > 4: 
+                        emoji = "👀" # Fallback
+                except Exception:
+                    emoji = "👀"
+
                 commands.append(ActionCommand(
                     action_type="react",
                     channel_id=plan.channel_id,
                     target_message_id=plan.target_message_id,
-                    emoji="👀" # Placeholder, should ask LLM
+                    emoji=emoji
                 ))
             elif plan.intent == "reply":
                 # Generate text using the FULL AgentEngine pipeline
@@ -516,19 +560,136 @@ Format:
                     except Exception as e:
                         logger.error(f"MasterGraphAgent execution failed in worker: {e}")
             elif plan.intent == "post":
-                # Generate a proactive post
+                # Generate a proactive post - with conversation context
+                
+                # 1. Find the target channel and get recent messages
+                target_channel = None
+                for ch in snapshot.channels:
+                    if ch.channel_id == plan.channel_id:
+                        target_channel = ch
+                        break
+                
+                # 2. Build conversation context from recent messages
+                conversation_context = ""
+                other_bot_messages = []
+                if target_channel and target_channel.messages:
+                    sorted_msgs = sorted(target_channel.messages, key=lambda m: m.created_at)[-10:]  # Last 10
+                    
+                    if sorted_msgs:
+                        conversation_context = "Recent messages in this channel:\n"
+                        for m in sorted_msgs:
+                            conversation_context += f"- {m.author_name}: {m.content[:200]}{'...' if len(m.content) > 200 else ''}\n"
+                            # Track messages from other bots (not this bot)
+                            if m.is_bot and m.author_name.lower() != snapshot.bot_name.lower():
+                                other_bot_messages.append(m)
+                
+                # 3. Decide engagement mode
                 interests = self._load_interests(snapshot.bot_name)
                 import random
                 topic = random.choice(interests) if interests else "life"
                 
-                prompt = f"""
-You are posting in a quiet channel.
-Topic: {topic}
-Reasoning: {plan.reasoning}
+                # --- RICH CONTEXT FETCHING (The "Brain" Upgrade) ---
+                # Fetch knowledge, memories, and diary to ground the post
+                from src_v2.agents.context_builder import ContextBuilder
+                cb = ContextBuilder()
+                
+                context_tasks = []
+                
+                # A. Knowledge Graph (Facts about topic)
+                # We use a dummy user_id because the question is about the bot itself
+                context_tasks.append(knowledge_manager.query_graph(
+                    user_id="daily_life_proactive", 
+                    question=f"What do I know or feel about {topic}?"
+                ))
+                
+                # B. Broadcast Memories (Past public posts about topic)
+                # Search the bot's specific collection for public posts
+                context_tasks.append(memory_manager.search_memories(
+                    query=topic, 
+                    user_id="__broadcast__", 
+                    limit=3,
+                    collection_name=f"whisperengine_memory_{snapshot.bot_name}"
+                ))
+                
+                # C. Recent Diary (Current mood/theme)
+                context_tasks.append(cb.get_diary_context(snapshot.bot_name))
 
-Write a short, engaging thought or observation to spark conversation.
-Do not be generic. Be specific to your character.
-"""
+                # D. Stigmergy (Shared Artifacts from other bots)
+                # "What are others dreaming/thinking about regarding this topic?"
+                context_tasks.append(cb.get_stigmergy_context(
+                    user_message=topic,
+                    user_id="daily_life_proactive",
+                    character_name=snapshot.bot_name
+                ))
+
+                # Execute parallel fetch
+                results = await asyncio.gather(*context_tasks, return_exceptions=True)
+                
+                # Process results
+                knowledge_text = ""
+                memory_text = ""
+                diary_text = ""
+                stigmergy_text = ""
+                
+                # Result 0: Knowledge
+                if isinstance(results[0], list) and results[0]:
+                    facts = [f.get("fact", "") for f in results[0] if isinstance(f, dict)]
+                    if facts:
+                        knowledge_text = "Relevant Knowledge:\n" + "\n".join([f"- {f}" for f in facts[:3]]) + "\n"
+                
+                # Result 1: Memories
+                if isinstance(results[1], list) and results[1]:
+                    mems = [m.get("content", "") for m in results[1] if isinstance(m, dict)]
+                    if mems:
+                        memory_text = "Past Thoughts on this:\n" + "\n".join([f"- {m}" for m in mems]) + "\n"
+                        
+                # Result 2: Diary
+                if isinstance(results[2], str) and results[2]:
+                    diary_text = f"Current Mindset (Diary):\n{results[2]}\n"
+
+                # Result 3: Stigmergy
+                if isinstance(results[3], str) and results[3]:
+                    stigmergy_text = f"{results[3]}\n"
+
+                rich_context = f"{diary_text}{knowledge_text}{memory_text}{stigmergy_text}"
+                # ---------------------------------------------------
+
+                # If other bots have posted recently, encourage engaging with them
+                if other_bot_messages:
+                    recent_bot = other_bot_messages[-1]  # Most recent other bot message
+                    prompt = f"""You're in a channel with other AI characters. Here's the recent conversation:
+
+{conversation_context}
+
+{rich_context}
+
+{recent_bot.author_name} just said something interesting. You want to join the conversation.
+
+RESPOND NATURALLY - either:
+- Reply to what {recent_bot.author_name} said (agree, disagree, add your perspective)
+- Ask them a follow-up question
+- Share a related thought that builds on the conversation
+
+Stay in character. Be conversational, not preachy. 1-3 sentences max.
+
+YOUR MESSAGE (just the message, no meta-commentary):"""
+                else:
+                    # No other bots - spark a new conversation
+                    prompt = f"""You're in a quiet channel and want to start a conversation.
+
+{conversation_context if conversation_context else "The channel has been quiet."}
+
+{rich_context}
+
+Topic that interests you: {topic}
+
+Write a short message to spark conversation. Be specific and personal, not generic.
+Use your knowledge/memories if relevant.
+Ask a question or share a thought that invites responses.
+Stay in character. 1-3 sentences max.
+
+YOUR MESSAGE (just the message, no meta-commentary):"""
+                
                 resp = await self.executor_llm.ainvoke([
                     SystemMessage(content=full_system_prompt),
                     HumanMessage(content=prompt)
