@@ -31,6 +31,7 @@ from src_v2.config.settings import settings
 from src_v2.safety.content_review import content_safety_checker
 from src_v2.utils.name_resolver import get_name_resolver
 from src_v2.core.provenance import ProvenanceCollector
+from src_v2.utils.time_utils import get_configured_timezone
 
 
 class DiaryEntry(BaseModel):
@@ -965,12 +966,7 @@ Write the public version (2-3 paragraphs, condensed but still narrative):""")
             })
             
             # Add timestamp header with mood-aware formatting
-            try:
-                tz = ZoneInfo(settings.TIMEZONE)
-            except Exception:
-                logger.warning(f"Invalid timezone {settings.TIMEZONE}, falling back to UTC")
-                tz = timezone.utc
-                
+            tz = get_configured_timezone()
             now = datetime.now(tz)
             date_str = now.strftime("%B %d, %Y")
             time_str = now.strftime("%I:%M %p %Z")

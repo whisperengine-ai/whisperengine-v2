@@ -10,6 +10,8 @@ from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 from enum import Enum
+import json
+import uuid
 import discord
 from loguru import logger
 
@@ -18,6 +20,8 @@ from src_v2.core.database import db_manager
 from src_v2.safety.content_review import content_safety_checker
 from src_v2.discord.utils.message_utils import chunk_message
 from src_v2.intelligence.activity import server_monitor
+from src_v2.utils.time_utils import get_configured_timezone
+from src_v2.artifacts.discord_utils import extract_pending_artifacts
 
 
 def _redis_key(key: str) -> str:
@@ -315,7 +319,6 @@ class BroadcastManager:
         provenance: Optional[List[Dict[str, Any]]] = None
     ) -> str:
         """Format the broadcast message with character name, header, and provenance footer."""
-        from datetime import datetime, timezone
         
         # Check if content already has a header (e.g., "📝 DIARY ENTRY — December 03, 2025")
         has_header = any(marker in content[:50] for marker in ["📝", "🌙", "🌑", "✨", "☀️", "🌧️", "💭", "👁️"])
@@ -325,12 +328,7 @@ class BroadcastManager:
             main_content = f"**{character_name.title()}**\n{content}"
         else:
             # Add header based on post type
-            try:
-                tz = ZoneInfo(settings.TIMEZONE)
-            except Exception:
-                logger.warning(f"Invalid timezone {settings.TIMEZONE}, falling back to UTC")
-                tz = timezone.utc
-                
+            tz = get_configured_timezone()
             now = datetime.now(tz)
             date_str = now.strftime("%B %d, %Y")
             time_str = now.strftime("%I:%M %p %Z")
@@ -434,8 +432,6 @@ class BroadcastManager:
             return
         
         try:
-            import json
-            
             broadcast_data = {
                 "message_id": str(message.id),
                 "channel_id": str(message.channel.id),
@@ -491,8 +487,6 @@ class BroadcastManager:
             return []
         
         try:
-            import json
-            
             # Get recent broadcast keys
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp()
             keys = await db_manager.redis_client.zrangebyscore(
@@ -609,9 +603,6 @@ class BroadcastManager:
             return False
         
         try:
-            import json
-            import uuid
-            
             queue_item = {
                 "id": str(uuid.uuid4()),
                 "content": content,
@@ -676,8 +667,6 @@ class BroadcastManager:
         queue_key = _redis_key(f"broadcast:queue:{my_bot_name}")
         
         try:
-            import json
-            
             # Process up to 10 items per call to avoid blocking
             for _ in range(10):
                 item_json = await db_manager.redis_client.lpop(queue_key)
@@ -699,7 +688,7 @@ class BroadcastManager:
                     # Fetch artifacts if specified (only after validation passes)
                     files = []
                     if item.get("artifact_user_id"):
-                        from src_v2.artifacts.discord_utils import extract_pending_artifacts
+                        # Note: This is destructive - artifacts are removed from pending list
                         files = await extract_pending_artifacts(item["artifact_user_id"])
                         if files:
                             logger.info(f"Attached {len(files)} artifacts to broadcast for {item['character_name']}")

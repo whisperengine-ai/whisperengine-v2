@@ -29,6 +29,7 @@ import uuid
 from loguru import logger
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+from src_v2.utils.time_utils import get_configured_timezone
 
 from src_v2.utils.name_resolver import get_name_resolver
 from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue
@@ -921,12 +922,7 @@ Create a surreal dream echoing these experiences.""")
             return None
         
         # Add timestamp
-        try:
-            tz = ZoneInfo(settings.TIMEZONE)
-        except Exception:
-            logger.warning(f"Invalid timezone {settings.TIMEZONE}, falling back to UTC")
-            tz = timezone.utc
-            
+        tz = get_configured_timezone()
         now = datetime.now(tz)
         date_str = now.strftime("%B %d, %Y")
         time_str = now.strftime("%I:%M %p %Z")

@@ -1,6 +1,43 @@
 """Utility functions for time and date formatting."""
 import datetime
 from typing import Union
+from zoneinfo import ZoneInfo
+from loguru import logger
+from src_v2.config.settings import settings
+
+
+def get_configured_timezone() -> ZoneInfo:
+    """
+    Get the configured timezone object.
+    Falls back to UTC if the configured timezone is invalid.
+    """
+    try:
+        return ZoneInfo(settings.TIMEZONE)
+    except Exception:
+        logger.warning(f"Invalid timezone '{settings.TIMEZONE}', falling back to UTC")
+        return ZoneInfo("UTC")
+
+
+def get_formatted_timestamp(dt: datetime.datetime = None, format_str: str = "%I:%M %p %Z") -> str:
+    """
+    Get a formatted timestamp string in the configured timezone.
+    
+    Args:
+        dt: Datetime object (defaults to now)
+        format_str: Format string (defaults to "HH:MM AM/PM PST")
+    """
+    if dt is None:
+        dt = datetime.datetime.now(datetime.timezone.utc)
+    
+    # Ensure timezone awareness
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+        
+    # Convert to configured timezone
+    tz = get_configured_timezone()
+    local_dt = dt.astimezone(tz)
+    
+    return local_dt.strftime(format_str)
 
 
 def get_relative_time(timestamp: Union[str, datetime.datetime]) -> str:
