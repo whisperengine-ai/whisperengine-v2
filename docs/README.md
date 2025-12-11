@@ -27,6 +27,10 @@ docs/
 ├── README.md                          # You are here
 ├── IMPLEMENTATION_ROADMAP_OVERVIEW.md # Master roadmap & status
 │
+├── roadmaps/                          # 🗺️ Future Planning
+│   ├── ROADMAP_V3_EVOLUTION.md        # The path to v3 (Predictive Processing)
+│   └── PHASE_2_ROADMAP.md             # Detailed Phase 2 items
+│
 ├── adr/                               # 🏗️ Architecture Decision Records
 │   ├── README.md                      # ADR index & format guide
 │   ├── ADR-001-EMBODIMENT_MODEL.md    # No "AI self" behind character

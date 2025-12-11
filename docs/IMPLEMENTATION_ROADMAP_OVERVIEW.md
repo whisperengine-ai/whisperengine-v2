@@ -31,6 +31,17 @@ AI agents develop rich behavior through **graph traversal and emergence**, not t
 
 **We're building the foundation for understanding how autonomous agents develop authentic behavior.**
 
+### 🔮 Future Roadmap: v3 Evolution
+
+We have defined the path for the next major evolution of WhisperEngine.
+See: [`docs/roadmaps/ROADMAP_V3_EVOLUTION.md`](./roadmaps/ROADMAP_V3_EVOLUTION.md)
+
+**Key Shifts:**
+- **Reactive → Predictive:** From "Stimulus-Response" to "Active Inference".
+- **Dual Memory → Holographic:** Unifying Vector and Graph into a single structure.
+- **Polling → Streaming:** Real-time event processing via Redis Streams.
+- **Static → Dynamic Identity:** Characters that can edit their own source code.
+
 ### The Perception Layer: Six Modalities
 
 To accumulate this experience, agents need perception. WhisperEngine provides **six perceptual modalities** that feed into the knowledge graph:
