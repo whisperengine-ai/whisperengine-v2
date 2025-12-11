@@ -98,16 +98,27 @@ All proposed roadmap items have been implemented. The system is feature-complete
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
 - **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks + ambient retrieval)
 - **Autonomous Agency** (Lurking, reactions, posting, bot-to-bot conversations)
-- **LangGraph Orchestration** (Supergraph, specialized workers, advanced queues)
-- **Safety & Observability** (Content safety, classifier metrics, InfluxDB analytics)
-- **User Transparency** (User-facing graph, recommendations)
-- **Session Processing** (Timeout detection, batch analysis for all sessions)
+
+---
+
+## 🚀 Phase 2: Advanced Agentic Capabilities (2026 Roadmap)
+
+**Focus:** Deepening agent autonomy, multi-agent collaboration, and production-grade evaluation.
+
+**👉 [View the Full Phase 2 Roadmap](./roadmaps/PHASE_2_ROADMAP.md)**
+
+**Key Initiatives:**
+- **A1: Emergent Goal Decomposition** (Graph-based planning)
+- **A2: Social Problem Solving** (Multi-agent collaboration)
+- **A3: Evolutionary Prompt Optimization** (Persona evolution via feedback)
+- **A4: Trace Evaluation Pipeline** (LangSmith golden runs)
+- **A5: Containerized Code Execution** (Sandboxed Python tools)
 
 ---
 
 ### 📋 Proposed Work (Phase 2)
 
-No active proposed work. All Phase 1 items complete.
+See [Phase 2 Roadmap](./roadmaps/PHASE_2_ROADMAP.md) for details.
 
 **Next Phase Planning:** Additional items to consider:
 - Production deployment and stability monitoring
