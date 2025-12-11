@@ -679,9 +679,26 @@ class BroadcastManager:
                             user = await self._bot.fetch_user(user_id)
                             if user:
                                 # Send DM
-                                await user.send(item["content"], files=files)
+                                sent_msg = await user.send(item["content"], files=files)
                                 posted += 1
                                 logger.info(f"Sent queued DM to {user_id} from {item['character_name']}")
+                                
+                                # Save to memory/history
+                                try:
+                                    from src_v2.memory.manager import memory_manager
+                                    await memory_manager.add_message(
+                                        user_id=str(user_id),
+                                        character_name=item["character_name"],
+                                        role="ai",
+                                        content=item["content"],
+                                        user_name=user.name,
+                                        channel_id=str(sent_msg.channel.id),
+                                        message_id=str(sent_msg.id),
+                                        metadata={"provenance": item.get("provenance"), "type": "proactive_dm"}
+                                    )
+                                except Exception as mem_err:
+                                    logger.error(f"Failed to save DM to memory: {mem_err}")
+
                                 continue
                             else:
                                 logger.warning(f"Could not fetch user {user_id} for DM")

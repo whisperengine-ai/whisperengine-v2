@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 from loguru import logger
+from src_v2.config.settings import settings
 from src_v2.agents.proactive import ProactiveAgent
 from src_v2.broadcast.manager import broadcast_manager, PostType
 
@@ -59,6 +60,19 @@ async def run_proactive_message(
     Returns:
         Dict with success status and content
     """
+    # --- 1. Check Feature Flag ---
+    if not settings.ENABLE_PROACTIVE_MESSAGING:
+        logger.info(f"Proactive messaging disabled in settings. Skipping for {user_id}.")
+        return {"success": False, "reason": "disabled_in_settings"}
+
+    # --- 2. Check DM Permissions ---
+    # If DM blocking is enabled, we must ensure the user is in the allowlist.
+    # Otherwise, they will receive the message but won't be able to reply.
+    if settings.ENABLE_DM_BLOCK:
+        if user_id not in settings.dm_allowed_user_ids_list:
+            logger.info(f"Skipping proactive message to {user_id}: User not in DM allowlist (ENABLE_DM_BLOCK=True).")
+            return {"success": False, "reason": "user_not_allowed_dm"}
+
     logger.info(f"Running proactive message task for {user_id} (reason: {reason})")
     
     agent = ProactiveAgent()
