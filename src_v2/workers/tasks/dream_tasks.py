@@ -104,8 +104,8 @@ async def run_dream_generation(
     logger.info(f"Generating dream for {character_name} (override={override})")
     
     try:
-        from src_v2.agents.dream_graph import DreamGraphAgent
-        from src_v2.memory.dreams import get_dream_manager
+        from src_v2.agents.dream.graph import get_dream_graph
+        from src_v2.memory.dreams import get_dream_manager, DreamContent
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
         from datetime import timezone
@@ -167,7 +167,8 @@ async def run_dream_generation(
         
         # Run LangGraph Dream Agent
         logger.info(f"Using LangGraph Dream Agent for {character_name}")
-        graph_agent = DreamGraphAgent()
+        graph_factory = get_dream_graph()
+        graph = graph_factory.build_graph()
         
         # Gather material (Graph expects DreamMaterial object)
         material = await dream_manager.gather_dream_material(hours=24)
@@ -230,19 +231,43 @@ async def run_dream_generation(
                 "absence_recorded": True
             }
 
+        # Convert material to seeds for the new graph
+        seeds = []
+        for m in material.memories:
+            seeds.append({"id": m.get("id"), "content": m.get("content"), "timestamp": m.get("timestamp"), "type": "memory"})
+        for f in material.facts:
+            seeds.append({"content": f, "type": "fact"})
+        for o in material.observations:
+            seeds.append({"content": o.get("content"), "type": "observation"})
+        for g in material.gossip:
+            seeds.append({"content": g.get("content"), "type": "gossip"})
+            
         # Run Graph
-        dream = await graph_agent.run(
-            material=material,
-            character_context=character_description
-        )
+        result = await graph.ainvoke({
+            "bot_name": character_name,
+            "seeds": seeds,
+            "context": [],
+            "dream_result": None,
+            "consolidation_status": "pending"
+        })
         
-        if not dream:
-            logger.warning("LangGraph Dream Agent returned None")
+        if result.get("consolidation_status") != "success":
+            logger.warning(f"Dream generation failed: {result.get('consolidation_status')}")
             return {
                 "success": False,
-                "error": "graph_returned_none",
+                "error": result.get("consolidation_status"),
                 "character_name": character_name
             }
+            
+        # Extract dream result
+        dream_data = result.get("dream_result")
+        # Construct DreamContent for broadcasting/return
+        dream = DreamContent(
+            dream=dream_data["content"],
+            mood=dream_data.get("emotions", ["unknown"])[0] if dream_data.get("emotions") else "unknown",
+            symbols=dream_data.get("entities", []),
+            memory_echoes=[] # New graph doesn't explicitly return echoes
+        )
         
         # Build provenance data - vague/poetic for display, content has explicit names for search
         provenance_data = []
@@ -275,8 +300,8 @@ async def run_dream_generation(
                 "description": "what was known"
             })
             
-        # Save
-        point_id = await dream_manager.save_dream(user_id="__character__", dream=dream, provenance=provenance_data)
+        # Note: Dream is already saved by the graph's consolidate step!
+        point_id = "graph_generated"
         
         # Phase E22: Check for absence resolution (dream succeeded after previous failures)
         try:

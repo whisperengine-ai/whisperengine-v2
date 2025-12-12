@@ -42,6 +42,11 @@ class DreamGraph:
 
     async def select_seeds(self, state: DreamState) -> Dict[str, Any]:
         """Selects random or recent memories to dream about."""
+        # If seeds are already provided (e.g. from DreamManager), use them
+        if state.get("seeds"):
+            logger.info(f"[{state['bot_name']}] Using {len(state['seeds'])} provided seeds.")
+            return {"seeds": state["seeds"]}
+
         logger.info(f"[{state['bot_name']}] Selecting dream seeds...")
         
         # TODO: Implement get_unconsolidated_memories in MemoryManager
