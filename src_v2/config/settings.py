@@ -195,13 +195,15 @@ class Settings(BaseSettings):
     PROACTIVE_SILENCE_THRESHOLD_HOURS: int = 24
     
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Post new thoughts in quiet channels (Phase E15)
-    AUTONOMOUS_POSTING_CHANNEL_ID: Optional[str] = None  # Channel for autonomous musings (falls back to BOT_CONVERSATION_CHANNEL_ID)
     AUTONOMOUS_POST_COOLDOWN_MINUTES: int = 10  # Cross-bot cooldown: if ANY bot posted, others wait this long
     ENABLE_BOT_CONVERSATIONS: bool = False  # Start conversations with other bots
     BOT_CONVERSATION_CHANCE: float = 0.15  # Probability of starting a conversation when dead quiet (0.0-1.0)
     BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
-    BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # Override channel for bot conversations
     ACTIVITY_CHECK_INTERVAL_MINUTES: int = 30  # How often to check activity levels for autonomous posting/conversations
+    
+    # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS instead (these are kept for backward compatibility)
+    AUTONOMOUS_POSTING_CHANNEL_ID: Optional[str] = None  # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS
+    BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS
 
     # --- Manipulation Detection & Timeout ---
     # Split into two categories for emergence research:

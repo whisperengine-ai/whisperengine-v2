@@ -155,10 +155,10 @@ class DailyLifeGraph:
         now_utc = datetime.now(timezone.utc)
         cutoff = now_utc - timedelta(minutes=15)
         
-        # Parse special channels
+        # Special channels where fatigue limits are relaxed (use watch_channels)
         bot_conv_channels = []
-        if settings.BOT_CONVERSATION_CHANNEL_ID:
-            bot_conv_channels = [c.strip() for c in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if c.strip()]
+        if hasattr(snapshot, "watch_channels") and snapshot.watch_channels:
+            bot_conv_channels = snapshot.watch_channels
         
         relevant_messages = []
         for m in all_messages:
@@ -278,11 +278,7 @@ class DailyLifeGraph:
             
             # Fatigue Check: Prevent infinite loops
             # If we have sent > X messages to this channel in the last 15 minutes, ignore
-            # Unless it's a designated bot conversation channel
-            bot_conv_channels = []
-            if settings.BOT_CONVERSATION_CHANNEL_ID:
-                bot_conv_channels = [c.strip() for c in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if c.strip()]
-
+            
             # Load character for social battery limit
             character = self.character_manager.load_character(snapshot.bot_name)
             social_limit = 5
@@ -292,14 +288,12 @@ class DailyLifeGraph:
             filtered_scored = []
             for sm in scored:
                 channel_id = sm.message.channel_id
-                is_special = channel_id in bot_conv_channels
                 
-                if not is_special:
-                    # Check fatigue
-                    recent_count = await memory_manager.get_recent_activity_count(snapshot.bot_name, channel_id, minutes=15)
-                    if recent_count >= social_limit:
-                        logger.info(f"Fatigue: Ignoring channel {channel_id} (sent {recent_count}/{social_limit} msgs in last 15m)")
-                        continue
+                # Check fatigue (ALWAYS check to prevent spam)
+                recent_count = await memory_manager.get_recent_activity_count(snapshot.bot_name, channel_id, minutes=15)
+                if recent_count >= social_limit:
+                    logger.info(f"Fatigue: Ignoring channel {channel_id} (sent {recent_count}/{social_limit} msgs in last 15m)")
+                    continue
                 
                 filtered_scored.append(sm)
             
@@ -444,14 +438,10 @@ Format:
                 eligible_channels = []
                 target_channel_ids = []
                 
+                # Use watch_channels from snapshot (passed from bot's config)
+                # This is the single source of truth for autonomous posting channels
                 if hasattr(snapshot, "watch_channels") and snapshot.watch_channels:
                     target_channel_ids = snapshot.watch_channels
-                elif settings.AUTONOMOUS_POSTING_CHANNEL_ID:
-                    target_channel_ids = [cid.strip() for cid in settings.AUTONOMOUS_POSTING_CHANNEL_ID.split(",") if cid.strip()]
-                elif settings.BOT_CONVERSATION_CHANNEL_ID:
-                    target_channel_ids = [cid.strip() for cid in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if cid.strip()]
-                elif settings.DISCORD_CHECK_WATCH_CHANNELS:
-                    target_channel_ids = [cid.strip() for cid in settings.DISCORD_CHECK_WATCH_CHANNELS.split(",") if cid.strip()]
                 
                 # If no specific channels set, consider all in snapshot
                 # This allows for emergent behavior in "Exploration" channels picked by the scheduler

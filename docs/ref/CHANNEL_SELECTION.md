@@ -2,19 +2,38 @@
 
 ## Overview
 
-WhisperEngine uses a **hierarchical channel selection strategy** that prioritizes:
-1. **Explicit configuration** (if set)
-2. **System channels** (Discord's designated "welcome" channels)
-3. **Common naming heuristics** ("general", "chat", "lounge")
-4. **Fallback to any writeable text channel**
+WhisperEngine v2.5+ uses a **simplified channel configuration** with a single primary setting:
 
-Channel selection happens at **two different points**:
-- **Autonomous posts** (single bot initiates)
-- **Bot-to-bot conversations** (paired bots engage)
+| Setting | Purpose |
+|---------|---------|
+| `DISCORD_CHECK_WATCH_CHANNELS` | **Primary** — All autonomous activity (posts, replies, reactions) |
+| `BOT_BROADCAST_CHANNEL_ID` | Public diary/dream sharing (separate from conversation channels) |
+
+### Quick Start
+
+```env
+# Set channels where your bot can be active (comma-separated)
+DISCORD_CHECK_WATCH_CHANNELS=123456789,987654321
+
+# Optional: Where to post dreams/diaries publicly
+BOT_BROADCAST_CHANNEL_ID=111222333
+```
 
 ---
 
-## Channel Selection Logic: `_get_target_channel()`
+## Deprecated Settings (v2.5+)
+
+The following settings are **deprecated** and will be removed in a future version:
+- `AUTONOMOUS_POSTING_CHANNEL_ID` → Use `DISCORD_CHECK_WATCH_CHANNELS`
+- `BOT_CONVERSATION_CHANNEL_ID` → Use `DISCORD_CHECK_WATCH_CHANNELS`
+
+If you have these in your `.env` files, migrate them to `DISCORD_CHECK_WATCH_CHANNELS`.
+
+---
+
+## Channel Selection Logic (Legacy Reference)
+
+**Note**: The following describes the legacy `orchestrator.py` behavior. The Daily Life Graph (v2.5+) uses `DISCORD_CHECK_WATCH_CHANNELS` directly.
 
 **File**: `src_v2/discord/orchestrator.py:220`
 
