@@ -57,14 +57,16 @@
 - Create a dataset of "golden runs" (ideal responses) within LangSmith.
 - Set up automated regression testing to compare new model versions against these golden runs.
 
-### 📋 Phase A5: Containerized Code Execution
-**Priority:** 🔴 Critical (for coding agents) | **Time:** 3-4 days | **Complexity:** High
-**Status:** 📋 Planned
+### ⏭️ Phase A5: Containerized Code Execution
+**Priority:** ⚪ Low | **Time:** 3-4 days | **Complexity:** High
+**Status:** ⏭️ Skipped (Out of Scope)
 **Dependencies:** Docker ✅
 
 **Problem:** The agent cannot safely execute code it writes, limiting its ability to perform data analysis or complex math.
 
-**Solution:**
+**Decision:** Skipped. WhisperEngine is focused on social emergence and psychology, not utility/coding tasks. Giving agents shell access presents unnecessary risk and complexity for this research goal.
+
+**Solution (Archived):**
 - Create a `CodeExecutionTool` that spins up an ephemeral Docker container.
 - Allow the agent to write Python scripts, run them, and capture stdout/stderr.
 - **Security:** Strictly isolated network and filesystem access.
