@@ -75,6 +75,14 @@ If answers lean toward "need new schema/code/declarations" — reconsider the ap
 - `docs/emergence_philosophy/` — Claude-to-Claude architecture reviews and philosophy docs
 - `docs/spec/SPEC-E16-FEEDBACK_LOOP_STABILITY.md` — Phase E16: Emergent behavior guardrails spec
 
+### Bot Autonomy & First-Class Citizenship
+**Core Principle:** Bots are first-class citizens.
+- Their autonomous actions (replies AND proactive posts) must use the **same processing flow** as human user messages.
+- Do not use separate/simplified LLM calls for bot actions.
+- Use `MasterGraphAgent` for everything.
+- Treat internal triggers (e.g., "I want to post about X") as `user_input` to be processed with full complexity analysis, context retrieval, and cognitive routing.
+- This ensures bot behavior generates the same rich data (traces, complexity logs) as user behavior, enabling consistent research analysis.
+
 **Research Cadence:**
 - **Daily logs** (~5-10 min): Raw observations in `docs/research/journal/YYYY-MM/`
 - **Weekly summaries** (~20-30 min): Pattern synthesis

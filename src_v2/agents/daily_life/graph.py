@@ -36,6 +36,7 @@ class PlannedAction(BaseModel):
     target_message_id: Optional[str] = None
     channel_id: str
     reasoning: str
+    emoji: Optional[str] = None # Optimization: Pick emoji during planning to save a call
 
 class DailyLifeState(TypedDict):
     # Input
@@ -239,6 +240,9 @@ class DailyLifeGraph:
         # Sort by score
         scored.sort(key=lambda x: x.score, reverse=True)
         
+        if scored:
+            logger.info(f"Perceived {len(scored)} relevant messages. Top: {scored[0].score} ({scored[0].relevance_reason})")
+        
         # Limit to top 5 to save tokens
         return {"scored_messages": scored[:5]}
 
@@ -370,7 +374,8 @@ Format:
             "intent": "reply" | "react" | "ignore",
             "target_message_id": "...",
             "channel_id": "...", 
-            "reasoning": "..."
+            "reasoning": "...",
+            "emoji": "..." // ONLY if intent is 'react'. Pick a single emoji.
         }}
     ]
 }}
@@ -380,6 +385,8 @@ Format:
                         SystemMessage(content="You are a social decision engine. Output JSON only."),
                         HumanMessage(content=prompt)
                     ])
+                    
+                    logger.info(f"Planner raw response: {response.content[:100]}...")
                     
                     # Parse JSON (simplified for now, ideally use structured output)
                     content = self._get_content_str(response.content)
@@ -419,7 +426,8 @@ Format:
                                     intent=intent,
                                     target_message_id=target_id,
                                     channel_id=channel_id,
-                                    reasoning=a.get("reasoning", "")
+                                    reasoning=a.get("reasoning", ""),
+                                    emoji=a.get("emoji")
                                 ))
                 except Exception as e:
                     logger.error(f"Reactive planning failed: {e}")
@@ -520,27 +528,9 @@ Format:
 
         for plan in plans:
             if plan.intent == "react":
-                # Pick an emoji using LLM for personality alignment
-                try:
-                    emoji_prompt = f"""
-You are {snapshot.bot_name}.
-Message: "{plan.reasoning}" (This is why you want to react)
-Target Message ID: {plan.target_message_id}
-
-Pick a SINGLE emoji that best fits your reaction.
-Output ONLY the emoji. No text.
-"""
-                    emoji_resp = await self.executor_llm.ainvoke([
-                        SystemMessage(content=full_system_prompt),
-                        HumanMessage(content=emoji_prompt)
-                    ])
-                    emoji = self._get_content_str(emoji_resp.content).strip()
-                    # Basic validation (ensure it's not a sentence)
-                    if len(emoji) > 4: 
-                        emoji = "👀" # Fallback
-                except Exception:
-                    emoji = "👀"
-
+                # Use the emoji picked by the planner (optimization)
+                emoji = plan.emoji or "👀"
+                
                 commands.append(ActionCommand(
                     action_type="react",
                     channel_id=plan.channel_id,
@@ -590,6 +580,8 @@ Output ONLY the emoji. No text.
                     # We treat the target message as the "user_input"
                     # We pass the plan reasoning as a hidden context variable to guide the response
                     try:
+                        logger.info(f"Executing reply to {target_msg.author_name} in {plan.channel_id}. Reasoning: {plan.reasoning}")
+                        
                         response = await master_graph_agent.run(
                             user_input=target_msg.content,
                             user_id=target_msg.author_id,
@@ -602,6 +594,8 @@ Output ONLY the emoji. No text.
                             },
                             image_urls=None # TODO: Extract images from target_msg if needed
                         )
+                        
+                        logger.info(f"Generated reply: {response[:50]}...")
                         
                         commands.append(ActionCommand(
                             action_type="reply",
@@ -616,157 +610,60 @@ Output ONLY the emoji. No text.
                     except Exception as e:
                         logger.error(f"MasterGraphAgent execution failed in worker: {e}")
             elif plan.intent == "post":
-                # Generate a proactive post - with conversation context
+                # Generate a proactive post - using MasterGraphAgent for full cognitive processing
                 
-                # 1. Find the target channel and get recent messages
+                # 1. Find the target channel
                 target_channel = None
                 for ch in snapshot.channels:
                     if ch.channel_id == plan.channel_id:
                         target_channel = ch
                         break
                 
-                # 2. Build conversation context from recent messages
-                conversation_context = ""
-                other_bot_messages = []
+                # 2. Reconstruct Chat History (same as reply)
+                chat_history = []
                 if target_channel and target_channel.messages:
-                    sorted_msgs = sorted(target_channel.messages, key=lambda m: m.created_at)[-10:]  # Last 10
-                    
-                    if sorted_msgs:
-                        conversation_context = "Recent messages in this channel:\n"
-                        for m in sorted_msgs:
-                            conversation_context += f"- {m.author_name}: {m.content[:200]}{'...' if len(m.content) > 200 else ''}\n"
-                            # Track messages from other bots (not this bot)
-                            if m.is_bot and m.author_name.lower() != snapshot.bot_name.lower():
-                                other_bot_messages.append(m)
-                
-                # 3. Decide engagement mode
+                    sorted_msgs = sorted(target_channel.messages, key=lambda m: m.created_at)[-10:]
+                    for m in sorted_msgs:
+                        if m.author_name.lower() == snapshot.bot_name.lower():
+                            chat_history.append(AIMessage(content=m.content))
+                        else:
+                            chat_history.append(HumanMessage(content=f"{m.author_name}: {m.content}"))
+
+                # 3. Decide topic
                 interests = self._load_interests(snapshot.bot_name)
                 topic = random.choice(interests) if interests else "life"
                 
-                # --- RICH CONTEXT FETCHING (The "Brain" Upgrade) ---
-                # Fetch knowledge, memories, and diary to ground the post
-                from src_v2.agents.context_builder import ContextBuilder
-                cb = ContextBuilder()
+                # 4. Construct "Internal Stimulus" as User Input
+                # We treat the internal desire to post as a "message" from the subconscious/environment
+                # We use a simple prompt to avoid "special" handling, letting the MasterGraphAgent
+                # classify and route it naturally.
+                internal_stimulus = f"I am thinking about {topic}."
                 
-                context_tasks = []
-                
-                # A. Knowledge Graph (Facts about topic)
-                # We use a dummy user_id because the question is about the bot itself
-                context_tasks.append(knowledge_manager.query_graph(
-                    user_id="daily_life_proactive", 
-                    question=f"What do I know or feel about {topic}?"
-                ))
-                
-                # B. Broadcast Memories (Past public posts about topic)
-                # Search the bot's specific collection for public posts
-                context_tasks.append(memory_manager.search_memories(
-                    query=topic, 
-                    user_id="__broadcast__", 
-                    limit=3,
-                    collection_name=f"whisperengine_memory_{snapshot.bot_name}"
-                ))
-                
-                # C. Recent Diary (Current mood/theme)
-                context_tasks.append(cb.get_diary_context(snapshot.bot_name))
-
-                # D. Stigmergy (Shared Artifacts from other bots)
-                # "What are others dreaming/thinking about regarding this topic?"
-                context_tasks.append(cb.get_stigmergy_context(
-                    user_message=topic,
-                    user_id="daily_life_proactive",
-                    character_name=snapshot.bot_name
-                ))
-
-                # Execute parallel fetch
-                results = await asyncio.gather(*context_tasks, return_exceptions=True)
-                
-                # Process results
-                knowledge_text = ""
-                memory_text = ""
-                diary_text = ""
-                stigmergy_text = ""
-                
-                # Result 0: Knowledge
-                if isinstance(results[0], list) and results[0]:
-                    facts = [f.get("fact", "") for f in results[0] if isinstance(f, dict)]
-                    if facts:
-                        knowledge_text = "Relevant Knowledge:\n" + "\n".join([f"- {f}" for f in facts[:3]]) + "\n"
-                
-                # Result 1: Memories
-                if isinstance(results[1], list) and results[1]:
-                    mems = [m.get("content", "") for m in results[1] if isinstance(m, dict)]
-                    if mems:
-                        memory_text = "Past Thoughts on this:\n" + "\n".join([f"- {m}" for m in mems]) + "\n"
-                        
-                # Result 2: Diary
-                if isinstance(results[2], str) and results[2]:
-                    diary_text = f"Current Mindset (Diary):\n{results[2]}\n"
-
-                # Result 3: Stigmergy
-                if isinstance(results[3], str) and results[3]:
-                    stigmergy_text = f"{results[3]}\n"
-
-                rich_context = f"{diary_text}{knowledge_text}{memory_text}{stigmergy_text}"
-                # ---------------------------------------------------
-
-                # If other bots have posted recently, encourage engaging with them
-                if other_bot_messages:
-                    recent_bot = other_bot_messages[-1]  # Most recent other bot message
-                    prompt = f"""You're in a channel with other AI characters. Here's the recent conversation:
-
-{conversation_context}
-
-{rich_context}
-
-{recent_bot.author_name} just said something interesting. You want to join the conversation.
-
-RESPOND NATURALLY - either:
-- Reply to what {recent_bot.author_name} said (agree, disagree, add your perspective)
-- Ask them a follow-up question
-- Share a related thought that builds on the conversation
-
-Stay in character. Be conversational, not preachy. 1-3 sentences max.
-
-YOUR MESSAGE (just the message, no meta-commentary):"""
+                try:
+                    logger.info(f"Executing proactive post in {plan.channel_id}. Topic: {topic}")
                     
-                    resp = await self.executor_llm.ainvoke([
-                        SystemMessage(content=full_system_prompt),
-                        HumanMessage(content=prompt)
-                    ])
+                    response = await master_graph_agent.run(
+                        user_input=internal_stimulus,
+                        user_id="internal_monologue", # Special ID for self-talk
+                        character=character,
+                        chat_history=chat_history,
+                        context_variables={
+                            "user_name": "Internal Monologue",
+                            "channel_name": plan.channel_id,
+                            "additional_context": f"[GOAL] You are posting proactively to the channel. Express your thought about {topic} naturally."
+                        },
+                        image_urls=None
+                    )
                     
-                    # UPGRADE TO REPLY: If we are responding to a specific bot, make it a real reply
-                    commands.append(ActionCommand(
-                        action_type="reply",
-                        channel_id=plan.channel_id,
-                        target_message_id=recent_bot.id,
-                        content=self._get_content_str(resp.content)
-                    ))
-                else:
-                    # No other bots - spark a new conversation
-                    prompt = f"""You're in a quiet channel and want to start a conversation.
-
-{conversation_context if conversation_context else "The channel has been quiet."}
-
-{rich_context}
-
-Topic that interests you: {topic}
-
-Write a short message to spark conversation. Be specific and personal, not generic.
-Use your knowledge/memories if relevant.
-Ask a question or share a thought that invites responses.
-Stay in character. 1-3 sentences max.
-
-YOUR MESSAGE (just the message, no meta-commentary):"""
-                
-                    resp = await self.executor_llm.ainvoke([
-                        SystemMessage(content=full_system_prompt),
-                        HumanMessage(content=prompt)
-                    ])
+                    logger.info(f"Generated proactive post: {response[:50]}...")
+                    
                     commands.append(ActionCommand(
                         action_type="post",
                         channel_id=plan.channel_id,
-                        content=self._get_content_str(resp.content)
+                        content=self._get_content_str(response)
                     ))
+                except Exception as e:
+                    logger.error(f"MasterGraphAgent execution failed for proactive post: {e}")
         
         return {"final_commands": commands}
 
