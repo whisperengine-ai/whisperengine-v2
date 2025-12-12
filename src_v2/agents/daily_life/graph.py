@@ -353,6 +353,8 @@ class DailyLifeGraph:
                 if can_reply:
                     instructions.append("- Reply if you are mentioned directly.")
                     instructions.append("- Reply if the topic is highly relevant and you have something valuable to add.")
+                    instructions.append("- IGNORE if the conversation has reached a natural conclusion or if you have already replied enough.")
+                    instructions.append("- IGNORE if the user's message is just an acknowledgement (e.g. 'ok', 'cool', 'thanks') unless you want to keep talking.")
                 if can_react:
                     instructions.append("- React with an emoji if you agree/disagree but don't want to interrupt.")
                 instructions.append("- Ignore if it's not worth your energy.")
