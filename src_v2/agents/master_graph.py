@@ -21,6 +21,7 @@ from src_v2.utils.llm_retry import invoke_with_retry, get_image_error_message
 
 # Managers for Context Node
 from src_v2.memory.manager import memory_manager
+from src_v2.knowledge.manager import knowledge_manager
 
 # Define State
 class SuperGraphState(TypedDict):
