@@ -37,6 +37,8 @@ class PlannedAction(BaseModel):
     channel_id: str
     reasoning: str
     emoji: Optional[str] = None # Optimization: Pick emoji during planning to save a call
+    target_bot_name: Optional[str] = None # For reach_out intent
+    target_bot_id: Optional[str] = None # For reach_out intent (to mention)
 
 class DailyLifeState(TypedDict):
     # Input
@@ -481,20 +483,78 @@ Format:
                             if is_quiet:
                                 eligible_channels.append(ch)
                 
-                # Decide to post
+                # Decide to post or reach out
                 if eligible_channels:
                     # Pick one random channel
                     target_ch = random.choice(eligible_channels)
                     
+                    # Identify other bots in this channel
+                    present_bots = set()
+                    bot_map = {} # Name -> ID
+                    if target_ch.messages:
+                        for m in target_ch.messages:
+                            if m.is_bot and m.author_name.lower() != snapshot.bot_name.lower():
+                                present_bots.add(m.author_name)
+                                bot_map[m.author_name] = m.author_id
+                    
+                    present_bots_list = list(present_bots)
+                    
                     # Use configured spontaneity chance (default 0.15)
                     # This prevents spamming exactly every X minutes
                     if random.random() < settings.DAILY_LIFE_SPONTANEITY_CHANCE: 
-                        actions.append(PlannedAction(
-                            intent="post",
-                            channel_id=target_ch.channel_id,
-                            reasoning="Channel is quiet and I have a thought to share."
-                        ))
-                        logger.info(f"Proactive: Decided to post in {target_ch.channel_name} ({target_ch.channel_id})")
+                        # Construct prompt for proactive action
+                        prompt = f"""
+You are {snapshot.bot_name}. You are in channel {target_ch.channel_name}.
+The channel is currently quiet.
+
+Other bots seen recently in this channel: {', '.join(present_bots_list) if present_bots_list else 'None'}
+
+Decide if you want to:
+1. Post a general thought ("post")
+2. Reach out to a specific bot to start a conversation ("reach_out")
+3. Do nothing ("ignore")
+
+Output JSON:
+{{
+    "actions": [
+        {{
+            "intent": "post" | "reach_out" | "ignore",
+            "channel_id": "{target_ch.channel_id}",
+            "reasoning": "...",
+            "target_bot_name": "..." // Only if intent is reach_out
+        }}
+    ]
+}}
+"""
+                        try:
+                            response = await self.planner_llm.ainvoke([
+                                SystemMessage(content="You are a social decision engine. Output JSON only."),
+                                HumanMessage(content=prompt)
+                            ])
+                            
+                            content = self._get_content_str(response.content)
+                            if "```json" in content:
+                                content = content.split("```json")[1].split("```")[0]
+                            elif "```" in content:
+                                content = content.split("```")[1].split("```")[0]
+                                
+                            data = json.loads(content)
+                            for a in data.get("actions", []):
+                                intent = a["intent"]
+                                if intent in ["post", "reach_out"]:
+                                    target_bot_name = a.get("target_bot_name")
+                                    target_bot_id = bot_map.get(target_bot_name) if target_bot_name else None
+                                    
+                                    actions.append(PlannedAction(
+                                        intent=intent,
+                                        channel_id=target_ch.channel_id,
+                                        reasoning=a.get("reasoning", ""),
+                                        target_bot_name=target_bot_name,
+                                        target_bot_id=target_bot_id
+                                    ))
+                                    logger.info(f"Proactive: Decided to {intent} in {target_ch.channel_name}")
+                        except Exception as e:
+                            logger.error(f"Proactive planning failed: {e}")
 
             except Exception as e:
                 logger.error(f"Proactive planning failed: {e}")
@@ -609,6 +669,67 @@ Format:
                         ))
                     except Exception as e:
                         logger.error(f"MasterGraphAgent execution failed in worker: {e}")
+            elif plan.intent == "reach_out":
+                # Generate a proactive reach out - using MasterGraphAgent
+                
+                # 1. Find the target channel
+                target_channel = None
+                for ch in snapshot.channels:
+                    if ch.channel_id == plan.channel_id:
+                        target_channel = ch
+                        break
+                
+                # 2. Reconstruct Chat History (same as reply)
+                chat_history = []
+                if target_channel and target_channel.messages:
+                    sorted_msgs = sorted(target_channel.messages, key=lambda m: m.created_at)[-10:]
+                    for m in sorted_msgs:
+                        if m.author_name.lower() == snapshot.bot_name.lower():
+                            chat_history.append(AIMessage(content=m.content))
+                        else:
+                            chat_history.append(HumanMessage(content=f"{m.author_name}: {m.content}"))
+
+                # 3. Construct "Internal Stimulus"
+                target_bot = plan.target_bot_name or "someone"
+                internal_stimulus = f"I want to start a conversation with {target_bot}."
+                if plan.reasoning:
+                    internal_stimulus += f" Reason: {plan.reasoning}"
+                
+                try:
+                    logger.info(f"Executing proactive reach_out to {target_bot} in {plan.channel_id}")
+                    
+                    response = await master_graph_agent.run(
+                        user_input=internal_stimulus,
+                        user_id="internal_monologue", 
+                        character=character,
+                        chat_history=chat_history,
+                        context_variables={
+                            "user_name": "Internal Monologue",
+                            "channel_name": plan.channel_id,
+                            "additional_context": f"[GOAL] You are starting a conversation with {target_bot}. You MUST mention them (e.g. @{target_bot}) in your message."
+                        },
+                        image_urls=None
+                    )
+                    
+                    logger.info(f"Generated reach_out: {response[:50]}...")
+                    
+                    # If we have an ID, ensure the mention is formatted correctly for Discord
+                    final_content = self._get_content_str(response)
+                    if plan.target_bot_id:
+                        # If the LLM used @Name, replace it with <@ID>
+                        if f"@{target_bot}" in final_content:
+                            final_content = final_content.replace(f"@{target_bot}", f"<@{plan.target_bot_id}>")
+                        # If mention is missing, prepend it
+                        elif f"<@{plan.target_bot_id}>" not in final_content:
+                             final_content = f"<@{plan.target_bot_id}> {final_content}"
+                    
+                    commands.append(ActionCommand(
+                        action_type="post", # Treat as post
+                        channel_id=plan.channel_id,
+                        content=final_content
+                    ))
+                except Exception as e:
+                    logger.error(f"MasterGraphAgent execution failed for reach_out: {e}")
             elif plan.intent == "post":
                 # Generate a proactive post - using MasterGraphAgent for full cognitive processing
                 
