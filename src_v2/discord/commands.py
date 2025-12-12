@@ -96,6 +96,15 @@ class CharacterCommands(app_commands.Group):
                 insights_text = "\n".join([f"• {i}" for i in display_insights])
                 if len(insights) > 5:
                     insights_text += f"\n...and {len(insights) - 5} more."
+                # Discord embed field limit is 1024 chars
+                if len(insights_text) > 1000:
+                    insights_text = insights_text[:997] + "..."
+
+            # Truncate other fields to be safe
+            if len(facts) > 1000:
+                facts = facts[:997] + "..."
+            if len(prefs_text) > 1000:
+                prefs_text = prefs_text[:997] + "..."
 
             # Build Response
             embed = discord.Embed(title=f"User Profile: {interaction.user.display_name}", color=0x00ff00)
