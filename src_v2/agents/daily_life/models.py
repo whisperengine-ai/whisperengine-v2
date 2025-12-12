@@ -25,6 +25,7 @@ class SensorySnapshot(BaseModel):
     timestamp: datetime
     channels: List[ChannelSnapshot]
     mentions: List[MessageSnapshot]
+    watch_channels: List[str] = []
 
 class ActionCommand(BaseModel):
     """Command for the bot to execute."""

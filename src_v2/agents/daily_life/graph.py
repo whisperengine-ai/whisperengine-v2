@@ -444,7 +444,9 @@ Format:
                 eligible_channels = []
                 target_channel_ids = []
                 
-                if settings.AUTONOMOUS_POSTING_CHANNEL_ID:
+                if hasattr(snapshot, "watch_channels") and snapshot.watch_channels:
+                    target_channel_ids = snapshot.watch_channels
+                elif settings.AUTONOMOUS_POSTING_CHANNEL_ID:
                     target_channel_ids = [cid.strip() for cid in settings.AUTONOMOUS_POSTING_CHANNEL_ID.split(",") if cid.strip()]
                 elif settings.BOT_CONVERSATION_CHANNEL_ID:
                     target_channel_ids = [cid.strip() for cid in settings.BOT_CONVERSATION_CHANNEL_ID.split(",") if cid.strip()]
@@ -485,6 +487,8 @@ Format:
                             if is_quiet:
                                 eligible_channels.append(ch)
                 
+                logger.info(f"Proactive: Eligible channels (Quiet): {[ch.channel_id for ch in eligible_channels]}")
+
                 # Decide to post or reach out
                 if eligible_channels:
                     # Pick one random channel

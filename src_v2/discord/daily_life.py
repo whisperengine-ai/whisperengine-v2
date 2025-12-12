@@ -174,7 +174,8 @@ class DailyLifeScheduler:
             bot_id=bot_id,
             timestamp=datetime.now(),
             channels=channels_data,
-            mentions=[]
+            mentions=[],
+            watch_channels=settings.discord_check_watch_channels_list
         )
 
     async def trigger_immediate(self, message: discord.Message, reason: str):
