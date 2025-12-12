@@ -103,8 +103,13 @@ class DailyLifeScheduler:
                                 all_candidates.append(channel)
                 
                 if all_candidates:
-                    exploration_channel = random.choice(all_candidates)
-                    channels_to_poll.add(str(exploration_channel.id))
+                    # Pick up to 3 random channels for exploration (increased from 1)
+                    # This ensures the bot discovers new channels faster
+                    sample_size = min(3, len(all_candidates))
+                    exploration_channels = random.sample(all_candidates, sample_size)
+                    for ch in exploration_channels:
+                        channels_to_poll.add(str(ch.id))
+                        logger.debug(f"Exploration: Added channel {ch.name} ({ch.id}) to snapshot")
             except Exception as e:
                 logger.warning(f"Failed to select exploration channel: {e}")
             
