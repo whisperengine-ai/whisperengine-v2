@@ -315,6 +315,7 @@ async def run_diary_generation(
                         "absence_streak_was": absence_streak,
                         "resolution_context": "diary"
                     },
+                    collection_name=target_collection,
                     source_type=MemorySourceType.INFERENCE,
                     importance_score=3
                 )

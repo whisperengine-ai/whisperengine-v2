@@ -214,6 +214,7 @@ async def run_dream_generation(
                         "prior_absence_id": prior_id,
                         "absence_streak": streak
                     },
+                    collection_name=target_collection,
                     source_type=MemorySourceType.ABSENCE,
                     importance_score=2 # Low importance, but present
                 )
@@ -331,6 +332,7 @@ async def run_dream_generation(
                         "absence_streak_was": absence_streak,
                         "resolution_context": "dream"
                     },
+                    collection_name=target_collection,
                     source_type=MemorySourceType.INFERENCE,
                     importance_score=3
                 )
