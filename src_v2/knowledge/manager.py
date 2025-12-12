@@ -363,16 +363,26 @@ PRIVACY RESTRICTION ENABLED:
             return []
         
         # Query: Starting from Memory nodes, find connected User, then their Facts
+        # Also find connected Memories (Structural Consolidation)
         query = """
-        MATCH (m:Memory)<-[:HAS_MEMORY]-(u:User)
+        MATCH (m:Memory)
         WHERE m.id IN $vector_ids
-        OPTIONAL MATCH (u)-[r:FACT]->(e:Entity)
+        
+        // 1. User Context (Existing)
+        OPTIONAL MATCH (m)<-[:HAS_MEMORY]-(u:User)-[r:FACT]->(e:Entity)
+        
+        // 2. Memory Connections (New - Reverie/Dream Links)
+        OPTIONAL MATCH (m)-[r2]-(m2:Memory)
+        WHERE type(r2) IN ['DREAM_ASSOCIATION', 'REVERIE_LINK', 'THEMATIC_LINK']
+        
         RETURN DISTINCT 
             m.id as memory_id,
             u.id as user_id,
             e.name as entity,
             r.predicate as predicate,
-            r.confidence as confidence
+            r.confidence as confidence,
+            m2.content as linked_memory_content,
+            type(r2) as link_type
         LIMIT 20
         """
         
@@ -384,6 +394,7 @@ PRIVACY RESTRICTION ENABLED:
                 # Group by memory_id for easier consumption
                 neighborhood = []
                 for record in records:
+                    # Add User Facts
                     if record.get("entity"):
                         neighborhood.append({
                             "memory_id": record["memory_id"],
@@ -391,6 +402,20 @@ PRIVACY RESTRICTION ENABLED:
                             "entity": record["entity"],
                             "predicate": record["predicate"],
                             "confidence": record.get("confidence", 1.0)
+                        })
+                    
+                    # Add Linked Memories
+                    if record.get("linked_memory_content"):
+                        # Truncate content for display
+                        content = record["linked_memory_content"]
+                        if len(content) > 50:
+                            content = content[:47] + "..."
+                            
+                        neighborhood.append({
+                            "memory_id": record["memory_id"],
+                            "entity": f"Memory: {content}",
+                            "predicate": record["link_type"],
+                            "confidence": 1.0
                         })
                 
                 return neighborhood
