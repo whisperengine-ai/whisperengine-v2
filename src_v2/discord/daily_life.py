@@ -210,7 +210,7 @@ class DailyLifeScheduler:
             await self.task_queue.enqueue(
                 "process_daily_life",
                 snapshot_data=snapshot.model_dump(mode="json"),
-                _queue_name="cognition"
+                _queue_name=TaskQueue.QUEUE_COGNITION
             )
 
     async def _snapshot_and_send(self):
@@ -255,7 +255,7 @@ class DailyLifeScheduler:
         await self.task_queue.enqueue(
             "process_daily_life", 
             snapshot_data=snapshot.model_dump(mode="json"),
-            _queue_name="cognition"
+            _queue_name=TaskQueue.QUEUE_COGNITION
         )
         logger.info(f"Sent snapshot with {len(snapshot.channels)} channels to Remote Brain.")
 
