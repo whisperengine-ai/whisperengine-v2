@@ -22,26 +22,14 @@ Per ADR-003, we build infrastructure for emergence and observe what happens befo
 
 ## 2. The Phased Evolution
 
-### Phase 2.5.1: The Synapse (Graph Unification) ⭐ PRIORITY
-**Goal:** Unify Vector (Qdrant) and Graph (Neo4j) into a single "Holographic" memory system.  
-**Effort:** Medium | **Risk:** Low | **Status:** Recommended First
+### 1. The Synapse (Graph Memory Unification)
+**Goal:** Unify Vector (Qdrant) and Graph (Neo4j) into a single "Unified" memory system.  
+**Status:** ✅ **COMPLETED** (Dec 11, 2025)
 
-Currently, `MemoryManager` and `KnowledgeManager` are separate silos. We will glue them together to enable "Vector-First Traversal."
-
-*   **Implementation:**
-    1.  **Dual-Write:** When saving a memory to Qdrant, create a corresponding `(:Memory)` node in Neo4j with the `vector_id`.
-    2.  **Vector-First Search:** Instead of just retrieving text chunks, we retrieve the *Node ID* from Qdrant, then query Neo4j for that node's neighborhood.
-    3.  **Benefit:** Solves the context window problem. We don't just retrieve "what happened," we retrieve "what is related to what happened" (the structure).
-
-    > **Note on Scope (Dec 2025):**
-    > Initial implementation covers **Conversation Memories** only.
-    > Specialized memory types (Dreams, Diaries, Summaries) currently remain Vector-only.
-    > Future work will extend the graph schema to support these types (likely requiring a `(:Bot)` node anchor).
-
-*   **Why This First:**
-    - Highest leverage change—unlocks explanation, serendipity, and compression.
-    - Low risk—additive code, doesn't break existing flows.
-    - Clear deliverable—can be tested in isolation.
+**The Problem:**
+Currently, Vector Memory (Qdrant) and Knowledge Graph (Neo4j) are separate silos.
+- Vector search finds "similar text" but misses connections.
+- Graph search finds "connections" but requires exact entry points.
 
 ### Phase 2.5.2: The Stream (Real-time Nervous System)
 **Goal:** Move from "Polling" to "Event Streaming" for true autonomy.  
@@ -142,7 +130,7 @@ Give agents simulated internal states:
 | Feature | v2.0 (Current) | v2.5 (Target) |
 | :--- | :--- | :--- |
 | **Core Loop** | Reactive (Stimulus → Response) | Predictive (Prediction → Error → Update) |
-| **Memory** | Dual (Vector OR Graph) | Holographic (Vector AND Graph) |
+| **Memory** | Dual (Vector OR Graph) | Unified (Vector AND Graph) |
 | **Autonomy** | Polling (7-min interval) | Streaming or Triggered (Real-time) |
 | **Idle State** | Sleeping | Dreaming (Optimization) |
 | **Identity** | Static Config | Dynamic/Self-Editing (with Constitution) |

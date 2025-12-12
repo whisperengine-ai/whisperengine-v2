@@ -74,7 +74,7 @@ All bots now have:
 **Dual-Write Architecture:**
 - Every memory saved to Qdrant → Also creates `(:Memory)` node in Neo4j
 - Enables "Vector-First Traversal" → Search for meaning, traverse for structure
-- Holographic memory → Single vector is an "address" to a complex graph neighborhood
+- Unified memory → Single vector is an "address" to a complex graph neighborhood
 
 ### No Feature Flags Required
 

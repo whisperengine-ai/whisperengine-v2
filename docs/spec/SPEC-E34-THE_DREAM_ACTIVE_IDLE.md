@@ -64,9 +64,9 @@ The `DailyLifeScheduler` (or a new `DreamScheduler`) monitors the "Silence Durat
 A new subgraph in the Supergraph architecture.
 
 **Nodes:**
-1.  **`select_seeds`**: Randomly select 2-3 recent "unconsolidated" memories or disconnected graph nodes.
-2.  **`expand_context`**: Use `knowledge_manager.get_memory_neighborhood()` (Synapse) to retrieve the "Holographic" context for these seeds.
-3.  **`dream_weaver`**: LLM Step.
+1.  **`select_seeds`**: Pick 3-5 recent memories (high emotional weight or recent access).
+2.  **`expand_context`**: Use `knowledge_manager.get_memory_neighborhood()` (Synapse) to retrieve the "Unified" context for these seeds.
+3.  **`generate_dream`**: LLM synthesizes a surreal narrative connecting these disparate nodes.
     *   **Input:** The seeds and their neighborhoods.
     *   **Prompt:** "You are dreaming. Look at these disparate fragments of your life. Do they connect? Is there a hidden pattern? A contradiction? A feeling?"
     *   **Output:** A `DreamResult` (Narrative, New Fact, or New Connection).

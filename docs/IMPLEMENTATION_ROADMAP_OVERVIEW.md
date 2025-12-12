@@ -38,7 +38,7 @@ See: [`docs/roadmaps/ROADMAP_V2.5_EVOLUTION.md`](./roadmaps/ROADMAP_V2.5_EVOLUTI
 
 **Key Shifts:**
 - **Reactive → Predictive:** From "Stimulus-Response" to "Active Inference".
-- **Dual Memory → Holographic:** Unifying Vector and Graph into a single structure.
+- **Dual Memory → Unified:** Unifying Vector and Graph into a single structure.
 - **Polling → Streaming:** Real-time event processing via Redis Streams.
 - **Static → Dynamic Identity:** Characters that can edit their own source code.
 
@@ -118,7 +118,7 @@ All proposed roadmap items have been implemented. The system is feature-complete
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
 - **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks + ambient retrieval)
 - **Autonomous Agency** (Unified via Daily Life Graph - ADR-010)
-- **v2.5: The Synapse** (Dual-write architecture unifying Vector + Graph, enabling holographic memory)
+- **v2.5: The Synapse** (Dual-write architecture unifying Vector + Graph, enabling unified memory)
 
 ---
 

@@ -17,7 +17,9 @@
 | **Origin** | Roadmap v2.5 Evolution |
 | **Proposed by** | Claude & Mark |
 | **Catalyst** | The "Context Window Problem": Vector search returns disconnected snippets; Graph search requires knowing the exact keywords. We needed both. |
-| **Key insight** | "Holographic Memory": A single vector point can be the "address" of a complex graph structure. |
+| **Goal** | Unify Vector Memory (Qdrant) and Knowledge Graph (Neo4j) into a single traversable structure. |
+| **Key insight** | "Unified Memory": A single vector point can be the "address" of a complex graph structure. |
+| **Status** | ✅ **COMPLETED** (Dec 11, 2025) |
 
 ---
 
@@ -31,7 +33,7 @@
 
 ### Desired State (v2.5)
 *   **Unified Memory:** Every memory is a node in the graph.
-*   **Holographic Retrieval:** Searching for "coffee" returns the *Memory Node*, which we then expand to find "Sarah" (who was present) and "Central Park" (where it happened).
+*   **Associative Retrieval:** Searching for "coffee" returns the *Memory Node*, which we then expand to find "Sarah" (who was present) and "Central Park" (where it happened).
 
 ## Technical Implementation
 

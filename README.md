@@ -6,7 +6,19 @@ WhisperEngine is a **multi-character Discord AI platform** built on a simple pre
 
 This is not a consciousness claim. It's an engineering hypothesis: complex, coherent behavior can arise from recursive self-reference without explicit personality programming.
 
-**Version:** 2.2.0 | **Python:** 3.13+ | **Status:** Phase 1 Complete
+**Version:** 2.5.0 | **Python:** 3.13+ | **Status:** Phase 2: Synapse Integration
+
+---
+
+## 🧠 The Synapse (New in v2.5)
+
+WhisperEngine v2.5 introduces **The Synapse** — a dual-write architecture that unifies vector search and knowledge graphs into a single unified memory system.
+
+- **Vector Search (Qdrant)** finds *meaning* (associative recall).
+- **Graph Traversal (Neo4j)** finds *structure* (connected facts).
+- **The Synapse** links them: every vector is a node, every node has a vector.
+
+This enables **Vector-First Traversal**: the system recalls a memory, then "looks around" in the graph to see who was there, what was discussed, and how it relates to the current moment.
 
 ---
 
@@ -60,6 +72,46 @@ Not all queries deserve equal computation:
 | Complex reasoning | Multi-step ReAct loop | ~$0.02-0.10 |
 
 The classifier routes based on query complexity — fast when possible, thorough when needed.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    User([User / Discord]) <--> API[FastAPI / Discord Bot]
+    
+    subgraph "Cognitive Architecture"
+        API --> Classifier{Complexity\nClassifier}
+        Classifier -->|Simple| Direct[Direct Response]
+        Classifier -->|Complex| Reflective[Reflective Agent\n(ReAct Loop)]
+        
+        Reflective <--> Tools[Tools Layer]
+    end
+
+    subgraph "Memory Systems (The Five Pillars)"
+        Tools <--> Qdrant[(Qdrant\nVector Memory)]
+        Tools <--> Neo4j[(Neo4j\nKnowledge Graph)]
+        Qdrant <-->|Synapse| Neo4j
+        API <--> Postgres[(PostgreSQL\nEpisodic & User Data)]
+        API --> InfluxDB[(InfluxDB\nMetrics)]
+        API <--> Redis[(Redis\nCache & Queue)]
+    end
+
+    subgraph "Background Processing"
+        Redis --> Worker[Background Worker]
+        Worker --> Insight[Insight Analysis]
+        Worker --> Dream[Dream Generation]
+        Worker --> Summary[Session Summarization]
+    end
+
+    subgraph "External Services"
+        Direct <--> LLM[LLM API]
+        Reflective <--> LLM
+        API --> TTS[ElevenLabs TTS]
+        API --> IMG[Image Gen]
+    end
+```
 
 ---
 
@@ -219,7 +271,7 @@ curl -X POST http://localhost:8000/api/chat \
 
 WhisperEngine supports multiple unique AI personalities, each with their own character file, goals, and evolution parameters.
 
-**Available characters:** `elena` (dev primary), `nottaylor` (production), `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `ryan`, `gabriel`, `aetheris`
+**Available characters:** `elena` (dev primary), `nottaylor` (production), `dotty`, `aria`, `dream`, `jake`, `sophia`, `marcus`, `ryan`, `gabriel`, `aetheris`, `aethys`
 
 | Bot | Port | Role | Main Model |
 |-----|------|------|------------|
@@ -228,6 +280,7 @@ WhisperEngine supports multiple unique AI personalities, each with their own cha
 | dotty | 8002 | Personal | Claude 3.7 Sonnet |
 | gabriel | 8009 | Personal | Mistral Medium 3.1 |
 | aetheris | 8011 | Personal | Claude Sonnet 4 |
+| aethys | 8010 | Test | Cosmic Entity |
 | aria, dream, jake, marcus, ryan, sophia | 8003-8007 | Test | Various (A/B testing) |
 
 ### Character Configuration

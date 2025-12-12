@@ -8,7 +8,7 @@
 
 ## 🧠 The Synapse: Graph Memory Unification
 
-Version 2.5 introduces **The Synapse** — a dual-write architecture that unifies our previously separate Vector Database (Qdrant) and Knowledge Graph (Neo4j) into a single holographic memory system.
+Version 2.5 introduces **The Synapse** — a dual-write architecture that unifies our previously separate Vector Database (Qdrant) and Knowledge Graph (Neo4j) into a single unified memory system.
 
 ### What Changed?
 
@@ -34,7 +34,7 @@ When a conversation message is saved:
 When retrieving context for a response:
 1. **Vector Search**: Find semantically relevant memories (e.g., "coffee")
 2. **Graph Traversal**: Expand each memory to find connected facts/entities
-3. **Holographic Recall**: Return both the memory AND its neighborhood
+3. **Unified Recall**: Return both the memory AND its neighborhood
 
 **Example:**
 ```
