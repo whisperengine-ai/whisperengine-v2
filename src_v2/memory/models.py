@@ -15,6 +15,7 @@ class MemorySourceType(str, Enum):
     DIARY = "diary"                     # Self-reflection in diary
     SUMMARY = "summary"                 # Compressed history
     ABSENCE = "absence"                 # Meta-memory of missing information (Phase E22)
+    BOT_OBSERVATION = "bot_observation" # Observed from another bot (autonomous channel monitoring)
 
 class Memory(BaseModel):
     """

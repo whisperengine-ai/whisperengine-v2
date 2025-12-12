@@ -344,6 +344,33 @@ class ActionPoller:
             if cmd.action_type == "reply" or cmd.action_type == "post":
                 if not cmd.content:
                     return
+                
+                # --- PHASE E31.1: Full Message Processing ---
+                # Save the INCOMING message first (what we're replying to)
+                if cmd.action_type == "reply" and cmd.target_author_id and cmd.target_content:
+                    try:
+                        await memory_manager.add_message(
+                            user_id=cmd.target_author_id,
+                            character_name=self.bot.character_name,
+                            role="human",  # From bot's perspective, incoming is "human"
+                            content=cmd.target_content,
+                            user_name=cmd.target_author_name or "Unknown",
+                            channel_id=str(channel.id),
+                            message_id=cmd.target_message_id,
+                            source_type=MemorySourceType.BOT_OBSERVATION  # Mark as bot-observed
+                        )
+                        logger.debug(f"Saved incoming message {cmd.target_message_id} from {cmd.target_author_name}")
+                        
+                        # Enqueue background learning for the incoming message
+                        from src_v2.discord.handlers.message_handler import enqueue_background_learning
+                        await enqueue_background_learning(
+                            user_id=cmd.target_author_id,
+                            message_content=cmd.target_content,
+                            character_name=self.bot.character_name,
+                            context="autonomous"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to save incoming message: {e}")
                     
                 # Check if target message exists for reply
                 ref = None

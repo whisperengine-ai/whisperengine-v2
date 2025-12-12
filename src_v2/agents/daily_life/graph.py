@@ -607,7 +607,11 @@ Output ONLY the emoji. No text.
                             action_type="reply",
                             channel_id=plan.channel_id,
                             target_message_id=plan.target_message_id,
-                            content=self._get_content_str(response)
+                            content=self._get_content_str(response),
+                            # Include target message details for full processing
+                            target_author_id=target_msg.author_id,
+                            target_author_name=target_msg.author_name,
+                            target_content=target_msg.content
                         ))
                     except Exception as e:
                         logger.error(f"MasterGraphAgent execution failed in worker: {e}")

@@ -33,3 +33,7 @@ class ActionCommand(BaseModel):
     target_message_id: Optional[str] = None
     content: Optional[str] = None  # The text to send
     emoji: Optional[str] = None
+    # Added for full message processing (Phase E31.1)
+    target_author_id: Optional[str] = None  # Who sent the target message
+    target_author_name: Optional[str] = None  # Display name of target author
+    target_content: Optional[str] = None  # Content of the message being replied to
