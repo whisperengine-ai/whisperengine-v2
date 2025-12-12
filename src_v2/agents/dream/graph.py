@@ -93,9 +93,10 @@ class DreamGraph:
 
         logger.info(f"[{state['bot_name']}] Weaving dream...")
         
-        # Prepare prompt
-        seed_text = "\n".join([f"- {s.get('content', '')} ({s.get('timestamp', 'unknown')})" for s in seeds])
+        # Prepare prompt with IDs so LLM can reference them
+        seed_text = "\n".join([f"- [ID:{s.get('id', 'unknown')}] {s.get('content', '')} ({s.get('timestamp', 'unknown')})" for s in seeds])
         context_text = "\n".join([f"- {c.get('entity', '')} ({c.get('predicate', '')})" for c in context])
+        seed_ids = [s.get('id') for s in seeds if s.get('id')]
         
         prompt = f"""You are the subconscious mind of {state['bot_name']}. 
 You are currently dreaming. Your goal is to consolidate these fragmented memories into a cohesive narrative or insight.
@@ -106,12 +107,15 @@ FRAGMENTS (Memories):
 CONTEXT (Associations):
 {context_text}
 
+AVAILABLE MEMORY IDs: {seed_ids}
+
 TASK:
 1. Look for patterns, contradictions, or emotional threads connecting these fragments.
 2. Generate a "Dream Result" which can be:
    - A surreal narrative (type="narrative")
    - A realization about a relationship (type="connection")
    - A new understanding of the world (type="insight")
+3. In `connected_memory_ids`, list the IDs from the AVAILABLE MEMORY IDs that are thematically connected.
 
 The dream should be abstract but grounded in the memories.
 """
@@ -166,8 +170,20 @@ The dream should be abstract but grounded in the memories.
                 # For now, we'll skip this or log it.
                 logger.info(f"[{bot_name}] Dream Insight: {result.new_fact}")
                 
-            # 3. Create edges between connected memories (Future Phase)
-            # This would require a new method in KnowledgeManager to link Memory nodes directly.
+            # 3. Create edges between connected memories (Structural Consolidation)
+            if result.connected_memory_ids and len(result.connected_memory_ids) >= 2:
+                logger.info(f"[{bot_name}] Structural Consolidation: Linking {len(result.connected_memory_ids)} memories...")
+                ids = result.connected_memory_ids
+                
+                # Create a mesh of connections between all identified memories
+                # Use asyncio.gather for parallel execution
+                tasks = []
+                for i in range(len(ids)):
+                    for j in range(i + 1, len(ids)):
+                        tasks.append(knowledge_manager.link_memories(ids[i], ids[j], relationship_type="DREAM_ASSOCIATION"))
+                
+                if tasks:
+                    await asyncio.gather(*tasks)
             
             return {"consolidation_status": "success"}
             

@@ -208,6 +208,20 @@ class MasterGraphAgent:
 
         context_results["memories"] = memories
         
+        # Phase 2.5.1: Synapse - Fetch Memory Neighborhood
+        # If we have memories, fetch their graph connections (Vector-First Traversal)
+        if memories:
+            try:
+                # Extract IDs (search_memories returns dicts)
+                memory_ids = [m.get("id") for m in memories if m.get("id")]
+                if memory_ids:
+                    neighborhood = await knowledge_manager.get_memory_neighborhood(memory_ids)
+                    if neighborhood:
+                        context_results["synapse_neighborhood"] = neighborhood
+                        logger.debug(f"Retrieved {len(neighborhood)} Synapse connections for {len(memory_ids)} memories")
+            except Exception as e:
+                logger.warning(f"Failed to fetch Synapse neighborhood: {e}")
+        
         return {
             "context": context_results
         }
@@ -259,6 +273,23 @@ class MasterGraphAgent:
             
             if memory_context:
                 system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{memory_context}\n"
+                
+                # Phase 2.5.1: Inject Synapse Context (Graph Connections)
+                neighborhood = context_data.get("synapse_neighborhood", [])
+                if neighborhood:
+                    synapse_text = ""
+                    seen_associations = set()
+                    
+                    for item in neighborhood:
+                        # Format: Entity (Predicate)
+                        assoc = f"{item['entity']} ({item['predicate']})"
+                        if assoc not in seen_associations:
+                            synapse_text += f"- Associated with: {assoc}\n"
+                            seen_associations.add(assoc)
+                    
+                    if synapse_text:
+                        system_content += f"\n[ASSOCIATIVE CONNECTIONS]\n(These concepts are structurally linked to the memories above)\n{synapse_text}\n"
+
                 system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
         elif has_documents:
             logger.debug("Skipping memory context injection for document-focused request")

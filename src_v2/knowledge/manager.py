@@ -469,6 +469,36 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Common ground check failed: {e}")
             return ""
 
+    ALLOWED_MEMORY_RELATIONSHIPS = frozenset({"DREAM_ASSOCIATION", "THEMATIC_LINK", "TEMPORAL_SEQUENCE", "EMOTIONAL_RESONANCE"})
+
+    async def link_memories(self, source_id: str, target_id: str, relationship_type: str = "DREAM_ASSOCIATION", weight: float = 1.0):
+        """
+        Creates a relationship between two memory nodes in the graph.
+        Used for Structural Consolidation during dreaming.
+        """
+        if not db_manager.neo4j_driver:
+            return
+
+        # Validate relationship type to prevent Cypher injection
+        if relationship_type not in self.ALLOWED_MEMORY_RELATIONSHIPS:
+            logger.warning(f"Invalid relationship type '{relationship_type}', using DREAM_ASSOCIATION")
+            relationship_type = "DREAM_ASSOCIATION"
+
+        query = f"""
+        MATCH (m1:Memory {{id: $source_id}})
+        MATCH (m2:Memory {{id: $target_id}})
+        MERGE (m1)-[r:{relationship_type}]->(m2)
+        ON CREATE SET r.weight = $weight, r.created_at = datetime()
+        ON MATCH SET r.weight = coalesce(r.weight, 0) + $weight, r.updated_at = datetime()
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                await session.run(query, source_id=source_id, target_id=target_id, weight=weight)
+                logger.debug(f"Linked memories {source_id} -> {target_id} ({relationship_type})")
+        except Exception as e:
+            logger.error(f"Failed to link memories: {e}")
+
     @require_db("neo4j", default_return="")
     async def search_bot_background(self, bot_name: str, user_message: str) -> str:
         """
