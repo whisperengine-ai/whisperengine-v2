@@ -128,9 +128,16 @@ class DailyLifeGraph:
                 if is_own_message and msg.reference_id:
                     replied_to_ids.add(msg.reference_id)
 
+        # Get watch channels for bot visibility
+        watch_channels = []
+        if hasattr(snapshot, "watch_channels") and snapshot.watch_channels:
+            watch_channels = snapshot.watch_channels
+        
         # Flatten messages from all channels
         all_messages = []
         for channel in snapshot.channels:
+            is_watch_channel = channel.channel_id in watch_channels
+            
             for msg in channel.messages:
                 # Skip own messages
                 is_own_message = False
@@ -142,8 +149,9 @@ class DailyLifeGraph:
                 if is_own_message:
                     continue
                 
-                # Skip other bots if bot conversations are disabled
-                if msg.is_bot and not settings.ENABLE_BOT_CONVERSATIONS:
+                # Skip bot messages UNLESS this is a watch channel
+                # (In watch channels, we see everything including other bots)
+                if msg.is_bot and not is_watch_channel:
                     continue
                     
                 all_messages.append(msg)
@@ -154,11 +162,6 @@ class DailyLifeGraph:
         # Use UTC for comparison
         now_utc = datetime.now(timezone.utc)
         cutoff = now_utc - timedelta(minutes=15)
-        
-        # Special channels where fatigue limits are relaxed (use watch_channels)
-        bot_conv_channels = []
-        if hasattr(snapshot, "watch_channels") and snapshot.watch_channels:
-            bot_conv_channels = snapshot.watch_channels
         
         relevant_messages = []
         for m in all_messages:
@@ -176,13 +179,6 @@ class DailyLifeGraph:
                 
             # Skip if already replied to
             if m.id in replied_to_ids:
-                continue
-
-            # Special handling for Bot Conversation Channel
-            # If we are in the special channel, we ALLOW bot messages even if globally disabled
-            is_special_channel = m.channel_id in bot_conv_channels
-            
-            if m.is_bot and not settings.ENABLE_BOT_CONVERSATIONS and not is_special_channel:
                 continue
                 
             relevant_messages.append(m)
@@ -213,7 +209,7 @@ class DailyLifeGraph:
                 
                 for i, msg_emb in enumerate(msg_embeddings):
                     msg = relevant_messages[i]
-                    is_special_channel = msg.channel_id in bot_conv_channels
+                    is_watch_channel = msg.channel_id in watch_channels
                     
                     # Max similarity against any interest
                     # Dot product of normalized vectors = cosine similarity
@@ -221,13 +217,12 @@ class DailyLifeGraph:
                     sims = [np.dot(msg_emb, int_emb) for int_emb in interest_embeddings]
                     max_sim = max(sims) if sims else 0.0
                     
-                    # FORCE relevance for special bot conversation channels
-                    # We want them to be chatty here regardless of topic
-                    if is_special_channel:
+                    # Boost relevance for watch channels (we want to be more engaged there)
+                    if is_watch_channel:
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=0.95, # High score to ensure it gets picked
-                            relevance_reason=f"special_channel_override (topic_sim={max_sim:.2f})"
+                            relevance_reason=f"watch_channel (topic_sim={max_sim:.2f})"
                         ))
                     elif max_sim > 0.55:  # Threshold for relevance
                         scored.append(ScoredMessage(

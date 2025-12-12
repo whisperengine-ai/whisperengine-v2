@@ -7,10 +7,7 @@ from src_v2.config.settings import settings
 
 def _parse_whitelist() -> Set[str]:
     """Parse comma-separated whitelist into a set of user IDs."""
-    raw = str(settings.QUOTA_WHITELIST or "")
-    if not raw.strip():
-        return set()
-    return {uid.strip() for uid in raw.split(",") if uid.strip()}
+    return set(settings.quota_whitelist_list)
 
 
 class QuotaExceededError(Exception):

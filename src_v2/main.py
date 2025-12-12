@@ -28,9 +28,9 @@ async def main():
     logger.debug(f"TOKENIZERS_PARALLELISM: {os.environ.get('TOKENIZERS_PARALLELISM')}")
     
     # Initialize LangSmith tracing if enabled
-    if settings.LANGCHAIN_TRACING_V2:
+    if settings.LANGCHAIN_TRACING_V2 and settings.LANGCHAIN_API_KEY:
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY.get_secret_value()
         os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
         logger.info(f"LangSmith tracing enabled (project: {settings.LANGCHAIN_PROJECT})")
     

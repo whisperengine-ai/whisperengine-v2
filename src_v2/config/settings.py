@@ -4,7 +4,9 @@ import os
 # This must be set before any library using tokenizers is imported
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+import json
 from typing import Optional, Literal
+
 from pydantic import Field, SecretStr, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -170,10 +172,11 @@ class Settings(BaseSettings):
 
     # 2. Observation (Passive)
     ENABLE_CHANNEL_LURKING: bool = False  # Analyze public channels for relevant topics to reply to
-    LURK_CONFIDENCE_THRESHOLD: float = 0.7  # Min score to respond (0.0-1.0)
-    LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # Per-channel cooldown
-    LURK_USER_COOLDOWN_MINUTES: int = 60  # Per-user cooldown
-    LURK_DAILY_MAX_RESPONSES: int = 20  # Global daily limit per bot
+    # DEPRECATED: LURK_* settings - Use DISCORD_CHECK_* instead (Daily Life Graph)
+    LURK_CONFIDENCE_THRESHOLD: float = 0.7  # DEPRECATED: Use DISCORD_CHECK_RELEVANCE_THRESHOLD
+    LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # DEPRECATED: Handled by social_battery_limit
+    LURK_USER_COOLDOWN_MINUTES: int = 60  # DEPRECATED: Handled by social_battery_limit
+    LURK_DAILY_MAX_RESPONSES: int = 20  # DEPRECATED: Handled by social_battery_limit
 
     # 3. Reaction (Low Friction)
     ENABLE_AUTONOMOUS_REACTIONS: bool = True  # React to messages with emojis (requires AUTONOMOUS_ACTIVITY)
@@ -183,10 +186,11 @@ class Settings(BaseSettings):
 
     # 4. Response (Active Reply)
     ENABLE_AUTONOMOUS_REPLIES: bool = False  # Reply to messages without mention (requires LURKING + AUTONOMOUS_ACTIVITY)
-    ENABLE_CROSS_BOT_CHAT: bool = False  # Allow bots to respond to each other
-    CROSS_BOT_MAX_CHAIN: int = 5  # Max replies in a bot-to-bot chain before stopping
-    CROSS_BOT_COOLDOWN_MINUTES: int = 10  # Cooldown per channel between cross-bot interactions
-    CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # Probability of responding to another bot's mention (0.0-1.0)
+    # DEPRECATED: CROSS_BOT_* settings - Bot visibility now determined by DISCORD_CHECK_WATCH_CHANNELS
+    ENABLE_CROSS_BOT_CHAT: bool = False  # DEPRECATED: Bots see each other in watch_channels automatically
+    CROSS_BOT_MAX_CHAIN: int = 5  # DEPRECATED: Use social_battery_limit instead
+    CROSS_BOT_COOLDOWN_MINUTES: int = 10  # DEPRECATED: Use AUTONOMOUS_POST_COOLDOWN_MINUTES
+    CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # DEPRECATED: Use DAILY_LIFE_SPONTANEITY_CHANCE
 
     # 5. Initiation (Proactive)
     ENABLE_PROACTIVE_MESSAGING: bool = False  # Send DMs to users (requires Trust > 20)
@@ -195,13 +199,15 @@ class Settings(BaseSettings):
     PROACTIVE_SILENCE_THRESHOLD_HOURS: int = 24
     
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Post new thoughts in quiet channels (Phase E15)
-    AUTONOMOUS_POST_COOLDOWN_MINUTES: int = 10  # Cross-bot cooldown: if ANY bot posted, others wait this long
-    ENABLE_BOT_CONVERSATIONS: bool = False  # Start conversations with other bots
-    BOT_CONVERSATION_CHANCE: float = 0.15  # Probability of starting a conversation when dead quiet (0.0-1.0)
-    BOT_CONVERSATION_MAX_TURNS: int = 5  # Maximum turns in a bot-to-bot conversation
-    ACTIVITY_CHECK_INTERVAL_MINUTES: int = 30  # How often to check activity levels for autonomous posting/conversations
+    AUTONOMOUS_POST_COOLDOWN_MINUTES: int = 10  # Cooldown before posting again in quiet channel
+    # DEPRECATED: These settings are superseded by Daily Life Graph settings
+    BOT_CONVERSATION_CHANCE: float = 0.15  # DEPRECATED: Use DAILY_LIFE_SPONTANEITY_CHANCE
+    BOT_CONVERSATION_MAX_TURNS: int = 5  # DEPRECATED: Use social_battery_limit
+    ACTIVITY_CHECK_INTERVAL_MINUTES: int = 30  # DEPRECATED: Use DISCORD_CHECK_INTERVAL_MINUTES
     
-    # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS instead (these are kept for backward compatibility)
+    # DEPRECATED: These settings are no longer used. Bot visibility is now determined by DISCORD_CHECK_WATCH_CHANNELS.
+    # If a channel is in watch_channels, the bot sees all messages (including from other bots).
+    ENABLE_BOT_CONVERSATIONS: bool = False  # DEPRECATED: Bots see each other in watch_channels automatically
     AUTONOMOUS_POSTING_CHANNEL_ID: Optional[str] = None  # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS
     BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS
 
@@ -212,7 +218,7 @@ class Settings(BaseSettings):
     ENABLE_JAILBREAK_DETECTION: bool = True  # Detect and block jailbreak attempts (always blocked)
     ENABLE_CONSCIOUSNESS_PROBING_OBSERVATION: bool = True  # Log consciousness fishing attempts but let character respond naturally
     ENABLE_MANIPULATION_TIMEOUTS: bool = False  # Track and timeout manipulation attempts (disabled by default)
-    MANIPULATION_TIMEOUT_SCOPE: str = "per_bot"  # "per_bot" or "global"
+    MANIPULATION_TIMEOUT_SCOPE: Literal["per_bot", "global"] = "per_bot"
 
     # --- Debugging ---
     ENABLE_PROMPT_LOGGING: bool = False
@@ -274,7 +280,7 @@ class Settings(BaseSettings):
     # Enable LangSmith for full observability of LLM calls, tool executions, and traces
     # Sign up at https://smith.langchain.com/ (free tier: 5k traces/month)
     LANGCHAIN_TRACING_V2: bool = False  # Master switch for LangSmith tracing
-    LANGCHAIN_API_KEY: str = ""  # Your LangSmith API key
+    LANGCHAIN_API_KEY: Optional[SecretStr] = None  # Your LangSmith API key
     LANGCHAIN_PROJECT: str = "whisperengine"  # Project name in LangSmith dashboard
 
     # --- Bot Broadcast Channel (Phase E8) ---
@@ -292,8 +298,6 @@ class Settings(BaseSettings):
     def bot_broadcast_channel_ids_list(self) -> list[str]:
         """Parse broadcast channel IDs from comma-separated string."""
         return self._parse_list_string(self.BOT_BROADCAST_CHANNEL_ID)
-
-
 
     # --- Stigmergic Shared Artifacts (Phase E13) ---
     ENABLE_STIGMERGIC_DISCOVERY: bool = True  # Allow bots to discover each other's artifacts
@@ -334,7 +338,6 @@ class Settings(BaseSettings):
             return []
         # Support JSON format for backward compatibility
         if value.strip().startswith("["):
-            import json
             try:
                 return json.loads(value)
             except json.JSONDecodeError:
@@ -344,7 +347,13 @@ class Settings(BaseSettings):
 
     @property
     def dm_allowed_user_ids_list(self) -> list[str]:
+        """Parse DM-allowed user IDs from comma-separated string."""
         return self._parse_list_string(self.DM_ALLOWED_USER_IDS)
+
+    @property
+    def quota_whitelist_list(self) -> list[str]:
+        """Parse quota-exempt user IDs from comma-separated string."""
+        return self._parse_list_string(self.QUOTA_WHITELIST)
 
     @property
     def blocked_user_ids_list(self) -> list[str]:
