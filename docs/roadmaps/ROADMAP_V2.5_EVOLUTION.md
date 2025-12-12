@@ -68,14 +68,14 @@ Currently, if the bot decides "Ignore," the worker goes back to sleep.
     - Just the consolidation part—no synthetic bridging yet.
     - Observe effects before adding complexity.
 
-### Phase 2.5.4: The Soul (Standardization & Self-Editing)
+### Phase 2.5.4: Adaptive Identity (Standardization & Self-Editing)
 **Goal:** Make characters portable and capable of growth.  
 **Effort:** Low | **Risk:** High (Behavioral) | **Status:** Defer Until 2.5.1 & 2.5.3 Observed
 
 Currently, character identity is static (`character.md`).
 
 *   **Implementation:**
-    1.  **The `.soul` Format:** Define a standard schema (Protobuf/JSON) containing the Prompt, Core Memories, and Trust Matrix.
+    1.  **The `.identity` Format:** Define a standard schema (Protobuf/JSON) containing the Prompt, Core Memories, and Trust Matrix.
     2.  **Self-Editing:** Allow the `DreamGraph` to propose Pull Requests to the character's own `core.yaml`.
     3.  **Example:** A character realizes it has been acting "Bold" lately, so it updates its `shyness` parameter from 0.8 to 0.6.
     4.  **Benefit:** True character arcs that emerge from interaction, not just retrieval.
@@ -158,7 +158,7 @@ Based on the "Observe First" philosophy and solo-dev constraints:
 | 2 | **2.5.3 The Dream (Lite)** | Low risk, natural extension of existing diary/dream system |
 | — | *Observation Period* | Watch behavior before proceeding |
 | 3 | **2.5.2 Simplified Streams** | Only if polling feels too slow after observing 2.5.1 & 2.5.3 |
-| 4 | **2.5.4 The Soul** | Only after observing emergent behavior patterns |
+| 4 | **2.5.4 Adaptive Identity** | Only after observing emergent behavior patterns |
 | 5+ | **2.6 Future Phases** | Observer, Forgetting, Proprioception—based on research findings |
 
 ---

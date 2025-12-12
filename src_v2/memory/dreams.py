@@ -1008,7 +1008,7 @@ Create a surreal dream echoing these experiences.""")
             "blissful": "\n\n*I'm carrying that peace into my day.*",
             # Peaceful
             "peaceful": "\n\n*I feel rested in a way that goes beyond sleep.*",
-            "serene": "\n\n*Some dreams are medicine for the soul.*",
+            "serene": "\n\n*Some dreams are medicine for the mind.*",
             # Complex
             "bittersweet": "\n\n*Some dreams are meant to linger, I think.*",
             "melancholic": "\n\n*Even sad dreams can be beautiful.*",

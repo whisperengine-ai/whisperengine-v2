@@ -1,4 +1,4 @@
-# SPEC-E37: The Soul (Self-Editing Identity)
+# SPEC-E37: Adaptive Identity (Self-Editing)
 
 **Document Version:** 1.0
 **Created:** December 11, 2025
@@ -22,7 +22,7 @@
 ---
 
 ## Executive Summary
-"The Soul" introduces a mechanism for **Character Evolution**. Currently, a bot's personality is hardcoded in YAML/Markdown. This spec allows the `DreamGraph` (SPEC-E34) to propose "Pull Requests" to the character's own configuration (e.g., becoming bolder, shyer, or more curious) based on recent experiences, subject to an immutable "Constitution."
+"Adaptive Identity" introduces a mechanism for **Character Evolution**. Currently, a bot's personality is hardcoded in YAML/Markdown. This spec allows the `DreamGraph` (SPEC-E34) to propose "Pull Requests" to the character's own configuration (e.g., becoming bolder, shyer, or more curious) based on recent experiences, subject to an immutable "Constitution."
 
 ## Problem Statement
 ### Current State (v2.0)
@@ -35,7 +35,7 @@
 
 ## Technical Implementation
 
-### 1. The `.soul` Schema
+### 1. The `.identity` Schema
 We split `core.yaml` into two sections:
 1.  **Constitution (Immutable):** Hard constraints (Safety, Core Definition).
 2.  **Persona (Mutable):** Traits that can shift (Mood, Social Battery, Curiosity, Specific Traits).
@@ -59,8 +59,8 @@ During the Dream Cycle (SPEC-E34):
 3.  **Validation:** Check against Constitution. (Is `0.7` allowed? Yes.)
 4.  **Commit:** Update the `persona` section of the YAML (or database record).
 
-### 3. The "Soul File"
-We might move mutable state from YAML (which implies code deployment) to a database record or a dedicated `.soul` JSON file that is read/written at runtime.
+### 3. The "Identity File"
+We might move mutable state from YAML (which implies code deployment) to a database record or a dedicated `.identity` JSON file that is read/written at runtime.
 
 ## Risks & Mitigations
 *   **Character Drift:** The bot becomes unrecognizable. **Mitigation:** "Elasticity" - traits have a "baseline" and a "current" value. They snap back to baseline over time unless reinforced.

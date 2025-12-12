@@ -32,7 +32,7 @@ class CheckPlanetContextTool(BaseTool):
             
             return (
                 f"PLANET: {context['name']}\n"
-                f"INHABITANTS: {context['inhabitant_count']} known souls\n"
+                f"INHABITANTS: {context['inhabitant_count']} known inhabitants\n"
                 f"LOCATIONS (Channels): {', '.join(context['channels'])}\n"
             )
         except Exception as e:
@@ -63,7 +63,7 @@ class GetUniverseOverviewTool(BaseTool):
             lines = []
             lines.append("🌌 UNIVERSE OVERVIEW")
             lines.append(f"Active Planets: {data['planet_count']}")
-            lines.append(f"Total Inhabitants: {data['total_inhabitants']} souls across the cosmos\n")
+            lines.append(f"Total Inhabitants: {data['total_inhabitants']} inhabitants across the cosmos\n")
             
             if data.get("top_universal_topics"):
                 lines.append(f"🔥 Hot Topics Universe-Wide: {', '.join(data['top_universal_topics'][:5])}\n")

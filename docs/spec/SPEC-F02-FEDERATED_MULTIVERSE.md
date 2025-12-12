@@ -632,7 +632,7 @@ This turns federation from a **protocol** into a **social system** — exactly t
 
 ### Naming Note
 
-*Hermes* is the Greek messenger god who guides souls and facilitates communication between realms. Alternative names considered:
+*Hermes* is the Greek messenger god who guides travelers and facilitates communication between realms. Alternative names considered:
 - **Iris** (Greek rainbow goddess, messenger)
 - **Mercury** (Roman equivalent of Hermes)
 - **Seraph** (direct Matrix reference, but perhaps too on-the-nose)

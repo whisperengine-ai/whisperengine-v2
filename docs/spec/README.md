@@ -36,7 +36,7 @@
 | [SPEC-E34](./SPEC-E34-THE_DREAM_ACTIVE_IDLE.md) | E34 | The Dream (Active Idle) | 📋 Proposed | Background memory consolidation |
 | [SPEC-E35](./SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md) | E35 | Unified Memory (Graph Unification) | ✅ Complete | Dual-write & Vector-First Traversal |
 | [SPEC-E36](./SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md) | E36 | The Stream (Real-time) | 📋 Proposed | Hybrid event-driven autonomy |
-| [SPEC-E37](./SPEC-E37-THE_SOUL_SELF_EDITING_IDENTITY.md) | E37 | The Soul (Self-Editing) | 📋 Proposed | Dynamic character evolution |
+| [SPEC-E37](./SPEC-E37-ADAPTIVE_IDENTITY_SELF_EDITING.md) | E37 | Adaptive Identity (Self-Editing) | 📋 Proposed | Dynamic character evolution |
 | [SPEC-F01](./SPEC-F01-EMERGENT_UNIVERSE.md) | F1 | Emergent Universe | 📋 Future | Multi-bot ecosystem |
 | [SPEC-B05](./SPEC-B05-TRACE_LEARNING.md) | B5 | Trace Learning | ✅ Complete | Few-shot injection |
 | [SPEC-C02](./SPEC-C02-CHANNEL_LURKING.md) | C2 | Channel Lurking | ✅ Complete | Passive engagement |
