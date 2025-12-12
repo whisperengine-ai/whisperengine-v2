@@ -1,9 +1,9 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 3.4
+**Document Version:** 3.5
 **Created:** November 24, 2025  
-**Last Updated:** December 11, 2025 (ADR-010 Unified Autonomy)
-**Status:** Phase 1 Complete, Optimizing Autonomy
+**Last Updated:** December 11, 2025 (v2.5 Synapse Release)
+**Status:** v2.5 Complete - Graph Memory Unified
 
 ### Status Legend
 | Icon | Meaning |
@@ -107,6 +107,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | ⚪ Low | **E28** | **User-Facing Graph** | **2-3 days** | E19 ✅ | ✅ Complete |
 | ⚪ Low | **E29** | **Graph-Based Recommendations** | **1-2 days** | E25 ✅ | ✅ Complete |
 | 🟡 Medium | **E30** | **Ambient Graph Memory** | **1-2 days** | E19 ✅ | ✅ Complete |
+| 🔴 Critical | **E35** | **The Synapse (Graph Unification)** | **2-3 days** | Neo4j ✅, Qdrant ✅ | ✅ Complete (v2.5) |
 | 🟡 Medium | **S6** | **Session Timeout Processing** | **2-3 hours** | arq ✅ | ✅ Complete |
 
 ---
@@ -117,6 +118,7 @@ All proposed roadmap items have been implemented. The system is feature-complete
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
 - **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks + ambient retrieval)
 - **Autonomous Agency** (Unified via Daily Life Graph - ADR-010)
+- **v2.5: The Synapse** (Dual-write architecture unifying Vector + Graph, enabling holographic memory)
 
 ---
 
