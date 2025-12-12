@@ -40,5 +40,5 @@ We created and ran `tests_v2/test_stream_trigger.py`:
 - `tests_v2/test_stream_trigger.py`: Verification suite.
 
 ## 5. Next Steps
-- **Phase 2.5 Complete**: We have implemented Synapse, Stream, and Dream.
+- **Phase 2.5 Complete**: We have implemented Unified Memory, Stream, and Dream.
 - **Phase 2.6**: "The Soul" (Self-Editing Identity) - allowing the bot to modify its own `core.yaml` based on experiences.

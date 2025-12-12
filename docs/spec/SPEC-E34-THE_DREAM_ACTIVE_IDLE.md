@@ -4,7 +4,7 @@
 **Created:** December 11, 2025
 **Status:** 📋 Proposed
 **Priority:** 🟢 High
-**Dependencies:** SPEC-E17 (Supergraph), SPEC-E31 (Daily Life Graph), Phase 2.5.1 (Synapse)
+**Dependencies:** SPEC-E17 (Supergraph), SPEC-E31 (Daily Life Graph), Phase 2.5.1 (Unified Memory)
 
 > ✅ **Emergence Check:** Dreams are not scripted scenarios, but emergent reorganizations of existing memory. We provide the mechanism (graph traversal during idle time), but the content of the dreams emerges from the character's unique experiences.
 
@@ -65,7 +65,7 @@ A new subgraph in the Supergraph architecture.
 
 **Nodes:**
 1.  **`select_seeds`**: Pick 3-5 recent memories (high emotional weight or recent access).
-2.  **`expand_context`**: Use `knowledge_manager.get_memory_neighborhood()` (Synapse) to retrieve the "Unified" context for these seeds.
+2.  **`expand_context`**: Use `knowledge_manager.get_memory_neighborhood()` (Unified Memory) to retrieve the "Unified" context for these seeds.
 3.  **`generate_dream`**: LLM synthesizes a surreal narrative connecting these disparate nodes.
     *   **Input:** The seeds and their neighborhoods.
     *   **Prompt:** "You are dreaming. Look at these disparate fragments of your life. Do they connect? Is there a hidden pattern? A contradiction? A feeling?"

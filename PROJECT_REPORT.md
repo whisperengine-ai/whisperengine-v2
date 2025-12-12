@@ -10,11 +10,11 @@ All systems are passing regression tests.
 
 ## 🛠️ Completed Features (Phase 2.5)
 
-### 1. Synapse (Dual-Write Memory) ✅
+### 1. Unified Memory (Dual-Write Memory) ✅
 - **Status:** Deployed
 - **Mechanism:** Parallel writes to Qdrant (Vector) and Neo4j (Graph).
 - **Benefit:** Enables both semantic search and structural relationship queries.
-- **Verification:** `tests_v2/test_synapse_sync.py` passed.
+- **Verification:** `tests_v2/test_unified_memory_dual_write.py` passed.
 
 ### 2. The Stream (Event-Driven Autonomy) ✅
 - **Status:** Deployed

@@ -1,7 +1,7 @@
-# v2.5 Synapse Branch - Documentation & Configuration Update Summary
+# v2.5 Unified Memory Branch - Documentation & Configuration Update Summary
 
 **Date:** December 11, 2025  
-**Branch:** `feat/v2.5-synapse`  
+**Branch:** `feat/v2.5-unified`  
 **Status:** ✅ Complete - Ready for Merge
 
 ---
@@ -12,7 +12,7 @@
 
 **Files Modified:**
 - ✅ `VERSION` → Updated to `2.5.0`
-- ✅ `.github/copilot-instructions.md` → Updated with Synapse architecture
+- ✅ `.github/copilot-instructions.md` → Updated with Unified Memory architecture
 - ✅ `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` → Added E35 to completed items
 
 ### 2. New Documentation
@@ -22,7 +22,7 @@
 - ✅ `docs/BOT_CONFIGURATION_AUDIT_v2.5.md` → Bot configuration standards and audit
 
 **Existing Documentation:**
-- ✅ `docs/spec/SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md` → Already complete
+- ✅ `docs/spec/SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md` → Already complete
 
 ### 3. Bot Configuration Updates
 
@@ -67,7 +67,7 @@ All bots now have:
 
 ---
 
-## 🎯 v2.5 Synapse: What's New
+## 🎯 v2.5 Unified Memory: What's New
 
 ### The Core Feature
 
@@ -78,14 +78,14 @@ All bots now have:
 
 ### No Feature Flags Required
 
-The Synapse is **architectural** — it works automatically with existing flags. No new configuration needed.
+Unified Memory is **architectural** — it works automatically with existing flags. No new configuration needed.
 
 ### Technical Changes
 
 **Code Modified:**
 - `src_v2/memory/manager.py` → Added dual-write to Neo4j
 - `src_v2/knowledge/manager.py` → Added `get_memory_neighborhood()` method
-- `src_v2/agents/master_graph.py` → Added Synapse context injection
+- `src_v2/agents/master_graph.py` → Added Unified Memory context injection
 - `src_v2/workers/tasks/dream_tasks.py` → Fixed for new graph factory
 
 **Database Schema:**
@@ -100,14 +100,14 @@ The Synapse is **architectural** — it works automatically with existing flags.
 
 ### Release Documentation
 - `RELEASE_NOTES_v2.5.md` → User-facing release notes
-- `docs/spec/SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md` → Technical specification
+- `docs/spec/SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md` → Technical specification
 
 ### Configuration Documentation
 - `docs/BOT_CONFIGURATION_AUDIT_v2.5.md` → Configuration standards and audit results
 - `.env.example` → Reference configuration (already up to date)
 
 ### Updated Guides
-- `.github/copilot-instructions.md` → AI assistant instructions with Synapse info
+- `.github/copilot-instructions.md` → AI assistant instructions with Unified Memory info
 - `docs/IMPLEMENTATION_ROADMAP_OVERVIEW.md` → Updated roadmap status
 
 ---
@@ -119,7 +119,7 @@ The Synapse is **architectural** — it works automatically with existing flags.
 1. **Merge Branch:**
    ```bash
    git checkout main
-   git merge feat/v2.5-synapse
+   git merge feat/v2.5-unified
    ```
 
 2. **Pull Latest Code:**
@@ -133,16 +133,16 @@ The Synapse is **architectural** — it works automatically with existing flags.
    ./bot.sh restart bots
    ```
 
-4. **Verify Synapse:**
+4. **Verify Unified Memory:**
    ```bash
-   ./bot.sh logs elena | grep -i "synapse\|neighborhood"
-   # Should see: "Retrieved N Synapse connections for M memories"
+   ./bot.sh logs elena | grep -i "unified\|neighborhood"
+   # Should see: "Retrieved N Unified connections for M memories"
    ```
 
 ### Testing Checklist
 
-- [ ] Run integration test: `python tests_v2/test_synapse_dual_write.py`
-- [ ] Check logs for Synapse activity
+- [ ] Run integration test: `python tests_v2/test_unified_memory_dual_write.py`
+- [ ] Check logs for Unified Memory activity
 - [ ] Test memory retrieval: Ask bot "What do we have in common?"
 - [ ] Verify graph nodes in Neo4j Browser
 - [ ] Run regression suite: `python tests_v2/run_regression.py --bot elena`
@@ -172,7 +172,7 @@ The Synapse is **architectural** — it works automatically with existing flags.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Core Synapse Logic | ✅ Complete | Dual-write + traversal working |
+| Core Unified Memory Logic | ✅ Complete | Dual-write + traversal working |
 | MasterGraph Integration | ✅ Complete | Context injection implemented |
 | Worker Compatibility | ✅ Complete | All tasks updated |
 | Database Schema | ✅ Complete | Constraints created |
@@ -208,7 +208,7 @@ The Synapse is **architectural** — it works automatically with existing flags.
 
 ## 🎉 Conclusion
 
-The `feat/v2.5-synapse` branch is **code complete, fully documented, and ready for deployment**.
+The `feat/v2.5-unified` branch is **code complete, fully documented, and ready for deployment**.
 
 **Key Achievements:**
 - ✅ Dual-write architecture implemented
@@ -221,7 +221,7 @@ The `feat/v2.5-synapse` branch is **code complete, fully documented, and ready f
 **Next Steps:**
 1. Merge to main
 2. Deploy to production
-3. Monitor Synapse activity
+3. Monitor Unified Memory activity
 4. Begin Phase 2 (see `docs/roadmaps/ROADMAP_V2.5_EVOLUTION.md`)
 
 ---

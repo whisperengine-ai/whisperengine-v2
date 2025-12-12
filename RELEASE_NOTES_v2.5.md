@@ -2,13 +2,13 @@
 
 **Release Date:** December 11, 2025  
 **Version:** 2.5.0  
-**Codename:** "The Synapse"
+**Codename:** "Unified Memory"
 
 ---
 
-## 🧠 The Synapse: Graph Memory Unification
+## 🧠 Unified Memory: Graph Memory Unification
 
-Version 2.5 introduces **The Synapse** — a dual-write architecture that unifies our previously separate Vector Database (Qdrant) and Knowledge Graph (Neo4j) into a single unified memory system.
+Version 2.5 introduces **Unified Memory** — a dual-write architecture that unifies our previously separate Vector Database (Qdrant) and Knowledge Graph (Neo4j) into a single unified memory system.
 
 ### What Changed?
 
@@ -17,7 +17,7 @@ Version 2.5 introduces **The Synapse** — a dual-write architecture that unifie
 - Graph search (Neo4j) required knowing exact keywords
 - Memory and facts lived in separate silos
 
-**After v2.5 (The Synapse):**
+**After v2.5 (Unified Memory):**
 - Every memory saved to Qdrant is also a node in the graph
 - Vector search finds *meaning*, graph traversal finds *structure*
 - A single memory point is an "address" to a complex web of associations
@@ -53,7 +53,7 @@ and Sarah was there."
 **Files Changed:**
 - `src_v2/memory/manager.py`: Added dual-write to Neo4j
 - `src_v2/knowledge/manager.py`: Added `get_memory_neighborhood()` method
-- `src_v2/agents/master_graph.py`: Added Synapse context injection
+- `src_v2/agents/master_graph.py`: Added Unified Memory context injection
 
 **Database Schema:**
 ```cypher
@@ -73,7 +73,7 @@ CREATE CONSTRAINT memory_id_unique
 
 ### Configuration
 
-**No Feature Flags Required**: The Synapse is architectural — always active.
+**No Feature Flags Required**: Unified Memory is architectural — always active.
 
 **Related Flags** (ensure these are enabled for full functionality):
 ```bash
@@ -90,13 +90,13 @@ ENABLE_GRAPH_ENRICHMENT=true          # Proactive edge creation
 
 ### Verification
 
-**Test the Synapse:**
+**Test Unified Memory:**
 ```bash
 # Run integration test
-python tests_v2/test_synapse_dual_write.py
+python tests_v2/test_unified_memory_dual_write.py
 
-# Check logs for Synapse activity
-./bot.sh logs elena | grep -i "synapse\|neighborhood"
+# Check logs for Unified Memory activity
+./bot.sh logs elena | grep -i "unified\|neighborhood"
 
 # Query Neo4j directly
 MATCH (m:Memory)<-[:HAS_MEMORY]-(u:User)
@@ -106,7 +106,7 @@ LIMIT 10
 
 **Expected Log Output:**
 ```
-Retrieved 8 Synapse connections for 5 memories
+Retrieved 8 Unified connections for 5 memories
 ```
 
 ### Migration Notes
@@ -114,16 +114,16 @@ Retrieved 8 Synapse connections for 5 memories
 **Existing Deployments:**
 - **No migration required** — dual-write starts immediately on upgrade
 - **Existing memories**: Remain vector-only (new memories get graph nodes)
-- **Backfill** (optional): Run `scripts/backfill_synapse.py` to create graph nodes for historical memories
+- **Backfill** (optional): Run `scripts/backfill_unified_memory.py` to create graph nodes for historical memories
 
 ### Research Implications
 
-The Synapse enables new research questions:
+Unified Memory enables new research questions:
 - Can associations emerge from retrieval patterns alone?
 - Do characters develop "conceptual neighborhoods" over time?
 - How does graph structure influence personality coherence?
 
-See `docs/spec/SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md` for full technical specification.
+See `docs/spec/SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md` for full technical specification.
 
 ---
 
@@ -131,11 +131,11 @@ See `docs/spec/SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md` for full technical spe
 
 ### Worker Compatibility
 - Fixed `dream_tasks.py` to use new `get_dream_graph()` factory
-- All background workers verified compatible with Synapse architecture
+- All background workers verified compatible with Unified Memory architecture
 
 ### Documentation Updates
 - Updated `IMPLEMENTATION_ROADMAP_OVERVIEW.md` with v2.5 status
-- Updated `.github/copilot-instructions.md` with Synapse architecture
+- Updated `.github/copilot-instructions.md` with Unified Memory architecture
 - Bumped `VERSION` to 2.5.0
 
 ---
@@ -146,19 +146,19 @@ See `docs/spec/SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md` for full technical spe
 
 1. **Pull Latest Code:**
    ```bash
-   git checkout feat/v2.5-synapse
-   git pull origin feat/v2.5-synapse
+   git checkout feat/v2.5-unified
+   git pull origin feat/v2.5-unified
    ```
 
 2. **Restart Services:**
    ```bash
-   ./bot.sh restart workers
    ./bot.sh restart bots
+   ./bot.sh restart workers
    ```
 
-3. **Verify Synapse Activity:**
+3. **Verify Unified Memory Activity:**
    ```bash
-   ./bot.sh logs elena | grep -i synapse
+   ./bot.sh logs elena | grep -i unified
    ```
 
 4. **Test Memory Retrieval:**
@@ -181,7 +181,9 @@ No special steps — follow standard setup in `README.md`.
 
 ## 🙏 Acknowledgments
 
-The Synapse concept emerged from observing how human memory works — we don't retrieve isolated facts, we retrieve *neighborhoods* of related concepts. This release is a step toward more holistic, associative AI memory.
+## 💭 Closing Thoughts
+
+"Unified Memory" concept emerged from observing how human memory works — we don't retrieve isolated facts, we retrieve *neighborhoods* of related concepts. This release is a step toward more holistic, associative AI memory.
 
 ---
 

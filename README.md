@@ -6,17 +6,17 @@ WhisperEngine is a **multi-character Discord AI platform** built on a simple pre
 
 This is not a consciousness claim. It's an engineering hypothesis: complex, coherent behavior can arise from recursive self-reference without explicit personality programming.
 
-**Version:** 2.5.0 | **Python:** 3.13+ | **Status:** Phase 2: Synapse Integration
+**Version:** 2.5.0 | **Python:** 3.13+ | **Status:** Phase 2: Unified Memory Integration
 
 ---
 
-## 🧠 The Synapse (New in v2.5)
+## 🧠 Unified Memory (New in v2.5)
 
-WhisperEngine v2.5 introduces **The Synapse** — a dual-write architecture that unifies vector search and knowledge graphs into a single unified memory system.
+WhisperEngine v2.5 introduces **Unified Memory** — a dual-write architecture that unifies vector search and knowledge graphs into a single unified memory system.
 
 - **Vector Search (Qdrant)** finds *meaning* (associative recall).
 - **Graph Traversal (Neo4j)** finds *structure* (connected facts).
-- **The Synapse** links them: every vector is a node, every node has a vector.
+- **Unified Memory** links them: every vector is a node, every node has a vector.
 
 This enables **Vector-First Traversal**: the system recalls a memory, then "looks around" in the graph to see who was there, what was discussed, and how it relates to the current moment.
 
@@ -92,7 +92,7 @@ graph TD
     subgraph "Memory Systems (The Five Pillars)"
         Tools <--> Qdrant[("Qdrant\nVector Memory")]
         Tools <--> Neo4j[("Neo4j\nKnowledge Graph")]
-        Qdrant <-->|Synapse| Neo4j
+        Qdrant <-->|Unified| Neo4j
         API <--> Postgres[("PostgreSQL\nEpisodic & User Data")]
         API --> InfluxDB[("InfluxDB\nMetrics")]
         API <--> Redis[("Redis\nCache & Queue")]

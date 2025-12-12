@@ -11,12 +11,12 @@ from src_v2.core.database import db_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 
-async def test_synapse_dual_write():
+async def test_unified_memory_dual_write():
     """
-    Verifies Phase 2.5.1: Synapse (Graph Unification)
+    Verifies Phase 2.5.1: Unified Memory (Graph Unification)
     Ensures that saving a memory to Qdrant also creates a (:Memory) node in Neo4j.
     """
-    logger.info("🧠 Starting Synapse Dual-Write Test...")
+    logger.info("🧠 Starting Unified Memory Dual-Write Test...")
     
     # 1. Initialize
     await db_manager.connect_postgres()
@@ -31,8 +31,8 @@ async def test_synapse_dual_write():
 
     # Test Data
     test_run_id = str(uuid.uuid4())[:8]
-    user_id = f"test_synapse_user_{test_run_id}"
-    content = f"I am testing the Synapse dual-write system with run ID {test_run_id}."
+    user_id = f"test_unified_user_{test_run_id}"
+    content = f"I am testing the Unified Memory dual-write system with run ID {test_run_id}."
     
     try:
         # 2. Add Memory (Should trigger dual-write)
@@ -90,11 +90,11 @@ async def test_synapse_dual_write():
         # Note: Neighborhood might be empty if user has no facts, but the call should succeed
         logger.info(f"✅ Neighborhood call successful. Items found: {len(neighborhood)}")
         
-        logger.info("🎉 Synapse Test Complete!")
+        logger.info("🎉 Unified Memory Test Complete!")
 
     except Exception as e:
         logger.error(f"❌ Test failed with error: {e}")
         raise
 
 if __name__ == "__main__":
-    asyncio.run(test_synapse_dual_write())
+    asyncio.run(test_unified_memory_dual_write())

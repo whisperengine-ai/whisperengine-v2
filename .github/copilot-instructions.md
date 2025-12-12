@@ -223,14 +223,14 @@ memories, facts, trust, goals = await asyncio.gather(
 - `migrations_v2/`: Alembic migration files. Always run: `alembic upgrade head` on startup (auto-run in `main.py`)
 
 ### Memory System
-- `src_v2/memory/manager.py`: Hybrid Postgres + Qdrant + Neo4j (Synapse). Collection name: `whisperengine_memory_{settings.DISCORD_BOT_NAME}`
+- `src_v2/memory/manager.py`: Hybrid Postgres + Qdrant + Neo4j (Unified Memory). Collection name: `whisperengine_memory_{settings.DISCORD_BOT_NAME}`
 - `src_v2/memory/embeddings.py`: `EmbeddingService` (384D, auto-initialized)
-- **Synapse (v2.5)**: Dual-write to Neo4j creates `(:Memory)` nodes for every vector, enabling Vector-First Traversal
+- **Unified Memory (v2.5)**: Dual-write to Neo4j creates `(:Memory)` nodes for every vector, enabling Vector-First Traversal
 
 ### Knowledge Graph
 - `src_v2/knowledge/manager.py`: Neo4j Cypher operations. Auto-initializes constraints on `User(id)`, `Entity(name)`, `Memory(id)`
 - `src_v2/knowledge/extractor.py`: Pydantic `Fact` model for LLM-generated facts
-- **Synapse (v2.5)**: `get_memory_neighborhood(vector_ids)` retrieves graph context from vector search results
+- **Unified Memory (v2.5)**: `get_memory_neighborhood(vector_ids)` retrieves graph context from vector search results
 
 ### Cognitive Engine
 - `src_v2/agents/engine.py`: `AgentEngine.generate_response()` - main entry for LLM responses
@@ -465,7 +465,7 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 1. **Discord Input**: `on_message()` → Validate → Store to history
 2. **Context Retrieval**: Parallel gather from Qdrant (memories) + Neo4j (facts) + Postgres (trust/prefs)
-3. **Synapse Traversal**: For retrieved memories, fetch graph neighborhood (Vector-First Traversal)
+3. **Unified Memory Traversal**: For retrieved memories, fetch graph neighborhood (Vector-First Traversal)
 4. **Complexity + Intent Classification**: LLM classifier returns complexity level AND detected intents (voice, image, search)
 4. **Response Generation**: 
    - Simple: Direct LLM call with context
@@ -509,6 +509,6 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 
 ---
 
-**Version**: 2.5.0 (Dec 11, 2025 - Synapse: Graph Memory Unification)  
+**Version**: 2.5.0 (Dec 11, 2025 - Unified Memory: Graph Memory Unification)  
 **Python Target**: 3.12+  
 **Main Packages**: `langchain`, `discord.py`, `asyncpg`, `qdrant-client`, `neo4j`, `pydantic`, `loguru`, `arq`

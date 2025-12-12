@@ -22,7 +22,7 @@ Per ADR-003, we build infrastructure for emergence and observe what happens befo
 
 ## 2. The Phased Evolution
 
-### 1. The Synapse (Graph Memory Unification)
+### 1. Unified Memory (Graph Memory Unification)
 **Goal:** Unify Vector (Qdrant) and Graph (Neo4j) into a single "Unified" memory system.  
 **Status:** ✅ **COMPLETED** (Dec 11, 2025)
 
@@ -154,7 +154,7 @@ Based on the "Observe First" philosophy and solo-dev constraints:
 
 | Order | Phase | Rationale |
 |-------|-------|-----------|
-| 1 | **2.5.1 The Synapse** | Highest leverage, low risk, clear deliverable |
+| 1 | **2.5.1 Unified Memory** | Highest leverage, low risk, clear deliverable |
 | 2 | **2.5.3 The Dream (Lite)** | Low risk, natural extension of existing diary/dream system |
 | — | *Observation Period* | Watch behavior before proceeding |
 | 3 | **2.5.2 Simplified Streams** | Only if polling feels too slow after observing 2.5.1 & 2.5.3 |
@@ -163,4 +163,4 @@ Based on the "Observe First" philosophy and solo-dev constraints:
 
 ---
 
-**Next Step:** Begin **Phase 2.5.1 (The Synapse)** by adding `vector_id` to Neo4j nodes during the next memory refactor.
+**Next Step:** Begin **Phase 2.5.1 (Unified Memory)** by adding `vector_id` to Neo4j nodes during the next memory refactor.

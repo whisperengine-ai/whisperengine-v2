@@ -1,4 +1,4 @@
-# SPEC-E35: The Synapse (Graph Unification)
+# SPEC-E35: Unified Memory (Graph Unification)
 
 **Document Version:** 1.0
 **Created:** December 11, 2025
@@ -24,7 +24,7 @@
 ---
 
 ## Executive Summary
-"The Synapse" unifies the previously separate Vector Database (Qdrant) and Knowledge Graph (Neo4j). It implements a **Dual-Write** pattern where every memory saved to Qdrant is also created as a node in Neo4j. This enables **Vector-First Traversal**: searching for meaning (Vector) to find structure (Graph).
+"Unified Memory" unifies the previously separate Vector Database (Qdrant) and Knowledge Graph (Neo4j). It implements a **Dual-Write** pattern where every memory saved to Qdrant is also created as a node in Neo4j. This enables **Vector-First Traversal**: searching for meaning (Vector) to find structure (Graph).
 
 ## Problem Statement
 ### Current State (v2.0)
@@ -78,4 +78,4 @@ New method `knowledge_manager.get_memory_neighborhood(vector_ids)`:
 *   **Latency:** Overhead of dual-write < 50ms.
 
 ## Verification
-Run `tests_v2/test_synapse_dual_write.py`.
+Run `tests_v2/test_unified_memory_dual_write.py`.

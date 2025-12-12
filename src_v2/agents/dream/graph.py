@@ -73,7 +73,7 @@ class DreamGraph:
         return {"seeds": selected_seeds}
 
     async def expand_context(self, state: DreamState) -> Dict[str, Any]:
-        """Expands the seeds using the Synapse (Graph Traversal)."""
+        """Expands the seeds using Unified Memory (Graph Traversal)."""
         seeds = state.get("seeds", [])
         if not seeds:
             return {"context": []}
@@ -82,7 +82,7 @@ class DreamGraph:
         
         vector_ids = [seed["id"] for seed in seeds]
         
-        # Use the new Synapse feature
+        # Use the new Unified Memory feature
         neighborhood = await knowledge_manager.get_memory_neighborhood(vector_ids)
         
         logger.info(f"[{state['bot_name']}] Found {len(neighborhood)} context items.")

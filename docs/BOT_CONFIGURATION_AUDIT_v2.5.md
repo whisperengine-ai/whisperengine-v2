@@ -2,7 +2,7 @@
 
 **Date:** December 11, 2025  
 **Version:** 2.5.0  
-**Purpose:** Verify all bot .env files have correct feature flags for v2.5 Synapse
+**Purpose:** Verify all bot .env files have correct feature flags for v2.5 Unified Memory
 
 ---
 
@@ -116,28 +116,28 @@ ENRICHMENT_MAX_MESSAGES=120
 
 ---
 
-## 🎯 v2.5 Synapse Configuration
+## 🎯 v2.5 Unified Memory Configuration
 
 ### No New Flags Required
 
-The Synapse (Graph Memory Unification) is **architectural** — it works automatically with existing flags:
+Unified Memory (Graph Memory Unification) is **architectural** — it works automatically with existing flags:
 
 1. ✅ `ENABLE_RUNTIME_FACT_EXTRACTION=true` — Enables fact extraction to Neo4j
 2. ✅ `ENABLE_AMBIENT_GRAPH_RETRIEVAL=true` — Injects graph context
 3. ✅ `ENABLE_GRAPH_ENRICHMENT=true` — Creates new edges proactively
 
-**The Synapse dual-write happens automatically when saving memories.**
+**The Unified Memory dual-write happens automatically when saving memories.**
 
-### Verification
+### 2. Verification
 
-Check that Synapse is working:
+Check that Unified Memory is working:
 
 ```bash
-# View logs for Synapse activity
-./bot.sh logs elena | grep -i "synapse\|neighborhood"
+# View logs for Unified Memory activity
+./bot.sh logs elena | grep -i "unified\|neighborhood"
 
-# Should see:
-# "Retrieved 8 Synapse connections for 5 memories"
+# Expected output:
+# "Retrieved 8 Unified Memory connections for 5 memories"
 ```
 
 ---
@@ -215,7 +215,7 @@ When adding a new bot:
 
 ## 📚 Related Documentation
 
-- `docs/spec/SPEC-E35-THE_SYNAPSE_GRAPH_UNIFICATION.md` — Synapse architecture
+- `docs/spec/SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md` — Unified Memory architecture
 - `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md` — Daily Life Graph
 - `docs/spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md` — Graph enrichment
 - `.env.example` — Reference configuration
