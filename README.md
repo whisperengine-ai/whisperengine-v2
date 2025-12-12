@@ -82,20 +82,20 @@ graph TD
     User([User / Discord]) <--> API[FastAPI / Discord Bot]
     
     subgraph "Cognitive Architecture"
-        API --> Classifier{Complexity\nClassifier}
+        API --> Classifier{"Complexity\nClassifier"}
         Classifier -->|Simple| Direct[Direct Response]
-        Classifier -->|Complex| Reflective[Reflective Agent\n(ReAct Loop)]
+        Classifier -->|Complex| Reflective["Reflective Agent\n(ReAct Loop)"]
         
         Reflective <--> Tools[Tools Layer]
     end
 
     subgraph "Memory Systems (The Five Pillars)"
-        Tools <--> Qdrant[(Qdrant\nVector Memory)]
-        Tools <--> Neo4j[(Neo4j\nKnowledge Graph)]
+        Tools <--> Qdrant[("Qdrant\nVector Memory")]
+        Tools <--> Neo4j[("Neo4j\nKnowledge Graph")]
         Qdrant <-->|Synapse| Neo4j
-        API <--> Postgres[(PostgreSQL\nEpisodic & User Data)]
-        API --> InfluxDB[(InfluxDB\nMetrics)]
-        API <--> Redis[(Redis\nCache & Queue)]
+        API <--> Postgres[("PostgreSQL\nEpisodic & User Data")]
+        API --> InfluxDB[("InfluxDB\nMetrics")]
+        API <--> Redis[("Redis\nCache & Queue")]
     end
 
     subgraph "Background Processing"
