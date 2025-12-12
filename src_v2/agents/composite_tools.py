@@ -50,6 +50,23 @@ class AnalyzeTopicTool(BaseTool):
         # Format Facts
         facts_str = f"Graph Query Result: {context.get('knowledge', 'No facts found.')}"
         
+        # Format Neighborhood (Enriched Graph)
+        neighborhood = context.get("neighborhood", [])
+        neighborhood_str = "No enriched connections found."
+        if neighborhood:
+            lines = []
+            seen = set()
+            for item in neighborhood:
+                # Handle both Entity/Predicate and Memory/LinkType formats
+                if "entity" in item and "predicate" in item:
+                    # Check if it's a memory link (from my updated get_memory_neighborhood)
+                    val = f"{item['entity']} ({item['predicate']})"
+                    if val not in seen:
+                        lines.append(f"- {val}")
+                        seen.add(val)
+            if lines:
+                neighborhood_str = "\n".join(lines)
+
         return f"""
 [ANALYSIS FOR: {topic}]
 
@@ -58,6 +75,9 @@ class AnalyzeTopicTool(BaseTool):
 
 --- EPISODES ---
 {episodes_str}
+
+--- ENRICHED CONNECTIONS ---
+{neighborhood_str}
 
 --- FACTS ---
 {facts_str}

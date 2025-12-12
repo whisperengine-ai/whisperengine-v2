@@ -407,7 +407,7 @@ PRIVACY RESTRICTION ENABLED:
                     # Add Linked Memories
                     if record.get("linked_memory_content"):
                         # Truncate content for display
-                        content = record["linked_memory_content"]
+                        content = record["linked_memory_content"] or ""
                         if len(content) > 50:
                             content = content[:47] + "..."
                             
@@ -963,6 +963,11 @@ PRIVACY RESTRICTION ENABLED:
                         MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
                         RETURN 'You' as source, r.predicate as relationship, e.name as target
                         LIMIT 15
+                        UNION
+                        MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)-[r2]-(m2:Memory)
+                        WHERE type(r2) IN ['REVERIE_LINK', 'DREAM_ASSOCIATION', 'THEMATIC_LINK']
+                        RETURN 'Your Memory' as source, type(r2) as relationship, 'Another Memory' as target
+                        LIMIT 5
                         """
                     elif depth == 2:
                         query = """
@@ -977,6 +982,12 @@ PRIVACY RESTRICTION ENABLED:
                         RETURN 'You' as source, r.predicate as rel1, e.name as mid, 
                                null as rel2, null as target
                         LIMIT 10
+                        UNION
+                        MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)-[r2]-(m2:Memory)
+                        WHERE type(r2) IN ['REVERIE_LINK', 'DREAM_ASSOCIATION', 'THEMATIC_LINK']
+                        RETURN 'Your Memory' as source, 'HAS_MEMORY' as rel1, m.content as mid,
+                               type(r2) as rel2, m2.content as target
+                        LIMIT 5
                         """
                     else:  # depth == 3
                         query = """
@@ -986,6 +997,12 @@ PRIVACY RESTRICTION ENABLED:
                         RETURN 'You' as source, r1.predicate as rel1, e1.name as mid,
                                'connects to' as rel2, e2.name as target
                         LIMIT 25
+                        UNION
+                        MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)-[r2]-(m2:Memory)
+                        WHERE type(r2) IN ['REVERIE_LINK', 'DREAM_ASSOCIATION', 'THEMATIC_LINK']
+                        RETURN 'Your Memory' as source, 'HAS_MEMORY' as rel1, m.content as mid,
+                               type(r2) as rel2, m2.content as target
+                        LIMIT 5
                         """
                     
                     result = await session.run(query, user_id=user_id)

@@ -61,6 +61,18 @@ class ContextBuilder:
                     context[key] = ""
             else:
                 context[key] = result
+        
+        # Phase 2.5.1: Fetch Unified Memory Neighborhood (Enriched Graph)
+        # We do this after the initial fetch because we need the memory IDs
+        if context.get("memories"):
+            try:
+                memory_ids = [m.get("id") for m in context["memories"] if m.get("id")]
+                if memory_ids:
+                    neighborhood = await knowledge_manager.get_memory_neighborhood(memory_ids)
+                    context["neighborhood"] = neighborhood
+            except Exception as e:
+                logger.warning(f"ContextBuilder failed to fetch neighborhood: {e}")
+                context["neighborhood"] = []
                 
         return context
 

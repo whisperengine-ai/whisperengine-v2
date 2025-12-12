@@ -388,6 +388,29 @@ This searches your actual memories, not just the current channel. If user mentio
             
             logger.info(f"[SearchEpisodesTool] Returning {len(filtered_results)} memories (limit={limit})")
             
+            # Phase 2.5.1: Fetch Unified Memory Neighborhood for these results
+            # This ensures the reflective agent sees the "Enriched Graph" connections
+            neighborhood_text = ""
+            try:
+                memory_ids = [r.get("id") for r in filtered_results if r.get("id")]
+                if memory_ids:
+                    neighborhood = await knowledge_manager.get_memory_neighborhood(memory_ids)
+                    if neighborhood:
+                        seen_assoc = set()
+                        lines = []
+                        for item in neighborhood:
+                            # Format: Entity (Predicate) or Memory: Content (Link Type)
+                            if "entity" in item and "predicate" in item:
+                                assoc = f"{item['entity']} ({item['predicate']})"
+                                if assoc not in seen_assoc:
+                                    lines.append(f"- {assoc}")
+                                    seen_assoc.add(assoc)
+                        
+                        if lines:
+                            neighborhood_text = "\n\n[Graph Connections]\n" + "\n".join(lines)
+            except Exception as e:
+                logger.warning(f"Failed to fetch neighborhood in tool: {e}")
+
             # Include relative time to help identify recent vs old memories
             formatted_lines = []
             for r in filtered_results:
@@ -408,7 +431,7 @@ This searches your actual memories, not just the current channel. If user mentio
                 formatted_lines.append(f"- ({relative_time}) {content}")
             
             formatted = "\n".join(formatted_lines)
-            return f"Found {len(filtered_results)} memories:\n{formatted}"
+            return f"Found {len(filtered_results)} memories:\n{formatted}{neighborhood_text}"
         except Exception as e:
             logger.error(f"[SearchEpisodesTool] Error: {e}")
             return f"Error searching episodes: {e}"
