@@ -6,7 +6,7 @@ from loguru import logger
 import discord
 
 from src_v2.config.settings import settings
-from src_v2.core.database import db_manager
+from src_v2.core.cache import CacheManager
 
 class CrossBotManager:
     """
@@ -17,6 +17,7 @@ class CrossBotManager:
         self.bot: Optional[discord.Client] = None
         self.known_bots: Dict[str, int] = {}  # name -> discord_id
         self._running = False
+        self._cache = CacheManager()
 
     def set_bot(self, bot: discord.Client):
         self.bot = bot
@@ -41,15 +42,13 @@ class CrossBotManager:
         if not self.bot or not self.bot.user:
             return
             
-        if not db_manager.redis_client:
-            return
-
         bot_name = settings.DISCORD_BOT_NAME
         if not bot_name:
             return
 
         # Key: whisper:bot:{name}:info
-        key = f"{settings.REDIS_KEY_PREFIX}bot:{bot_name}:info"
+        # CacheManager adds prefix automatically
+        key = f"bot:{bot_name}:info"
         data = {
             "name": bot_name,
             "discord_id": self.bot.user.id,
@@ -58,22 +57,31 @@ class CrossBotManager:
         }
         
         # Set with TTL of 60s (must refresh to stay "known")
-        await db_manager.redis_client.setex(key, 60, json.dumps(data))
+        await self._cache.setex(key, 60, json.dumps(data))
 
     async def load_known_bots(self):
         """Discover other bots from Redis."""
-        if not db_manager.redis_client:
-            return
-
-        pattern = f"{settings.REDIS_KEY_PREFIX}bot:*:info"
-        # keys() returns bytes, need to decode if needed, but redis-py handles strings usually
-        keys = await db_manager.redis_client.keys(pattern)
+        pattern = "bot:*:info"
+        # CacheManager adds prefix to pattern
+        keys = await self._cache.keys(pattern)
         
         new_known_bots = {}
         
         for key in keys:
             try:
-                data_str = await db_manager.redis_client.get(key)
+                # key returned by redis.keys() includes the prefix
+                # CacheManager.get() expects key WITHOUT prefix (it adds it)
+                # So we need to strip the prefix if we use CacheManager.get()
+                # OR we can use db_manager.redis_client.get(key) directly since we have the full key
+                # BUT we want to use CacheManager.
+                
+                # Let's strip the prefix
+                clean_key = key
+                prefix = settings.REDIS_KEY_PREFIX
+                if key.startswith(prefix):
+                    clean_key = key[len(prefix):]
+                
+                data_str = await self._cache.get(clean_key)
                 if data_str:
                     data = json.loads(data_str)
                     name = data.get("name")

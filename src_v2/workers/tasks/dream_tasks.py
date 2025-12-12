@@ -1,14 +1,16 @@
 from typing import Dict, Any
+from datetime import datetime
 from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
-from src_v2.core.database import db_manager
-from datetime import datetime, timedelta
+from src_v2.core.cache import CacheManager
 
 # Redis key prefix for dream generation locks
 DREAM_LOCK_PREFIX = "dream:generation:lock:"
 DREAM_LOCK_TTL = 600  # 10 minutes - enough for dream generation
+
+cache = CacheManager()
 
 
 async def _acquire_dream_lock(character_name: str) -> bool:
@@ -21,21 +23,17 @@ async def _acquire_dream_lock(character_name: str) -> bool:
     Returns:
         True if lock acquired, False if another job is already running
     """
-    if not db_manager.redis_client:
-        logger.warning("Redis not available, skipping lock")
-        return True  # Allow to proceed without lock
-    
     try:
         # Use today's date (UTC) in the lock key so it resets daily
         today = datetime.utcnow().strftime("%Y-%m-%d")
         lock_key = f"{DREAM_LOCK_PREFIX}{character_name}:{today}"
         
         # SET NX with TTL - atomic operation
-        result = await db_manager.redis_client.set(
+        # CacheManager handles prefixing
+        result = await cache.set_nx(
             lock_key,
             datetime.utcnow().isoformat(),
-            nx=True,  # Only set if not exists
-            ex=DREAM_LOCK_TTL  # Expire after 10 minutes
+            ttl=DREAM_LOCK_TTL
         )
         
         if result:
@@ -52,13 +50,10 @@ async def _acquire_dream_lock(character_name: str) -> bool:
 
 async def _release_dream_lock(character_name: str) -> None:
     """Release the dream generation lock (optional - TTL handles cleanup)."""
-    if not db_manager.redis_client:
-        return
-    
     try:
         today = datetime.utcnow().strftime("%Y-%m-%d")
         lock_key = f"{DREAM_LOCK_PREFIX}{character_name}:{today}"
-        await db_manager.redis_client.delete(lock_key)
+        await cache.delete(lock_key)
         logger.debug(f"Released dream lock for {character_name}")
     except Exception as e:
         logger.debug(f"Failed to release dream lock: {e}")
