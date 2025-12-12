@@ -169,11 +169,10 @@ async def run_diary_generation(
                 target_collection = f"whisperengine_memory_{character_name}"
                 
                 # Find previous absence to calculate streak
-                recent_absences = await memory_manager.search_memories_advanced(
+                recent_absences = await memory_manager.search_memories(
+                    user_id=character_name,
                     query="absence of diary material",
-                    metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
                     limit=1,
-                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp(),
                     collection_name=target_collection
                 )
                 
@@ -291,11 +290,10 @@ async def run_diary_generation(
         try:
             target_collection = f"whisperengine_memory_{character_name}"
             
-            recent_absences = await memory_manager.search_memories_advanced(
+            recent_absences = await memory_manager.search_memories(
+                user_id=character_name,
                 query="absence of diary material",
-                metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
                 limit=1,
-                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp(),
                 collection_name=target_collection
             )
             
