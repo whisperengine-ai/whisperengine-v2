@@ -8,7 +8,7 @@ from src_v2.core.cache import CacheManager
 
 # Redis key prefix for dream generation locks
 DREAM_LOCK_PREFIX = "dream:generation:lock:"
-DREAM_LOCK_TTL = 600  # 10 minutes - enough for dream generation
+DREAM_LOCK_TTL = 86400  # 24 hours - prevent multiple dreams per day
 
 cache = CacheManager()
 
@@ -99,7 +99,7 @@ async def run_dream_generation(
     logger.info(f"Generating dream for {character_name} (override={override})")
     
     try:
-        from src_v2.agents.dream.graph import get_dream_graph
+        from src_v2.agents.reverie.graph import get_reverie_graph
         from src_v2.memory.dreams import get_dream_manager, DreamContent
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
@@ -160,9 +160,9 @@ async def run_dream_generation(
         if not character_description:
             character_description = f"You are {character_name.title()}, an AI companion."
         
-        # Run LangGraph Dream Agent
-        logger.info(f"Using LangGraph Dream Agent for {character_name}")
-        graph_factory = get_dream_graph()
+        # Run LangGraph Reverie Agent (used for Dreams too)
+        logger.info(f"Using LangGraph Reverie Agent for {character_name}")
+        graph_factory = get_reverie_graph()
         graph = graph_factory.build_graph()
         
         # Gather material (Graph expects DreamMaterial object)
@@ -242,8 +242,9 @@ async def run_dream_generation(
             "bot_name": character_name,
             "seeds": seeds,
             "context": [],
-            "dream_result": None,
-            "consolidation_status": "pending"
+            "reverie_result": None,
+            "consolidation_status": "pending",
+            "process_type": "dream"
         })
         
         if result.get("consolidation_status") != "success":
@@ -255,7 +256,7 @@ async def run_dream_generation(
             }
             
         # Extract dream result
-        dream_data = result.get("dream_result")
+        dream_data = result.get("reverie_result")
         # Construct DreamContent for broadcasting/return
         dream = DreamContent(
             dream=dream_data["content"],
@@ -379,38 +380,39 @@ async def run_dream_generation(
         }
 
 
-async def run_active_dream_cycle(
+async def run_reverie_cycle(
     ctx: Dict[str, Any],
     character_name: str
 ) -> Dict[str, Any]:
     """
-    Runs the Active Idle Dream cycle (Phase E34).
+    Runs the Reverie cycle (Phase E34).
     This is a lightweight consolidation process that runs when the bot is idle.
     """
-    if not settings.ENABLE_DREAM_SEQUENCES:
+    if not settings.ENABLE_REVERIE:
         return {"success": False, "reason": "disabled"}
 
-    logger.info(f"Running Active Dream Cycle for {character_name}")
+    logger.info(f"Entering Reverie State for {character_name}")
     
     try:
-        from src_v2.agents.dream import get_dream_graph
+        from src_v2.agents.reverie.graph import get_reverie_graph
         
-        graph = get_dream_graph()
+        graph = get_reverie_graph()
         
         # Initial state
         initial_state = {
             "bot_name": character_name,
             "seeds": [],
             "context": [],
-            "dream_result": None,
-            "consolidation_status": "pending"
+            "reverie_result": None,
+            "consolidation_status": "pending",
+            "process_type": "reverie"
         }
         
         # Run the graph
         final_state = await graph.build_graph().ainvoke(initial_state)
         
         status = final_state.get("consolidation_status")
-        logger.info(f"Active Dream Cycle finished for {character_name}: {status}")
+        logger.info(f"Reverie Cycle finished for {character_name}: {status}")
         
         return {
             "success": status == "success",
@@ -419,7 +421,7 @@ async def run_active_dream_cycle(
         }
         
     except Exception as e:
-        logger.error(f"Active Dream Cycle failed for {character_name}: {e}")
+        logger.error(f"Reverie Cycle failed for {character_name}: {e}")
         return {
             "success": False,
             "error": str(e),

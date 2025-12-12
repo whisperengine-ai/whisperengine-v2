@@ -52,14 +52,14 @@ Currently, `DailyLifeScheduler` polls every ~7 minutes. This creates a "stutteri
     3.  **Benefit:** 80% of the responsiveness with 20% of the complexity. No consumer groups, offset management, or dead-letter handling.
     4.  **The Poller remains as the safety net.**
 
-### Phase 2.5.3: The Dream (Active Idle State) ⭐ PRIORITY
+### Phase 2.5.3: Reverie (Active Idle State) ⭐ PRIORITY
 **Goal:** Make the bot productive when silent.  
 **Effort:** Medium | **Risk:** Low | **Status:** Recommended Second
 
 Currently, if the bot decides "Ignore," the worker goes back to sleep.
 
 *   **Implementation:**
-    1.  **DreamGraph:** A new LangGraph workflow that triggers when the bot is idle.
+    1.  **ReverieGraph:** A new LangGraph workflow that triggers when the bot is idle.
     2.  **Memory Consolidation:** The Dreamer traverses the graph, finding disconnected nodes and generating "synthetic memories" to bridge them.
     3.  **Self-Optimization:** It prunes weak connections (forgetting) and strengthens active ones.
     4.  **Benefit:** The agent improves itself overnight. It might wake up with a "new idea" (a synthetic memory) that it wants to share.
@@ -76,7 +76,7 @@ Currently, character identity is static (`character.md`).
 
 *   **Implementation:**
     1.  **The `.identity` Format:** Define a standard schema (Protobuf/JSON) containing the Prompt, Core Memories, and Trust Matrix.
-    2.  **Self-Editing:** Allow the `DreamGraph` to propose Pull Requests to the character's own `core.yaml`.
+    2.  **Self-Editing:** Allow the `ReverieGraph` to propose Pull Requests to the character's own `core.yaml`.
     3.  **Example:** A character realizes it has been acting "Bold" lately, so it updates its `shyness` parameter from 0.8 to 0.6.
     4.  **Benefit:** True character arcs that emerge from interaction, not just retrieval.
 
@@ -89,7 +89,7 @@ Currently, character identity is static (`character.md`).
       - "Maintain core personality traits within ±0.3 of baseline"
       - "Cannot set sociability below 0.3"
     
-    persona:  # MUTABLE - Character can propose changes via DreamGraph
+    persona:  # MUTABLE - Character can propose changes via ReverieGraph
       shyness: 0.8
       curiosity: 0.9
       playfulness: 0.7

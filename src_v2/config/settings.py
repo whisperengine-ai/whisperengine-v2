@@ -259,6 +259,10 @@ class Settings(BaseSettings):
     DREAM_GENERATION_LOCAL_HOUR: int = 6  # Local hour (in character's timezone) when dreams are generated (6 AM)
     DREAM_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when dreams are generated
     DREAM_GENERATION_JITTER_MINUTES: int = 45  # ±45 min variance (Phase E23)
+
+    # --- Reverie (Active Idle) (Phase E34) ---
+    ENABLE_REVERIE: bool = True  # Enable background memory consolidation (Active Idle)
+    REVERIE_MIN_RICHNESS: int = 3 # Minimum richness to trigger reverie
     
     # --- Agentic Narrative Generation (Phase E10) ---
     # Diary and dream generation now always uses LangGraph agents.

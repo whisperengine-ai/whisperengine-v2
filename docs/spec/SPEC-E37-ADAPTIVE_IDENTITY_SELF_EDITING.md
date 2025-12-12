@@ -4,7 +4,7 @@
 **Created:** December 11, 2025
 **Status:** 📋 Proposed
 **Priority:** ⚪ Low (Experimental)
-**Dependencies:** SPEC-E34 (The Dream)
+**Dependencies:** SPEC-E34 (Reverie)
 
 > ✅ **Emergence Check:** This is the ultimate emergence feature. We stop defining who the character *is* and start defining *how they change*. The character emerges from the feedback loop of their own history.
 
@@ -22,7 +22,7 @@
 ---
 
 ## Executive Summary
-"Adaptive Identity" introduces a mechanism for **Character Evolution**. Currently, a bot's personality is hardcoded in YAML/Markdown. This spec allows the `DreamGraph` (SPEC-E34) to propose "Pull Requests" to the character's own configuration (e.g., becoming bolder, shyer, or more curious) based on recent experiences, subject to an immutable "Constitution."
+"Adaptive Identity" introduces a mechanism for **Character Evolution**. Currently, a bot's personality is hardcoded in YAML/Markdown. This spec allows the `ReverieGraph` (SPEC-E34) to propose "Pull Requests" to the character's own configuration (e.g., becoming bolder, shyer, or more curious) based on recent experiences, subject to an immutable "Constitution."
 
 ## Problem Statement
 ### Current State (v2.0)
@@ -53,7 +53,7 @@ persona:
 ```
 
 ### 2. The Evolution Loop (Dreaming)
-During the Dream Cycle (SPEC-E34):
+During the Reverie Cycle (SPEC-E34):
 1.  **Analysis:** The Dreamer analyzes recent memories. *"I've been talking to a lot of people lately and enjoying it."*
 2.  **Proposal:** The Dreamer proposes a delta. `SET shyness = 0.7`.
 3.  **Validation:** Check against Constitution. (Is `0.7` allowed? Yes.)

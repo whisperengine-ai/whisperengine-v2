@@ -469,7 +469,7 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Common ground check failed: {e}")
             return ""
 
-    ALLOWED_MEMORY_RELATIONSHIPS = frozenset({"DREAM_ASSOCIATION", "THEMATIC_LINK", "TEMPORAL_SEQUENCE", "EMOTIONAL_RESONANCE"})
+    ALLOWED_MEMORY_RELATIONSHIPS = frozenset({"DREAM_ASSOCIATION", "REVERIE_LINK", "THEMATIC_LINK", "TEMPORAL_SEQUENCE", "EMOTIONAL_RESONANCE"})
 
     async def link_memories(self, source_id: str, target_id: str, relationship_type: str = "DREAM_ASSOCIATION", weight: float = 1.0):
         """

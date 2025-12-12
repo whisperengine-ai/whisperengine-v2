@@ -35,7 +35,7 @@ from src_v2.workers.tasks.summary_tasks import run_summarization
 from src_v2.workers.tasks.knowledge_tasks import run_knowledge_extraction
 from src_v2.workers.tasks.batch_knowledge_tasks import run_batch_knowledge_extraction
 from src_v2.workers.tasks.diary_tasks import run_diary_generation
-from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_active_dream_cycle
+from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_reverie_cycle
 from src_v2.workers.tasks.drift_observation import run_drift_observation
 from src_v2.workers.tasks.social_tasks import (
     run_universe_observation,
@@ -127,7 +127,7 @@ class WorkerSettings:
         run_gossip_dispatch,
         arq.func(run_diary_generation, timeout=600),  # Phase E2/E10: Character Diary (agentic)
         arq.func(run_dream_generation, timeout=600),  # Phase E3/E10: Nightly Dreams (agentic)
-        arq.func(run_active_dream_cycle, timeout=600),  # Phase E34: Active Dream Cycle (silence-triggered)
+        arq.func(run_reverie_cycle, timeout=600),  # Phase E34: Reverie Cycle (silence-triggered)
         run_drift_observation,  # Phase E16: Personality drift observation
         run_posting_agent,      # Phase E15: Autonomous Posting
         run_graph_enrichment,   # Phase E25: Graph Enrichment
