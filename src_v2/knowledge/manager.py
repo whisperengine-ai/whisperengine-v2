@@ -1146,9 +1146,9 @@ PRIVACY RESTRICTION ENABLED:
         Example return: {"Luna", "Seattle", "marine biology", "sister Maya"}
         """
         cache_key = f"knowledge:user_entities:{user_id}"
-        cached_data = await cache_manager.get(cache_key)
+        cached_data = await cache_manager.get_json(cache_key)
         if cached_data is not None:
-            return set(cached_data)  # Redis returns list, convert to set
+            return set(cached_data)  # Convert cached list to set
         
         try:
             query = """
@@ -1162,8 +1162,8 @@ PRIVACY RESTRICTION ENABLED:
                 
                 entities = {r['name'] for r in records if r.get('name')}
                 
-                # Cache for 5 minutes (300 seconds)
-                await cache_manager.set(cache_key, list(entities), ttl=300)
+                # Cache for 5 minutes (300 seconds) - use set_json for list serialization
+                await cache_manager.set_json(cache_key, list(entities), ttl=300)
                 
                 logger.debug(f"[E30] Loaded {len(entities)} entities for user {user_id[:8]}...")
                 return entities
