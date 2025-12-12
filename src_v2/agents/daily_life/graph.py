@@ -447,12 +447,21 @@ Format:
                     for ch in snapshot.channels:
                         if ch.channel_id in target_channel_ids:
                             # Check for quietness
-                            # Get last message time
+                            # Get last message time and check if it's from us
                             last_msg_time = None
+                            last_msg_is_self = False
                             if ch.messages:
                                 # Sort by time just in case
                                 sorted_msgs = sorted(ch.messages, key=lambda m: m.created_at, reverse=True)
-                                last_msg_time = sorted_msgs[0].created_at
+                                last_msg = sorted_msgs[0]
+                                last_msg_time = last_msg.created_at
+                                
+                                # Check if the last message was from THIS bot
+                                bot_id = getattr(snapshot, "bot_id", None)
+                                if bot_id and last_msg.author_id == bot_id:
+                                    last_msg_is_self = True
+                                elif last_msg.author_name.lower() == snapshot.bot_name.lower():
+                                    last_msg_is_self = True
                             
                             # If no messages, or last message is old enough
                             is_quiet = False
@@ -460,6 +469,11 @@ Format:
                             
                             if not last_msg_time:
                                 is_quiet = True # Very quiet
+                            elif last_msg_is_self:
+                                # Don't post right after yourself - wait for someone else to speak
+                                # This prevents self-reply loops
+                                logger.debug(f"Skipping proactive post in {ch.channel_id}: last message was from self")
+                                is_quiet = False
                             else:
                                 if last_msg_time.tzinfo is None:
                                     last_msg_time = last_msg_time.replace(tzinfo=timezone.utc)
