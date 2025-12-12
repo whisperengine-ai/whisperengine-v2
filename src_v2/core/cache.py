@@ -5,7 +5,26 @@ from loguru import logger
 from src_v2.core.database import db_manager
 from src_v2.config.settings import settings
 
+
 class CacheManager:
+    """
+    Unified Redis cache abstraction for WhisperEngine.
+    
+    All Redis operations should go through this class to ensure:
+    - Consistent key namespacing (REDIS_KEY_PREFIX)
+    - Fail-safe error handling (logs warnings, never crashes)
+    - JSON serialization for complex data types
+    
+    CURRENT STATUS (v2.5):
+    - String operations: get, set, get_json, set_json, delete, delete_pattern
+    - List operations: lpush, rpush, lpop, rpop, ltrim, lrange, llen
+    - Sorted Set operations: zadd, zrangebyscore, zremrangebyscore
+    - Hash operations: hincrby, hgetall
+    - Key operations: keys, expire
+    - Attention system: set_attention, get_attention, clear_attention
+    - TTL operations: setex, set_nx (locking)
+    """
+    
     def __init__(self):
         self.default_ttl = 300  # 5 minutes
         self.attention_ttl = 1800  # 30 minutes for attention keys
@@ -79,6 +98,162 @@ class CacheManager:
             return len(keys)
         except Exception as e:
             logger.warning(f"Redis delete_pattern failed for {pattern}: {e}")
+            return 0
+
+    async def lpush(self, key: str, *values: str) -> int:
+        if not self.redis:
+            return 0
+        try:
+            return await self.redis.lpush(self._key(key), *values)
+        except Exception as e:
+            logger.warning(f"Redis lpush failed for {key}: {e}")
+            return 0
+
+    async def rpush(self, key: str, *values: str) -> int:
+        if not self.redis:
+            return 0
+        try:
+            return await self.redis.rpush(self._key(key), *values)
+        except Exception as e:
+            logger.warning(f"Redis rpush failed for {key}: {e}")
+            return 0
+
+    async def lpop(self, key: str) -> Optional[str]:
+        if not self.redis:
+            return None
+        try:
+            return await self.redis.lpop(self._key(key))
+        except Exception as e:
+            logger.warning(f"Redis lpop failed for {key}: {e}")
+            return None
+
+    async def ltrim(self, key: str, start: int, end: int) -> bool:
+        if not self.redis:
+            return False
+        try:
+            await self.redis.ltrim(self._key(key), start, end)
+            return True
+        except Exception as e:
+            logger.warning(f"Redis ltrim failed for {key}: {e}")
+            return False
+
+    async def lrange(self, key: str, start: int, end: int) -> list:
+        if not self.redis:
+            return []
+        try:
+            return await self.redis.lrange(self._key(key), start, end)
+        except Exception as e:
+            logger.warning(f"Redis lrange failed for {key}: {e}")
+            return []
+
+    async def rpop(self, key: str) -> Optional[str]:
+        if not self.redis:
+            return None
+        try:
+            return await self.redis.rpop(self._key(key))
+        except Exception as e:
+            logger.warning(f"Redis rpop failed for {key}: {e}")
+            return None
+
+    async def setex(self, key: str, seconds: int, value: str) -> bool:
+        if not self.redis:
+            return False
+        try:
+            await self.redis.setex(self._key(key), seconds, value)
+            return True
+        except Exception as e:
+            logger.warning(f"Redis setex failed for {key}: {e}")
+            return False
+
+    async def set_nx(self, key: str, value: str, ttl: int) -> bool:
+        """Set key if not exists (atomic lock)."""
+        if not self.redis:
+            return False
+        try:
+            # redis-py set(..., nx=True, ex=ttl) returns True if set, None if not
+            result = await self.redis.set(self._key(key), value, nx=True, ex=ttl)
+            return bool(result)
+        except Exception as e:
+            logger.warning(f"Redis set_nx failed for {key}: {e}")
+            return False
+
+    async def zadd(self, key: str, mapping: Dict[str, float]) -> int:
+        if not self.redis:
+            return 0
+        try:
+            return await self.redis.zadd(self._key(key), mapping)
+        except Exception as e:
+            logger.warning(f"Redis zadd failed for {key}: {e}")
+            return 0
+
+    async def zrangebyscore(self, key: str, min_score: float | str, max_score: float | str) -> list:
+        if not self.redis:
+            return []
+        try:
+            return await self.redis.zrangebyscore(self._key(key), min_score, max_score)
+        except Exception as e:
+            logger.warning(f"Redis zrangebyscore failed for {key}: {e}")
+            return []
+
+    async def zremrangebyscore(self, key: str, min_score: float | str, max_score: float | str) -> int:
+        if not self.redis:
+            return 0
+        try:
+            return await self.redis.zremrangebyscore(self._key(key), min_score, max_score)
+        except Exception as e:
+            logger.warning(f"Redis zremrangebyscore failed for {key}: {e}")
+            return 0
+
+    async def keys(self, pattern: str) -> list:
+        """
+        Find keys matching pattern.
+        Note: pattern should NOT include the global prefix, it will be added.
+        Returns list of keys (without prefix? No, Redis returns full keys).
+        """
+        if not self.redis:
+            return []
+        try:
+            # We prefix the pattern
+            full_pattern = self._key(pattern)
+            return await self.redis.keys(full_pattern)
+        except Exception as e:
+            logger.warning(f"Redis keys failed for {pattern}: {e}")
+            return []
+
+    async def hincrby(self, key: str, field: str, amount: int = 1) -> int:
+        if not self.redis:
+            return 0
+        try:
+            return await self.redis.hincrby(self._key(key), field, amount)
+        except Exception as e:
+            logger.warning(f"Redis hincrby failed for {key}: {e}")
+            return 0
+
+    async def hgetall(self, key: str) -> Dict[str, str]:
+        if not self.redis:
+            return {}
+        try:
+            return await self.redis.hgetall(self._key(key))
+        except Exception as e:
+            logger.warning(f"Redis hgetall failed for {key}: {e}")
+            return {}
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        if not self.redis:
+            return False
+        try:
+            return await self.redis.expire(self._key(key), seconds)
+        except Exception as e:
+            logger.warning(f"Redis expire failed for {key}: {e}")
+            return False
+
+    async def llen(self, key: str) -> int:
+        if not self.redis:
+            return 0
+        try:
+            return await self.redis.llen(self._key(key))
+        except Exception as e:
+            logger.warning(f"Redis llen failed for {key}: {e}")
             return 0
 
     # ========== ATTENTION KEYS (Phase B9: Emergent Behavior) ==========

@@ -21,6 +21,7 @@ ADRs are immutable once accepted—if we change our minds, we create a new ADR t
 | [ADR-009: Relationship Boundaries](./ADR-009-RELATIONSHIP_BOUNDARIES.md) | ✅ Accepted | Research-context framing for emotional dependency and attachment |
 | [ADR-010: Crisis Response](./ADR-010-CRISIS_RESPONSE.md) | ✅ Accepted | Community over automation for mental health concerns |
 | [ADR-011: Emergence Boundaries](./ADR-011-EMERGENCE_BOUNDARIES.md) | ✅ Accepted | When observation becomes intervention ("Interesting Until Harmful") |
+| [ADR-012: Holographic Architecture](./ADR-012-V2.5_HOLOGRAPHIC_ARCHITECTURE.md) | ✅ Accepted | v2.5 "Ship of Theseus" evolution (Vector + Graph) |
 
 ---
 

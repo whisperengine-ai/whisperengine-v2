@@ -1,7 +1,7 @@
 import asyncio
 import random
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from loguru import logger
 import discord
@@ -28,6 +28,10 @@ class DailyLifeScheduler:
         # Config
         self.min_interval = 300  # 5 mins
         self.max_interval = 600  # 10 mins
+        
+        # Silence Tracking (Phase E34)
+        self.last_activity_timestamp = datetime.now(timezone.utc)
+        self.dream_threshold_seconds = 7200 # 2 hours
         
     def start(self):
         if self.is_running:
@@ -63,50 +67,46 @@ class DailyLifeScheduler:
             logger.info(f"DailyLifeScheduler sleeping for {delay}s")
             await asyncio.sleep(delay)
 
-    async def _snapshot_and_send(self):
-        """Capture environment and enqueue task."""
+    async def _create_snapshot(self, focus_channel_id: Optional[str] = None) -> Optional[SensorySnapshot]:
+        """Capture environment snapshot."""
         logger.info("Taking sensory snapshot...")
         
         # 1. Identify channels to watch
-        # Strategy: Watchlist + Active Channels (SPEC-E33)
-        
         channels_to_poll = set()
+        
+        # If focus channel provided, prioritize it
+        if focus_channel_id:
+            channels_to_poll.add(focus_channel_id)
         
         # A. Configured Watchlist (Always check these)
         if settings.discord_check_watch_channels_list:
             channels_to_poll.update(settings.discord_check_watch_channels_list)
             
         # B. Activity-Driven Polling
-        # Get active channels from the last 15 minutes
         try:
             signals = await server_monitor.get_activity_signals(since_minutes=15)
             # Take top 10 active channels
             for signal in signals[:10]:
                 channels_to_poll.add(signal.channel_id)
-            
-            if signals:
-                logger.info(f"Activity Polling: Found {len(signals)} active channels, polling top {min(len(signals), 10)}")
         except Exception as e:
             logger.warning(f"Failed to get activity signals: {e}")
 
-        # C. Exploration (Randomly check 1 quiet channel to allow for boredom/exploration)
-        # This ensures we don't get tunnel vision on active channels and can initiate in quiet ones
-        try:
-            all_candidates = []
-            for guild in self.bot.guilds:
-                for channel in guild.text_channels:
-                    # Only consider channels we can read/send in
-                    perms = channel.permissions_for(guild.me)
-                    if perms.read_messages and perms.send_messages:
-                        if str(channel.id) not in channels_to_poll:
-                            all_candidates.append(channel)
-            
-            if all_candidates:
-                exploration_channel = random.choice(all_candidates)
-                channels_to_poll.add(str(exploration_channel.id))
-                logger.info(f"Activity Polling: Added exploration channel {exploration_channel.name} ({exploration_channel.id})")
-        except Exception as e:
-            logger.warning(f"Failed to select exploration channel: {e}")
+        # C. Exploration (Only if not focused)
+        if not focus_channel_id:
+            try:
+                all_candidates = []
+                for guild in self.bot.guilds:
+                    for channel in guild.text_channels:
+                        perms = channel.permissions_for(guild.me)
+                        if perms.read_messages and perms.send_messages:
+                            if str(channel.id) not in channels_to_poll:
+                                all_candidates.append(channel)
+                
+                if all_candidates:
+                    exploration_channel = random.choice(all_candidates)
+                    channels_to_poll.add(str(exploration_channel.id))
+            except Exception as e:
+                logger.warning(f"Failed to select exploration channel: {e}")
             
         channels_data = []
         
@@ -144,8 +144,7 @@ class DailyLifeScheduler:
                 logger.warning(f"Failed to snapshot channel {channel.name}: {e}")
 
         # If no channels selected (no watchlist, no activity), fallback to ALL (legacy)
-        # This ensures we don't break behavior for new bots with no history
-        if not channels_to_poll and not settings.discord_check_watch_channels_list:
+        if not channels_to_poll and not settings.discord_check_watch_channels_list and not focus_channel_id:
             for guild in self.bot.guilds:
                 for channel in guild.text_channels:
                     await process_channel(channel)
@@ -160,28 +159,105 @@ class DailyLifeScheduler:
                     logger.warning(f"Failed to process channel {channel_id}: {e}")
         
         if not channels_data:
-            logger.info("No channels to snapshot.")
-            return
+            return None
 
-        # 2. Create Snapshot
         bot_name = settings.DISCORD_BOT_NAME or "unknown_bot"
         bot_id = str(self.bot.user.id) if self.bot.user else None
         
-        snapshot = SensorySnapshot(
+        return SensorySnapshot(
             bot_name=bot_name,
             bot_id=bot_id,
             timestamp=datetime.now(),
             channels=channels_data,
-            mentions=[] # We could explicitly fetch mentions here if we wanted
+            mentions=[]
         )
+
+    async def trigger_immediate(self, message: discord.Message, reason: str):
+        """
+        Manually triggers a Daily Life cycle for high-signal events.
+        Implements debouncing to prevent spam.
+        """
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return
+
+        bot_name = self.bot.character_name
+        redis = db_manager.redis_client
+        if not redis:
+            return
+
+        # Debounce Check (unless direct mention)
+        is_mention = self.bot.user in message.mentions
         
+        if not is_mention:
+            trigger_debounce_key = f"{settings.REDIS_KEY_PREFIX}bot:{bot_name}:trigger_debounce"
+            if await redis.get(trigger_debounce_key):
+                logger.debug(f"Trigger debounced for {bot_name} ({reason})")
+                return
+            
+            # Set debounce for 60s
+            await redis.setex(trigger_debounce_key, 60, "1")
+
+        logger.info(f"⚡ Immediate Daily Life Trigger for {bot_name}: {reason}")
+        
+        # Reset silence timer since we have activity
+        self.last_activity_timestamp = datetime.now(timezone.utc)
+
+        # Create Snapshot (Focused)
+        snapshot = await self._create_snapshot(focus_channel_id=str(message.channel.id))
+        
+        if snapshot:
+            # Enqueue Task
+            await self.task_queue.enqueue(
+                "process_daily_life",
+                snapshot_data=snapshot.model_dump(mode="json"),
+                _queue_name="cognition"
+            )
+
+    async def _snapshot_and_send(self):
+        """Capture environment and enqueue task (Periodic)."""
+        snapshot = await self._create_snapshot()
+        
+        # --- Silence Tracking (Phase E34) ---
+        bot_name = settings.DISCORD_BOT_NAME or "unknown_bot"
+        now = datetime.now(timezone.utc)
+        has_recent_activity = False
+        
+        if snapshot and snapshot.channels:
+            for ch in snapshot.channels:
+                for msg in ch.messages:
+                    # Check if message is recent (last 15 mins)
+                    if (now - msg.created_at).total_seconds() < 900:
+                        has_recent_activity = True
+                        break
+                if has_recent_activity:
+                    break
+        
+        if has_recent_activity:
+            self.last_activity_timestamp = now
+            logger.debug("Activity detected, resetting silence timer.")
+        else:
+            silence_duration = (now - self.last_activity_timestamp).total_seconds()
+            logger.info(f"No recent activity. Silence duration: {silence_duration:.0f}s")
+            
+            if silence_duration > self.dream_threshold_seconds:
+                logger.info("Silence threshold exceeded. Triggering Active Dream Cycle.")
+                await self.task_queue.enqueue(
+                    "run_active_dream_cycle",
+                    character_name=bot_name
+                )
+                self.last_activity_timestamp = now # Reset to avoid spam
+
+        if not snapshot:
+            logger.info("No channels to snapshot.")
+            return
+
         # 3. Enqueue
-        # We use the 'process_daily_life' task name we defined in worker.py
         await self.task_queue.enqueue(
             "process_daily_life", 
-            snapshot_data=snapshot.model_dump(mode="json")
+            snapshot_data=snapshot.model_dump(mode="json"),
+            _queue_name="cognition"
         )
-        logger.info(f"Sent snapshot with {len(channels_data)} channels to Remote Brain.")
+        logger.info(f"Sent snapshot with {len(snapshot.channels)} channels to Remote Brain.")
 
 
 class ActionPoller:

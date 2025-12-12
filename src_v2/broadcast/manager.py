@@ -17,19 +17,12 @@ from loguru import logger
 
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
+from src_v2.core.cache import CacheManager
 from src_v2.safety.content_review import content_safety_checker
 from src_v2.discord.utils.message_utils import chunk_message
 from src_v2.intelligence.activity import server_monitor
 from src_v2.utils.time_utils import get_configured_timezone
 from src_v2.artifacts.discord_utils import extract_pending_artifacts
-
-
-def _redis_key(key: str) -> str:
-    """Apply Redis namespace prefix."""
-    prefix = settings.REDIS_KEY_PREFIX
-    if key.startswith(prefix):
-        return key
-    return f"{prefix}{key}"
 
 
 class PostType(str, Enum):
@@ -73,6 +66,7 @@ class BroadcastManager:
     def __init__(self, bot: Optional[discord.Client] = None):
         self._bot = bot
         self._last_post_times: Dict[str, datetime] = {}  # character_name -> last post time
+        self._cache = CacheManager()
     
     def set_bot(self, bot: discord.Client) -> None:
         """Set the Discord bot instance (called after bot is ready)."""
@@ -208,17 +202,15 @@ class BroadcastManager:
             self._last_post_times[character_name] = datetime.now(timezone.utc)
             
             # Update Redis for persistence across restarts
-            if db_manager.redis_client:
-                try:
-                    key = _redis_key(f"broadcast:last_post:{character_name}")
-                    # Set with TTL
-                    await db_manager.redis_client.setex(
-                        key,
-                        settings.BOT_BROADCAST_MIN_INTERVAL_MINUTES * 60,
-                        datetime.now(timezone.utc).isoformat()
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to update broadcast rate limit in Redis: {e}")
+            try:
+                key = f"broadcast:last_post:{character_name}"
+                await self._cache.setex(
+                    key,
+                    settings.BOT_BROADCAST_MIN_INTERVAL_MINUTES * 60,
+                    datetime.now(timezone.utc).isoformat()
+                )
+            except Exception as e:
+                logger.warning(f"Failed to update broadcast rate limit in Redis: {e}")
             
             if len(sent_messages) < len(channel_ids):
                 logger.warning(f"Broadcast partially failed for {character_name}: posted to {len(sent_messages)}/{len(channel_ids)} channels")
@@ -229,16 +221,16 @@ class BroadcastManager:
     
     async def _can_post(self, character_name: str) -> bool:
         """Check if character can post (respects rate limit)."""
-        # Use Redis if available for persistence across restarts
-        if db_manager.redis_client:
-            try:
-                key = _redis_key(f"broadcast:last_post:{character_name}")
-                ttl = await db_manager.redis_client.ttl(key)
-                if ttl > 0:
-                    return False
-                return True
-            except Exception as e:
-                logger.warning(f"Redis rate limit check failed: {e}")
+        # Use Redis via cache manager
+        try:
+            key = f"broadcast:last_post:{character_name}"
+            # Check if key exists (has TTL remaining)
+            value = await self._cache.get(key)
+            if value:
+                return False
+            return True
+        except Exception as e:
+            logger.warning(f"Redis rate limit check failed: {e}")
         
         # Fallback to in-memory
         last_post = self._last_post_times.get(character_name)
@@ -431,9 +423,6 @@ class BroadcastManager:
         provenance: Optional[List[Dict[str, Any]]] = None
     ) -> None:
         """Store broadcast record in Redis for cross-bot discovery."""
-        if not db_manager.redis_client:
-            return
-        
         try:
             broadcast_data = {
                 "message_id": str(message.id),
@@ -446,22 +435,18 @@ class BroadcastManager:
             }
             
             # Store with 24h TTL
-            key = _redis_key(f"broadcast:{character_name}:{message.id}")
-            await db_manager.redis_client.set(
-                key,
-                json.dumps(broadcast_data),
-                ex=86400  # 24 hours
-            )
+            key = f"broadcast:{character_name}:{message.id}"
+            await self._cache.set_json(key, broadcast_data, ttl=86400)
             
             # Also add to a sorted set for chronological retrieval
-            await db_manager.redis_client.zadd(
-                _redis_key("broadcasts:recent"),
+            await self._cache.zadd(
+                "broadcasts:recent",
                 {key: datetime.now(timezone.utc).timestamp()}
             )
             
             # Trim old entries
-            await db_manager.redis_client.zremrangebyscore(
-                _redis_key("broadcasts:recent"),
+            await self._cache.zremrangebyscore(
+                "broadcasts:recent",
                 "-inf",
                 (datetime.now(timezone.utc) - timedelta(hours=24)).timestamp()
             )
@@ -486,23 +471,44 @@ class BroadcastManager:
         Returns:
             List of BroadcastPost objects, newest first
         """
-        if not db_manager.redis_client:
-            return []
-        
         try:
             # Get recent broadcast keys
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp()
-            keys = await db_manager.redis_client.zrangebyscore(
-                _redis_key("broadcasts:recent"),
+            keys = await self._cache.zrangebyscore(
+                "broadcasts:recent",
                 cutoff,
                 "+inf"
             )
             
             posts = []
             for key in keys[-limit:]:  # Take most recent
-                data = await db_manager.redis_client.get(key)
+                # Key stored in zset might be prefixed or not depending on how it was stored
+                # But CacheManager handles prefixing for us.
+                # Wait, the key stored IN the zset is the full key (e.g. "whisperengine:broadcast:...")?
+                # In _store_broadcast, we stored `key` which was `f"broadcast:{character_name}:{message.id}"`
+                # passed to `set_json`. `set_json` prefixes it.
+                # But we passed `key` to `zadd` as the member.
+                # So the member in zset is "broadcast:..." (unprefixed).
+                # So we can just pass it to `get_json`.
+                
+                # However, if the old code stored it with `_redis_key`, it stored the PREFIXED key in the zset.
+                # Old code: `key = _redis_key(...)` -> `zadd(..., {key: ...})`.
+                # So the zset contains "whisperengine:broadcast:...".
+                # If we pass "whisperengine:broadcast:..." to `self._cache.get_json`, it will double prefix!
+                # "whisperengine:whisperengine:broadcast:..."
+                
+                # We need to handle this migration or just strip prefix.
+                # Since this is a refactor, we should assume keys might be mixed or we just strip prefix.
+                
+                # Let's strip the prefix if present before passing to get_json
+                clean_key = key
+                if key.startswith(settings.REDIS_KEY_PREFIX):
+                    clean_key = key[len(settings.REDIS_KEY_PREFIX):]
+                
+                data = await self._cache.get_json(clean_key)
                 if data:
-                    broadcast = json.loads(data)
+                    # data is already a dict from get_json
+                    broadcast = data
                     
                     # Skip if from excluded character
                     if exclude_character and broadcast["character_name"] == exclude_character:
@@ -601,10 +607,6 @@ class BroadcastManager:
         Returns:
             True if queued successfully
         """
-        if not db_manager.redis_client:
-            logger.warning("Redis not available for broadcast queue")
-            return False
-        
         try:
             queue_item = {
                 "id": str(uuid.uuid4()),
@@ -619,8 +621,8 @@ class BroadcastManager:
             }
             
             # Push to bot-specific queue (no more shared queue race conditions)
-            bot_queue_key = _redis_key(f"broadcast:queue:{character_name.lower()}")
-            await db_manager.redis_client.rpush(
+            bot_queue_key = f"broadcast:queue:{character_name.lower()}"
+            await self._cache.rpush(
                 bot_queue_key,
                 json.dumps(queue_item)
             )
@@ -662,17 +664,14 @@ class BroadcastManager:
             logger.debug("Bot not available to process broadcast queue")
             return 0
         
-        if not db_manager.redis_client:
-            return 0
-        
         posted = 0
         my_bot_name = settings.DISCORD_BOT_NAME.lower() if settings.DISCORD_BOT_NAME else ""
-        queue_key = _redis_key(f"broadcast:queue:{my_bot_name}")
+        queue_key = f"broadcast:queue:{my_bot_name}"
         
         try:
             # Process up to 10 items per call to avoid blocking
             for _ in range(10):
-                item_json = await db_manager.redis_client.lpop(queue_key)
+                item_json = await self._cache.lpop(queue_key)
                 if not item_json:
                     break
                 

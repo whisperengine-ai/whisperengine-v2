@@ -2,6 +2,7 @@ from typing import Optional, List
 from datetime import datetime
 from loguru import logger
 from src_v2.core.database import db_manager, retry_db_operation, require_db
+from src_v2.core.cache import CacheManager
 
 
 class UniverseManager:
@@ -17,6 +18,7 @@ class UniverseManager:
     
     def __init__(self):
         self._embedding_service = None
+        self._cache = CacheManager()
         
     @property
     def embedding_service(self):
@@ -361,9 +363,9 @@ class UniverseManager:
         
         try:
             # Increment the count for this hour
-            await db_manager.redis_client.hincrby(key, str(current_hour), 1)
+            await self._cache.hincrby(key, str(current_hour), 1)
             # Set expiry to 30 days (recalculate monthly)
-            await db_manager.redis_client.expire(key, 60 * 60 * 24 * 30)
+            await self._cache.expire(key, 60 * 60 * 24 * 30)
         except Exception as e:
             logger.debug(f"Failed to track activity hour: {e}")
 
@@ -372,7 +374,7 @@ class UniverseManager:
         """Get the top 3 peak activity hours for a planet."""
         try:
             key = f"universe:planet:{guild_id}:activity_hours"
-            hour_counts = await db_manager.redis_client.hgetall(key)
+            hour_counts = await self._cache.hgetall(key)
             
             if not hour_counts:
                 return []

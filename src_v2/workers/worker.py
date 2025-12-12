@@ -35,7 +35,7 @@ from src_v2.workers.tasks.summary_tasks import run_summarization
 from src_v2.workers.tasks.knowledge_tasks import run_knowledge_extraction
 from src_v2.workers.tasks.batch_knowledge_tasks import run_batch_knowledge_extraction
 from src_v2.workers.tasks.diary_tasks import run_diary_generation
-from src_v2.workers.tasks.dream_tasks import run_dream_generation
+from src_v2.workers.tasks.dream_tasks import run_dream_generation, run_active_dream_cycle
 from src_v2.workers.tasks.drift_observation import run_drift_observation
 from src_v2.workers.tasks.social_tasks import (
     run_universe_observation,

@@ -1,14 +1,16 @@
 from typing import Dict, Any
+from datetime import datetime
 from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
-from src_v2.core.database import db_manager
-from datetime import datetime, timedelta
+from src_v2.core.cache import CacheManager
 
 # Redis key prefix for dream generation locks
 DREAM_LOCK_PREFIX = "dream:generation:lock:"
 DREAM_LOCK_TTL = 600  # 10 minutes - enough for dream generation
+
+cache = CacheManager()
 
 
 async def _acquire_dream_lock(character_name: str) -> bool:
@@ -21,21 +23,17 @@ async def _acquire_dream_lock(character_name: str) -> bool:
     Returns:
         True if lock acquired, False if another job is already running
     """
-    if not db_manager.redis_client:
-        logger.warning("Redis not available, skipping lock")
-        return True  # Allow to proceed without lock
-    
     try:
         # Use today's date (UTC) in the lock key so it resets daily
         today = datetime.utcnow().strftime("%Y-%m-%d")
         lock_key = f"{DREAM_LOCK_PREFIX}{character_name}:{today}"
         
         # SET NX with TTL - atomic operation
-        result = await db_manager.redis_client.set(
+        # CacheManager handles prefixing
+        result = await cache.set_nx(
             lock_key,
             datetime.utcnow().isoformat(),
-            nx=True,  # Only set if not exists
-            ex=DREAM_LOCK_TTL  # Expire after 10 minutes
+            ttl=DREAM_LOCK_TTL
         )
         
         if result:
@@ -52,13 +50,10 @@ async def _acquire_dream_lock(character_name: str) -> bool:
 
 async def _release_dream_lock(character_name: str) -> None:
     """Release the dream generation lock (optional - TTL handles cleanup)."""
-    if not db_manager.redis_client:
-        return
-    
     try:
         today = datetime.utcnow().strftime("%Y-%m-%d")
         lock_key = f"{DREAM_LOCK_PREFIX}{character_name}:{today}"
-        await db_manager.redis_client.delete(lock_key)
+        await cache.delete(lock_key)
         logger.debug(f"Released dream lock for {character_name}")
     except Exception as e:
         logger.debug(f"Failed to release dream lock: {e}")
@@ -104,8 +99,8 @@ async def run_dream_generation(
     logger.info(f"Generating dream for {character_name} (override={override})")
     
     try:
-        from src_v2.agents.dream_graph import DreamGraphAgent
-        from src_v2.memory.dreams import get_dream_manager
+        from src_v2.agents.dream.graph import get_dream_graph
+        from src_v2.memory.dreams import get_dream_manager, DreamContent
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
         from datetime import timezone
@@ -167,7 +162,8 @@ async def run_dream_generation(
         
         # Run LangGraph Dream Agent
         logger.info(f"Using LangGraph Dream Agent for {character_name}")
-        graph_agent = DreamGraphAgent()
+        graph_factory = get_dream_graph()
+        graph = graph_factory.build_graph()
         
         # Gather material (Graph expects DreamMaterial object)
         material = await dream_manager.gather_dream_material(hours=24)
@@ -182,11 +178,10 @@ async def run_dream_generation(
                 
                 # 1. Find previous absence to calculate streak
                 # We search for recent "absence" type memories
-                recent_absences = await memory_manager.search_memories_advanced(
+                recent_absences = await memory_manager.search_memories(
+                    user_id=character_name,
                     query="absence of dream material",
-                    metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
                     limit=1,
-                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp(), # Look back 48h
                     collection_name=target_collection
                 )
                 
@@ -214,6 +209,7 @@ async def run_dream_generation(
                         "prior_absence_id": prior_id,
                         "absence_streak": streak
                     },
+                    collection_name=target_collection,
                     source_type=MemorySourceType.ABSENCE,
                     importance_score=2 # Low importance, but present
                 )
@@ -230,19 +226,43 @@ async def run_dream_generation(
                 "absence_recorded": True
             }
 
+        # Convert material to seeds for the new graph
+        seeds = []
+        for m in material.memories:
+            seeds.append({"id": m.get("id"), "content": m.get("content"), "timestamp": m.get("timestamp"), "type": "memory"})
+        for f in material.facts:
+            seeds.append({"content": f, "type": "fact"})
+        for o in material.observations:
+            seeds.append({"content": o.get("content"), "type": "observation"})
+        for g in material.gossip:
+            seeds.append({"content": g.get("content"), "type": "gossip"})
+            
         # Run Graph
-        dream = await graph_agent.run(
-            material=material,
-            character_context=character_description
-        )
+        result = await graph.ainvoke({
+            "bot_name": character_name,
+            "seeds": seeds,
+            "context": [],
+            "dream_result": None,
+            "consolidation_status": "pending"
+        })
         
-        if not dream:
-            logger.warning("LangGraph Dream Agent returned None")
+        if result.get("consolidation_status") != "success":
+            logger.warning(f"Dream generation failed: {result.get('consolidation_status')}")
             return {
                 "success": False,
-                "error": "graph_returned_none",
+                "error": result.get("consolidation_status"),
                 "character_name": character_name
             }
+            
+        # Extract dream result
+        dream_data = result.get("dream_result")
+        # Construct DreamContent for broadcasting/return
+        dream = DreamContent(
+            dream=dream_data["content"],
+            mood=dream_data.get("emotions", ["unknown"])[0] if dream_data.get("emotions") else "unknown",
+            symbols=dream_data.get("entities", []),
+            memory_echoes=[] # New graph doesn't explicitly return echoes
+        )
         
         # Build provenance data - vague/poetic for display, content has explicit names for search
         provenance_data = []
@@ -275,18 +295,17 @@ async def run_dream_generation(
                 "description": "what was known"
             })
             
-        # Save
-        point_id = await dream_manager.save_dream(user_id="__character__", dream=dream, provenance=provenance_data)
+        # Note: Dream is already saved by the graph's consolidate step!
+        point_id = "graph_generated"
         
         # Phase E22: Check for absence resolution (dream succeeded after previous failures)
         try:
             target_collection = f"whisperengine_memory_{character_name}"
             
-            recent_absences = await memory_manager.search_memories_advanced(
+            recent_absences = await memory_manager.search_memories(
+                user_id=character_name,
                 query="absence of dream material",
-                metadata_filter={"type": "absence", "what_was_sought": "dream_material"},
                 limit=1,
-                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp(),
                 collection_name=target_collection
             )
             
@@ -308,6 +327,7 @@ async def run_dream_generation(
                         "absence_streak_was": absence_streak,
                         "resolution_context": "dream"
                     },
+                    collection_name=target_collection,
                     source_type=MemorySourceType.INFERENCE,
                     importance_score=3
                 )
@@ -352,6 +372,54 @@ async def run_dream_generation(
         
     except Exception as e:
         logger.error(f"Dream generation failed for {character_name}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "character_name": character_name
+        }
+
+
+async def run_active_dream_cycle(
+    ctx: Dict[str, Any],
+    character_name: str
+) -> Dict[str, Any]:
+    """
+    Runs the Active Idle Dream cycle (Phase E34).
+    This is a lightweight consolidation process that runs when the bot is idle.
+    """
+    if not settings.ENABLE_DREAM_SEQUENCES:
+        return {"success": False, "reason": "disabled"}
+
+    logger.info(f"Running Active Dream Cycle for {character_name}")
+    
+    try:
+        from src_v2.agents.dream import get_dream_graph
+        
+        graph = get_dream_graph()
+        
+        # Initial state
+        initial_state = {
+            "bot_name": character_name,
+            "seeds": [],
+            "context": [],
+            "dream_result": None,
+            "consolidation_status": "pending"
+        }
+        
+        # Run the graph
+        final_state = await graph.build_graph().ainvoke(initial_state)
+        
+        status = final_state.get("consolidation_status")
+        logger.info(f"Active Dream Cycle finished for {character_name}: {status}")
+        
+        return {
+            "success": status == "success",
+            "status": status,
+            "character_name": character_name
+        }
+        
+    except Exception as e:
+        logger.error(f"Active Dream Cycle failed for {character_name}: {e}")
         return {
             "success": False,
             "error": str(e),

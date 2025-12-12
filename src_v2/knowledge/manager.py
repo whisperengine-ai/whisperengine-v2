@@ -123,6 +123,10 @@ RULES:
                 # Entity name should be indexed/unique
                 await session.run("CREATE CONSTRAINT entity_name_unique IF NOT EXISTS FOR (e:Entity) REQUIRE e.name IS UNIQUE")
                 
+                # Phase 2.5.1: Memory node constraint for Graph Unification
+                # Memory id (vector_id from Qdrant) must be unique
+                await session.run("CREATE CONSTRAINT memory_id_unique IF NOT EXISTS FOR (m:Memory) REQUIRE m.id IS UNIQUE")
+                
                 # Register relationship types and properties to avoid warnings
                 # Create a dummy pattern and delete it immediately
                 await session.run("""
@@ -313,6 +317,87 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Fact correction failed: {e}")
             return "Failed to update fact."
 
+    async def add_memory_node(self, user_id: str, vector_id: str, content: str, timestamp: str, source_type: str, bot_name: Optional[str] = None):
+        """
+        Creates a (:Memory) node in the graph linked to the user.
+        This enables 'Vector-First Traversal' (Phase 2.5.1).
+        """
+        if not db_manager.neo4j_driver:
+            return
+
+        query = """
+        MERGE (u:User {id: $user_id})
+        CREATE (m:Memory {
+            id: $vector_id,
+            content: $content,
+            timestamp: $timestamp,
+            source_type: $source_type,
+            bot_name: $bot_name
+        })
+        MERGE (u)-[:HAS_MEMORY]->(m)
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                await session.run(
+                    query, 
+                    user_id=user_id, 
+                    vector_id=vector_id, 
+                    content=content, 
+                    timestamp=timestamp, 
+                    source_type=source_type,
+                    bot_name=bot_name
+                )
+                logger.debug(f"Created graph memory node {vector_id}")
+        except Exception as e:
+            logger.error(f"Failed to create memory node: {e}")
+
+    async def get_memory_neighborhood(self, vector_ids: List[str], max_depth: int = 2) -> List[Dict[str, Any]]:
+        """
+        Given vector IDs from Qdrant search, retrieves the graph neighborhood.
+        This is the 'Vector-First Search' part of Phase 2.5.1.
+        
+        Returns facts and entities connected to the memories.
+        """
+        if not db_manager.neo4j_driver or not vector_ids:
+            return []
+        
+        # Query: Starting from Memory nodes, find connected User, then their Facts
+        query = """
+        MATCH (m:Memory)<-[:HAS_MEMORY]-(u:User)
+        WHERE m.id IN $vector_ids
+        OPTIONAL MATCH (u)-[r:FACT]->(e:Entity)
+        RETURN DISTINCT 
+            m.id as memory_id,
+            u.id as user_id,
+            e.name as entity,
+            r.predicate as predicate,
+            r.confidence as confidence
+        LIMIT 20
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(query, vector_ids=vector_ids)
+                records = await result.data()
+                
+                # Group by memory_id for easier consumption
+                neighborhood = []
+                for record in records:
+                    if record.get("entity"):
+                        neighborhood.append({
+                            "memory_id": record["memory_id"],
+                            "user_id": record["user_id"],
+                            "entity": record["entity"],
+                            "predicate": record["predicate"],
+                            "confidence": record.get("confidence", 1.0)
+                        })
+                
+                return neighborhood
+        except Exception as e:
+            logger.error(f"Failed to get memory neighborhood: {e}")
+            return []
+
     async def find_common_ground(self, user_id: str, bot_name: str) -> str:
         """
         Finds shared facts or entities between the user and the bot.
@@ -383,6 +468,36 @@ PRIVACY RESTRICTION ENABLED:
         except Exception as e:
             logger.error(f"Common ground check failed: {e}")
             return ""
+
+    ALLOWED_MEMORY_RELATIONSHIPS = frozenset({"DREAM_ASSOCIATION", "THEMATIC_LINK", "TEMPORAL_SEQUENCE", "EMOTIONAL_RESONANCE"})
+
+    async def link_memories(self, source_id: str, target_id: str, relationship_type: str = "DREAM_ASSOCIATION", weight: float = 1.0):
+        """
+        Creates a relationship between two memory nodes in the graph.
+        Used for Structural Consolidation during dreaming.
+        """
+        if not db_manager.neo4j_driver:
+            return
+
+        # Validate relationship type to prevent Cypher injection
+        if relationship_type not in self.ALLOWED_MEMORY_RELATIONSHIPS:
+            logger.warning(f"Invalid relationship type '{relationship_type}', using DREAM_ASSOCIATION")
+            relationship_type = "DREAM_ASSOCIATION"
+
+        query = f"""
+        MATCH (m1:Memory {{id: $source_id}})
+        MATCH (m2:Memory {{id: $target_id}})
+        MERGE (m1)-[r:{relationship_type}]->(m2)
+        ON CREATE SET r.weight = $weight, r.created_at = datetime()
+        ON MATCH SET r.weight = coalesce(r.weight, 0) + $weight, r.updated_at = datetime()
+        """
+        
+        try:
+            async with db_manager.neo4j_driver.session() as session:
+                await session.run(query, source_id=source_id, target_id=target_id, weight=weight)
+                logger.debug(f"Linked memories {source_id} -> {target_id} ({relationship_type})")
+        except Exception as e:
+            logger.error(f"Failed to link memories: {e}")
 
     @require_db("neo4j", default_return="")
     async def search_bot_background(self, bot_name: str, user_message: str) -> str:
@@ -1031,9 +1146,9 @@ PRIVACY RESTRICTION ENABLED:
         Example return: {"Luna", "Seattle", "marine biology", "sister Maya"}
         """
         cache_key = f"knowledge:user_entities:{user_id}"
-        cached_data = await cache_manager.get(cache_key)
+        cached_data = await cache_manager.get_json(cache_key)
         if cached_data is not None:
-            return set(cached_data)  # Redis returns list, convert to set
+            return set(cached_data)  # Convert cached list to set
         
         try:
             query = """
@@ -1047,8 +1162,8 @@ PRIVACY RESTRICTION ENABLED:
                 
                 entities = {r['name'] for r in records if r.get('name')}
                 
-                # Cache for 5 minutes (300 seconds)
-                await cache_manager.set(cache_key, list(entities), ttl=300)
+                # Cache for 5 minutes (300 seconds) - use set_json for list serialization
+                await cache_manager.set_json(cache_key, list(entities), ttl=300)
                 
                 logger.debug(f"[E30] Loaded {len(entities)} entities for user {user_id[:8]}...")
                 return entities

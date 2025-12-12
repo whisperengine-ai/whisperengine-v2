@@ -121,10 +121,10 @@ Returns: List of sibling bots, or detailed info about a specific bot including:
 
     async def _arun(self, bot_name: Optional[str] = None) -> str:
         try:
-            from src_v2.broadcast.cross_bot import cross_bot_manager
+            from src_v2.universe.registry import bot_registry
             
             # Get list of known bots
-            known_bots = cross_bot_manager.known_bots
+            known_bots = await bot_registry.get_known_bots()
             
             if not known_bots:
                 return "I don't have information about any sibling bots at the moment. They may not be online or registered yet."
@@ -157,7 +157,7 @@ Returns: List of sibling bots, or detailed info about a specific bot including:
             
             # 1. Check if they're a known registered bot
             is_registered = target_name in [n.lower() for n in known_bots.keys()]
-            target_discord_id = known_bots.get(target_name)
+            target_discord_id = known_bots[target_name].discord_id if is_registered else None
             
             if is_registered:
                 lines.append(f"Status: Currently registered in the system ✓")

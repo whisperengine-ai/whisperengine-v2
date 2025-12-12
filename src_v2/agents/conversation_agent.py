@@ -290,8 +290,15 @@ class ConversationAgent:
         
         try:
             # Get the target bot's Discord ID for lookup
-            from src_v2.broadcast.cross_bot import cross_bot_manager
-            target_discord_id = cross_bot_manager.known_bots.get(target_name.lower())
+            from src_v2.universe.registry import bot_registry
+            known_bots = await bot_registry.get_known_bots()
+            
+            target_discord_id = None
+            # Case-insensitive lookup
+            for name, info in known_bots.items():
+                if name.lower() == target_name.lower():
+                    target_discord_id = info.discord_id
+                    break
             
             if not target_discord_id:
                 logger.debug(f"Could not find Discord ID for {target_name}")
@@ -662,8 +669,14 @@ Write ONLY the message. No quotes or explanation."""
                 content = content[1:-1]
             
             # Convert @name to real Discord mention <@discord_id>
-            from src_v2.broadcast.cross_bot import cross_bot_manager
-            target_discord_id = cross_bot_manager.known_bots.get(target_name.lower())
+            from src_v2.universe.registry import bot_registry
+            known_bots = await bot_registry.get_known_bots()
+            
+            target_discord_id = None
+            for name, info in known_bots.items():
+                if name.lower() == target_name.lower():
+                    target_discord_id = info.discord_id
+                    break
             
             if target_discord_id:
                 # 1. Replace @name with mention

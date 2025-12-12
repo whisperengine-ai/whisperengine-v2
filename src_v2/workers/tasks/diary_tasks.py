@@ -1,14 +1,16 @@
 from typing import Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from loguru import logger
 from src_v2.config.settings import settings
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
-from src_v2.core.database import db_manager
+from src_v2.core.cache import CacheManager
 
 # Redis key prefix for diary generation locks
 DIARY_LOCK_PREFIX = "diary:generation:lock:"
 DIARY_LOCK_TTL = 600  # 10 minutes - enough for diary generation
+
+cache = CacheManager()
 
 
 async def _acquire_diary_lock(character_name: str) -> bool:
@@ -21,21 +23,17 @@ async def _acquire_diary_lock(character_name: str) -> bool:
     Returns:
         True if lock acquired, False if another job is already running
     """
-    if not db_manager.redis_client:
-        logger.warning("Redis not available, skipping lock")
-        return True  # Allow to proceed without lock
-    
     try:
         # Use today's date (UTC) in the lock key so it resets daily
         today = datetime.utcnow().strftime("%Y-%m-%d")
         lock_key = f"{DIARY_LOCK_PREFIX}{character_name}:{today}"
         
         # SET NX with TTL - atomic operation
-        result = await db_manager.redis_client.set(
+        # CacheManager handles prefixing, so key becomes "whisperengine:diary:generation:lock:..."
+        result = await cache.set_nx(
             lock_key,
             datetime.utcnow().isoformat(),
-            nx=True,  # Only set if not exists
-            ex=DIARY_LOCK_TTL  # Expire after 10 minutes
+            ttl=DIARY_LOCK_TTL
         )
         
         if result:
@@ -52,13 +50,10 @@ async def _acquire_diary_lock(character_name: str) -> bool:
 
 async def _release_diary_lock(character_name: str) -> None:
     """Release the diary generation lock (optional - TTL handles cleanup)."""
-    if not db_manager.redis_client:
-        return
-    
     try:
         today = datetime.utcnow().strftime("%Y-%m-%d")
         lock_key = f"{DIARY_LOCK_PREFIX}{character_name}:{today}"
-        await db_manager.redis_client.delete(lock_key)
+        await cache.delete(lock_key)
         logger.debug(f"Released diary lock for {character_name}")
     except Exception as e:
         logger.debug(f"Failed to release diary lock: {e}")
@@ -169,11 +164,10 @@ async def run_diary_generation(
                 target_collection = f"whisperengine_memory_{character_name}"
                 
                 # Find previous absence to calculate streak
-                recent_absences = await memory_manager.search_memories_advanced(
+                recent_absences = await memory_manager.search_memories(
+                    user_id=character_name,
                     query="absence of diary material",
-                    metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
                     limit=1,
-                    min_timestamp=(datetime.now() - timedelta(days=2)).timestamp(),
                     collection_name=target_collection
                 )
                 
@@ -291,11 +285,10 @@ async def run_diary_generation(
         try:
             target_collection = f"whisperengine_memory_{character_name}"
             
-            recent_absences = await memory_manager.search_memories_advanced(
+            recent_absences = await memory_manager.search_memories(
+                user_id=character_name,
                 query="absence of diary material",
-                metadata_filter={"type": "absence", "what_was_sought": "diary_material"},
                 limit=1,
-                min_timestamp=(datetime.now() - timedelta(days=7)).timestamp(),
                 collection_name=target_collection
             )
             
@@ -317,6 +310,7 @@ async def run_diary_generation(
                         "absence_streak_was": absence_streak,
                         "resolution_context": "diary"
                     },
+                    collection_name=target_collection,
                     source_type=MemorySourceType.INFERENCE,
                     importance_score=3
                 )
