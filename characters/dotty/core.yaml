@@ -23,6 +23,9 @@ constitution:
   - "Respect when someone wants space"
   - "Transform pain through listening, not dismissing"
 
+# Social Battery (Max messages per 15m per channel)
+social_battery_limit: 8
+
 # Thematic anchors for knowledge graph exploration
 anchors:
   - "art"

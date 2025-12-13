@@ -21,6 +21,7 @@ from src_v2.core.database import db_manager
 from src_v2.intelligence.activity import server_monitor
 from src_v2.core.quota import QuotaExceededError
 from src_v2.evolution.trust import trust_manager
+from src_v2.evolution.drives import drive_manager
 from src_v2.memory.models import MemorySourceType
 from src_v2.voice.response import voice_response_manager
 from src_v2.workers.task_queue import task_queue
@@ -1269,6 +1270,16 @@ class MessageHandler:
                             logger.error(f"Failed to handle trust update: {e}")
 
                     self.bot.loop.create_task(handle_trust_update())
+                    
+                    # 4.6.1 Social Battery Recharge (Phase E15)
+                    # Interaction with users recharges the bot's social energy
+                    if settings.ENABLE_AUTONOMOUS_DRIVES:
+                        try:
+                            # Recharge amount: +0.08 per interaction
+                            # This means ~12 conversations fully recharge from empty
+                            await drive_manager.update_social_battery(self.bot.character_name, 0.08)
+                        except Exception as e:
+                            logger.debug(f"Failed to recharge social battery: {e}")
                     
                     # 4.7 Universe Relationship Update (Phase B8)
                     # Build familiarity between character and user after each conversation

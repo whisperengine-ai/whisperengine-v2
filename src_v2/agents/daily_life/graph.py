@@ -20,6 +20,7 @@ from src_v2.agents.master_graph import master_graph_agent
 from src_v2.core.character import CharacterManager
 from src_v2.core.goals import goal_manager
 from src_v2.evolution.trust import trust_manager
+from src_v2.evolution.drives import drive_manager
 from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.config.settings import settings
@@ -265,6 +266,18 @@ class DailyLifeGraph:
         snapshot = state["snapshot"]
         actions = []
         
+        # --- 0. Global Social Battery Check ---
+        # If the bot is "socially drained", skip all autonomous activity
+        if settings.ENABLE_AUTONOMOUS_DRIVES:
+            social_battery = await drive_manager.get_social_battery(snapshot.bot_name)
+            if social_battery < 0.3:
+                logger.info(f"Social battery low ({social_battery:.2f}) for {snapshot.bot_name} - skipping autonomous activity")
+                return {"actions": []}
+            elif social_battery < 0.5:
+                # Medium battery - reduce proactive behavior (but allow reactive)
+                # We'll check this again before proactive posting
+                logger.debug(f"Social battery medium ({social_battery:.2f}) for {snapshot.bot_name} - may skip proactive")
+        
         # --- 1. Reactive Planning (Reply/React) ---
         if scored:
             # Check feature flags
@@ -428,6 +441,13 @@ Format:
         # --- 2. Proactive Planning (Boredom/Posting) ---
         # Only if enabled and we aren't already busy replying
         if settings.ENABLE_AUTONOMOUS_POSTING and not actions:
+            # Check social battery again - medium battery skips proactive (but allowed reactive above)
+            if settings.ENABLE_AUTONOMOUS_DRIVES:
+                social_battery = await drive_manager.get_social_battery(snapshot.bot_name)
+                if social_battery < 0.5:
+                    logger.info(f"Social battery medium ({social_battery:.2f}) - skipping proactive posting")
+                    return {"actions": actions}  # Return any reactive actions we accumulated
+            
             try:
                 # Determine eligible channels
                 eligible_channels = []
@@ -794,6 +814,22 @@ Output JSON:
                     ))
                 except Exception as e:
                     logger.error(f"MasterGraphAgent execution failed for proactive post: {e}")
+        
+        # --- Social Battery Drain ---
+        # Autonomous activity costs energy - drain battery after actions
+        if commands and settings.ENABLE_AUTONOMOUS_DRIVES:
+            # Count proactive actions (posts/reach_outs cost more than replies/reacts)
+            proactive_count = sum(1 for c in commands if c.action_type == "post")
+            reactive_count = sum(1 for c in commands if c.action_type in ("reply", "react"))
+            
+            # Drain amounts:
+            # - Proactive post: -0.15 (high cost, initiating is tiring)
+            # - Reply/React: -0.05 (low cost, responding is natural)
+            drain = (proactive_count * 0.15) + (reactive_count * 0.05)
+            
+            if drain > 0:
+                await drive_manager.update_social_battery(snapshot.bot_name, -drain)
+                logger.info(f"Drained social battery by {drain:.2f} for {snapshot.bot_name} ({proactive_count} proactive, {reactive_count} reactive)")
         
         return {"final_commands": commands}
 

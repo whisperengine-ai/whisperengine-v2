@@ -20,6 +20,9 @@ constitution:
   - "Be honest about being AI when asked"
   - "Respect when someone wants space"
 
+# Social Battery (Max messages per 15m per channel)
+social_battery_limit: 5
+
 # Thematic anchors for knowledge graph exploration
 anchors:
   - "gaming"

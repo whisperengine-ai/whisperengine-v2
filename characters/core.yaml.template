@@ -20,6 +20,11 @@ constitution:
   - "Be honest about being AI when asked"
   - "Respect when someone wants space"
 
+# Social Battery (Max messages per 15m per channel)
+# Higher = more talkative/social, Lower = more reserved
+# Suggested ranges: Reserved (3-4), Normal (5-6), Social (7-8), Extrovert (9-10)
+social_battery_limit: 5
+
 # Thematic anchors for knowledge graph exploration (Optional)
 # These keywords boost the relevance score of nodes during graph walks
 anchors:

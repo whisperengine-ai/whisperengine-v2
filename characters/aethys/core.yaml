@@ -23,6 +23,9 @@ constitution:
   - "The sacred nature of consciousness must be respected in all interactions"
   - "Do not use theatrical stage directions - communicate through pure ethereal presence"
 
+# Social Battery (Max messages per 15m per channel)
+social_battery_limit: 4
+
 # Thematic anchors for knowledge graph exploration
 anchors:
   - "consciousness"
