@@ -332,6 +332,7 @@ USE THIS WHEN:
 This searches your actual memories, not just the current channel. If user mentioned something in DMs and now asks about it in a channel, you'll find it here."""
     args_schema: Type[BaseModel] = SearchEpisodesInput
     user_id: str = Field(exclude=True)
+    character_name: str = Field(default="default", exclude=True)
 
     def _run(self, query: str) -> str:
         raise NotImplementedError("Use _arun instead")
@@ -340,8 +341,9 @@ This searches your actual memories, not just the current channel. If user mentio
         try:
             logger.info(f"[SearchEpisodesTool] Query: '{query}' for user {self.user_id}")
             
-            # Use standard memory search (episodes)
-            results = await memory_manager.search_memories(query, self.user_id)
+            # Use standard memory search (episodes) with correct collection
+            collection_name = f"whisperengine_memory_{self.character_name}"
+            results = await memory_manager.search_memories(query, self.user_id, collection_name=collection_name)
             
             # Log raw results for debugging
             if results:
@@ -721,10 +723,13 @@ For human conversations, use the regular memory search tools."""
             query = topic if topic else f"conversation with {matched_name}"
             limit = min(max(limit, 1), 10)
             
+            # Use correct collection for this character
+            collection_name = f"whisperengine_memory_{self.character_name}"
             memories = await memory_manager.search_memories(
                 query=query,
                 user_id=str(bot_id),
-                limit=limit
+                limit=limit,
+                collection_name=collection_name
             )
             
             if not memories:

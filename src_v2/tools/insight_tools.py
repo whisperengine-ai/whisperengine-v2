@@ -401,7 +401,7 @@ def get_insight_tools_with_existing(user_id: str, character_name: str) -> List[B
         ExploreGraphTool(user_id=user_id, bot_name=character_name),
         # Memory search (reused instead of reimplementing)
         SearchSummariesTool(user_id=user_id),
-        SearchEpisodesTool(user_id=user_id),
+        SearchEpisodesTool(user_id=user_id, character_name=character_name),
         # Trust/relationship state
         CharacterEvolutionTool(user_id=user_id, character_name=character_name),
     ])

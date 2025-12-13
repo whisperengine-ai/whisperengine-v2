@@ -16,9 +16,10 @@ async def main():
     
     user_id = "672814231002939413"
     message_id = "1446594687401197569"
+    character_name = os.environ.get("DISCORD_BOT_NAME", "elena")
     
     print("\n=== TESTING SEARCH EPISODES TOOL ===")
-    search_tool = SearchEpisodesTool(user_id=user_id)
+    search_tool = SearchEpisodesTool(user_id=user_id, character_name=character_name)
     search_result = await search_tool._arun("high-trust bot pairs")
     print(search_result)
     
