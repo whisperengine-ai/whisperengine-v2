@@ -872,27 +872,28 @@ Output JSON:
 
                 rich_context = f"{diary_text}{knowledge_text}{memory_text}{stigmergy_text}"
                 
-                # 4. Construct "Internal Stimulus" as User Input
-                # We treat the internal desire to post as a "message" from the subconscious/environment
-                # We use a simple prompt to avoid "special" handling, letting the MasterGraphAgent
-                # classify and route it naturally.
-                internal_stimulus = f"The channel is quiet. You are thinking about {topic}.";
+                # 4. Construct "Internal Stimulus"
+                # We treat the internal desire to post as a "system event" triggering the bot
+                internal_stimulus = f"The channel is quiet. You are thinking about {topic}."
+                
+                # Build the additional context with rich grounding
+                additional_context = (
+                    f"[GROUNDING]\n{rich_context}\n\n"
+                    f"[GOAL] You are posting proactively to the channel. Express your thought about {topic} naturally."
+                )
                 
                 try:
-                    logger.info(f"Executing proactive post in {plan.channel_id}. Topic: {topic}");
+                    logger.info(f"Executing proactive post in {plan.channel_id}. Topic: {topic}")
                     
                     response = await master_graph_agent.run(
                         user_input=internal_stimulus,
-                        user_id="proactive_trigger", # Special ID for proactive actions
+                        user_id="proactive_trigger",  # Special ID for proactive actions
                         character=character,
                         chat_history=chat_history,
                         context_variables={
-                            "user_name": "System", # It's a system event/prompt, not a user
+                            "user_name": "System",  # It's a system event/prompt, not a user
                             "channel_name": plan.channel_id,
-                            "additional_context": f"[GROUNDING]
-{rich_context}
-
-[GOAL] You are posting proactively to the channel. Express your thought about {topic} naturally."
+                            "additional_context": additional_context
                         },
                         image_urls=None
                     )
