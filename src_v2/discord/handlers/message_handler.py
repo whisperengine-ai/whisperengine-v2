@@ -212,8 +212,6 @@ class MessageHandler:
             
             if not is_broadcast_from_other_bot:
                 # Normal bot handling: only respond to explicit mentions
-                if settings.ENABLE_AUTONOMOUS_ACTIVITY and settings.ENABLE_CROSS_BOT_CHAT:
-                    await self._handle_cross_bot_message(message)
                 return
             
             # Fall through to lurk detector below for broadcast channel messages
@@ -1406,44 +1404,6 @@ class MessageHandler:
         except Exception as e:
             logger.error(f"Error in autonomous reaction: {e}")
 
-    async def _handle_cross_bot_message(self, message: discord.Message) -> None:
-        """
-        Handle messages from other bots for cross-bot conversation (Phase E6).
-        
-        DEPRECATED: Real-time cross-bot chat is disabled in favor of Daily Life Graph.
-        See ADR-010.
-        """
-        return
-        # Deprecated code removed
-
-            
-
-
-
-
-            
-
-            
-
-                
-
-                        
-
-                        
-
-                
-
-                        
-
-                
-
-                
-
-                    
-
-                
-
-
     async def _check_and_summarize(
         self,
         session_id: str,
@@ -1526,25 +1486,6 @@ class MessageHandler:
                     
         except Exception as e:
             logger.error(f"Error in _check_and_summarize: {e}")
-
-    async def _check_and_summarize_cross_bot(self, bot_user_id: str, bot_name: str):
-        """
-        DEPRECATED: Use _check_and_summarize with actual session_id and force_processing instead.
-        
-        This method is kept only for backwards compatibility and does nothing.
-        Cross-bot conversations now use the same session system as human users,
-        with force_processing=True when the chain completes.
-        
-        Args:
-            bot_user_id: The other bot's Discord user ID (unused)
-            bot_name: The other bot's display name (unused)
-        """
-        logger.warning(
-            "_check_and_summarize_cross_bot is deprecated - "
-            "use _check_and_summarize(session_id=..., force_processing=True) instead"
-        )
-        # No-op: All cross-bot summarization now goes through _check_and_summarize
-        return
 
     async def _process_attachments(
         self, 

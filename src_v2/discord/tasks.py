@@ -16,6 +16,7 @@ class BotTasks:
             self.bot.loop.create_task(self.process_broadcast_queue_loop(), name="broadcast_queue"),
             self.bot.loop.create_task(self.refresh_endpoint_registration_loop(), name="endpoint_registration"),
             self.bot.loop.create_task(self.update_status_loop(), name="status_update"),
+            self.bot.loop.create_task(self.bot_registry_heartbeat_loop(), name="bot_registry_heartbeat"),
             # graph_pruning moved to worker cron task (run_weekly_graph_pruning)
         ]
         logger.info(f"Started {len(self._background_tasks)} background tasks")
@@ -98,44 +99,42 @@ class BotTasks:
                             friends_count = await conn.fetchval("""
                                 SELECT COUNT(*) FROM v2_user_relationships 
                                 WHERE character_name = $1 AND trust_score >= 20
-                            """, self.bot.character_name)
+                            """, settings.DISCORD_BOT_NAME)
                             
-                            memories_count = await conn.fetchval("""
-                                SELECT COUNT(*) FROM v2_chat_history 
-                                WHERE character_name = $1
-                            """, self.bot.character_name)
-                            
-                            status_text = f"with {friends_count} friends | {memories_count} memories"
+                            activity = discord.Activity(
+                                type=discord.ActivityType.watching,
+                                name=f"{friends_count} friends"
+                            )
                         else:
-                            # Status 2: Goal Progress
-                            goal_stats = await conn.fetchrow("""
-                                SELECT 
-                                    COUNT(*) FILTER (WHERE p.status = 'completed') as completed,
-                                    COUNT(*) as total
-                                FROM v2_user_goal_progress p
-                                JOIN v2_goals g ON p.goal_id = g.id
-                                WHERE g.character_name = $1
-                            """, self.bot.character_name)
+                            # Status 2: Memories
+                            # This is just an estimate/fun stat
+                            activity = discord.Activity(
+                                type=discord.ActivityType.listening,
+                                name="your stories"
+                            )
                             
-                            completed = goal_stats['completed'] or 0
-                            total = goal_stats['total'] or 0
-                            percentage = int((completed / total * 100)) if total > 0 else 0
-                            
-                            status_text = f"Goal Progress: {percentage}% ({completed}/{total})"
-                        
-                        await self.bot.change_presence(
-                            activity=discord.Activity(
-                                type=discord.ActivityType.playing, 
-                                name=status_text
-                            ),
-                            status=discord.Status.online
-                        )
-                        logger.debug(f"Updated status to: {status_text}")
+                        await self.bot.change_presence(activity=activity)
                         status_index += 1
+                        
             except Exception as e:
-                logger.error(f"Failed to update status: {e}")
+                logger.debug(f"Status update failed: {e}")
             
             await asyncio.sleep(settings.STATUS_UPDATE_INTERVAL_SECONDS)
+
+    async def bot_registry_heartbeat_loop(self) -> None:
+        """Background task to keep bot registered in the Universe Registry."""
+        await self.bot.wait_until_ready()
+        
+        from src_v2.universe.registry import bot_registry
+        
+        # Start the heartbeat loop
+        # Note: start_heartbeat is an infinite loop, so we wrap it
+        try:
+            await bot_registry.start_heartbeat(self.bot)
+        except asyncio.CancelledError:
+            logger.info("Bot registry heartbeat cancelled")
+        except Exception as e:
+            logger.error(f"Bot registry heartbeat failed: {e}")
 
     # weekly_graph_pruning_loop removed - now handled by worker cron task
     # See src_v2/workers/tasks/cron_tasks.py::run_weekly_graph_pruning

@@ -246,9 +246,9 @@ class DailyLifeScheduler:
             logger.info(f"No recent activity. Silence duration: {silence_duration:.0f}s")
             
             if silence_duration > self.dream_threshold_seconds:
-                logger.info("Silence threshold exceeded. Triggering Active Dream Cycle.")
+                logger.info("Silence threshold exceeded. Triggering Reverie Cycle (Active Idle).")
                 await self.task_queue.enqueue(
-                    "run_active_dream_cycle",
+                    "run_reverie_cycle",
                     character_name=bot_name
                 )
                 self.last_activity_timestamp = now # Reset to avoid spam
