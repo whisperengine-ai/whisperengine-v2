@@ -37,6 +37,7 @@
 | [SPEC-E35](./SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md) | E35 | Unified Memory (Graph Unification) | ✅ Complete | Dual-write & Vector-First Traversal |
 | [SPEC-E36](./SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md) | E36 | The Stream (Real-time) | ✅ Phase 1 / 📋 Phase 2 | Hybrid triggers done; full state machines in ADR-013 |
 | [SPEC-E37](./SPEC-E37-ADAPTIVE_IDENTITY_SELF_EDITING.md) | E37 | Adaptive Identity (Self-Editing) | 📋 Proposed | Dynamic character evolution |
+| [SPEC-E38](./SPEC-E38-METALEARNING_ENHANCEMENTS.md) | E38 | Meta-Learning Enhancements | 📋 Proposed | Confidence filtering (user insights) |
 | [SPEC-F01](./SPEC-F01-EMERGENT_UNIVERSE.md) | F1 | Emergent Universe | 📋 Future | Multi-bot ecosystem |
 | [SPEC-B05](./SPEC-B05-TRACE_LEARNING.md) | B5 | Trace Learning | ✅ Complete | Few-shot injection |
 | [SPEC-C02](./SPEC-C02-CHANNEL_LURKING.md) | C2 | Channel Lurking | ✅ Complete | Passive engagement |
