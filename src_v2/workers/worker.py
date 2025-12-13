@@ -42,10 +42,6 @@ from src_v2.workers.tasks.social_tasks import (
     run_relationship_update,
     run_gossip_dispatch,
 )
-from src_v2.workers.tasks.analysis_tasks import (
-    run_goal_analysis,
-    run_preference_extraction
-)
 from src_v2.workers.tasks.batch_preference_tasks import run_batch_preference_extraction
 from src_v2.workers.tasks.batch_goal_tasks import run_batch_goal_analysis
 from src_v2.workers.tasks.vision_tasks import run_vision_analysis
@@ -119,8 +115,6 @@ class WorkerSettings:
         run_relationship_update,
         # LangGraph agents get 10 min timeout (local LLMs + multi-step reasoning)
         arq.func(run_goal_strategist, timeout=600),
-        run_goal_analysis,           # DEPRECATED: per-message goal analysis
-        run_preference_extraction,   # DEPRECATED: per-message preference extraction
         run_batch_preference_extraction,  # Session-level preference extraction
         run_batch_goal_analysis,          # Session-level goal analysis
         run_vision_analysis,

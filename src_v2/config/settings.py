@@ -212,29 +212,13 @@ class Settings(BaseSettings):
     # 1. Master Switch
     ENABLE_AUTONOMOUS_ACTIVITY: bool = False  # Master switch for ALL autonomous activity (lurking, reacting, posting)
 
-    # 2. Observation (Passive)
-    ENABLE_CHANNEL_LURKING: bool = False  # Analyze public channels for relevant topics to reply to
-    # DEPRECATED: LURK_* settings - Use DISCORD_CHECK_* instead (Daily Life Graph)
-    LURK_CONFIDENCE_THRESHOLD: float = 0.7  # DEPRECATED: Use DISCORD_CHECK_RELEVANCE_THRESHOLD
-    LURK_CHANNEL_COOLDOWN_MINUTES: int = 30  # DEPRECATED: Handled by social_battery_limit
-    LURK_USER_COOLDOWN_MINUTES: int = 60  # DEPRECATED: Handled by social_battery_limit
-    LURK_DAILY_MAX_RESPONSES: int = 20  # DEPRECATED: Handled by social_battery_limit
-
-    # 3. Reaction (Low Friction)
+    # 2. Reaction (Low Friction)
     ENABLE_AUTONOMOUS_REACTIONS: bool = True  # React to messages with emojis (requires AUTONOMOUS_ACTIVITY)
     REACTION_CHANNEL_HOURLY_MAX: int = 10  # Max reactions per channel per hour
     REACTION_SAME_USER_COOLDOWN_SECONDS: int = 300  # Min seconds between reactions to same user
     REACTION_DAILY_MAX: int = 100  # Global daily limit for reactions
 
-    # 4. Response (Active Reply)
-    ENABLE_AUTONOMOUS_REPLIES: bool = False  # Reply to messages without mention (requires LURKING + AUTONOMOUS_ACTIVITY)
-    # DEPRECATED: CROSS_BOT_* settings - Bot visibility now determined by DISCORD_CHECK_WATCH_CHANNELS
-    ENABLE_CROSS_BOT_CHAT: bool = False  # DEPRECATED: Bots see each other in watch_channels automatically
-    CROSS_BOT_MAX_CHAIN: int = 5  # DEPRECATED: Use social_battery_limit instead
-    CROSS_BOT_COOLDOWN_MINUTES: int = 10  # DEPRECATED: Use AUTONOMOUS_POST_COOLDOWN_MINUTES
-    CROSS_BOT_RESPONSE_CHANCE: float = 0.7  # DEPRECATED: Use DAILY_LIFE_SPONTANEITY_CHANCE
-
-    # 5. Initiation (Proactive)
+    # 3. Initiation (Proactive)
     ENABLE_PROACTIVE_MESSAGING: bool = False  # Send DMs to users (requires Trust > 20)
     PROACTIVE_CHECK_INTERVAL_MINUTES: int = 60
     PROACTIVE_MIN_TRUST_SCORE: int = 20
@@ -242,16 +226,6 @@ class Settings(BaseSettings):
     
     ENABLE_AUTONOMOUS_POSTING: bool = False  # Post new thoughts in quiet channels (Phase E15)
     AUTONOMOUS_POST_COOLDOWN_MINUTES: int = 10  # Cooldown before posting again in quiet channel
-    # DEPRECATED: These settings are superseded by Daily Life Graph settings
-    BOT_CONVERSATION_CHANCE: float = 0.15  # DEPRECATED: Use DAILY_LIFE_SPONTANEITY_CHANCE
-    BOT_CONVERSATION_MAX_TURNS: int = 5  # DEPRECATED: Use social_battery_limit
-    ACTIVITY_CHECK_INTERVAL_MINUTES: int = 30  # DEPRECATED: Use DISCORD_CHECK_INTERVAL_MINUTES
-    
-    # DEPRECATED: These settings are no longer used. Bot visibility is now determined by DISCORD_CHECK_WATCH_CHANNELS.
-    # If a channel is in watch_channels, the bot sees all messages (including from other bots).
-    ENABLE_BOT_CONVERSATIONS: bool = False  # DEPRECATED: Bots see each other in watch_channels automatically
-    AUTONOMOUS_POSTING_CHANNEL_ID: Optional[str] = None  # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS
-    BOT_CONVERSATION_CHANNEL_ID: Optional[str] = None  # DEPRECATED: Use DISCORD_CHECK_WATCH_CHANNELS
 
     # --- Manipulation Detection & Timeout ---
     # Split into two categories for emergence research:

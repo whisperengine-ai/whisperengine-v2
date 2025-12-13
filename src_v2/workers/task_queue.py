@@ -199,48 +199,6 @@ class TaskQueue:
             priority=priority,
             recent_context=recent_context
         )
-    
-    async def enqueue_goal_analysis(
-        self,
-        user_id: str,
-        character_name: str,
-        interaction_text: str
-    ) -> Optional[str]:
-        """
-        Enqueue a goal analysis task (SENSORY queue - fast analysis).
-        
-        DEPRECATED: Use enqueue_batch_goal_analysis for session-level analysis.
-        This per-message method is kept for backward compatibility but is no longer
-        called from the main message handler.
-        """
-        return await self.enqueue(
-            "run_goal_analysis",
-            _queue_name=self.QUEUE_SENSORY,
-            user_id=user_id,
-            character_name=character_name,
-            interaction_text=interaction_text
-        )
-
-    async def enqueue_preference_extraction(
-        self,
-        user_id: str,
-        character_name: str,
-        message_content: str
-    ) -> Optional[str]:
-        """
-        Enqueue a preference extraction task (SENSORY queue - fast analysis).
-        
-        DEPRECATED: Use enqueue_batch_preference_extraction for session-level extraction.
-        This per-message method is kept for backward compatibility but is no longer
-        called from the main message handler.
-        """
-        return await self.enqueue(
-            "run_preference_extraction",
-            _queue_name=self.QUEUE_SENSORY,
-            user_id=user_id,
-            character_name=character_name,
-            message_content=message_content
-        )
 
     async def enqueue_batch_preference_extraction(
         self,

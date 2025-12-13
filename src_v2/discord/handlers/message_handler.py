@@ -185,12 +185,6 @@ class MessageHandler:
         except Exception as exc:  # pragma: no cover - background queue failures are non-blocking
             logger.debug(f"Could not enqueue graph enrichment for {session_id}: {exc}")
 
-    async def _should_autonomous_reply(self, message: discord.Message) -> bool:
-        """Decide if the bot should autonomously reply to a message."""
-        # DEPRECATED: Real-time autonomous replies are disabled in favor of Daily Life Graph.
-        # See ADR-010.
-        return False
-
     async def on_message(self, message: discord.Message) -> None:
         """Handles incoming Discord messages and generates AI responses.
         
@@ -406,10 +400,6 @@ class MessageHandler:
         # Phase 4: Autonomous Replies (Occasional replies without mention)
         # Phase E36: The Stream (Real-time Nervous System)
         if not is_dm and not is_mentioned and message.guild:
-            # DEPRECATED: Old autonomous reply logic
-            # if await self._should_autonomous_reply(message):
-            #     is_mentioned = True
-            
             # NEW: Trigger Daily Life Graph for high-signal events
             if settings.ENABLE_AUTONOMOUS_ACTIVITY:
                 should_trigger = False

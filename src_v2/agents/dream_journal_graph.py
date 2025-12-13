@@ -288,6 +288,3 @@ If the dream is good, return None. If it needs improvement, provide specific ins
 
 # Singleton instance
 dream_journal_agent = DreamJournalAgent()
-
-# Backward compatibility alias (deprecated - use dream_journal_agent)
-dream_graph_agent = dream_journal_agent
