@@ -313,14 +313,19 @@ memories, facts, trust, goals = await asyncio.gather(
 
 ### Testing
 
-**Development workflow**: Always test changes on elena first, then run regression tests.
+**⚠️ IMPORTANT: DO NOT automatically run regression tests after every change.**
+- Only run tests when the user explicitly asks for them.
+- Use `python -m py_compile <file>` for syntax validation.
+- The user will decide when to run tests.
+
+**Development workflow**: Test changes on elena first. User runs regression tests manually.
 
 **Regression Test Suite** (API-based, no Discord needed):
 ```bash
 # Quick smoke test (~1-2 min) - health + basic greeting for all bots
 python tests_v2/run_regression.py --smoke
 
-# Test elena only (~2-3 min) - ALWAYS run after code changes
+# Test elena only (~2-3 min) - run after code changes
 python tests_v2/run_regression.py --bot elena
 
 # Full regression suite (~10-15 min) - before releases

@@ -77,7 +77,8 @@ class ReverieGraph:
             
         logger.info(f"[{state['bot_name']}] Expanding context for {len(seeds)} seeds...")
         
-        vector_ids = [seed["id"] for seed in seeds]
+        # Filter to only seeds that have IDs (some seed types like facts/observations may not)
+        vector_ids = [seed["id"] for seed in seeds if seed.get("id")]
         
         # Use the new Unified Memory feature
         neighborhood = await knowledge_manager.get_memory_neighborhood(vector_ids)

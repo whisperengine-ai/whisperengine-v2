@@ -1250,6 +1250,7 @@ class MemoryManager:
                 meaningfulness = payload.get("meaningfulness_score", 0.5)
                 if isinstance(meaningfulness, (int, float)) and meaningfulness >= min_meaningfulness:
                     memories.append({
+                        "id": str(point.id),  # Qdrant point ID for graph traversal
                         "content": payload.get("content", ""),
                         "summary": payload.get("summary", payload.get("content", "")),
                         "emotions": payload.get("emotions", []),
@@ -1293,6 +1294,7 @@ class MemoryManager:
                         
                         if meaningfulness >= min_meaningfulness:
                             memories.append({
+                                "id": str(point.id),  # Qdrant point ID for graph traversal
                                 "content": payload.get("content", ""),
                                 "summary": payload.get("content", ""),
                                 "emotions": payload.get("emotions", []),
