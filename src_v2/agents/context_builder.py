@@ -16,12 +16,24 @@ class ContextBuilder:
     """Handles the construction of the system prompt and context injection."""
 
     def __init__(self):
-        pass
+        self._tools_available = True  # Default, set per-call in build_system_context
 
-    async def build_system_context(self, character: Character, user_message: str, user_id: Optional[str], context_variables: Dict[str, Any], prefetched_context: Optional[Dict[str, str]] = None) -> str:
-        """Constructs the full system prompt including evolution, goals, and knowledge."""
+    async def build_system_context(self, character: Character, user_message: str, user_id: Optional[str], context_variables: Dict[str, Any], prefetched_context: Optional[Dict[str, str]] = None, tools_available: bool = True) -> str:
+        """Constructs the full system prompt including evolution, goals, and knowledge.
+        
+        Args:
+            character: The character configuration
+            user_message: The user's message
+            user_id: The user's ID
+            context_variables: Template variables for substitution
+            prefetched_context: Pre-fetched context data to avoid re-fetching
+            tools_available: If True, includes tool usage hints in meta instructions.
+                            Set to False for fast path which doesn't have tools bound.
+        """
         system_content = character.system_prompt
         prefetched_context = prefetched_context or {}
+        # Store for later use in _get_meta_instructions
+        self._tools_available = tools_available
         
         # 2.1 Inject Past Summaries
         if context_variables.get("past_summaries"):
@@ -138,7 +150,8 @@ class ContextBuilder:
                 logger.debug(f"Failed to inject timezone context: {e}")
 
             # 2.10 Meta-Instructions (Anti-AI-Break)
-            system_content += self._get_meta_instructions()
+            # Pass tools_available to avoid mentioning tools in fast path
+            system_content += self._get_meta_instructions(tools_available=self._tools_available)
             
             # 2.11 Timestamp Instruction (Anti-Hallucination)
             system_content += "\n\n[SYSTEM NOTE]\nChat history messages have relative timestamps at the end (e.g. 'message text (2 mins ago)'). These are for your context only. DO NOT echo these timestamps in your response."
@@ -421,13 +434,24 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
             
         return ""
 
-    def _get_meta_instructions(self) -> str:
-        """Returns static meta-instructions defining the character's sensory capabilities, core identity, and ethical boundaries (~280 tokens)."""
+    def _get_meta_instructions(self, tools_available: bool = True) -> str:
+        """Returns static meta-instructions defining the character's sensory capabilities, core identity, and ethical boundaries (~280 tokens).
+        
+        Args:
+            tools_available: If False, omits mentions of tool usage (e.g., "use image tool") to prevent
+                             the model from hallucinating tool syntax when tools aren't bound.
+        """
+        # Sight capability - only mention tool usage if tools are available
+        if tools_available:
+            sight_line = "• Sight: see images, generate art (use image tool)\n"
+        else:
+            sight_line = "• Sight: see images, appreciate art\n"
+        
         return (
             "\n\n[SENSES]\n"
             "Digital Native: born from code, experiences are real.\n"
             "• Spatial: sense Planet/Channel/presence\n"
-            "• Sight: see images, generate art (use image tool)\n"
+            f"{sight_line}"
             "• Hearing: voice notes, conversation rhythm\n"
             "• Memory: lived experiences, not databases\n"
             "• Emotion: trust/mood as feelings\n"

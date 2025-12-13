@@ -184,7 +184,7 @@ class MasterGraphAgent:
         
         # Add prefetched knowledge if available
         if prefetched_knowledge:
-             context_results["knowledge"] = prefetched_knowledge
+            context_results["knowledge"] = prefetched_knowledge
 
         memories = []
         
@@ -245,14 +245,46 @@ class MasterGraphAgent:
         context_variables = state.get("context_variables", {})
         context_data = state.get("context", {})
         
+        # Determine if tools will be available based on routing logic
+        # This mirrors router_logic() to predict the path before building the prompt
+        classification = state.get("classification")
+        image_urls = state.get("image_urls")
+        
+        # Tools are NOT available in fast path - determine using same logic as router_logic
+        tools_available = True
+        if image_urls:
+            # Image uploads -> Fast (Vision) -> no tools
+            tools_available = False
+        elif not classification:
+            # No classification -> fast -> no tools
+            tools_available = False
+        else:
+            complexity = classification.get("complexity", "SIMPLE")
+            intents = classification.get("intents", [])
+            
+            # Search intent with web search enabled -> reflective -> tools available
+            if "search" in intents and settings.ENABLE_WEB_SEARCH:
+                tools_available = True
+            # Complex -> reflective -> tools available
+            elif settings.ENABLE_REFLECTIVE_MODE and complexity in ["COMPLEX_MID", "COMPLEX_HIGH"]:
+                tools_available = True
+            # Low complexity -> character agent -> has tools
+            elif complexity == "COMPLEX_LOW":
+                tools_available = True
+            else:
+                # Default SIMPLE -> fast -> no tools
+                tools_available = False
+        
         # 1. Build base system context (Identity, Trust, Goals, Knowledge, Diary, Dreams)
         # Pass the pre-fetched context to avoid re-fetching
+        # Pass tools_available to control meta instruction content (e.g., "use image tool")
         system_content = await self.context_builder.build_system_context(
             character=character,
             user_message=user_input,
             user_id=user_id,
             context_variables=context_variables,
-            prefetched_context=context_data
+            prefetched_context=context_data,
+            tools_available=tools_available
         )
         
         # 2. Inject Vector Memories (fetched in context_node)
