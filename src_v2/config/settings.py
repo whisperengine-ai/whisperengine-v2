@@ -43,6 +43,27 @@ class Settings(BaseSettings):
         le=2.0
     )
     
+    # --- Reasoning Mode Configuration (OpenAI o-series, Anthropic extended thinking) ---
+    # Enables chain-of-thought reasoning for models that support it
+    # OpenAI o1/o3: Use LLM_REASONING_EFFORT (high, medium, low)
+    # Anthropic Claude: Use LLM_REASONING_MAX_TOKENS (budget_tokens)
+    LLM_REASONING_ENABLED: bool = Field(
+        default=False,
+        description="Enable reasoning/thinking mode for supported models (o1, o3, Claude with extended thinking)"
+    )
+    LLM_REASONING_EFFORT: Optional[Literal["xhigh", "high", "medium", "low", "minimal", "none"]] = Field(
+        default=None,
+        description="OpenAI-style reasoning effort level. If set, takes precedence over max_tokens."
+    )
+    LLM_REASONING_MAX_TOKENS: Optional[int] = Field(
+        default=None,
+        description="Anthropic-style reasoning token budget. Used if effort is not set."
+    )
+    LLM_REASONING_EXCLUDE: bool = Field(
+        default=True,
+        description="Exclude reasoning tokens from the response (hide chain-of-thought). Default true since response.content goes directly to users."
+    )
+    
     # --- Router LLM Configuration (Optional - for faster/cheaper routing) ---
     ROUTER_LLM_PROVIDER: Optional[Literal["openai", "openrouter", "ollama", "lmstudio"]] = None
     ROUTER_LLM_API_KEY: Optional[SecretStr] = None
@@ -103,6 +124,20 @@ class Settings(BaseSettings):
     REFLECTIVE_LLM_API_KEY: Optional[SecretStr] = None
     REFLECTIVE_MEMORY_RESULT_LIMIT: int = 5  # Max results returned per memory search (increased from 3 for better recall)
     # Note: Max steps are now dynamically set by complexity level (10 for MID, 15 for HIGH)
+    
+    # Reasoning mode for reflective LLM (separate from main LLM reasoning)
+    REFLECTIVE_REASONING_ENABLED: bool = Field(
+        default=False,
+        description="Enable reasoning mode for reflective LLM (independent of main LLM)"
+    )
+    REFLECTIVE_REASONING_EFFORT: Optional[Literal["xhigh", "high", "medium", "low", "minimal", "none"]] = Field(
+        default=None,
+        description="Reasoning effort for reflective LLM"
+    )
+    REFLECTIVE_REASONING_MAX_TOKENS: Optional[int] = Field(
+        default=None,
+        description="Reasoning token budget for reflective LLM"
+    )
 
     # --- Autonomous Agents (Phase 3) ---
     ENABLE_AUTONOMOUS_DRIVES: bool = True
