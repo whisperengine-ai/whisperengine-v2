@@ -1773,7 +1773,12 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 - `src_v2/agents/reflective_graph.py`: Complex reasoning with "Critic" loops.
 - `src_v2/agents/character_graph.py`: Standard character response flow.
 - `src_v2/agents/diary_graph.py`: Background diary generation.
-- `src_v2/agents/dream_graph.py`: Background dream generation.
+- `src_v2/agents/dream_journal_graph.py`: Dream journal generation (first-person narrative broadcast).
+- `src_v2/agents/reverie/graph.py`: Reverie (background memory consolidation, invisible to users).
+
+> **Note:** Dream Journal and Reverie are distinct features:
+> - **Dream Journal** (`dream_journal_graph.py`): Generates first-person dream narratives that are broadcast to users. Uses generator-critic loop with first-person enforcement.
+> - **Reverie** (`reverie/graph.py`): Background memory consolidation process that links memories together. Invisible to users.
 
 **Spec:** [ref/REF-006-AGENT_GRAPH_SYSTEM.md](./ref/REF-006-AGENT_GRAPH_SYSTEM.md)
 

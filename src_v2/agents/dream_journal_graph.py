@@ -11,8 +11,24 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.dreams import DreamContent, DreamMaterial
 from src_v2.config.settings import settings
 
+"""
+DREAM JOURNAL GENERATOR (dream_journal_graph.py)
+================================================
+Generates first-person dream narratives for the bot's dream journal.
+Uses a Generator-Critic loop to ensure quality and first-person perspective.
+
+NOT TO BE CONFUSED WITH:
+- Reverie (src_v2/agents/reverie/graph.py): Active idle memory consolidation.
+  Reverie is a background process that links memories together.
+  Dream Journal is a narrative output that gets broadcast to users.
+
+Usage:
+    from src_v2.agents.dream_journal_graph import dream_journal_agent
+    dream = await dream_journal_agent.run(material, character_context, previous_dreams)
+"""
+
 # Define State
-class DreamAgentState(TypedDict):
+class DreamJournalState(TypedDict):
     # Inputs
     material: DreamMaterial
     character_context: str
@@ -25,14 +41,21 @@ class DreamAgentState(TypedDict):
     steps: int
     max_steps: int
 
-class DreamCritique(BaseModel):
-    """Structured output for the dream critic."""
+class DreamJournalCritique(BaseModel):
+    """Structured output for the dream journal critic."""
     critique: Optional[str] = Field(description="Specific feedback on what to improve (e.g. 'Too literal', 'Too many cliches'), or None if the dream is excellent.")
 
-class DreamGraphAgent:
+class DreamJournalAgent:
     """
-    Generates character dreams using a Generator-Critic loop.
-    Ensures dreams are surreal, symbolic, and narrative.
+    DREAM JOURNAL AGENT - Generates first-person dream narratives.
+    
+    This is the dream JOURNAL generator (nightly broadcast to users).
+    Uses a Generator-Critic loop to ensure:
+    - First-person perspective ("I am...", "I see...")
+    - Surreal, symbolic imagery
+    - No cliches or repetition
+    
+    NOT the same as Reverie (active idle memory consolidation).
     """
     
     def __init__(self):
@@ -41,10 +64,10 @@ class DreamGraphAgent:
         self.structured_llm = self.llm.with_structured_output(DreamContent)
         
         # Critic LLM - lower temperature for consistent evaluation
-        self.critic_llm = create_llm(temperature=0.1, mode="reflective").with_structured_output(DreamCritique)
+        self.critic_llm = create_llm(temperature=0.1, mode="reflective").with_structured_output(DreamJournalCritique)
         
         # Build graph
-        workflow = StateGraph(DreamAgentState)
+        workflow = StateGraph(DreamJournalState)
         
         workflow.add_node("generator", self.generator)
         workflow.add_node("critic", self.critic)
@@ -229,7 +252,7 @@ If the dream is good, return None. If it needs improvement, provide specific ins
             return "retry"
         return "end"
 
-    @traceable(name="DreamGraphAgent.run", run_type="chain")
+    @traceable(name="DreamJournalAgent.run", run_type="chain")
     async def run(
         self, 
         material: DreamMaterial, 
@@ -264,4 +287,7 @@ If the dream is good, return None. If it needs improvement, provide specific ins
             return None
 
 # Singleton instance
-dream_graph_agent = DreamGraphAgent()
+dream_journal_agent = DreamJournalAgent()
+
+# Backward compatibility alias (deprecated - use dream_journal_agent)
+dream_graph_agent = dream_journal_agent

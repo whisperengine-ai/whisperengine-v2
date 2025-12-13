@@ -65,15 +65,20 @@ async def run_dream_generation(
     override: bool = False
 ) -> Dict[str, Any]:
     """
-    Generate a dream using the LangGraph Dream Agent.
+    DREAM JOURNAL - Generate a first-person dream narrative for broadcast.
     
-    This uses a multi-step graph approach:
-    1. Gather material from memories, facts, gossip, observations
-    2. Plan the narrative arc (dream structure, symbolic journey)
-    3. Weave the final dream with surreal imagery and emotional resonance
+    Uses DreamJournalAgent (generator-critic loop) to create surreal,
+    first-person dream narratives that get broadcast to users.
     
-    Dreams are synthesized in the character's voice using the model 
-    specified in core.yaml.
+    Key features:
+    - First-person perspective enforced ("I am...", "I see...")
+    - Critic rejects third-person or literal content
+    - Anti-repetition checks against previous dreams
+    
+    NOT TO BE CONFUSED WITH:
+    - Reverie (run_reverie_cycle): Background memory consolidation.
+      Reverie is invisible - it just links memories.
+      Dream Journal is visible - users see the broadcast.
     
     Args:
         ctx: arq context
@@ -99,7 +104,8 @@ async def run_dream_generation(
     logger.info(f"Generating dream for {character_name} (override={override})")
     
     try:
-        from src_v2.agents.reverie.graph import get_reverie_graph
+        # Dream Journal Agent - generates first-person dream narratives (NOT Reverie)
+        from src_v2.agents.dream_journal_graph import dream_journal_agent
         from src_v2.memory.dreams import get_dream_manager, DreamContent
         from src_v2.core.behavior import load_behavior_profile
         from src_v2.safety.content_review import content_safety_checker
@@ -160,12 +166,7 @@ async def run_dream_generation(
         if not character_description:
             character_description = f"You are {character_name.title()}, an AI companion."
         
-        # Run LangGraph Reverie Agent (used for Dreams too)
-        logger.info(f"Using LangGraph Reverie Agent for {character_name}")
-        graph_factory = get_reverie_graph()
-        graph = graph_factory.build_graph()
-        
-        # Gather material (Graph expects DreamMaterial object)
+        # Gather material first
         material = await dream_manager.gather_dream_material(hours=24)
         
         if not material.is_sufficient():
@@ -226,44 +227,30 @@ async def run_dream_generation(
                 "absence_recorded": True
             }
 
-        # Convert material to seeds for the new graph
-        seeds = []
-        for m in material.memories:
-            seeds.append({"id": m.get("id"), "content": m.get("content"), "timestamp": m.get("timestamp"), "type": "memory"})
-        for f in material.facts:
-            seeds.append({"content": f, "type": "fact"})
-        for o in material.observations:
-            seeds.append({"content": o.get("content"), "type": "observation"})
-        for g in material.gossip:
-            seeds.append({"content": g.get("content"), "type": "gossip"})
+        # Get previous dreams to avoid repetition
+        previous_dreams = []
+        try:
+            recent_dreams = await dream_manager.get_recent_dreams(limit=3)
+            previous_dreams = [d.get("dream", d.get("content", "")) for d in recent_dreams if d]
+        except Exception as e:
+            logger.debug(f"Could not fetch previous dreams: {e}")
             
-        # Run Graph
-        result = await graph.ainvoke({
-            "bot_name": character_name,
-            "seeds": seeds,
-            "context": [],
-            "reverie_result": None,
-            "consolidation_status": "pending",
-            "process_type": "dream"
-        })
+        # Run DreamJournalAgent with generator-critic loop (first-person enforcement)
+        logger.info(f"Using DreamJournalAgent for {character_name}")
+        dream = await dream_journal_agent.run(
+            material=material,
+            character_context=character_description,
+            previous_dreams=previous_dreams,
+            max_steps=3
+        )
         
-        if result.get("consolidation_status") != "success":
-            logger.warning(f"Dream generation failed: {result.get('consolidation_status')}")
+        if not dream:
+            logger.warning(f"Dream generation failed: no dream produced")
             return {
                 "success": False,
-                "error": result.get("consolidation_status"),
+                "error": "no_dream_produced",
                 "character_name": character_name
             }
-            
-        # Extract dream result
-        dream_data = result.get("reverie_result")
-        # Construct DreamContent for broadcasting/return
-        dream = DreamContent(
-            dream=dream_data["content"],
-            mood=dream_data.get("emotions", ["unknown"])[0] if dream_data.get("emotions") else "unknown",
-            symbols=dream_data.get("entities", []),
-            memory_echoes=[] # New graph doesn't explicitly return echoes
-        )
         
         # Build provenance data - vague/poetic for display, content has explicit names for search
         provenance_data = []
@@ -296,8 +283,20 @@ async def run_dream_generation(
                 "description": "what was known"
             })
             
-        # Note: Dream is already saved by the graph's consolidate step!
-        point_id = "graph_generated"
+        # Save the dream (DreamJournalAgent only generates, doesn't save)
+        point_id = await dream_manager.save_dream(
+            user_id=character_name,  # Self-dream
+            dream=dream,
+            provenance=provenance_data
+        )
+        
+        if not point_id:
+            logger.warning(f"Failed to save dream for {character_name}")
+            return {
+                "success": False,
+                "error": "save_failed",
+                "character_name": character_name
+            }
         
         # Phase E22: Check for absence resolution (dream succeeded after previous failures)
         try:
@@ -385,13 +384,22 @@ async def run_reverie_cycle(
     character_name: str
 ) -> Dict[str, Any]:
     """
-    Runs the Reverie cycle (Phase E34).
-    This is a lightweight consolidation process that runs when the bot is idle.
+    REVERIE - Active Idle Memory Consolidation (Phase E34).
+    
+    This is a BACKGROUND process that runs when the bot is idle.
+    It links memories together and creates structural connections.
+    
+    NOT TO BE CONFUSED WITH:
+    - Dream Journal (run_dream_generation): Generates first-person narrative
+      that gets broadcast to users. Uses DreamJournalAgent.
+    
+    Reverie is invisible to users - it just improves memory retrieval.
+    Dream Journal is visible - users see the dream broadcast.
     """
     if not settings.ENABLE_REVERIE:
         return {"success": False, "reason": "disabled"}
 
-    logger.info(f"Entering Reverie State for {character_name}")
+    logger.info(f"Entering Reverie State for {character_name} (memory consolidation, not dream journal)")
     
     try:
         from src_v2.agents.reverie.graph import get_reverie_graph

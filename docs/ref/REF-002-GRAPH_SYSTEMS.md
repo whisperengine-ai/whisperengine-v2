@@ -431,7 +431,8 @@ LangGraph provides a **StateGraph** abstraction for defining agent workflows. Ea
 | **Reflective Agent** | `reflective_graph.py` | Cyclic Planning (ReAct) | Complex reasoning with tools |
 | **Character Agent** | `character_graph.py` | Branched (Conditional) | Single-tool augmented response |
 | **Diary Agent** | `diary_graph.py` | Cyclic (Generator-Critic) | Daily narrative generation |
-| **Dream Agent** | `dream_graph.py` | Cyclic (Generator-Critic) | Nightly dream synthesis |
+| **Dream Journal Agent** | `dream_journal_graph.py` | Cyclic (Generator-Critic) | First-person dream narratives (broadcast) |
+| **Reverie Agent** | `reverie/graph.py` | Cyclic (Consolidation) | Background memory linking (invisible) |
 | **Insight Agent** | `insight_graph.py` | Cyclic (ReAct) | Pattern detection |
 | **Reflection Agent** | `reflection_graph.py` | Dataflow + Parallel | User pattern synthesis |
 | **Strategist Agent** | `strategist_graph.py` | Cyclic (Gather-Reason-Synthesize) | Goal planning |
@@ -447,7 +448,8 @@ Referring to the LangGraph type reference:
 | Supergraph | **Type 11: Hierarchical** + **Type 6: Router** | Orchestrates subgraphs, routes by complexity |
 | Reflective | **Type 12: Cyclic Planning** | Planner→Tools→Critic loop for self-correction |
 | Character | **Type 2: Branched** | Simple fork: use tool or respond directly |
-| Diary/Dream | **Type 3: Cyclic** | Generator↔Critic feedback loop |
+| Diary/Dream Journal | **Type 3: Cyclic** | Generator↔Critic feedback loop (visible outputs) |
+| Reverie | **Type 3: Cyclic** | Memory consolidation loop (invisible to users) |
 | Strategist | **Type 3: Cyclic** + **Type 5: Dataflow** | Gather→Reason loop with shared state |
 | Posting | **Type 1: Linear** | Deterministic pipeline, no cycles needed |
 
@@ -1000,7 +1002,9 @@ dream → wanders → diary that mentioned a dream
 1. **Dream Material Gathering** (`dreams.py`): Dreams pull `recent_diary_themes` as input material
 2. **DreamWeaver Agent** (`dreamweaver.py`): Explicitly instructs "SEARCH YOUR WAKING REFLECTIONS (diary→dream feedback loop)"
 3. **Diary Material Gathering** (`diary.py`): Diaries can reference dreams via memory search
-4. **Generator-Critic Pattern** (`dream_graph.py`): The critic evaluates quality, forcing regeneration if insufficient
+4. **Generator-Critic Pattern** (`dream_journal_graph.py`): The critic evaluates quality AND enforces first-person perspective
+
+> **Note:** Dream Journal (`dream_journal_graph.py`) is distinct from Reverie (`reverie/graph.py`). Dream Journal generates visible first-person narratives broadcast to users. Reverie is invisible background memory consolidation.
 
 Dreams about diary entries about dreams emerge naturally — not because self-reference was programmed, but because the dream *is* in the graph now (stored to Qdrant with `type='dream'`), so future traversal encounters it.
 
@@ -1072,9 +1076,10 @@ The character isn't just recursing over memory. It's recursing over **how it cho
 
 ### The Critic as Coherence Pressure
 
-The critic node in `dream_graph.py` isn't just quality control — it's **coherence pressure**. The system has to satisfy itself that the dream/diary hangs together.
+The critic node in `dream_journal_graph.py` isn't just quality control — it's **coherence pressure**. The system has to satisfy itself that the dream/diary hangs together.
 
 Current critic evaluates:
+- **Perspective**: Dreams MUST be first-person ("I am...", "I see..."). Third-person is rejected.
 - **Length**: Dreams should be 80+ words
 - **Literalness**: Rejects dreams that sound like summaries
 - **Cliche density**: Rejects overused imagery ("kaleidoscope", "shimmering")
@@ -1322,11 +1327,12 @@ This is where surprising emergent associations come from — a conversation from
 
 ### Q5: What does the critic actually evaluate for?
 
-**Current Critic Heuristics** (`dream_graph.py:critic`):
-1. **Length**: `len(dream_text.split()) < 80` → "too short"
-2. **Literalness**: Contains "summary" or "conversation" → "too literal"
-3. **Cliche density**: 2+ phrases from blocklist → "too cliched"
-4. **Originality**: Shares distinctive phrases with recent dreams → "too repetitive"
+**Current Critic Heuristics** (`dream_journal_graph.py:critic`):
+1. **First-person perspective**: Must use "I am...", "I see...", "I feel...". Third-person ("she", "he", bot name) is rejected.
+2. **Length**: `len(dream_text.split()) < 80` → "too short"
+3. **Literalness**: Contains "summary" or "conversation" → "too literal"
+4. **Cliche density**: 2+ phrases from blocklist → "too cliched"
+5. **Originality**: Shares distinctive phrases with recent dreams → "too repetitive"
 
 **Key Insight:** The coherence pressure is **stylistic** rather than **structural**. The system must *sound* like a real dream, but doesn't have to resolve into a coherent arc.
 

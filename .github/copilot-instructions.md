@@ -265,8 +265,16 @@ memories, facts, trust, goals = await asyncio.gather(
   - `run_summarization`: Session summary generation (post-session)
   - `run_reflection`: User pattern analysis across sessions
   - `run_knowledge_extraction`: Fact extraction to Neo4j (offloaded from response pipeline)
+  - `run_dream_generation`: Dream journal generation (uses DreamJournalAgent)
+  - `run_reverie_cycle`: Reverie memory consolidation (background, invisible to users)
 - `src_v2/agents/insight_graph.py`: LangGraph agent for pattern detection and epiphanies
+- `src_v2/agents/dream_journal_graph.py`: Dream Journal generator (first-person narrative broadcast)
+- `src_v2/agents/reverie/graph.py`: Reverie (background memory consolidation, NOT dream journal)
 - `src_v2/tools/insight_tools.py`: Introspection tools (analyze_patterns, detect_themes, etc.)
+
+> **IMPORTANT DISTINCTION:**
+> - **Dream Journal** (`dream_journal_graph.py`): Generates first-person dream narratives that are **broadcast to users**. Uses generator-critic loop with first-person enforcement.
+> - **Reverie** (`reverie/graph.py`): Background memory consolidation that links memories together. **Invisible to users**. Does NOT generate dream narratives.
 
 ### Character & Evolution
 - `src_v2/core/character.py`: Loads `characters/{name}/character.md`, `.yaml` files

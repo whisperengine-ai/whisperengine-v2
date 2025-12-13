@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from src_v2.agents.summary_graph import summary_graph_agent, SummaryResult
 from src_v2.agents.knowledge_graph import knowledge_graph_agent, Fact
 from src_v2.agents.diary_graph import diary_graph_agent, DiaryCritique
-from src_v2.agents.dream_graph import dream_graph_agent, DreamCritique
+from src_v2.agents.dream_journal_graph import dream_journal_agent, DreamJournalCritique
 from src_v2.memory.diary import DiaryEntry, DiaryMaterial
 from src_v2.memory.dreams import DreamContent, DreamMaterial
 
@@ -342,7 +342,7 @@ async def test_dream_graph_critic_catches_short_dream():
         "max_steps": 3
     }
     
-    result = await dream_graph_agent.critic(state)
+    result = await dream_journal_agent.critic(state)
     
     assert result["critique"] is not None
     assert "short" in result["critique"].lower() or "expand" in result["critique"].lower()
@@ -368,7 +368,7 @@ async def test_dream_graph_critic_catches_literal_content():
         "max_steps": 3
     }
     
-    result = await dream_graph_agent.critic(state)
+    result = await dream_journal_agent.critic(state)
     
     assert result["critique"] is not None
     assert "literal" in result["critique"].lower() or "symbol" in result["critique"].lower() or "conversation" in result["critique"].lower()
@@ -403,10 +403,10 @@ async def test_dream_graph_critic_approves_surreal_dream():
     
     # Mock the critic LLM to approve
     mock_critic_llm = AsyncMock()
-    mock_critic_llm.ainvoke.return_value = DreamCritique(critique=None)
+    mock_critic_llm.ainvoke.return_value = DreamJournalCritique(critique=None)
     
-    with patch.object(dream_graph_agent, "critic_llm", mock_critic_llm):
-        result = await dream_graph_agent.critic(state)
+    with patch.object(dream_journal_agent, "critic_llm", mock_critic_llm):
+        result = await dream_journal_agent.critic(state)
         assert result["critique"] is None  # Approved!
 
 
@@ -510,6 +510,6 @@ async def test_dream_should_continue_respects_max_steps():
         "max_steps": 3
     }
     
-    result = dream_graph_agent.should_continue(state)
+    result = dream_journal_agent.should_continue(state)
     
     assert result == "end"

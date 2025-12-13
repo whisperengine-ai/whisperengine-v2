@@ -70,11 +70,12 @@ graph TD
 *   **Structure**: `Generator` ⇄ `Critic` → `END`
 *   **Key Feature**: The Critic ensures the entry is narrative and emotional, rejecting "robotic" summaries.
 
-### 4. Dream Graph Agent (Background)
-*   **File**: `src_v2/agents/dream_graph.py`
-*   **Purpose**: Generates surreal nightly dreams.
+### 4. Dream Journal Agent (Background)
+*   **File**: `src_v2/agents/dream_journal_graph.py`
+*   **Purpose**: Generates first-person nightly dream narratives for broadcast.
 *   **Structure**: `Generator` ⇄ `Critic` → `END`
-*   **Key Feature**: The Critic ensures the dream uses symbolic logic and isn't just a literal recap.
+*   **Key Feature**: The Critic ensures first-person perspective ("I am...", "I see...") and symbolic dream logic. Rejects third-person or literal recaps.
+*   **NOT TO BE CONFUSED WITH**: Reverie (`src_v2/agents/reverie/graph.py`) which is background memory consolidation (invisible to users).
 
 ### 5. Insight Graph Agent (Background)
 *   **File**: `src_v2/agents/insight_graph.py`

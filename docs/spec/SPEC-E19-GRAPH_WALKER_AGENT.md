@@ -618,16 +618,18 @@ about that when I dream of underwater places..."
 3. Add basic caching for repeated queries
 4. Unit tests for each tool
 
-### Phase 2: Dream Integration (0.5 days)
+### Phase 2: Dream Journal Integration (0.5 days)
 
 **Files:**
-- `src_v2/agents/dream_graph.py` — Update to use GraphWalkerAgent
+- `src_v2/agents/dream_journal_graph.py` — Update to use GraphWalkerAgent
 - `src_v2/memory/dreams.py` — Update dream material gathering
 
 **Tasks:**
 1. Replace static fact lookup with graph walk
 2. Update dream prompt to incorporate discovered threads
 3. Add "exploration trace" to dream provenance
+
+> **Note:** This applies to Dream Journal (visible first-person narratives), not Reverie (invisible memory consolidation).
 
 ### Phase 3: Diary Integration (0.5 days)
 
@@ -717,7 +719,7 @@ graph_exploration:
 - [LangGraph ReAct Pattern](https://langchain-ai.github.io/langgraph/)
 - `docs/guide/GUIDE-002-KNOWLEDGE_GRAPH.md` — Current Neo4j schema
 - `src_v2/knowledge/manager.py` — Existing graph queries
-- `src_v2/agents/dream_graph.py` — Dream generation (to be enhanced)
+- `src_v2/agents/dream_journal_graph.py` — Dream journal generation (to be enhanced)
 
 ---
 

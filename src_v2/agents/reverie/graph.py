@@ -15,6 +15,24 @@ from src_v2.memory.models import MemorySourceType
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.config.settings import settings
 
+"""
+REVERIE - Active Idle Memory Consolidation (reverie/graph.py)
+=============================================================
+Background process that runs when the bot is idle.
+Links memories together, creates structural connections, discovers patterns.
+
+This is INVISIBLE to users - it just improves memory retrieval quality.
+
+NOT TO BE CONFUSED WITH:
+- Dream Journal (src_v2/agents/dream_journal_graph.py): Generates first-person
+  dream narratives that get BROADCAST to users. Uses DreamJournalAgent.
+
+Usage:
+    from src_v2.agents.reverie.graph import get_reverie_graph
+    graph = get_reverie_graph()
+    result = await graph.build_graph().ainvoke(initial_state)
+"""
+
 # --- State Definition ---
 
 class ReverieState(TypedDict):
@@ -23,7 +41,7 @@ class ReverieState(TypedDict):
     context: List[Dict[str, Any]]
     reverie_result: Optional[Dict[str, Any]]
     consolidation_status: str
-    process_type: Literal["dream", "reverie"] # New field to distinguish process type
+    process_type: Literal["reverie"]  # Always "reverie" - not used for dreams anymore
 
 class ReverieResult(BaseModel):
     """The output of the reverie process."""

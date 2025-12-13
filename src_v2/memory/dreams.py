@@ -242,8 +242,8 @@ class DreamManager:
         # Higher temperature for creative, surreal dreams
         base_llm = create_llm(temperature=0.9, mode="utility")  # Even higher for dreams
         self.llm = base_llm.with_structured_output(DreamContent)
-        # Note: Character-level dream generation now uses DreamGraphAgent (LangGraph)
-        # Legacy prompt/chain removed - see src_v2/agents/dream_graph.py
+        # Note: Character-level dream generation now uses DreamJournalAgent (LangGraph)
+        # Legacy prompt/chain removed - see src_v2/agents/dream_journal_graph.py
         
         # Legacy prompt for user-specific dreams (backward compatibility)
         self.user_prompt = ChatPromptTemplate.from_messages([
@@ -584,8 +584,8 @@ Create a surreal dream echoing these experiences.""")
             # Character files contain {user_name}, {current_datetime} which aren't relevant for dreams
             safe_context = character_context.replace("{", "{{").replace("}", "}}")
             
-            logger.info("Using LangGraph Dream Agent")
-            from src_v2.agents.dream_graph import dream_graph_agent
+            logger.info("Using DreamJournalAgent")
+            from src_v2.agents.dream_journal_graph import dream_journal_agent
             
             # Fetch previous dreams for anti-pattern injection
             previous_dreams = []
@@ -595,7 +595,7 @@ Create a surreal dream echoing these experiences.""")
             except Exception as e:
                 logger.debug(f"Could not fetch previous dreams for anti-pattern: {e}")
             
-            result = await dream_graph_agent.run(
+            result = await dream_journal_agent.run(
                 material=material,
                 character_context=safe_context,
                 previous_dreams=previous_dreams
