@@ -1,4 +1,4 @@
-# ADR-010: Unified Autonomous Behavior via Daily Life Graph
+# ADR-015: Unified Autonomous Behavior via Daily Life Graph
 
 **Status:** ✅ Accepted  
 **Date:** December 11, 2025  
@@ -258,6 +258,18 @@ Does curiosity-driven exploration lead to more organic engagement than scheduled
 ## Related Documents
 
 - `docs/spec/SPEC-E31-DAILY_LIFE_GRAPH.md` — Daily Life Graph specification
+- `docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md` — Phase 1 triggers (implemented)
+- `docs/adr/ADR-013-STREAMING_VS_POLLING.md` — **NEXT EVOLUTION:** Full event-driven architecture with state machines
+- `docs/adr/ADR-014-MULTI_PARTY_DATA_MODEL.md` — Multi-party data model (supports ADR-013)
 - `docs/spec/SPEC-C02-CHANNEL_LURKING.md` — **DEPRECATED** lurking spec
 - `docs/spec/SPEC-E06-CHARACTER_TO_CHARACTER.md` — Bot-to-bot (now via Daily Life only)
 - `docs/adr/ADR-006-FEATURE_FLAGS.md` — Feature flag philosophy
+
+## Evolution Path
+
+```
+ADR-010 (Current)     →  SPEC-E36 Phase 1    →  ADR-013 (Future)
+Polling + Unified        + Immediate Triggers    Full Event-Driven
+7-min cycle              High-signal events      State Machines
+Snapshot-based           Still snapshot-based    On-demand fetch
+```

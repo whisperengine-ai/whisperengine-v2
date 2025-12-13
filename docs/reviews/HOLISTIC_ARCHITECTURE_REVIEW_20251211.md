@@ -373,7 +373,7 @@ We don't claim to know. We're building the observatory to find out.
 
 ## Related Documents
 
-- `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md` — The simplification decision
+- `docs/adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md` — The simplification decision
 - `docs/adr/ADR-003-EMERGENCE_PHILOSOPHY.md` — Observe first philosophy
 - `docs/ref/REF-002-GRAPH_SYSTEMS.md` — The three pillars of graphs
 - `docs/ref/REF-032-DESIGN_PHILOSOPHY.md` — Embodiment model

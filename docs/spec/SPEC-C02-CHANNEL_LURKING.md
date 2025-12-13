@@ -1,6 +1,6 @@
 # Channel Lurking - Passive Engagement System
 
-> ⚠️ **DEPRECATED (December 2025)**: This feature has been superseded by the Daily Life Graph (ADR-010). Real-time keyword-based lurking is disabled. All autonomous behavior now flows through the 7-minute polling cycle with LLM-scored interest detection. See `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md` for the current architecture.
+> ⚠️ **DEPRECATED (December 2025)**: This feature has been superseded by the Daily Life Graph (ADR-015). Real-time keyword-based lurking is disabled. All autonomous behavior now flows through the 7-minute polling cycle with LLM-scored interest detection. See `docs/adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md` for the current architecture.
 
 **Document Version:** 1.2  
 **Created:** November 25, 2025  

@@ -22,6 +22,9 @@ ADRs are immutable once accepted—if we change our minds, we create a new ADR t
 | [ADR-010: Crisis Response](./ADR-010-CRISIS_RESPONSE.md) | ✅ Accepted | Community over automation for mental health concerns |
 | [ADR-011: Emergence Boundaries](./ADR-011-EMERGENCE_BOUNDARIES.md) | ✅ Accepted | When observation becomes intervention ("Interesting Until Harmful") |
 | [ADR-012: Unified Architecture](./ADR-012-V2.5_UNIFIED_ARCHITECTURE.md) | ✅ Accepted | v2.5 "Ship of Theseus" evolution (Vector + Graph) |
+| [ADR-013: Event-Driven Architecture](./ADR-013-STREAMING_VS_POLLING.md) | 📋 Proposed | Dual-path: real-time (sacred) + autonomous (state machines) |
+| [ADR-014: Multi-Party Data Model](./ADR-014-MULTI_PARTY_DATA_MODEL.md) | 📋 Proposed | Conversation + Message + Participant schema |
+| [ADR-015: Daily Life Unified Autonomy](./ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md) | ✅ Accepted | Single polling-based path for all autonomous behavior |
 
 ---
 

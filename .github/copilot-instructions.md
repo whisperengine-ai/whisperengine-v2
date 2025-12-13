@@ -290,11 +290,11 @@ memories, facts, trust, goals = await asyncio.gather(
 - `src_v2/agents/daily_life/graph.py`: **Daily Life Graph** — unified autonomous behavior (replies, reactions, posts)
 - `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
 
-**Autonomous Behavior (ADR-010):** All autonomous activity flows through the Daily Life Graph:
+**Autonomous Behavior (ADR-015):** All autonomous activity flows through the Daily Life Graph:
 - 7-minute polling cycle (`DISCORD_CHECK_INTERVAL_MINUTES`)
 - LLM-scored interest (not keyword matching)
 - Handles: replies to users, replies to bots, reactions, proactive posts
-- See `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md`
+- See `docs/adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md`
 
 **Deprecated (disabled, pending removal):**
 - `src_v2/discord/lurk_detector.py` — Real-time keyword-based lurking
@@ -527,6 +527,11 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
 - **Research Journal**: `docs/research/` (daily logs, weekly summaries, experiment templates)
 - **Emergent Behavior Philosophy**: `docs/emergence_philosophy/` (Claude collaboration on system behavior principles)
+
+**Architecture Evolution (v2.5 → v3.0):**
+- **ADR-013**: Event-Driven Architecture — future streaming replacement for polling
+- **ADR-014**: Multi-Party Data Model — schema refactor for group conversations
+- **SPEC-E36**: "The Stream" — Redis-based real-time event system (Phase 2 = ADR-013)
 
 ---
 

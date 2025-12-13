@@ -1,15 +1,37 @@
 # PRD-005: Autonomous Agency & Social Presence
 
-**Status:** 🔄 Evolving (v2 Architecture Proposed)
+**Status:** 🔄 Evolving (v2.5 Event-Driven Architecture Proposed)
 **Owner:** Mark Castillo
 **Created:** December 4, 2025
-**Updated:** December 9, 2025
+**Updated:** December 13, 2025
 
 ---
 
-## Architecture Evolution (December 2025)
+## Architecture Evolution History
 
-> **v2 Proposal:** [SPEC-E31: Daily Life Graph](../spec/SPEC-E31-DAILY_LIFE_GRAPH.md)
+### v1 → v2: Polling-Based Unification (Dec 9-11, 2025)
+> **Implemented:** [SPEC-E31: Daily Life Graph](../spec/SPEC-E31-DAILY_LIFE_GRAPH.md)
+> **Decision:** [ADR-015: Unified Autonomy](../adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md)
+
+Consolidated multiple real-time agents into single 7-minute polling cycle.
+
+### v2 → v2.5: Event-Driven State Machines (Dec 13, 2025 - Proposed)
+> **Design:** [ADR-013: Event-Driven Architecture](../adr/ADR-013-STREAMING_VS_POLLING.md)
+> **Data Model:** [ADR-014: Multi-Party Conversations](../adr/ADR-014-MULTI_PARTY_DATA_MODEL.md)
+
+| v2 (Current) | v2.5 (Proposed) |
+|--------------|-----------------|
+| Polling-based (7-min snapshot) | Event-driven (Redis streams) |
+| Pre-scraped context | On-demand fetch |
+| Implicit state (debounce keys) | Explicit state machines |
+| Ambiguous threading | Natural threading (reply to trigger) |
+| 1:1 data model | Multi-party conversations |
+
+**Key Insight from v2.5:** The real-time path (DM, @mention, reply-to-bot) remains synchronous and sacred. Only the autonomous path becomes event-driven.
+
+---
+
+## Original Architecture Analysis (Dec 2025)
 
 The original implementation (v1) used event-driven architecture with Redis coordination for bot-to-bot interactions. This worked but introduced complexity:
 

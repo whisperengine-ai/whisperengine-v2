@@ -1,9 +1,9 @@
 # WhisperEngine v2 - Implementation Roadmap Overview
 
-**Document Version:** 3.5
+**Document Version:** 3.6
 **Created:** November 24, 2025  
-**Last Updated:** December 11, 2025 (v2.5 Unified Memory Release)
-**Status:** v2.5 Complete - Graph Memory Unified
+**Last Updated:** December 13, 2025 (Social Tuning + ADR-013/014 Design)
+**Status:** v2.5.2 Complete - Social Tuning Release
 
 ### Status Legend
 | Icon | Meaning |
@@ -38,8 +38,9 @@ See: [`docs/roadmaps/ROADMAP_V2.5_EVOLUTION.md`](./roadmaps/ROADMAP_V2.5_EVOLUTI
 
 **Key Shifts:**
 - **Reactive → Predictive:** From "Stimulus-Response" to "Active Inference".
-- **Dual Memory → Unified:** Unifying Vector and Graph into a single structure.
-- **Polling → Streaming:** Real-time event processing via Redis Streams.
+- **Dual Memory → Unified:** ✅ Unifying Vector and Graph into a single structure.
+- **Polling → Streaming:** Real-time event processing via Redis Streams. See [`ADR-013`](./adr/ADR-013-STREAMING_VS_POLLING.md).
+- **1:1 → Multi-Party:** Proper conversation model for channels. See [`ADR-014`](./adr/ADR-014-MULTI_PARTY_DATA_MODEL.md).
 - **Static → Dynamic Identity:** Characters that can edit their own source code.
 
 ### The Perception Layer: Six Modalities
@@ -85,12 +86,27 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 **Legend:** 🔴 Critical | 🟢 High | 🟡 Medium | ⚪ Low
 
-#### 📋 Immediate Next Steps (Post-ADR-010)
+#### 📋 Current Focus (Dec 13, 2025)
 
-| Priority | Phase | Description | Time | Deps | Status |
-|----------|-------|-------------|------|------|--------|
-| 🟢 High | **E33** | **Activity-Driven Polling** (Universe → Daily Life) | **2-3 days** | E31 ✅ | ✅ Complete |
-| 🟡 Medium | **Cleanup** | **Remove Deprecated Autonomy Code** | **1 day** | ADR-010 ✅ | ✅ Complete |
+| Priority | Phase | Description | Time | Status |
+|----------|-------|-------------|------|--------|
+| 🟢 High | **Social Tuning** | Friend boost, trust updates, multi-party learning | **Done** | ✅ Complete |
+| 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **1 week** | 🔄 Active |
+| 🟡 Medium | **Schema Prep** | Add `author_id`, `author_is_bot`, `reply_to_id` columns | **1-2 days** | 📋 Next Week |
+
+#### 📅 Upcoming (ADR-013 Implementation)
+
+| Priority | Phase | Description | Time | Status |
+|----------|-------|-------------|------|--------|
+| 🟡 Medium | **Event Capture** | Redis stream capture in `on_message` (fire-and-forget) | **2-3 days** | 📋 Week 2 |
+| 🟡 Medium | **State Machines** | ConversationStateMachine (IDLE→ENGAGED→COOLING) | **3-4 days** | 📋 Week 3 |
+| 🟡 Medium | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | 📋 Week 4 |
+| ⚪ Low | **Validation** | Parallel run, tune thresholds, feature flag | **3-4 days** | 📋 Week 5 |
+
+**Reference Documents:**
+- [`ADR-013: Event-Driven Architecture`](./adr/ADR-013-STREAMING_VS_POLLING.md) — Full streaming design
+- [`ADR-014: Multi-Party Data Model`](./adr/ADR-014-MULTI_PARTY_DATA_MODEL.md) — Schema evolution
+- [`CURRENT_STATE.md`](../CURRENT_STATE.md) — Detailed weekly roadmap
 
 #### ✅ Recently Completed
 

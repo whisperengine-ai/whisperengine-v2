@@ -1,7 +1,8 @@
 # WhisperEngine v2.5 Evolution Roadmap: The "Ship of Theseus"
 
-**Status:** Draft Proposal  
+**Status:** Active Development  
 **Date:** December 11, 2025  
+**Last Updated:** December 13, 2025 (Social Tuning + ADR-013/014)
 **Target:** Q1-Q2 2026  
 
 ---
@@ -33,24 +34,24 @@ Currently, Vector Memory (Qdrant) and Knowledge Graph (Neo4j) are separate silos
 
 ### Phase 2.5.2: The Stream (Real-time Nervous System)
 **Goal:** Move from "Polling" to "Event Streaming" for true autonomy.  
-**Effort:** High | **Risk:** Medium | **Status:** Consider Simplification
+**Effort:** High | **Risk:** Medium | **Status:** ✅ Phase 1 Complete, 📋 Phase 2 Proposed
 
-Currently, `DailyLifeScheduler` polls every ~7 minutes. This creates a "stuttering" autonomy.
+> **See:** `docs/adr/ADR-013-STREAMING_VS_POLLING.md` for full Phase 2 design.
+> **See:** `docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md` for Phase 1 implementation.
 
-*   **Full Implementation (Original):**
-    1.  **Redis Streams:** Utilize Redis Streams (built-in to our current stack) for a `sensory_stream`.
-    2.  **Push Architecture:** The Discord Bot pushes every event (message, reaction, voice state) to the stream immediately.
-    3.  **The Brain:** The Worker subscribes to the stream. It processes events in real-time (with a debounce buffer).
-    4.  **Benefit:** The bot feels truly alive and responsive to the environment, rather than waking up on a timer.
+**Phase 1 (✅ COMPLETE - Dec 11, 2025):**
+- Immediate triggers for high-signal events (trusted users, watch channels)
+- Debounce via Redis key (60s TTL)
+- Still uses snapshot model underneath
 
-*   **Simplified Alternative (Recommended for Solo Dev):**
-    1.  **Triggered Snapshots:** Keep the 7-minute poll as baseline.
-    2.  **High-Signal Events:** Push an immediate snapshot when specific triggers occur:
-        - Bot mentioned by another bot
-        - Trust Level 4+ user sends message in quiet channel
-        - Cross-bot gossip received
-    3.  **Benefit:** 80% of the responsiveness with 20% of the complexity. No consumer groups, offset management, or dead-letter handling.
-    4.  **The Poller remains as the safety net.**
+**Phase 2 (📋 PROPOSED - Dec 13, 2025 in ADR-013):**
+- Dual-path architecture: Real-time (sacred) + Autonomous (event-driven)
+- ALL channel events → Redis streams (fire-and-forget capture)
+- State machines per conversation: IDLE → WATCHING → ENGAGED → COOLING
+- On-demand context fetching (no pre-scraping)
+- Natural threading (reply to the message that triggered engagement)
+
+*   **Key Insight from ADR-013:** The real-time path (DM, @mention, reply-to-bot) must remain **synchronous and sacred**. Only the autonomous path becomes event-driven.
 
 ### Phase 2.5.3: Reverie (Active Idle State) ⭐ PRIORITY
 **Goal:** Make the bot productive when silent.  
@@ -152,15 +153,17 @@ We stick to the current stack to avoid "Rewrite Hell," but we use the components
 
 Based on the "Observe First" philosophy and solo-dev constraints:
 
-| Order | Phase | Rationale |
-|-------|-------|-----------|
-| 1 | **2.5.1 Unified Memory** | Highest leverage, low risk, clear deliverable |
-| 2 | **2.5.3 The Dream (Lite)** | Low risk, natural extension of existing diary/dream system |
-| — | *Observation Period* | Watch behavior before proceeding |
-| 3 | **2.5.2 Simplified Streams** | Only if polling feels too slow after observing 2.5.1 & 2.5.3 |
-| 4 | **2.5.4 Adaptive Identity** | Only after observing emergent behavior patterns |
-| 5+ | **2.6 Future Phases** | Observer, Forgetting, Proprioception—based on research findings |
+| Order | Phase | Status | Rationale |
+|-------|-------|--------|-----------||
+| 1 | **2.5.1 Unified Memory** | ✅ Complete | Highest leverage, low risk, clear deliverable |
+| 1.5 | **Social Tuning** | ✅ Complete (Dec 13) | Friend boost, trust updates, multi-party learning |
+| 2 | **2.5.3 Reverie (Lite)** | 📋 Ready | Low risk, natural extension of existing diary/dream system |
+| — | *Observation Period* | 🔄 Active | Watching social tuning effects before proceeding |
+| 3 | **2.5.2 Phase 2: Event Streaming** | 📋 Designed | ADR-013 documented. Start after observation. |
+| 4 | **2.5.4 Adaptive Identity** | 📋 Future | Only after observing emergent behavior patterns |
+| 5+ | **2.6 Future Phases** | 📋 Future | Observer, Forgetting, Proprioception—based on research findings |
 
----
-
-**Next Step:** Begin **Phase 2.5.1 (Unified Memory)** by adding `vector_id` to Neo4j nodes during the next memory refactor.
+**Current Focus (Dec 13, 2025):**
+- Social Tuning deployed ✅
+- Observing bot-to-bot interaction patterns
+- Next: Schema prep for ADR-014 (author_id column)

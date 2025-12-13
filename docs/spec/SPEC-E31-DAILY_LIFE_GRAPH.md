@@ -9,7 +9,9 @@
 
 > ✅ **Emergence Check:** Like ants following pheromone trails, the bot senses its environment and decides what to do. No central scheduler—the environment IS the task list. The character "notices" what needs doing by querying its own history.
 
-> 📌 **ADR-010 (Dec 2025):** This is now the **only** path for autonomous behavior. Real-time lurk detection and cross-bot triggers have been disabled. All autonomous replies, reactions, and posts flow through this 7-minute polling cycle.
+> 📌 **ADR-015 (Dec 2025):** This is now the **only** path for autonomous behavior. Real-time lurk detection and cross-bot triggers have been disabled. All autonomous replies, reactions, and posts flow through this 7-minute polling cycle.
+
+> 🔮 **ADR-013 (Dec 2025):** The next evolution moves from polling/snapshots to **event-driven state machines** with on-demand context fetching. See `docs/adr/ADR-013-STREAMING_VS_POLLING.md`.
 
 ---
 
@@ -23,7 +25,7 @@
 | **Key insight** | Bots should have a coherent "daily life" instead of disconnected cron jobs. Like stigmergic agents, they sense the environment and respond to signals. |
 | **Decision factors** | Current system has scattered cron jobs, complex Redis locking, no unified life cycle. This consolidates everything into one emergent loop. |
 | **Revision v3** | Moved to "Remote Brain" architecture to prevent blocking the bot's event loop with heavy embedding/LLM tasks. |
-| **Revision v3.1** | Confirmed as THE autonomous path. Lurk and cross-bot disabled (ADR-010). |
+| **Revision v3.1** | Confirmed as THE autonomous path. Lurk and cross-bot disabled (ADR-015). |
 
 ---
 

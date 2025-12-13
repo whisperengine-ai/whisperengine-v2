@@ -216,7 +216,7 @@ When adding a new bot:
 ## 📚 Related Documentation
 
 - `docs/spec/SPEC-E35-UNIFIED_MEMORY_GRAPH_UNIFICATION.md` — Unified Memory architecture
-- `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md` — Daily Life Graph
+- `docs/adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md` — Daily Life Graph
 - `docs/spec/SPEC-E25-GRAPH_WALKER_EXTENSIONS.md` — Graph enrichment
 - `.env.example` — Reference configuration
 - `docs/ENV_STANDARDIZATION.md` — Environment variable standards

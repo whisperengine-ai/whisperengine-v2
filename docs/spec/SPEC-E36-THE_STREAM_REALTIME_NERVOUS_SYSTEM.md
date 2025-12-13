@@ -1,12 +1,34 @@
 # SPEC-E36: The Stream (Real-time Nervous System)
 
-**Document Version:** 1.0
+**Document Version:** 2.0
 **Created:** December 11, 2025
-**Status:** 📋 Proposed
+**Updated:** December 13, 2025
+**Status:** ✅ Phase 1 Complete, 📋 Phase 2 Proposed
 **Priority:** 🟡 Medium
 **Dependencies:** Redis
+**Superseded by:** ADR-013 (for Phase 2 architecture)
 
 > ✅ **Emergence Check:** Responsiveness is a prerequisite for social emergence. If the bot takes 7 minutes to notice a joke, the moment is lost. This feature enables the *timing* necessary for emergent social dynamics.
+
+---
+
+## Evolution: Phase 1 → Phase 2
+
+### Phase 1: Hybrid Triggers (✅ COMPLETE - Dec 11, 2025)
+The initial implementation added **immediate triggers** for high-signal events:
+- Trusted user (Level >= 4) messages
+- Watchlist channel activity
+- Still uses snapshot model underneath
+- Debounce via Redis key
+
+### Phase 2: Full Event-Driven (📋 PROPOSED - ADR-013)
+The next evolution replaces the polling/snapshot model entirely:
+- ALL channel events → Redis streams
+- Explicit state machines (IDLE→WATCHING→ENGAGED→COOLING)
+- On-demand context fetching (no pre-scraping)
+- Natural threading (reply to the message that triggered engagement)
+
+See **ADR-013: Event-Driven Architecture** for full Phase 2 design.
 
 ---
 
