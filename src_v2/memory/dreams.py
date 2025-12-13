@@ -74,6 +74,9 @@ class DreamMaterial(BaseModel):
     recent_diary_themes: List[str] = Field(default_factory=list)
     goals: List[str] = Field(default_factory=list)
     
+    # Autonomous activity (Phase E35 - Bot's own posts/replies)
+    autonomous_actions: List[Dict[str, Any]] = Field(default_factory=list, description="Bot's autonomous posts and replies")
+    
     # Graph Walker integration (Phase E19)
     graph_walk_interpretation: str = Field(default="", description="Interpretation from GraphWalker exploration")
     graph_walk_clusters: List[str] = Field(default_factory=list, description="Thematic clusters discovered by GraphWalker")
@@ -87,6 +90,7 @@ class DreamMaterial(BaseModel):
         
         Scoring:
         - Memories: 3 points each (primary dream fuel)
+        - Autonomous actions: 3 points each (bot's own experiences - equally important!)
         - Observations: 2 points each (experiential)
         - Gossip: 2 points each (social/narrative)
         - Facts: 1 point each (knowledge)
@@ -98,6 +102,7 @@ class DreamMaterial(BaseModel):
         """
         return (
             len(self.memories) * 3 +
+            len(self.autonomous_actions) * 3 +
             len(self.observations) * 2 +
             len(self.gossip) * 2 +
             len(self.facts) * 1 +
@@ -117,7 +122,8 @@ class DreamMaterial(BaseModel):
             len(self.memories) + 
             len(self.facts) + 
             len(self.observations) + 
-            len(self.gossip)
+            len(self.gossip) +
+            len(self.autonomous_actions)  # Bot's own activity counts too
         )
         return total_items >= 3
     
@@ -158,8 +164,24 @@ class DreamMaterial(BaseModel):
                 else:
                     sections.append(f"- {content} (felt: {emotions})")
         else:
-            sections.append("## Recent Conversations")
-            sections.append("No recent conversations. The world has been quiet.")
+            if not self.autonomous_actions:
+                # Only say "quiet" if we also had no autonomous activity
+                sections.append("## Recent Conversations")
+                sections.append("No recent conversations. The world has been quiet.")
+        
+        # Autonomous Activity (Phase E35) - Bot's own posts and replies
+        if self.autonomous_actions:
+            sections.append("\n## Things I Did On My Own")
+            sections.append("Actions I chose to take, not prompted by anyone:")
+            for action in self.autonomous_actions[:5]:
+                action_type = action.get("action_type", "post")
+                channel = action.get("channel_name", "a channel")
+                content = action.get("content", "")[:150]
+                
+                if action_type == "reply":
+                    sections.append(f"- Spoke up in #{channel}: {content}")
+                else:  # post
+                    sections.append(f"- Shared a thought in #{channel}: {content}")
         
         if self.facts:
             sections.append("\n## Things I Know About People")
@@ -250,6 +272,7 @@ Create a surreal dream echoing these experiences.""")
         - Gossip memories (Qdrant)
         - Recent diary themes (Qdrant)
         - Active goals (character config)
+        - Autonomous actions (Qdrant) - bot's own posts/replies
         
         Args:
             hours: How far back to look for material
@@ -280,6 +303,7 @@ Create a surreal dream echoing these experiences.""")
                 self._get_gossip(memory_manager, hours),
                 self._get_recent_diary_themes(),
                 self._get_goals(),
+                self._get_autonomous_actions(hours),  # Phase E35: Bot's own posts/replies
                 return_exceptions=True
             )
             
@@ -296,6 +320,8 @@ Create a surreal dream echoing these experiences.""")
                 material.recent_diary_themes = results[4]
             if not isinstance(results[5], Exception):
                 material.goals = results[5]
+            if not isinstance(results[6], Exception):
+                material.autonomous_actions = results[6]
             
             # Optional: GraphWalker integration for discovering hidden connections
             if settings.ENABLE_GRAPH_WALKER:
@@ -362,8 +388,8 @@ Create a surreal dream echoing these experiences.""")
             
             logger.info(
                 f"Gathered dream material for {self.bot_name}: "
-                f"{len(material.memories)} memories, {len(material.facts)} facts, "
-                f"{len(material.observations)} observations, {len(material.gossip)} gossip"
+                f"{len(material.memories)} memories, {len(material.autonomous_actions)} autonomous actions, "
+                f"{len(material.facts)} facts, {len(material.observations)} observations, {len(material.gossip)} gossip"
             )
             
         except Exception as e:
@@ -421,6 +447,80 @@ Create a surreal dream echoing these experiences.""")
             return await knowledge_manager.get_recent_observations_by(self.bot_name, limit=10)
         except Exception as e:
             logger.debug(f"Failed to get observations for dream: {e}")
+            return []
+    
+    async def _get_autonomous_actions(self, hours: int) -> List[Dict[str, Any]]:
+        """
+        Get the bot's own autonomous posts and replies from the last N hours.
+        
+        These are messages stored with source_type=INFERENCE where the bot
+        is both the author and the user_id (autonomous actions save with
+        user_id = bot's discord user id).
+        
+        Args:
+            hours: How many hours back to look
+            
+        Returns:
+            List of autonomous action records with content, channel info, and context
+        """
+        try:
+            if not db_manager.qdrant_client:
+                return []
+            
+            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
+            threshold_iso = threshold.isoformat()
+            
+            # Query for messages that are:
+            # 1. Type = "conversation" (stored messages)
+            # 2. source_type = "inference" (autonomous actions)
+            # 3. role = "ai" (bot's own messages)
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="type", match=MatchValue(value="conversation")),
+                        FieldCondition(key="source_type", match=MatchValue(value="inference")),
+                        FieldCondition(key="role", match=MatchValue(value="ai"))
+                    ]
+                ),
+                limit=50,  # Fetch extra for date filtering
+                with_payload=True,
+                with_vectors=False
+            )
+            
+            # Filter by timestamp and extract action info
+            actions = []
+            for point in results[0]:
+                payload = point.payload
+                if not payload:
+                    continue
+                    
+                ts = payload.get("timestamp", "")
+                if ts < threshold_iso:
+                    continue
+                
+                # Determine action type based on context
+                context = payload.get("context", "")
+                is_reply = bool(context) or payload.get("reference_id")
+                
+                actions.append({
+                    "action_type": "reply" if is_reply else "post",
+                    "content": payload.get("content", ""),
+                    "channel_id": payload.get("channel_id", ""),
+                    "channel_name": payload.get("channel_name", "unknown"),
+                    "context": context,
+                    "timestamp": ts,
+                    "message_id": payload.get("message_id", "")
+                })
+            
+            # Sort by timestamp descending
+            actions.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            
+            logger.debug(f"Found {len(actions)} autonomous actions for dream in last {hours} hours")
+            return actions[:10]  # Limit for dreams
+            
+        except Exception as e:
+            logger.debug(f"Failed to get autonomous actions for dream: {e}")
             return []
     
     async def _get_gossip(self, memory_manager, hours: int) -> List[Dict[str, Any]]:

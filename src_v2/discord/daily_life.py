@@ -399,8 +399,15 @@ class ActionPoller:
                 
                 sent_msg = await channel.send(**kwargs)
                 
-                # Save to memory (Postgres + Qdrant)
+                # Save to memory (Postgres + Qdrant) with rich metadata for diary
                 if self.bot.user:
+                    # Build metadata for diary generation
+                    action_metadata = {
+                        "action_type": cmd.action_type,  # "reply" or "post"
+                        "channel_name": channel.name if hasattr(channel, 'name') else "unknown",
+                        "context": cmd.target_content or "",  # What we were replying to
+                    }
+                    
                     await memory_manager.add_message(
                         user_id=str(self.bot.user.id),
                         character_name=self.bot.character_name,
@@ -409,6 +416,7 @@ class ActionPoller:
                         user_name=self.bot.user.display_name,
                         channel_id=str(channel.id),
                         message_id=str(sent_msg.id),
+                        metadata=action_metadata,
                         source_type=MemorySourceType.INFERENCE
                     )
                     logger.info(f"Saved autonomous action to memory: {sent_msg.id}")
