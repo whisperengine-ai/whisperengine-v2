@@ -214,6 +214,7 @@ class Settings(BaseSettings):
 
     # 2. Reaction (Low Friction)
     ENABLE_AUTONOMOUS_REACTIONS: bool = True  # React to messages with emojis (requires AUTONOMOUS_ACTIVITY)
+    ENABLE_AUTONOMOUS_REPLIES: bool = True  # Reply to relevant messages in channels (requires AUTONOMOUS_ACTIVITY)
     REACTION_CHANNEL_HOURLY_MAX: int = 10  # Max reactions per channel per hour
     REACTION_SAME_USER_COOLDOWN_SECONDS: int = 300  # Min seconds between reactions to same user
     REACTION_DAILY_MAX: int = 100  # Global daily limit for reactions
