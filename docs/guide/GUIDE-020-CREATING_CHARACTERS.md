@@ -31,7 +31,7 @@ Characters in WhisperEngine v2 are defined by a set of configuration files that 
 | `visual.md` | Their visual appearance for image generation |
 | `.env.{name}` | Their connection to the world (Discord, LLM, databases) |
 
-> ⚠️ **Deprecated:** `lurk_triggers.yaml` is no longer used. Autonomous behavior now flows through the Daily Life Graph, which uses LLM-scored interest detection instead of keyword matching. See ADR-010.
+> ℹ️ **Note:** `lurk_triggers.yaml` files have been removed. Autonomous behavior now flows through the Daily Life Graph, which uses LLM-scored interest detection based on character drives/goals instead of keyword matching. See ADR-010.
 
 For the full philosophy: See [Multi-Modal Perception](./architecture/MULTI_MODAL_PERCEPTION.md)
 
@@ -890,50 +890,7 @@ These are the hard rules your character will never break. Think of them as ethic
 
 ---
 
-## 👀 Step 12: Configure Channel Lurking (`lurk_triggers.yaml`) - Optional
-
-If your bot should respond to messages in shared channels (not just DMs), `lurk_triggers.yaml` defines what topics trigger their attention.
-
-### Example (`lurk_triggers.yaml`)
-
-```yaml
-# Keywords organized by relevance level
-keywords:
-  high_relevance:
-    - "consciousness"
-    - "AI sentience"
-    - "philosophy"
-  medium_relevance:
-    - "technology"
-    - "future"
-    - "creativity"
-  low_relevance:
-    - "interesting"
-    - "curious"
-
-# Patterns that suggest a question the character could answer
-question_patterns:
-  - "what do you think about"
-  - "has anyone considered"
-  - "I wonder if"
-
-# Example sentences that would trigger engagement
-topic_sentences:
-  - "I've been thinking about consciousness lately"
-  - "Does anyone know about quantum physics?"
-  - "What's the meaning of life?"
-```
-
-### How It Works
-- **high_relevance**: Almost always triggers engagement
-- **medium_relevance**: May trigger based on context
-- **low_relevance**: Only triggers if combined with other signals
-- **question_patterns**: Regex-matched to detect questions the character can answer
-- **topic_sentences**: Example training data for the classifier
-
----
-
-## 🎨 Step 13: Add Visual Description (`visual.md`) - Optional
+## 🎨 Step 12: Add Visual Description (`visual.md`) - Optional
 
 If your bot will generate images of itself (future feature), `visual.md` provides the visual description used for image generation prompts.
 
@@ -994,7 +951,6 @@ her an approachable, authentic feel.
 | `background.yaml` | Recommended | Knowledge Graph facts | Neo4j |
 | `evolution.yaml` | Recommended | Trust-based behavior evolution | PostgreSQL + Runtime |
 | `ux.yaml` | Optional | Thinking indicators, cold responses, error messages | Runtime |
-| `lurk_triggers.yaml` | Optional | Channel lurking keywords/topics | Runtime |
 | `visual.md` | Optional | Visual description for image generation | Runtime |
 
 ### Templates Location
@@ -1007,8 +963,7 @@ characters/
 ├── core.yaml.template          # Copy → characters/{name}/core.yaml
 ├── background.yaml.template    # Copy → characters/{name}/background.yaml
 ├── evolution.yaml.template     # Copy → characters/{name}/evolution.yaml
-├── ux.yaml.template            # Copy → characters/{name}/ux.yaml
-└── lurk_triggers.yaml.template # Copy → characters/{name}/lurk_triggers.yaml
+└── ux.yaml.template            # Copy → characters/{name}/ux.yaml
 # Note: visual.md has no template - create manually
 ```
 
@@ -1056,7 +1011,6 @@ Use this checklist when creating a new character:
 - [ ] Added `ux.yaml` for thinking indicators and cold responses
 
 **Optional Files (for advanced features):**
-- [ ] Added `lurk_triggers.yaml` for channel listening
 - [ ] Added `visual.md` for image generation
 
 **Infrastructure:**

@@ -66,18 +66,8 @@ class DailyLifeGraph:
         # This avoids instantiating a heavy AgentEngine and its sub-agents repeatedly
 
     def _load_interests(self, bot_name: str) -> List[str]:
-        # 1. Try loading from explicit lurk_triggers.yaml
-        try:
-            path = f"characters/{bot_name}/lurk_triggers.yaml"
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f)
-                    keywords = data.get("keywords", {})
-                    return keywords.get("high_relevance", []) + keywords.get("medium_relevance", [])
-        except Exception as e:
-            logger.error(f"Failed to load interests for {bot_name}: {e}")
-
-        # 2. Fallback: Generate from Character Drives & Goals
+        """Generate interests from character drives and goals (emergent, not prescribed)."""
+        # Generate from Character Drives & Goals (ADR-010: no more lurk_triggers.yaml)
         try:
             character = self.character_manager.load_character(bot_name)
             if character and character.behavior:
