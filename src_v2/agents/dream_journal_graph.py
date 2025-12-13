@@ -125,7 +125,7 @@ FORMAT:
 - Vivid sensory details.
 {first_dream_note}{anti_pattern}"""
 
-    async def generator(self, state: DreamAgentState):
+    async def generator(self, state: DreamJournalState):
         """Generates the dream draft."""
         logger.info(f"Dream Generator Step {state.get('steps', 0) + 1}")
         
@@ -165,7 +165,7 @@ Weave these into a dream. Avoid cliches like 'kaleidoscope' or 'shimmering' - fi
             "steps": state.get("steps", 0) + 1
         }
 
-    async def critic(self, state: DreamAgentState):
+    async def critic(self, state: DreamJournalState):
         """Critiques the draft for surrealism, quality, and originality."""
         draft = state.get("draft")
         if not draft:
@@ -246,7 +246,7 @@ If the dream is good, return None. If it needs improvement, provide specific ins
             
         return {"critique": None}
 
-    def should_continue(self, state: DreamAgentState) -> Literal["retry", "end"]:
+    def should_continue(self, state: DreamJournalState) -> Literal["retry", "end"]:
         if state.get("critique") and state["steps"] < state["max_steps"]:
             logger.info(f"Dream rejected by critic: {state['critique']}")
             return "retry"
