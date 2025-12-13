@@ -71,7 +71,7 @@ class DiaryMaterial(BaseModel):
         
         Scoring:
         - Summaries: 3 points each (primary content)
-        - Autonomous actions: 3 points each (bot's own posts/replies - equally important!)
+        - Autonomous actions: 1 point each (bot's own posts/replies - less weight than interactions)
         - Observations: 2 points each (bot's own experiences)
         - Gossip: 2 points each (social context)
         - Epiphanies: 2 points each (insights)
@@ -83,7 +83,7 @@ class DiaryMaterial(BaseModel):
         """
         return (
             len(self.summaries) * 3 +
-            len(self.autonomous_actions) * 3 +  # Bot's own activity is equally important
+            len(self.autonomous_actions) * 1 +  # Reduced: Own output is less important than interactions
             len(self.observations) * 2 +
             len(self.gossip) * 2 +
             len(self.epiphanies) * 2 +
@@ -154,7 +154,7 @@ class DiaryMaterial(BaseModel):
         if self.autonomous_actions:
             sections.append("\n## My Own Actions Today")
             sections.append("These are things I chose to do on my own initiative (not in response to direct mentions):")
-            for action in self.autonomous_actions[:10]:
+            for action in self.autonomous_actions[:5]: # Limit to top 5 to avoid diary domination
                 action_type = action.get("action_type", "post")
                 channel = action.get("channel_name", "a channel")
                 content = smart_truncate(action.get("content", ""), max_length=200)

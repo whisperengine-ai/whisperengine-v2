@@ -145,6 +145,9 @@ class Settings(BaseSettings):
 
     # --- Autonomous Agents (Phase 3) ---
     ENABLE_AUTONOMOUS_DRIVES: bool = True
+    SOCIAL_BATTERY_DRAIN_PROACTIVE: float = 0.05  # Per proactive post
+    SOCIAL_BATTERY_DRAIN_REACTIVE: float = 0.02   # Per reply/react
+    SOCIAL_BATTERY_PASSIVE_RECHARGE: float = 0.03 # Per idle cycle (~7 min)
     ENABLE_GOAL_STRATEGIST: bool = True
     GOAL_STRATEGIST_LOCAL_HOUR: int = 23  # Local hour (in character's timezone) when goal strategist runs (11 PM)
     ENABLE_UNIVERSE_EVENTS: bool = True

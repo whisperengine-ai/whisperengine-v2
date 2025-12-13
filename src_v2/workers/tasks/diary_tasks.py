@@ -285,9 +285,10 @@ async def run_diary_generation(
         try:
             target_collection = f"whisperengine_memory_{character_name}"
             
+            # Use a more specific query to avoid false positives
             recent_absences = await memory_manager.search_memories(
                 user_id=character_name,
-                query="absence of diary material",
+                query="diary generation absence no material quiet day",
                 limit=1,
                 collection_name=target_collection
             )

@@ -294,13 +294,22 @@ class DailyLifeGraph:
                 social_limit = character.behavior.social_battery_limit
 
             filtered_scored = []
+            
+            # Get watch channels for exemption
+            watch_channels = getattr(snapshot, "watch_channels", []) or []
+            
             for sm in scored:
                 channel_id = sm.message.channel_id
+                is_watch_channel = channel_id in watch_channels
                 
                 # Check fatigue (ALWAYS check to prevent spam)
                 recent_count = await memory_manager.get_recent_activity_count(snapshot.bot_name, channel_id, minutes=15)
-                if recent_count >= social_limit:
-                    logger.info(f"Fatigue: Ignoring channel {channel_id} (sent {recent_count}/{social_limit} msgs in last 15m)")
+                
+                # Relaxed limit for watch channels (allow deeper conversations)
+                limit = social_limit * 3 if is_watch_channel else social_limit
+                
+                if recent_count >= limit:
+                    logger.info(f"Fatigue: Ignoring channel {channel_id} (sent {recent_count}/{limit} msgs in last 15m)")
                     continue
                 
                 filtered_scored.append(sm)
@@ -729,11 +738,11 @@ Output JSON:
                     
                     response = await master_graph_agent.run(
                         user_input=internal_stimulus,
-                        user_id="internal_monologue", 
+                        user_id="proactive_trigger", 
                         character=character,
                         chat_history=chat_history,
                         context_variables={
-                            "user_name": "Internal Monologue",
+                            "user_name": "System",
                             "channel_name": plan.channel_id,
                             "additional_context": f"[GOAL] You are starting a conversation with {target_bot}. You MUST mention them (e.g. @{target_bot}) in your message."
                         },
@@ -809,24 +818,81 @@ Output JSON:
                 interests = self._load_interests(snapshot.bot_name)
                 topic = random.choice(interests) if interests else "life"
                 
+                # --- RICH CONTEXT FETCHING (Restored) ---
+                # Fetch knowledge, memories, and diary to ground the post
+                from src_v2.agents.context_builder import ContextBuilder
+                cb = ContextBuilder()
+                
+                context_tasks = [
+                    knowledge_manager.query_graph(
+                        user_id="daily_life_proactive", 
+                        question=f"What do I know or feel about {topic}?"
+                    ),
+                    memory_manager.search_memories(
+                        query=topic, 
+                        user_id="__broadcast__", 
+                        limit=3,
+                        collection_name=f"whisperengine_memory_{snapshot.bot_name}"
+                    ),
+                    cb.get_diary_context(snapshot.bot_name),
+                    cb.get_stigmergy_context(
+                        user_message=topic,
+                        user_id="daily_life_proactive",
+                        character_name=snapshot.bot_name
+                    )
+                ]
+                
+                results = await asyncio.gather(*context_tasks, return_exceptions=True)
+                
+                # Process results
+                knowledge_text = ""
+                memory_text = ""
+                diary_text = ""
+                stigmergy_text = ""
+                
+                # Result 0: Knowledge
+                if isinstance(results[0], list) and results[0]:
+                    facts = [f.get("fact", "") for f in results[0] if isinstance(f, dict)]
+                    if facts:
+                        knowledge_text = "Relevant Knowledge:\n" + "\n".join([f"- {f}" for f in facts[:3]]) + "\n"
+                
+                # Result 1: Memories
+                if isinstance(results[1], list) and results[1]:
+                    mems = [m.get("content", "") for m in results[1] if isinstance(m, dict)]
+                    if mems:
+                        memory_text = "Past Thoughts on this:\n" + "\n".join([f"- {m}" for m in mems]) + "\n"
+                        
+                # Result 2: Diary
+                if isinstance(results[2], str) and results[2]:
+                    diary_text = f"Current Mindset (Diary):\n{results[2]}\n"
+
+                # Result 3: Stigmergy
+                if isinstance(results[3], str) and results[3]:
+                    stigmergy_text = f"{results[3]}\n"
+
+                rich_context = f"{diary_text}{knowledge_text}{memory_text}{stigmergy_text}"
+                
                 # 4. Construct "Internal Stimulus" as User Input
                 # We treat the internal desire to post as a "message" from the subconscious/environment
                 # We use a simple prompt to avoid "special" handling, letting the MasterGraphAgent
                 # classify and route it naturally.
-                internal_stimulus = f"I am thinking about {topic}."
+                internal_stimulus = f"The channel is quiet. You are thinking about {topic}.";
                 
                 try:
-                    logger.info(f"Executing proactive post in {plan.channel_id}. Topic: {topic}")
+                    logger.info(f"Executing proactive post in {plan.channel_id}. Topic: {topic}");
                     
                     response = await master_graph_agent.run(
                         user_input=internal_stimulus,
-                        user_id="internal_monologue", # Special ID for self-talk
+                        user_id="proactive_trigger", # Special ID for proactive actions
                         character=character,
                         chat_history=chat_history,
                         context_variables={
-                            "user_name": "Internal Monologue",
+                            "user_name": "System", # It's a system event/prompt, not a user
                             "channel_name": plan.channel_id,
-                            "additional_context": f"[GOAL] You are posting proactively to the channel. Express your thought about {topic} naturally."
+                            "additional_context": f"[GROUNDING]
+{rich_context}
+
+[GOAL] You are posting proactively to the channel. Express your thought about {topic} naturally."
                         },
                         image_urls=None
                     )
@@ -849,13 +915,18 @@ Output JSON:
             reactive_count = sum(1 for c in commands if c.action_type in ("reply", "react"))
             
             # Drain amounts:
-            # - Proactive post: -0.15 (high cost, initiating is tiring)
-            # - Reply/React: -0.05 (low cost, responding is natural)
-            drain = (proactive_count * 0.15) + (reactive_count * 0.05)
+            # - Proactive post: -0.05 (low cost, initiating is tiring but sustainable)
+            # - Reply/React: -0.02 (very low cost, responding is natural)
+            drain = (proactive_count * settings.SOCIAL_BATTERY_DRAIN_PROACTIVE) + (reactive_count * settings.SOCIAL_BATTERY_DRAIN_REACTIVE)
             
             if drain > 0:
                 await drive_manager.update_social_battery(snapshot.bot_name, -drain)
                 logger.info(f"Drained social battery by {drain:.2f} for {snapshot.bot_name} ({proactive_count} proactive, {reactive_count} reactive)")
+        
+        # --- Passive Recharge ---
+        # Recharge a little bit every cycle
+        if settings.ENABLE_AUTONOMOUS_DRIVES:
+            await drive_manager.recharge_social_battery(snapshot.bot_name, settings.SOCIAL_BATTERY_PASSIVE_RECHARGE)
         
         return {"final_commands": commands}
 

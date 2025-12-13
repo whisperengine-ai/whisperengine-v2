@@ -255,6 +255,10 @@ class MasterGraphAgent:
         if image_urls:
             # Image uploads -> Fast (Vision) -> no tools
             tools_available = False
+        elif user_id == "proactive_trigger":
+            # Proactive posts (internal monologue) should ALWAYS have full tool access
+            # This allows the bot to decide to generate an image or search the web proactively
+            tools_available = True
         elif not classification:
             # No classification -> fast -> no tools
             tools_available = False

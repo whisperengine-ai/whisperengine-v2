@@ -75,6 +75,10 @@ class DriveManager:
         await db_manager.redis_client.set(key, str(new_val), ex=86400*7) # 7 day expiry
         logger.debug(f"Updated social battery for {character_name}: {current:.2f} -> {new_val:.2f}")
 
+    async def recharge_social_battery(self, character_name: str, amount: float = 0.03):
+        """Passive recharge every cycle (7 min). Full recharge in ~4 hours of quiet."""
+        await self.update_social_battery(character_name, amount)
+
     async def evaluate_drives(
         self, 
         user_id: str, 
