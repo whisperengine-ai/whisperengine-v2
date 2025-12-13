@@ -3,13 +3,14 @@
 **Document Version:** 3.6
 **Created:** November 24, 2025  
 **Last Updated:** December 13, 2025 (Social Tuning + ADR-013/014 Design)
-**Status:** v2.5.2 Complete - Social Tuning Release
+**Status:** v2.5.3 Complete - The Reverie Release
 
 ### Status Legend
 | Icon | Meaning |
 |------|---------|  
 | ✅ | Complete |
 | 📋 | Proposed / Planned (not started) |
+| 🔄 | In Progress |
 | ⏸️ | On Hold (blocked or deprioritized) |
 | 🗄️ | Archived / Deferred (not pursuing) |
 | ⏭️ | Skipped (decided not to implement) |
@@ -90,9 +91,9 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| 🟢 High | **Social Tuning** | Friend boost, trust updates, multi-party learning | **Done** | ✅ Complete |
-| 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **1 week** | 🔄 Active |
-| 🟡 Medium | **Schema Prep** | Add `author_id`, `author_is_bot`, `reply_to_id` columns | **1-2 days** | 📋 Next Week |
+| 🟢 High | **The Reverie** | Active Idle State (Memory Consolidation) | **Done** | ✅ Complete |
+| 🟢 High | **Adaptive Identity** | Self-Editing Persona (Phase 2.6) | **1 week** | 🔄 Active |
+| 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **Ongoing** | 🔄 Active |
 
 #### 📅 Upcoming (ADR-013 Implementation)
 

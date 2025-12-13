@@ -79,6 +79,25 @@ sequenceDiagram
     end
 ```
 
+## Autonomy Architecture: The Stream & The Reverie
+
+WhisperEngine v2.5 implements a **Hybrid Autonomy Model**:
+
+### A. The Stream (Real-time Nervous System)
+Instead of just polling every 7 minutes, the bot has a "Nervous System" that reacts immediately to high-signal events.
+*   **Triggers:** Trusted users (Level 4+), Watchlist channels.
+*   **Mechanism:** `on_message` -> `trigger_immediate()` -> Redis Debounce (60s) -> Focused Snapshot.
+*   **Benefit:** The bot feels "alive" and responsive to its friends without spamming every channel.
+
+### B. The Reverie (Active Idle State)
+When the server is silent, the bot enters an introspective state.
+*   **Trigger:** Silence > 2 hours (configurable).
+*   **Mechanism:** `DailyLifeScheduler` -> `run_reverie_cycle`.
+*   **Process:** The bot retrieves recent memories, finds connections in the Knowledge Graph, and generates "Synthetic Memories" (insights) to bridge them.
+*   **Benefit:** The bot develops its own internal life and self-model even without user interaction.
+
+> **Note:** This is distinct from the **Dream Journal**, which is a scheduled daily task that broadcasts a narrative to the user. Reverie is invisible background maintenance.
+
 ## Core Components
 
 ### 1. `WhisperBot` (`src_v2/discord/bot.py`)
@@ -88,14 +107,14 @@ The main bot class inheriting from `commands.Bot`.
 *   **Event Loop**: Handles `on_ready`, `on_message`.
 *   **Status Updates**: Periodically updates the "Playing..." status with stats (friend count, memories).
 *   **Message Chunking**: Splits long responses (>2000 chars) into multiple messages.
-*   **Proactive Scheduling**: Manages the background scheduler for initiating conversations.
+*   **Daily Life Scheduler**: Manages the background autonomy loop (polling + dreaming).
 
 ### 2. Message Handling Flow
 
 1.  **Trigger Detection**:
-    *   Is it a DM? -> Respond.
-    *   Is the bot mentioned? -> Respond.
-    *   (Planned) Is the bot "lurking" and finds the topic relevant? -> Respond.
+    *   **Direct**: DM or Mention -> Respond immediately.
+    *   **Stream Trigger**: Trusted User or Watchlist Channel -> **Immediate Snapshot** (bypasses poll).
+    *   **Autonomous**: Periodic Poll (7 mins) -> Check for relevant conversations.
 
 2.  **Processing**:
     *   **Typing Indicator**: `async with message.channel.typing():` is used to show the bot is "thinking".

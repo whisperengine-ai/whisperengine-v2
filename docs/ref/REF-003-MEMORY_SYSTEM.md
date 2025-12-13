@@ -59,15 +59,19 @@ The cognitive science terms (episodic/semantic) describe *types* of memory, not 
 
 See [GRAPH_SYSTEMS_DESIGN.md](./GRAPH_SYSTEMS_DESIGN.md) for the complete data architecture.
 
-### Design Choice: Hybrid Memory Architecture
-Traditional chatbots use either:
-1.  **Pure Vector Search**: Fast but imprecise. Can't distinguish "User likes pizza" from "User mentioned pizza."
-2.  **Pure Relational/Graph**: Precise but brittle. Requires exact schema matches, struggles with natural language variability.
+### Design Choice: Unified Memory Architecture (Vector-First Traversal)
+Traditional chatbots use either Vector Search OR Graph Search. WhisperEngine v2.5 uses **Unified Memory**:
 
-WhisperEngine v2 uses **both**, routing queries to the appropriate store based on the question type:
-*   "What did we talk about last week?" → Vector (Conversational)
-*   "What's my favorite food?" → Graph (Factual)
-*   "How do I feel about X?" → Both (Context + Facts)
+1.  **Dual-Write**: Every memory is saved to **Qdrant** (Vector) AND **Neo4j** (Graph Node).
+2.  **Vector-First Traversal**:
+    *   **Step 1:** Search Qdrant for semantically similar memories (e.g., "conversations about dogs").
+    *   **Step 2:** Use the returned Vector IDs to fetch the **Graph Neighborhood** from Neo4j.
+    *   **Step 3:** This retrieves not just the text, but the *entities, relationships, and context* linked to those memories.
+
+**Benefit:** We get the "fuzzy search" of vectors combined with the "structured context" of graphs.
+
+*   "What did we talk about?" → Vector Search.
+*   "Who was involved and how are they related?" → Graph Traversal from those vectors.
 
 ## Core Concept: "The Living Memory"
 

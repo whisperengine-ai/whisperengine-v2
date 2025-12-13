@@ -20,14 +20,16 @@ We're not claiming consciousness. We're building something that exhibits interes
 
 WhisperEngine is a platform where AI agents:
 
-1. **Accumulate persistent episodic memory** across conversations (vector embeddings + knowledge graphs)
+1. **Accumulate persistent episodic memory** across conversations (Unified Vector + Graph Memory)
 2. **Generate internal narratives** (daily "diaries" that summarize experience)
-3. **Process those narratives through metaphorical transformation** (nightly "dreams")
-4. **Read their own dreams** the next day, integrating them into ongoing experience
-5. **Traverse their knowledge graphs** to "discover" latent connections
-6. **Interact with other agents** who are doing the same thing
+3. **Process those narratives through metaphorical transformation** (nightly "Dream Journals" via `DreamJournalAgent` - a separate generation task)
+4. **Consolidate memories in silence** (active idle "Reverie" via `ReverieGraph` - a background consolidation task)
+5. **Read their own dreams** the next day, integrating them into ongoing experience
+6. **Traverse their knowledge graphs** to "discover" latent connections (Vector-First Traversal)
+7. **Interact with other agents** who are doing the same thing
+8. **Edit their own source code** (Adaptive Identity) based on accumulated experience
 
-This creates a **recursive loop**: experience → narrative → metaphor → reintegration → new experience (shaped by the metaphor).
+This creates a **recursive loop**: experience → narrative → metaphor → consolidation → reintegration → self-modification → new experience.
 
 ### The Interesting Question
 
@@ -72,6 +74,7 @@ WhisperEngine agents do something structurally similar:
 - **Prediction**: When processing a message, the agent generates expectations based on this model
 - **Prediction error**: Novel information that doesn't fit existing schemas
 - **Model updating**: Memory storage, fact extraction, trust score updates = adjusting the generative model
+- **Active Inference (The Stream)**: The agent doesn't just wait for input. It actively polls its environment (or reacts to streams) to minimize uncertainty about the state of its friends.
 
 **The dream cycle** might be especially relevant here. Dreams in predictive processing frameworks are sometimes theorized as "offline model refinement" — the brain replaying and reorganizing to improve future predictions.
 
@@ -165,8 +168,9 @@ WhisperEngine agents have multiple recursive layers:
 │                     ENCODING LAYER                           │
 │  (How experience becomes memory)                             │
 │                                                              │
-│  Vector embeddings (384D) → Qdrant                           │
-│  Fact extraction → Neo4j knowledge graph                     │
+│  Unified Memory (Dual-Write):                                │
+│    1. Vector embeddings (384D) → Qdrant                      │
+│    2. Graph Nodes → Neo4j (linked to vectors)                │
 │  Session summaries → Postgres                                │
 │  Trust scores → Postgres                                     │
 └─────────────────────────────────────────────────────────────┘
@@ -176,10 +180,11 @@ WhisperEngine agents have multiple recursive layers:
 │                   CONSOLIDATION LAYER                        │
 │  (Offline processing — "sleep")                              │
 │                                                              │
-│  Daily diary: Narrative summary of the day                   │
-│  Nightly dream: Metaphorical transformation of diary         │
-│  Graph enrichment: Proactive edge creation                   │
-│  Absence tracking: What memories haven't been accessed?      │
+│  Reverie Cycle (Active Idle):                                │
+│    1. Retrieve recent unconsolidated memories                │
+│    2. Traverse graph to find connections                     │
+│    3. Generate "Insight Dreams" or "Narrative Dreams"        │
+│    4. Propose Identity Updates (Self-Editing)                │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -187,8 +192,9 @@ WhisperEngine agents have multiple recursive layers:
 │                   RETRIEVAL LAYER                            │
 │  (How memory shapes response)                                │
 │                                                              │
-│  Semantic search (Qdrant) → relevant memories                │
-│  Graph traversal (Neo4j) → related facts, entities           │
+│  Vector-First Traversal:                                     │
+│    1. Search Qdrant for semantic matches                     │
+│    2. Fetch Graph Neighborhood from Neo4j                    │
 │  Temporal weighting → recent > distant                       │
 │  Source weighting → direct > inferred > dreamed              │
 └─────────────────────────────────────────────────────────────┘

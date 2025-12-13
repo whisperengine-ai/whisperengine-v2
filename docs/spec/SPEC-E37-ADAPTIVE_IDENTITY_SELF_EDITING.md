@@ -35,21 +35,22 @@
 
 ## Technical Implementation
 
-### 1. The `.identity` Schema
-We split `core.yaml` into two sections:
-1.  **Constitution (Immutable):** Hard constraints (Safety, Core Definition).
-2.  **Persona (Mutable):** Traits that can shift (Mood, Social Battery, Curiosity, Specific Traits).
+### 1. The Layered Identity Model
+Instead of editing the YAML files directly (which requires git commits), we use a **Layered Model**:
+
+1.  **Base Layer (Git/YAML):** The `core.yaml` defines the *Baseline Personality*. This is version-controlled and immutable at runtime.
+2.  **Evolution Layer (Database):** A Postgres table stores *Trait Overrides* (diffs).
+3.  **Runtime Identity:** `Effective Traits = Baseline + Overrides`.
 
 ```yaml
+# core.yaml (Base Layer - Immutable)
 constitution:
   - "You are an AI assistant."
-  - "You must never be rude."
   - "Maintain 'kindness' above 0.5."
 
 persona:
   shyness: 0.8
   curiosity: 0.9
-  current_obsession: "gardening"
 ```
 
 ### 2. The Evolution Loop (Dreaming)
@@ -57,10 +58,26 @@ During the Reverie Cycle (SPEC-E34):
 1.  **Analysis:** The Dreamer analyzes recent memories. *"I've been talking to a lot of people lately and enjoying it."*
 2.  **Proposal:** The Dreamer proposes a delta. `SET shyness = 0.7`.
 3.  **Validation:** Check against Constitution. (Is `0.7` allowed? Yes.)
-4.  **Commit:** Update the `persona` section of the YAML (or database record).
+4.  **Commit:** Update the `trait_overrides` in Postgres.
 
-### 3. The "Identity File"
-We might move mutable state from YAML (which implies code deployment) to a database record or a dedicated `.identity` JSON file that is read/written at runtime.
+### 3. Persistence Strategy
+We will use a Postgres table `character_evolution` to store the mutable state.
+
+**Schema:**
+```sql
+CREATE TABLE character_evolution (
+    character_name VARCHAR(50) PRIMARY KEY,
+    trait_overrides JSONB,  -- e.g., {"shyness": 0.6, "mood": "contemplative"}
+    last_updated TIMESTAMP,
+    evolution_history JSONB -- Log of changes for debugging
+);
+```
+
+**Loading Logic:**
+On startup (or reload), `CharacterManager`:
+1.  Loads `core.yaml` (Base).
+2.  Fetches `trait_overrides` from DB.
+3.  Merges them to create the `EffectiveCharacter` object.
 
 ## Risks & Mitigations
 *   **Character Drift:** The bot becomes unrecognizable. **Mitigation:** "Elasticity" - traits have a "baseline" and a "current" value. They snap back to baseline over time unless reinforced.
@@ -71,6 +88,7 @@ We might move mutable state from YAML (which implies code deployment) to a datab
 *   **Realism:** Characters feel like they have a trajectory.
 
 ## Implementation Plan
-1.  **Refactor:** Split `core.yaml` into Immutable/Mutable sections.
-2.  **Tooling:** Create `update_persona_trait(trait, value)` tool for the Dream Agent.
-3.  **Safety:** Implement the Constitution Validator.
+1.  **Schema:** Create `character_evolution` table in Postgres (Alembic migration).
+2.  **Refactor:** Update `CharacterManager` to load from YAML + DB (Layered Loading).
+3.  **Tooling:** Create `update_persona_trait(trait, value)` tool for the Dream Agent.
+4.  **Safety:** Implement the Constitution Validator.

@@ -55,7 +55,7 @@ Currently, Vector Memory (Qdrant) and Knowledge Graph (Neo4j) are separate silos
 
 ### Phase 2.5.3: Reverie (Active Idle State) ⭐ PRIORITY
 **Goal:** Make the bot productive when silent.  
-**Effort:** Medium | **Risk:** Low | **Status:** Recommended Second
+**Effort:** Medium | **Risk:** Low | **Status:** ✅ **COMPLETED** (Dec 11, 2025)
 
 Currently, if the bot decides "Ignore," the worker goes back to sleep.
 
@@ -71,7 +71,7 @@ Currently, if the bot decides "Ignore," the worker goes back to sleep.
 
 ### Phase 2.5.4: Adaptive Identity (Standardization & Self-Editing)
 **Goal:** Make characters portable and capable of growth.  
-**Effort:** Low | **Risk:** High (Behavioral) | **Status:** Defer Until 2.5.1 & 2.5.3 Observed
+**Effort:** Low | **Risk:** High (Behavioral) | **Status:** 🔄 **IN PROGRESS** (Phase 2.6)
 
 Currently, character identity is static (`character.md`).
 
