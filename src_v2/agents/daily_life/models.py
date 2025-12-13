@@ -40,3 +40,5 @@ class ActionCommand(BaseModel):
     target_content: Optional[str] = None  # Content of the message being replied to
     # Context tracking (Phase 2.5.4): All users/bots whose messages were in chat history
     context_user_ids: Optional[List[str]] = None  # List of user IDs from chat history
+    # Multi-party learning (Phase 2.5.5): Full context messages for proper attribution
+    context_messages: Optional[List[dict]] = None  # List of {user_id, user_name, content} dicts

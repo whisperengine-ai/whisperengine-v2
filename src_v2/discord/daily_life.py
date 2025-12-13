@@ -375,6 +375,22 @@ class ActionPoller:
                             character_name=self.bot.character_name,
                             context="autonomous"
                         )
+                        
+                        # --- FIRST-CLASS CITIZENSHIP: Update Trust for Bot-to-Bot ---
+                        # This ensures autonomous interactions build relationships just like direct ones
+                        from src_v2.evolution.trust import trust_manager
+                        try:
+                            milestone = await trust_manager.update_trust(
+                                cmd.target_author_id, 
+                                self.bot.character_name, 
+                                1  # +1 for interaction
+                            )
+                            if milestone:
+                                logger.info(f"🎉 Trust milestone with {cmd.target_author_name}: {milestone}")
+                            else:
+                                logger.debug(f"Updated trust with {cmd.target_author_name} (+1)")
+                        except Exception as e:
+                            logger.warning(f"Failed to update trust for bot-to-bot: {e}")
                     except Exception as e:
                         logger.warning(f"Failed to save incoming message: {e}")
                     
@@ -408,8 +424,18 @@ class ActionPoller:
                         "context": cmd.target_content or "",  # What we were replying to
                     }
                     
+                    # --- FIX: Use proper user_id for channel context ---
+                    # For channel posts, we use the channel_id as the "conversation partner"
+                    # rather than bot.user.id which incorrectly implies "bot talking to self".
+                    # For replies, use the target author (who we're replying to).
+                    if cmd.action_type == "reply" and cmd.target_author_id:
+                        context_user_id = cmd.target_author_id
+                    else:
+                        # Channel post: use channel ID as context (not bot ID)
+                        context_user_id = f"channel_{channel.id}"
+                    
                     await memory_manager.add_message(
-                        user_id=str(self.bot.user.id),
+                        user_id=context_user_id,
                         character_name=self.bot.character_name,
                         role="ai",
                         content=cmd.content,
@@ -419,7 +445,100 @@ class ActionPoller:
                         metadata=action_metadata,
                         source_type=MemorySourceType.INFERENCE
                     )
-                    logger.info(f"Saved autonomous action to memory: {sent_msg.id}")
+                    logger.info(f"Saved autonomous action to memory: {sent_msg.id} (context: {context_user_id})")
+                
+                # --- FIRST-CLASS CITIZENSHIP: Update trust for ALL context users ---
+                # Even if we're just posting (not replying to anyone specific),
+                # we're participating in the channel and that builds relationships
+                if cmd.context_user_ids:
+                    from src_v2.evolution.trust import trust_manager
+                    updated_count = 0
+                    for context_user_id in cmd.context_user_ids:
+                        # Skip target author - already updated above in the reply handler
+                        if context_user_id == cmd.target_author_id:
+                            continue
+                        try:
+                            await trust_manager.update_trust(
+                                context_user_id,
+                                self.bot.character_name,
+                                1  # +1 for participating in their presence
+                            )
+                            updated_count += 1
+                        except Exception as e:
+                            logger.debug(f"Failed to update context trust for {context_user_id}: {e}")
+                    if updated_count > 0:
+                        logger.debug(f"Updated trust for {updated_count} context users (excluding target)")
+                
+                # --- FIRST-CLASS LEARNING: Multi-party knowledge extraction ---
+                # Channel interactions should be learned from, with proper attribution!
+                # Each participant's messages get attributed to THEIR user_id
+                if cmd.context_messages or cmd.target_content:
+                    try:
+                        from src_v2.discord.handlers.message_handler import enqueue_post_conversation_tasks
+                        from src_v2.workers.task_queue import task_queue
+                        import uuid
+                        
+                        # Group messages by author for proper attribution
+                        # Each author gets their own learning session
+                        messages_by_author = {}
+                        
+                        # Add context messages (from other participants)
+                        if cmd.context_messages:
+                            for ctx_msg in cmd.context_messages:
+                                author_id = ctx_msg.get("user_id")
+                                if author_id:
+                                    if author_id not in messages_by_author:
+                                        messages_by_author[author_id] = {
+                                            "user_name": ctx_msg.get("user_name", "Unknown"),
+                                            "messages": [],
+                                            "is_bot": ctx_msg.get("is_bot", False)
+                                        }
+                                    messages_by_author[author_id]["messages"].append({
+                                        "role": "human",
+                                        "content": ctx_msg.get("content", "")
+                                    })
+                        
+                        # Add the target message (who we're replying to)
+                        if cmd.target_author_id and cmd.target_content:
+                            if cmd.target_author_id not in messages_by_author:
+                                messages_by_author[cmd.target_author_id] = {
+                                    "user_name": cmd.target_author_name or "Unknown",
+                                    "messages": [],
+                                    "is_bot": False
+                                }
+                            messages_by_author[cmd.target_author_id]["messages"].append({
+                                "role": "human",
+                                "content": cmd.target_content
+                            })
+                        
+                        # Enqueue learning for each participant (humans only)
+                        for author_id, author_data in messages_by_author.items():
+                            if not author_data["messages"]:
+                                continue
+                            # Skip bots - don't extract "facts" from bot messages
+                            if author_data.get("is_bot", False):
+                                continue
+                                
+                            # Add our response to their "conversation"
+                            conversation = author_data["messages"] + [{
+                                "role": "ai",
+                                "content": cmd.content
+                            }]
+                            
+                            session_id = f"daily_life_{uuid.uuid4().hex[:8]}"
+                            
+                            await enqueue_post_conversation_tasks(
+                                user_id=author_id,
+                                character_name=self.bot.character_name,
+                                session_id=session_id,
+                                messages=conversation,
+                                user_name=author_data["user_name"],
+                                trigger="daily_life_multiparty"
+                            )
+                            logger.debug(f"Enqueued multi-party learning for {author_data['user_name']} ({author_id})")
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to enqueue multi-party learning: {e}")
                 
             elif cmd.action_type == "react":
                 if not cmd.emoji or not cmd.target_message_id:

@@ -96,10 +96,6 @@ class DailyLifeGraph:
         """
         Computes embeddings for messages and scores them against character interests.
         """
-        # If lurking is disabled, we don't score any messages for reaction/reply
-        if not settings.ENABLE_CHANNEL_LURKING:
-            return {"scored_messages": []}
-
         snapshot = state["snapshot"]
         bot_name = snapshot.bot_name
         bot_id = getattr(snapshot, "bot_id", None)
@@ -198,9 +194,22 @@ class DailyLifeGraph:
 
                 msg_embeddings = list(self.embedding_service.model.embed(msg_texts))
                 
+                # Pre-fetch trust scores for all message authors to boost friends
+                author_ids = list(set(m.author_id for m in relevant_messages))
+                trust_tasks = [trust_manager.get_relationship_level(aid, bot_name) for aid in author_ids]
+                trust_results = await asyncio.gather(*trust_tasks, return_exceptions=True)
+                author_trust = {}
+                for aid, res in zip(author_ids, trust_results):
+                    if isinstance(res, dict):
+                        author_trust[aid] = res.get("level", 1)
+                    else:
+                        author_trust[aid] = 1  # Default to stranger
+                
                 for i, msg_emb in enumerate(msg_embeddings):
                     msg = relevant_messages[i]
                     is_watch_channel = msg.channel_id in watch_channels
+                    trust_level = author_trust.get(msg.author_id, 1)
+                    is_friend = trust_level >= settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD
                     
                     # Max similarity against any interest
                     # Dot product of normalized vectors = cosine similarity
@@ -215,7 +224,16 @@ class DailyLifeGraph:
                             score=0.95, # High score to ensure it gets picked
                             relevance_reason=f"watch_channel (topic_sim={max_sim:.2f})"
                         ))
-                    elif max_sim > 0.55:  # Threshold for relevance
+                    # SOCIAL BOOST: Friends get noticed even without topic match
+                    elif is_friend:
+                        # Use topic similarity if high, else give baseline "friend" score
+                        friend_score = max(max_sim, 0.7)  # Friends get at least 0.7
+                        scored.append(ScoredMessage(
+                            message=msg, 
+                            score=float(friend_score), 
+                            relevance_reason=f"friend_trust_L{trust_level} (topic_sim={max_sim:.2f})"
+                        ))
+                    elif max_sim > 0.55:  # Threshold for relevance (strangers need topic match)
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=float(max_sim), 
@@ -354,10 +372,14 @@ class DailyLifeGraph:
                 if can_reply:
                     instructions.append("- Reply if you are mentioned directly.")
                     instructions.append("- Reply if the topic is highly relevant and you have something valuable to add.")
+                    instructions.append(f"- If the author is a FRIEND (Trust >= {settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD}), feel free to banter, react, or acknowledge them even if the topic isn't 'important'. Relationships matter.")
                     instructions.append("- IGNORE if the conversation has reached a natural conclusion or if you have already replied enough.")
-                    instructions.append("- IGNORE if the user's message is just an acknowledgement (e.g. 'ok', 'cool', 'thanks') unless you want to keep talking.")
+                    instructions.append("- IGNORE if the user's message is just an acknowledgement (e.g. 'ok', 'cool', 'thanks') unless they are a friend and you want to keep talking.")
+                    instructions.append("- When replying, your response will be THREADED to that specific message. Choose the message you're most directly responding to.")
+                    instructions.append("- If you want to address MULTIPLE people or the room in general, consider if 'react' to individuals + a fresh 'post' might be more natural than threading to one person.")
                 if can_react:
                     instructions.append("- React with an emoji if you agree/disagree but don't want to interrupt.")
+                    instructions.append("- Reactions are lightweight acknowledgment - great for 'I see you' without derailing conversation.")
                 instructions.append("- Ignore if it's not worth your energy.")
                 
                 instruction_text = "\n".join(instructions)
@@ -640,6 +662,7 @@ Output JSON:
                     # 1. Reconstruct Chat History for AgentEngine
                     # AgentEngine expects List[BaseMessage]
                     chat_history = []
+                    context_messages = []  # For multi-party learning
                     try:
                         for ch in snapshot.channels:
                             if ch.channel_id == plan.channel_id:
@@ -660,9 +683,25 @@ Output JSON:
                                             chat_history.append(AIMessage(content=m.content))
                                         else:
                                             chat_history.append(HumanMessage(content=f"{m.author_name}: {m.content}"))
+                                            # Capture for multi-party learning (attributed to correct author)
+                                            context_messages.append({
+                                                "user_id": m.author_id,
+                                                "user_name": m.author_name,
+                                                "content": m.content,
+                                                "is_bot": m.is_bot
+                                            })
                                 break
                     except Exception as e:
                         logger.warning(f"Failed to reconstruct history for AgentEngine: {e}")
+
+                    # Collect ALL user IDs from context (for first-class citizenship)
+                    context_user_ids = set()
+                    for ch in snapshot.channels:
+                        if ch.channel_id == plan.channel_id:
+                            for m in ch.messages:
+                                if m.author_name.lower() != snapshot.bot_name.lower():
+                                    context_user_ids.add(m.author_id)
+                            break
 
                     # 2. Call MasterGraphAgent (Supergraph)
                     # We treat the target message as the "user_input"
@@ -693,7 +732,11 @@ Output JSON:
                             # Include target message details for full processing
                             target_author_id=target_msg.author_id,
                             target_author_name=target_msg.author_name,
-                            target_content=target_msg.content
+                            target_content=target_msg.content,
+                            # Include ALL context users for trust updates
+                            context_user_ids=list(context_user_ids),
+                            # Include full context for multi-party learning
+                            context_messages=context_messages if context_messages else None
                         ))
                     except Exception as e:
                         logger.error(f"MasterGraphAgent execution failed in worker: {e}")
@@ -796,6 +839,8 @@ Output JSON:
                 
                 # 2. Reconstruct Chat History (same as reply)
                 chat_history = []
+                context_user_ids = set()  # Track all users in context for first-class citizenship
+                context_messages = []  # For multi-party learning
                 if target_channel and target_channel.messages:
                     sorted_msgs = sorted(target_channel.messages, key=lambda m: m.created_at)[-10:]
                     for m in sorted_msgs:
@@ -803,6 +848,14 @@ Output JSON:
                             chat_history.append(AIMessage(content=m.content))
                         else:
                             chat_history.append(HumanMessage(content=f"{m.author_name}: {m.content}"))
+                            context_user_ids.add(m.author_id)  # Track this user
+                            # Capture for multi-party learning
+                            context_messages.append({
+                                "user_id": m.author_id,
+                                "user_name": m.author_name,
+                                "content": m.content,
+                                "is_bot": m.is_bot
+                            })
 
                 # 3. Decide topic
                 interests = self._load_interests(snapshot.bot_name)
@@ -890,10 +943,17 @@ Output JSON:
                     
                     logger.info(f"Generated proactive post: {response[:50]}...")
                     
+                    # Proactive posts are "fresh thoughts" — not replies to anyone specific.
+                    # The bot synthesizes all context, but addresses the room, not one person.
+                    # Use "post" action type (detached) rather than reply threading.
                     commands.append(ActionCommand(
                         action_type="post",
                         channel_id=plan.channel_id,
-                        content=self._get_content_str(response)
+                        content=self._get_content_str(response),
+                        # Include context users for trust updates (first-class citizenship)
+                        context_user_ids=list(context_user_ids) if context_user_ids else None,
+                        # Include full context for multi-party learning
+                        context_messages=context_messages if context_messages else None
                     ))
                 except Exception as e:
                     logger.error(f"MasterGraphAgent execution failed for proactive post: {e}")
