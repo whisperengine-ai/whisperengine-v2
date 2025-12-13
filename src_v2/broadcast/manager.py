@@ -116,8 +116,10 @@ class BroadcastManager:
             logger.warning("Bot instance not set for broadcast manager")
             return []
         
-        # Check rate limit (skip for targeted posts as they are managed by orchestrator)
-        if not target_channel_id and not await self._can_post(character_name):
+        # Check rate limit (skip for targeted posts and scheduled posts like diary/dream)
+        # Diary and dream posts are scheduled (once per day) so they shouldn't be rate-limited
+        scheduled_post_types = {PostType.DIARY, PostType.DREAM}
+        if not target_channel_id and post_type not in scheduled_post_types and not await self._can_post(character_name):
             logger.debug(f"Rate limit active for {character_name}")
             return []
         
