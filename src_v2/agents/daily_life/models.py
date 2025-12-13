@@ -2,6 +2,11 @@ from datetime import datetime
 from typing import List, Optional, Literal
 from pydantic import BaseModel
 
+class MentionSnapshot(BaseModel):
+    id: str
+    is_bot: bool
+    name: str
+
 class MessageSnapshot(BaseModel):
     id: str
     content: str
@@ -10,6 +15,7 @@ class MessageSnapshot(BaseModel):
     is_bot: bool
     created_at: datetime
     mentions_bot: bool
+    mentioned_users: List[MentionSnapshot] = []
     reference_id: Optional[str] = None
     channel_id: Optional[str] = None
 

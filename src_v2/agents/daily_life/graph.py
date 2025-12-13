@@ -163,6 +163,12 @@ class DailyLifeGraph:
             # Skip if mentions bot (main process handles this)
             if m.mentions_bot:
                 continue
+            
+            # Skip if mentions ANOTHER bot (respect direct address)
+            # If the message mentions another bot, we should not autonomously reply
+            # unless we are explicitly mentioned (handled above)
+            if any(u.is_bot for u in m.mentioned_users):
+                continue
                 
             # Skip if already replied to
             if m.id in replied_to_ids:

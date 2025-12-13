@@ -10,7 +10,7 @@ from discord.ext import commands
 from src_v2.config.settings import settings
 from src_v2.core.database import db_manager
 from src_v2.workers.task_queue import TaskQueue
-from src_v2.agents.daily_life.models import SensorySnapshot, ChannelSnapshot, MessageSnapshot, ActionCommand
+from src_v2.agents.daily_life.models import SensorySnapshot, ChannelSnapshot, MessageSnapshot, ActionCommand, MentionSnapshot
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
 from src_v2.intelligence.activity import server_monitor
@@ -135,6 +135,11 @@ class DailyLifeScheduler:
                         is_bot=msg.author.bot,
                         created_at=msg.created_at,
                         mentions_bot=self.bot.user in msg.mentions,
+                        mentioned_users=[
+                            MentionSnapshot(id=str(m.id), is_bot=m.bot, name=m.name) 
+                            for m in msg.mentions
+                            if m.id != self.bot.user.id  # Exclude self, tracked via mentions_bot
+                        ],
                         reference_id=str(msg.reference.message_id) if msg.reference else None,
                         channel_id=str(channel.id)
                     ))
