@@ -138,6 +138,10 @@ class Settings(BaseSettings):
         default=None,
         description="Reasoning token budget for reflective LLM"
     )
+    REFLECTIVE_REASONING_EXCLUDE: bool = Field(
+        default=False,
+        description="Exclude reasoning tokens from reflective LLM response. Default False to show reasoning in Discord status messages."
+    )
 
     # --- Autonomous Agents (Phase 3) ---
     ENABLE_AUTONOMOUS_DRIVES: bool = True

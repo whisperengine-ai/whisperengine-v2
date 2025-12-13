@@ -23,7 +23,7 @@ import asyncio
 
 __all__ = ["DreamContent", "DreamManager", "get_dream_manager"]
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import uuid
 from loguru import logger
@@ -39,8 +39,10 @@ from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.embeddings import EmbeddingService
 from src_v2.config.settings import settings
 from src_v2.safety.content_review import content_safety_checker
-from src_v2.core.provenance import ProvenanceCollector, SourceType
+from src_v2.core.provenance import ProvenanceCollector
 from src_v2.memory.models import MemorySourceType
+from src_v2.memory.autonomous_actions import get_autonomous_actions, DREAM_AUTONOMOUS_ACTION_LIMIT
+from src_v2.utils.validation import smart_truncate
 
 
 class DreamContent(BaseModel):
@@ -176,7 +178,7 @@ class DreamMaterial(BaseModel):
             for action in self.autonomous_actions[:5]:
                 action_type = action.get("action_type", "post")
                 channel = action.get("channel_name", "a channel")
-                content = action.get("content", "")[:150]
+                content = smart_truncate(action.get("content", ""), max_length=150)
                 
                 if action_type == "reply":
                     sections.append(f"- Spoke up in #{channel}: {content}")
@@ -450,78 +452,12 @@ Create a surreal dream echoing these experiences.""")
             return []
     
     async def _get_autonomous_actions(self, hours: int) -> List[Dict[str, Any]]:
-        """
-        Get the bot's own autonomous posts and replies from the last N hours.
-        
-        These are messages stored with source_type=INFERENCE where the bot
-        is both the author and the user_id (autonomous actions save with
-        user_id = bot's discord user id).
-        
-        Args:
-            hours: How many hours back to look
-            
-        Returns:
-            List of autonomous action records with content, channel info, and context
-        """
-        try:
-            if not db_manager.qdrant_client:
-                return []
-            
-            threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
-            threshold_iso = threshold.isoformat()
-            
-            # Query for messages that are:
-            # 1. Type = "conversation" (stored messages)
-            # 2. source_type = "inference" (autonomous actions)
-            # 3. role = "ai" (bot's own messages)
-            results = await db_manager.qdrant_client.scroll(
-                collection_name=self.collection_name,
-                scroll_filter=Filter(
-                    must=[
-                        FieldCondition(key="type", match=MatchValue(value="conversation")),
-                        FieldCondition(key="source_type", match=MatchValue(value="inference")),
-                        FieldCondition(key="role", match=MatchValue(value="ai"))
-                    ]
-                ),
-                limit=50,  # Fetch extra for date filtering
-                with_payload=True,
-                with_vectors=False
-            )
-            
-            # Filter by timestamp and extract action info
-            actions = []
-            for point in results[0]:
-                payload = point.payload
-                if not payload:
-                    continue
-                    
-                ts = payload.get("timestamp", "")
-                if ts < threshold_iso:
-                    continue
-                
-                # Determine action type based on context
-                context = payload.get("context", "")
-                is_reply = bool(context) or payload.get("reference_id")
-                
-                actions.append({
-                    "action_type": "reply" if is_reply else "post",
-                    "content": payload.get("content", ""),
-                    "channel_id": payload.get("channel_id", ""),
-                    "channel_name": payload.get("channel_name", "unknown"),
-                    "context": context,
-                    "timestamp": ts,
-                    "message_id": payload.get("message_id", "")
-                })
-            
-            # Sort by timestamp descending
-            actions.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-            
-            logger.debug(f"Found {len(actions)} autonomous actions for dream in last {hours} hours")
-            return actions[:10]  # Limit for dreams
-            
-        except Exception as e:
-            logger.debug(f"Failed to get autonomous actions for dream: {e}")
-            return []
+        """Get the bot's own autonomous posts and replies. Delegates to shared utility."""
+        return await get_autonomous_actions(
+            collection_name=self.collection_name,
+            hours=hours,
+            limit=DREAM_AUTONOMOUS_ACTION_LIMIT
+        )
     
     async def _get_gossip(self, memory_manager, hours: int) -> List[Dict[str, Any]]:
         """Get gossip from both shared artifacts and per-bot collection.

@@ -113,10 +113,11 @@ def create_llm(
         _reasoning_enabled = reasoning_enabled if reasoning_enabled is not None else settings.REFLECTIVE_REASONING_ENABLED
         _reasoning_effort = reasoning_effort or settings.REFLECTIVE_REASONING_EFFORT
         _reasoning_max_tokens = reasoning_max_tokens or settings.REFLECTIVE_REASONING_MAX_TOKENS
-        _reasoning_exclude = reasoning_exclude if reasoning_exclude is not None else False
+        _reasoning_exclude = reasoning_exclude if reasoning_exclude is not None else settings.REFLECTIVE_REASONING_EXCLUDE
     elif mode in ["router", "utility"] and settings.ROUTER_LLM_PROVIDER:
         # Use router LLM for routing AND utility tasks (summarization, classification, etc.)
-        # Router/utility typically don't need reasoning mode
+        # Router/utility skip reasoning mode - they need fast, cheap responses for tool selection
+        # and structured tasks. Reasoning would add latency and cost without benefit.
         provider = settings.ROUTER_LLM_PROVIDER
         api_key = settings.ROUTER_LLM_API_KEY.get_secret_value() if settings.ROUTER_LLM_API_KEY else "dummy"
         base_url = settings.ROUTER_LLM_BASE_URL
