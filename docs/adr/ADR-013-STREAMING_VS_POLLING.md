@@ -612,6 +612,10 @@ The outbox and delivery mechanisms already exist. ADR-013 adds the **inbox** sid
 
 ## Implementation Phases
 
+> **Note:** The current polling system is **experimental** with no production users depending on it. 
+> We can kill polling instantly via `ENABLE_DAILY_LIFE_GRAPH=false` and accelerate to event-driven 
+> whenever ready. The phased approach below is optional — we can skip straight to Phase 3 if desired.
+
 ### Phase 0: Clarify Real-Time Path (NOW)
 - [ ] Document the real-time path clearly in code comments
 - [ ] Ensure DM/@mention/reply paths don't touch polling logic
@@ -635,17 +639,17 @@ Add event emission to `on_message` for non-direct messages:
 - [ ] Implement `should_engage()` check (may use LLM)
 - [ ] Implement on-demand context fetching
 - [ ] Wire to AgentEngine for response generation
+- [ ] **Kill polling immediately** (`ENABLE_DAILY_LIFE_GRAPH=false`)
 
-### Phase 4: Parallel Run (LOW RISK)
-- [ ] Run new event-driven system alongside polling
-- [ ] Compare behaviors, tune thresholds
-- [ ] Feature flag to enable/disable
+### ~~Phase 4: Parallel Run~~ (SKIP)
+~~Run new event-driven system alongside polling~~
 
-### Phase 5: Deprecate Polling (AFTER VALIDATION)
-- [ ] Disable Daily Life Graph polling
-- [ ] Keep batch operations (diary, learning) on timer
-- [ ] Keep Reverie (silence detection) on timer
-- [ ] Remove snapshot logic
+**Not needed.** No production users depend on polling. We can switch instantly.
+
+### ~~Phase 5: Deprecate Polling~~ (SKIP)
+~~Gradual deprecation~~
+
+**Not needed.** Just flip the flag and delete the code when ready.
 
 ## Questions to Resolve
 
@@ -719,7 +723,7 @@ Add event emission to `on_message` for non-direct messages:
 ### Negative
 - More Redis usage (streams are cheap but not free)
 - Worker complexity increases
-- Migration risk during transition
+- ~~Migration risk during transition~~ **No migration risk** — polling is experimental, no users depend on it
 
 ### Neutral
 - LLM costs similar (rate limiting matches current batch size)
@@ -727,11 +731,23 @@ Add event emission to `on_message` for non-direct messages:
 
 ## Migration Path
 
-1. **Now:** Improve polling prompts (done in this session)
-2. **Next:** Add event streaming to Redis (capture-only)
-3. **Then:** Add priority worker for mentions
-4. **Later:** Full streaming processing with rate limits
-5. **Finally:** Deprecate snapshot-based polling
+> **Key insight:** Polling is experimental. No production users depend on it. We can accelerate at will.
+
+| Option | Steps | When to Use |
+|--------|-------|-------------|
+| **Gradual** | Capture → State Machine → Worker → Kill Polling | If we want to observe both systems |
+| **Fast** | Build Worker → Kill Polling immediately | If we want to move fast |
+| **Instant** | `ENABLE_DAILY_LIFE_GRAPH=false` → Build at leisure | If polling is causing problems |
+
+**Current recommendation:** Build the inbox/worker, then kill polling. No parallel run needed.
+
+### What to Keep (Timer-Based)
+Even after killing polling, these stay on timers:
+- **Batch learning** (session summaries, fact extraction)
+- **Dream journal** (nightly generation)
+- **Reverie** (silence detection, memory consolidation)
+
+These don't need real-time events — they're inherently batch operations.
 
 ## Related ADRs
 - ADR-015: Daily Life Unified Autonomy (current polling architecture)
