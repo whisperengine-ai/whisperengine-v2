@@ -480,8 +480,12 @@ Format:
                                 
                                 # Check cooldown
                                 cooldown = timedelta(minutes=settings.AUTONOMOUS_POST_COOLDOWN_MINUTES)
-                                if now_utc - last_msg_time > cooldown:
+                                time_since_last = now_utc - last_msg_time
+                                if time_since_last > cooldown:
                                     is_quiet = True
+                                    logger.debug(f"Channel {ch.channel_id} is quiet: last msg {time_since_last.total_seconds()/60:.1f}m ago (cooldown={settings.AUTONOMOUS_POST_COOLDOWN_MINUTES}m)")
+                                else:
+                                    logger.debug(f"Channel {ch.channel_id} is active: last msg {time_since_last.total_seconds()/60:.1f}m ago by {last_msg.author_name}")
                             
                             if is_quiet:
                                 eligible_channels.append(ch)
