@@ -5,7 +5,8 @@ async def run_knowledge_extraction(
     ctx: Dict[str, Any],
     user_id: str,
     message: str,
-    character_name: str = "unknown"
+    character_name: str = "unknown",
+    is_bot: bool = False
 ) -> Dict[str, Any]:
     """
     Extract facts from a message and store in Neo4j knowledge graph.
@@ -18,6 +19,7 @@ async def run_knowledge_extraction(
         user_id: Discord user ID
         message: User message text to extract facts from
         character_name: Name of the bot that received the message
+        is_bot: If True, the message is from the bot itself (self-reflection)
         
     Returns:
         Dict with success status and extracted fact count
@@ -32,7 +34,7 @@ async def run_knowledge_extraction(
             "user_id": user_id
         }
     
-    logger.info(f"Processing knowledge extraction for user {user_id} (source: {character_name})")
+    logger.info(f"Processing knowledge extraction for user {user_id} (source: {character_name}, is_bot: {is_bot})")
     
     try:
         from src_v2.knowledge.manager import knowledge_manager
@@ -47,7 +49,8 @@ async def run_knowledge_extraction(
         
         if facts:
             # Save validated facts
-            await knowledge_manager.save_facts(user_id, facts, character_name)
+            # If is_bot is True, we treat this as self-reflection (Character node)
+            await knowledge_manager.save_facts(user_id, facts, character_name, is_self_reflection=is_bot)
             
             return {
                 "success": True,

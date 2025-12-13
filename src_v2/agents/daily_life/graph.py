@@ -750,12 +750,38 @@ Output JSON:
                             final_content = final_content.replace(f"@{target_bot}", f"<@{plan.target_bot_id}>")
                         # If mention is missing, prepend it
                         elif f"<@{plan.target_bot_id}>" not in final_content:
-                             final_content = f"<@{plan.target_bot_id}> {final_content}"
+                            final_content = f"<@{plan.target_bot_id}> {final_content}"
+                    
+                    # Determine if we should reply to an existing message
+                    # Logic: If there are messages in the channel, reply to the last one that isn't us.
+                    # This creates a thread/chain instead of a detached post.
+                    target_msg_id = None
+                    target_author_id = None
+                    target_author_name = None
+                    target_content = None
+                    action_type = "post"
+                    
+                    if target_channel and target_channel.messages:
+                        # Sort by time
+                        sorted_msgs = sorted(target_channel.messages, key=lambda m: m.created_at)
+                        # Find last message not from us
+                        for m in reversed(sorted_msgs):
+                            if m.author_name.lower() != snapshot.bot_name.lower():
+                                target_msg_id = m.id
+                                target_author_id = m.author_id
+                                target_author_name = m.author_name
+                                target_content = m.content
+                                action_type = "reply"
+                                break
                     
                     commands.append(ActionCommand(
-                        action_type="post", # Treat as post
+                        action_type=action_type,
                         channel_id=plan.channel_id,
-                        content=final_content
+                        target_message_id=target_msg_id,
+                        content=final_content,
+                        target_author_id=target_author_id,
+                        target_author_name=target_author_name,
+                        target_content=target_content
                     ))
                 except Exception as e:
                     logger.error(f"MasterGraphAgent execution failed for reach_out: {e}")

@@ -7,7 +7,8 @@ async def run_summarization(
     character_name: str,
     session_id: str,
     messages: List[Dict[str, Any]],
-    user_name: Optional[str] = None
+    user_name: Optional[str] = None,
+    channel_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Generate a session summary and save to database.
@@ -19,6 +20,7 @@ async def run_summarization(
         session_id: Conversation session ID
         messages: List of message dicts with 'role' and 'content' keys
         user_name: User's display name (for diary provenance)
+        channel_id: Optional channel ID for shared context retrieval
         
     Returns:
         Dict with success status and summary content
@@ -63,7 +65,7 @@ async def run_summarization(
         if result and result.meaningfulness_score >= 3:
             # Use SummaryManager for saving (it handles DB logic)
             summarizer = SummaryManager(bot_name=character_name)
-            saved = await summarizer.save_summary(session_id, user_id, result, user_name=user_name)
+            saved = await summarizer.save_summary(session_id, user_id, result, user_name=user_name, channel_id=channel_id)
             
             if saved:
                 logger.info(f"Summary saved for session {session_id} (score: {result.meaningfulness_score})")

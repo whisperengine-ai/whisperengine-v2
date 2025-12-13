@@ -394,12 +394,13 @@ class MemoryManager:
             logger.error(f"Failed to save vector memory: {e}")
             raise e
 
-    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], topics: Optional[List[str]] = None, user_name: Optional[str] = None, collection_name: Optional[str] = None) -> Optional[str]:
+    async def save_summary_vector(self, session_id: str, user_id: str, content: str, meaningfulness_score: int, emotions: List[str], topics: Optional[List[str]] = None, user_name: Optional[str] = None, collection_name: Optional[str] = None, channel_id: Optional[str] = None) -> Optional[str]:
         """
         Embeds and saves a summary to Qdrant.
         
         Args:
             user_name: User's display name (for diary provenance)
+            channel_id: Optional channel ID for shared context retrieval
         """
         if not db_manager.qdrant_client:
             return None
@@ -411,21 +412,26 @@ class MemoryManager:
             embedding = await self.embedding_service.embed_query_async(content)
             point_id = str(uuid.uuid4())
             
+            payload = {
+                "type": "summary",
+                "source_type": MemorySourceType.SUMMARY.value,
+                "session_id": str(session_id),
+                "user_id": str(user_id),
+                "user_name": user_name or "someone",  # For diary provenance display
+                "content": content,
+                "meaningfulness_score": meaningfulness_score,
+                "emotions": emotions,
+                "topics": topics or [],
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            
+            if channel_id:
+                payload["channel_id"] = str(channel_id)
+            
             point = PointStruct(
                 id=point_id,
                 vector=embedding,
-                payload={
-                    "type": "summary",
-                    "source_type": MemorySourceType.SUMMARY.value,
-                    "session_id": str(session_id),
-                    "user_id": str(user_id),
-                    "user_name": user_name or "someone",  # For diary provenance display
-                    "content": content,
-                    "meaningfulness_score": meaningfulness_score,
-                    "emotions": emotions,
-                    "topics": topics or [],
-                    "timestamp": datetime.datetime.now().isoformat()
-                }
+                payload=payload
             )
             
             await db_manager.qdrant_client.upsert(
@@ -445,7 +451,9 @@ class MemoryManager:
         user_id: str, 
         limit: int = 5, 
         collection_name: Optional[str] = None,
-        time_range: Optional[Dict[str, str]] = None
+        time_range: Optional[Dict[str, str]] = None,
+        channel_id: Optional[str] = None,
+        bot_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Searches for relevant episode memories in Qdrant with recency weighting.
@@ -458,10 +466,13 @@ class MemoryManager:
         
         Args:
             query: Search query (use extracted search_terms for long messages)
-            user_id: User ID to filter by
+            user_id: User ID to filter by - memories follow this user across all channels
             limit: Max results to return
             collection_name: Qdrant collection override
             time_range: Optional {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"} for temporal filtering (SPEC-E32)
+            channel_id: Optional channel filter - if provided, adds channel context to results
+            bot_id: Optional bot ID. If provided with channel_id, enables "Dual Stream" retrieval:
+                    (user_id == user_id) OR (channel_id == channel_id AND user_id == bot_id)
         """
         start_time = time.time()
         if not db_manager.qdrant_client:
@@ -475,9 +486,34 @@ class MemoryManager:
             embedding = await self.embedding_service.embed_query_async(query)
             
             # Build Filter
-            must_conditions = [
-                FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
-            ]
+            if channel_id and bot_id:
+                # Dual Stream Logic: Personal Memories OR Shared Bot Memories
+                query_filter = Filter(
+                    should=[
+                        # Stream 1: Personal Memories (User's history everywhere)
+                        Filter(must=[
+                            FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                        ]),
+                        # Stream 2: Shared Reality (Bot's autonomous posts in this channel)
+                        Filter(must=[
+                            FieldCondition(key="channel_id", match=MatchValue(value=str(channel_id))),
+                            FieldCondition(key="user_id", match=MatchValue(value=str(bot_id)))
+                        ])
+                    ]
+                )
+            else:
+                # Classic Logic: Strict filtering
+                must_conditions = [
+                    FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                ]
+                
+                # If channel_id provided without bot_id, strictly filter by channel (Legacy/Specific use)
+                if channel_id:
+                    must_conditions.append(
+                        FieldCondition(key="channel_id", match=MatchValue(value=str(channel_id)))
+                    )
+                
+                query_filter = Filter(must=must_conditions)
             
             # Fetch more for re-ranking
             fetch_limit = max(limit * 3, 15)
@@ -485,7 +521,7 @@ class MemoryManager:
             search_result = await db_manager.qdrant_client.query_points(
                 collection_name=target_collection,
                 query=embedding,
-                query_filter=Filter(must=must_conditions),
+                query_filter=query_filter,
                 limit=fetch_limit
             )
             
@@ -764,7 +800,7 @@ class MemoryManager:
             logger.error(f"Advanced memory search failed: {e}")
             return []
 
-    async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def search_summaries(self, query: str, user_id: str, limit: int = 3, start_timestamp: Optional[float] = None, collection_name: Optional[str] = None, channel_id: Optional[str] = None, bot_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Searches for relevant summaries in Qdrant with weighted scoring.
         
@@ -772,6 +808,11 @@ class MemoryManager:
         - Semantic: Raw cosine similarity (0-1)
         - Meaningfulness: Normalized from 1-10 scale → 0.5-1.0 (important memories never fully suppressed)
         - Recency: Exponential decay based on age (1.0 for today → 0.5 for 30 days ago)
+        
+        Args:
+            channel_id: Optional channel filter.
+            bot_id: Optional bot ID. If provided with channel_id, enables "Dual Stream" retrieval:
+                    (user_id == user_id) OR (channel_id == channel_id AND user_id == bot_id)
         """
         if not db_manager.qdrant_client:
             logger.warning("Qdrant client not available for search_summaries")
@@ -784,10 +825,40 @@ class MemoryManager:
             embedding = await self.embedding_service.embed_query_async(query)
             
             # Build Filter
-            must_conditions = [
-                FieldCondition(key="user_id", match=MatchValue(value=str(user_id))),
-                FieldCondition(key="type", match=MatchValue(value="summary"))
-            ]
+            # Base: Type must be summary
+            base_filter = FieldCondition(key="type", match=MatchValue(value="summary"))
+            
+            if channel_id and bot_id:
+                # Dual Stream Logic: Personal Summaries OR Shared Bot Summaries
+                # We want: (Type=Summary) AND [ (User=User) OR (Channel=Channel AND User=Bot) ]
+                
+                personal_filter = Filter(must=[
+                    FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                ])
+                
+                shared_filter = Filter(must=[
+                    FieldCondition(key="channel_id", match=MatchValue(value=str(channel_id))),
+                    FieldCondition(key="user_id", match=MatchValue(value=str(bot_id)))
+                ])
+                
+                query_filter = Filter(
+                    must=[base_filter],
+                    should=[personal_filter, shared_filter]
+                )
+            else:
+                # Classic Logic
+                user_filter = FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                
+                # If channel_id provided without bot_id, strictly filter by channel (Legacy/Specific use)
+                # Note: This was previously "OR channel_id", which was a privacy leak.
+                # We are changing it to AND if channel_id is present, or just ignoring it if we want strict user isolation.
+                # For safety, let's keep it as strict user filter unless explicitly asked.
+                
+                must_conditions = [base_filter, user_filter]
+                if channel_id:
+                     must_conditions.append(FieldCondition(key="channel_id", match=MatchValue(value=str(channel_id))))
+
+                query_filter = Filter(must=must_conditions)
             
             # Fetch more results to allow for re-ranking
             fetch_limit = max(limit * 3, 10)
@@ -795,7 +866,7 @@ class MemoryManager:
             search_result = await db_manager.qdrant_client.query_points(
                 collection_name=target_collection,
                 query=embedding,
-                query_filter=Filter(must=must_conditions),
+                query_filter=query_filter,
                 limit=fetch_limit
             )
             

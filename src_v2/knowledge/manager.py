@@ -612,10 +612,13 @@ PRIVACY RESTRICTION ENABLED:
 
     @retry_db_operation(max_retries=3)
     @require_db("neo4j")
-    async def save_facts(self, user_id: str, facts: List[Fact], bot_name: str = "unknown"):
+    async def save_facts(self, user_id: str, facts: List[Fact], bot_name: str = "unknown", is_self_reflection: bool = False):
         """
         Saves a list of facts to Neo4j.
         Includes validation to filter out common LLM hallucinations.
+        
+        Args:
+            is_self_reflection: If True, facts are attributed to the Character node, not a User node.
         """
         if not facts:
             return
@@ -717,18 +720,18 @@ PRIVACY RESTRICTION ENABLED:
             logger.debug(f"All {len(facts)} facts filtered out for user {user_id}")
             return
         
-        logger.info(f"Saving {len(valid_facts)}/{len(facts)} facts for user {user_id} (source: {bot_name})")
+        logger.info(f"Saving {len(valid_facts)}/{len(facts)} facts for user {user_id} (source: {bot_name}, self_reflection={is_self_reflection})")
 
         # 2. Store in Neo4j
         async with db_manager.neo4j_driver.session() as session:
             for fact in valid_facts:
-                await session.execute_write(self._merge_fact, user_id, fact, bot_name)
+                await session.execute_write(self._merge_fact, user_id, fact, bot_name, is_self_reflection)
         
         # Invalidate common ground cache for this user (across all bots)
         await cache_manager.delete_pattern(f"knowledge:common_ground:*:{user_id}")
 
     @staticmethod
-    async def _merge_fact(tx, user_id: str, fact: Fact, bot_name: str):
+    async def _merge_fact(tx, user_id: str, fact: Fact, bot_name: str, is_self_reflection: bool = False):
         """
         Cypher query to merge the fact into the graph.
         Handles single-value predicates and antonym conflicts.
@@ -743,34 +746,47 @@ PRIVACY RESTRICTION ENABLED:
         
         predicate = fact.predicate.upper()
 
+        # Determine Subject Node (User or Character)
+        if is_self_reflection:
+            # If self-reflection, the subject is the Character
+            subject_match = "MATCH (s:Character {name: $bot_name})"
+            subject_merge = "MERGE (s:Character {name: $bot_name})"
+            # We don't delete old facts for characters as aggressively to preserve history/personality
+            # But we still handle single-value updates
+        else:
+            # Normal case: Subject is the User
+            subject_match = "MATCH (s:User {id: $user_id})"
+            subject_merge = "MERGE (s:User {id: $user_id})"
+
         # 1. Handle Single Value Predicates (Global overwrite)
         if predicate in SINGLE_VALUE_PREDICATES:
-            delete_query = """
-            MATCH (u:User {id: $user_id})-[r:FACT {predicate: $predicate}]->()
+            delete_query = f"""
+            {subject_match}
+            MATCH (s)-[r:FACT {{predicate: $predicate}}]->()
             DELETE r
             """
-            await tx.run(delete_query, user_id=user_id, predicate=predicate)
+            await tx.run(delete_query, user_id=user_id, bot_name=bot_name, predicate=predicate)
 
         # 2. Handle Antonyms (Specific object overwrite)
         if predicate in ANTONYM_PAIRS:
             antonyms = ANTONYM_PAIRS[predicate]
-            # Delete relationships with antonym predicates to the SAME object
-            delete_antonym_query = """
-            MATCH (u:User {id: $user_id})-[r:FACT]->(o:Entity {name: $object_name})
+            delete_antonym_query = f"""
+            {subject_match}
+            MATCH (s)-[r:FACT]->(o:Entity {{name: $object_name}})
             WHERE r.predicate IN $antonyms
             DELETE r
             """
             await tx.run(delete_antonym_query, 
                          user_id=user_id, 
+                         bot_name=bot_name,
                          object_name=fact.object, 
                          antonyms=antonyms)
 
         # 3. Merge New Fact
-        # We use ON CREATE / ON MATCH to handle mention_count reinforcement
-        query_safe = """
-        MERGE (u:User {id: $user_id})
-        MERGE (o:Entity {name: $object_name})
-        MERGE (u)-[r:FACT {predicate: $predicate}]->(o)
+        query_safe = f"""
+        {subject_merge}
+        MERGE (o:Entity {{name: $object_name}})
+        MERGE (s)-[r:FACT {{predicate: $predicate}}]->(o)
         ON CREATE SET 
             r.confidence = $confidence, 
             r.source_bot = $bot_name, 
@@ -785,10 +801,10 @@ PRIVACY RESTRICTION ENABLED:
         
         await tx.run(query_safe, 
                      user_id=user_id, 
+                     bot_name=bot_name,
                      object_name=fact.object, 
                      predicate=predicate,
-                     confidence=fact.confidence,
-                     bot_name=bot_name)
+                     confidence=fact.confidence)
 
     @require_db("neo4j", default_return=[])
     async def get_recent_observations_by(self, bot_name: str, limit: int = 10) -> List[Dict[str, Any]]:

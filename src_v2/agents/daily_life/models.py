@@ -38,3 +38,5 @@ class ActionCommand(BaseModel):
     target_author_id: Optional[str] = None  # Who sent the target message
     target_author_name: Optional[str] = None  # Display name of target author
     target_content: Optional[str] = None  # Content of the message being replied to
+    # Context tracking (Phase 2.5.4): All users/bots whose messages were in chat history
+    context_user_ids: Optional[List[str]] = None  # List of user IDs from chat history

@@ -392,6 +392,10 @@ class ActionPoller:
                 kwargs = {"content": cmd.content}
                 if ref:
                     kwargs["reference"] = ref
+                    # Mention author if it's a reply to a user, but maybe not if it's a bot?
+                    # For now, default to mention=True for visibility, or False if we want to be subtle.
+                    # Let's default to True for replies to ensure they see it.
+                    kwargs["mention_author"] = True
                 
                 sent_msg = await channel.send(**kwargs)
                 

@@ -16,12 +16,13 @@ class SummaryManager:
     def __init__(self, bot_name: Optional[str] = None):
         self.memory_manager = MemoryManager(bot_name=bot_name)
 
-    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult, user_name: Optional[str] = None) -> bool:
+    async def save_summary(self, session_id: str, user_id: str, result: SummaryResult, user_name: Optional[str] = None, channel_id: Optional[str] = None) -> bool:
         """
         Saves the summary to Postgres and Qdrant.
         
         Args:
             user_name: User's display name (for diary provenance)
+            channel_id: Optional channel ID for shared context retrieval
             
         Returns:
             True if saved successfully, False otherwise
@@ -48,7 +49,8 @@ class SummaryManager:
                 meaningfulness_score=result.meaningfulness_score,
                 emotions=result.emotions,
                 topics=result.topics,
-                user_name=user_name
+                user_name=user_name,
+                channel_id=channel_id
             )
             
             if embedding_id:

@@ -335,7 +335,8 @@ class TaskQueue:
         character_name: str,
         session_id: str,
         messages: list,
-        user_name: Optional[str] = None
+        user_name: Optional[str] = None,
+        channel_id: Optional[str] = None
     ) -> Optional[str]:
         """
         Enqueue a session summarization task.
@@ -346,6 +347,7 @@ class TaskQueue:
             session_id: Conversation session ID
             messages: List of message dicts with 'role' and 'content' keys
             user_name: User's display name (for diary provenance)
+            channel_id: Optional channel ID for shared context retrieval
         """
         job_id = f"summarize_{session_id}"
         
@@ -356,7 +358,8 @@ class TaskQueue:
             character_name=character_name,
             session_id=session_id,
             messages=messages,
-            user_name=user_name
+            user_name=user_name,
+            channel_id=channel_id
         )
     
     async def enqueue_reflection(
@@ -380,7 +383,7 @@ class TaskQueue:
             character_name=character_name
         )
     
-    async def enqueue_knowledge_extraction(self, user_id: str, message: str, character_name: str) -> Optional[str]:
+    async def enqueue_knowledge_extraction(self, user_id: str, message: str, character_name: str, is_bot: bool = False) -> Optional[str]:
         """
         Queue a job to extract facts from a user message (SENSORY queue - fast analysis).
         
@@ -392,6 +395,7 @@ class TaskQueue:
             user_id: Discord user ID
             message: The message content
             character_name: The name of the bot (for privacy segmentation)
+            is_bot: If True, the message is from the bot itself (self-reflection)
             
         Returns:
             Job ID if queued, None if queue unavailable
@@ -402,7 +406,8 @@ class TaskQueue:
             _queue_name=self.QUEUE_SENSORY,
             user_id=user_id,
             message=message,
-            character_name=character_name
+            character_name=character_name,
+            is_bot=is_bot
         )
 
     async def enqueue_batch_knowledge_extraction(
