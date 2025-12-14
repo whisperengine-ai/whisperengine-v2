@@ -25,6 +25,7 @@ ADRs are immutable once accepted—if we change our minds, we create a new ADR t
 | [ADR-013: Event-Driven Architecture](./ADR-013-STREAMING_VS_POLLING.md) | 📋 Proposed | Dual-path: real-time (sacred) + autonomous (state machines) |
 | [ADR-014: Multi-Party Data Model](./ADR-014-MULTI_PARTY_DATA_MODEL.md) | 📋 Proposed | Conversation + Message + Participant schema |
 | [ADR-015: Daily Life Unified Autonomy](./ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md) | ✅ Accepted | Single polling-based path for all autonomous behavior |
+| [ADR-016: Worker Secrets Vault](./ADR-016-WORKER_SECRETS_VAULT.md) | 📋 Proposed | Redis vault + generic workers + per-bot inboxes |
 
 ---
 
