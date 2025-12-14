@@ -87,17 +87,18 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 **Legend:** 🔴 Critical | 🟢 High | 🟡 Medium | ⚪ Low
 
-#### 📋 Current Focus (Dec 13, 2025)
+#### 📋 Current Focus (Dec 14, 2025)
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
 | 🟢 High | **The Reverie** | Active Idle State (Memory Consolidation) | **Done** | ✅ Complete |
+| 🟢 High | **Multi-Party** | ADR-014 Phase 1 (Author Tracking) | **Done** | ✅ Complete |
 | 🟢 High | **Adaptive Identity** | Self-Editing Persona (Phase 2.6) | **1 week** | 🔄 Active |
 | 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **Ongoing** | 🔄 Active |
 
-#### 🔄 Re-Prioritized: Schema Before Automation (ADR-014 → ADR-017)
+#### ✅ Completed: Schema Before Automation (ADR-014)
 
-> **December 13, 2025:** We've clarified the dependency chain. Before implementing any autonomous behavior (including bot-to-bot), we need the multi-party data schema. See [ADR-017](./adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md).
+> **December 14, 2025:** We have completed the critical schema migration for multi-party conversations.
 
 **The Insight:**
 - Current schema assumes 1:1 conversations (`user_id` = THE human, `character_name` = THE bot)
@@ -105,12 +106,12 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 - Can't properly store "Bot A said X to Bot B" without `author_id` field
 - Learning and trust attribution are broken for multi-party
 
-**Correct Priority Order:**
+**Status:**
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| 🔴 **Do First** | **ADR-014 Phase 1** | Add `author_id`, `author_is_bot` to chat history | **1-2 days** | 📋 Next |
-| 🟢 High | **ADR-017 Phase 1** | Bot-to-bot responses (with lock coordination) | **1 day** | 📋 After ADR-014 |
+| 🔴 **Do First** | **ADR-014 Phase 1** | Add `author_id`, `author_is_bot` to chat history | **1-2 days** | ✅ Complete |
+| 🟢 High | **ADR-017 Phase 1** | Bot-to-bot responses (with lock coordination) | **1 day** | 📋 Next |
 | 🟡 Medium | **ADR-017 Phase 2** | Update learning/trust to use `author_id` | **1-2 days** | 📋 After Phase 1 |
 | ⏸️ Deferred | **ADR-016/013** | Full autonomous (vault, inboxes, initiation) | **TBD** | Deferred |
 
@@ -120,18 +121,13 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 #### ⏸️ DEFERRED: Full Autonomous Features (ADR-016/013)
 
-> **December 13, 2025:** All autonomous features (polling AND event-driven) are **disabled in code** pending architecture redesign. See [ADR-013](./adr/ADR-013-STREAMING_VS_POLLING.md) and [SPEC-E36](./spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md).
-
-**The Problem:**
-- Multiple bots in same channel all decide to respond independently → "pile-on"
-- Event-driven stream made it worse: N bots × N events = N² processing
-- No coordination mechanism exists to prevent duplicate responses
+> **December 14, 2025:** Autonomous features (Daily Life Graph) are **re-enabled** with per-channel configuration. The complex event-driven architecture (ADR-016) is deferred.
 
 **Current State:**
-- `DailyLifeScheduler.start()` — commented out in `bot.py`
-- `ActionPoller.start()` — commented out in `bot.py`
-- Bots only respond to direct interactions (DMs, @mentions, replies)
-- Cron jobs (dreams, diaries) still run via worker
+- `DailyLifeScheduler.start()` — ✅ Enabled (per-channel config)
+- `ActionPoller.start()` — ✅ Enabled
+- Bots respond to direct interactions AND autonomous triggers in watched channels
+- Cron jobs (dreams, diaries) run via worker
 
 **The Correct Fix (deferred):**
 1. Per-bot inboxes: `mailbox:{bot_name}:inbox` — not shared stream
@@ -140,10 +136,10 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| 🔴 Blocked | **Event Capture** | Redis stream capture in `on_message` | **2-3 days** | ⛔ Blocked by coordination problem |
-| 🔴 Blocked | **State Machines** | ConversationStateMachine (IDLE→ENGAGED→COOLING) | **3-4 days** | ⛔ Blocked |
-| 🔴 Blocked | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | ⛔ Blocked |
-| 🔴 Blocked | **Multi-Bot Coordination** | Per-bot inboxes + "did another bot respond?" check | **TBD** | ⛔ Requires design |
+| 🔴 Blocked | **Event Capture** | Redis stream capture in `on_message` | **2-3 days** | ⏸️ Deferred |
+| 🔴 Blocked | **State Machines** | ConversationStateMachine (IDLE→ENGAGED→COOLING) | **3-4 days** | ⏸️ Deferred |
+| 🔴 Blocked | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | ⏸️ Deferred |
+| 🔴 Blocked | **Multi-Bot Coordination** | Per-bot inboxes + "did another bot respond?" check | **TBD** | ⏸️ Deferred |
 
 **Reference Documents:**
 - [`ADR-013: Event-Driven Architecture`](./adr/ADR-013-STREAMING_VS_POLLING.md) — Full streaming design (deferred)
