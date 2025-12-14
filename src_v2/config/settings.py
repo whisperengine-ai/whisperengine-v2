@@ -108,6 +108,7 @@ class Settings(BaseSettings):
     # Redis (Caching)
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
     REDIS_KEY_PREFIX: str = Field(default="whisper:", description="Prefix for all Redis keys to avoid collisions")
+    REDIS_STREAM_KEY: str = Field(default="whisper:events", description="Redis Stream key for event sourcing")
     
     # --- API ---
     API_HOST: str = "0.0.0.0"

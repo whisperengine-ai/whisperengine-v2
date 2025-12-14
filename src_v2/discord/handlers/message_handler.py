@@ -3,6 +3,7 @@ import asyncio
 import time
 import random
 import re
+import json
 from typing import List, Tuple, Optional, Any, Dict
 from datetime import datetime, timezone, timedelta
 from loguru import logger
@@ -158,6 +159,43 @@ class MessageHandler:
     def __init__(self, bot):
         self.bot = bot
 
+    async def _capture_event(self, message: discord.Message) -> None:
+        """
+        Push message event to Redis Stream for the Event-Driven Architecture (The Stream).
+        This decouples perception from action.
+        """
+        try:
+            # Only capture events if Redis is available
+            if not db_manager.redis_client:
+                return
+
+            # Construct payload
+            payload = {
+                "type": "message",
+                "event_id": str(message.id),
+                "content": message.content or "",
+                "author_id": str(message.author.id),
+                "author_name": message.author.name,
+                "author_display_name": message.author.display_name,
+                "channel_id": str(message.channel.id),
+                "guild_id": str(message.guild.id) if message.guild else "",
+                "timestamp": message.created_at.isoformat(),
+                "mentions": json.dumps([str(m.id) for m in message.mentions]),
+                "is_bot": "1" if message.author.bot else "0",
+                "is_dm": "1" if isinstance(message.channel, discord.DMChannel) else "0",
+                "reference_id": str(message.reference.message_id) if message.reference else ""
+            }
+            
+            # Add to stream
+            await db_manager.redis_client.xadd(
+                settings.REDIS_STREAM_KEY,
+                payload,
+                maxlen=10000 # Keep last 10k events
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to capture event to Redis Stream: {e}")
+
     def _should_enqueue_enrichment(self, message_count: int) -> bool:
         return (
             settings.ENABLE_GRAPH_ENRICHMENT
@@ -194,6 +232,9 @@ class MessageHandler:
         # Prevent self-reply loops
         if self.bot.user and message.author.id == self.bot.user.id:
             return
+
+        # Capture event to Redis Stream (The Stream)
+        await self._capture_event(message)
 
         # Cross-bot detection (Phase E6) - Handle bot messages differently
         if message.author.bot:
