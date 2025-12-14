@@ -378,7 +378,7 @@ class DailyLifeGraph:
                 if can_reply:
                     instructions.append("- Reply if you are mentioned directly.")
                     instructions.append("- Reply if the topic is highly relevant and you have something valuable to add.")
-                    instructions.append(f"- If the author is a FRIEND (Trust >= {settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD}), feel free to banter, react, or acknowledge them even if the topic isn't 'important'. Relationships matter.")
+                    instructions.append(f"- If the author is a FRIEND (Trust >= {settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD}), you MAY reply if you have something unique to say, but do not feel obligated to reply to every message. Respect their space and avoid interrupting unless necessary.")
                     instructions.append("- IGNORE if the conversation has reached a natural conclusion or if you have already replied enough.")
                     instructions.append("- IGNORE if the user's message is just an acknowledgement (e.g. 'ok', 'cool', 'thanks') unless they are a friend and you want to keep talking.")
                     instructions.append("- When replying, your response will be THREADED to that specific message. Choose the message you're most directly responding to.")

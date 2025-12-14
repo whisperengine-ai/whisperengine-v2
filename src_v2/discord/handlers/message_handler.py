@@ -414,7 +414,8 @@ class MessageHandler:
                 if not should_trigger:
                     try:
                         rel = await trust_manager.get_relationship_level(str(message.author.id), self.bot.character_name)
-                        if rel.get("level", 1) >= 4:
+                        # Only trigger 40% of the time for trusted users to prevent "pile-on" from multiple bots
+                        if rel.get("level", 1) >= 4 and random.random() < 0.4:
                             should_trigger = True
                             trigger_reason = f"trusted_user_level_{rel.get('level')}"
                     except Exception as e:
