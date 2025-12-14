@@ -242,7 +242,8 @@ async def process_http_chat(job: dict):
 4. **Dynamic credential rotation**: Change token, restart bot, workers auto-update
 5. **Solves gateway constraint**: Workers use REST, no conflict with bot's gateway
 6. **Enables autonomous features**: Workers can now send to Discord directly
-7. **Natural coordination**: Workers share state via Redis (`recent_bot_posts`)8. **Bot becomes ultra-thin**: No LLM calls, no embeddings, no DB queries — just event capture
+7. **Natural coordination**: Workers share state via Redis (`recent_bot_posts`)
+8. **Bot becomes ultra-thin**: No LLM calls, no embeddings, no DB queries — just event capture
 9. **Bot never blocks**: `XADD` to Redis is ~1ms, bot stays responsive to Discord
 10. **Horizontal scaling**: Add workers for compute, bot stays lightweight
 
@@ -275,11 +276,38 @@ After:  10 concurrent users → bot queues 10 events in ~10ms
 1. **Secrets in Redis**: Acceptable for internal Docker network; may need encryption for external access
 2. **Bot must be running**: If bot dies, secrets expire (24h TTL). Workers fail gracefully.
 3. **Character config loading**: Workers need access to `characters/` directory (mount in Docker)
+4. **Polling latency**: ~100ms overhead for HTTP API due to response polling. Acceptable for human-facing responses.
+5. **Added complexity**: More moving parts (vault, inboxes, coordination). But each part is simple.
+6. **Redis as SPOF**: Redis down = everything stops. But this is already true today.
+7. **Cold start**: First request after bot restart waits for vault publish. ~1s delay.
 
 ### Neutral
 
 1. **Cron jobs**: Can use same pattern — look up secrets from vault
 2. **Existing shared worker**: Can migrate incrementally; current arq worker still works
+
+### Summary Table
+
+| Aspect | Benefit | Trade-off |
+|--------|---------|-----------|
+| **Bot blocking** | ~1ms vs 1.5-11s today | — |
+| **Worker scaling** | Add N workers, handles all bots | More containers |
+| **Config management** | Single source (`.env.{bot}`) | Secrets in Redis |
+| **Autonomous features** | Workers send via REST | Coordination needed |
+| **HTTP API** | Same client contract | ~100ms polling overhead |
+| **Resilience** | Bot crash → workers continue | Vault expires in 24h |
+| **Deployment flexibility** | Bots on tiny VMs, workers on GPU | Character files need mounting |
+
+## Open Questions
+
+| Question | Consideration |
+|----------|---------------|
+| **Direct DMs — delegate or local?** | Could process DMs locally (low latency) OR always delegate (consistency). Trade-off: latency vs simplicity. |
+| **Typing indicators** | Bot shows "typing" while waiting? Worker can't trigger typing via REST easily. May need bot to poll `typing:{channel_id}` flag. |
+| **Response streaming** | Current design returns full response. Streaming would need SSE or WebSocket pattern. |
+| **Worker failure mid-job** | Job lost if worker crashes. Could add ack/retry with Redis XPENDING for reliability. |
+| **Multiple messages** | Worker might want to send multiple messages (e.g., text + image). REST supports it, needs design. |
+| **Attachment handling** | Images/voice files need to flow through. Either URL in payload or separate upload step. |
 
 ## Alternatives Considered
 
@@ -348,3 +376,15 @@ External secrets management service.
 - **ADR-013**: Event-Driven Architecture (this implements the "inbox" concept)
 - **ADR-015**: Daily Life Unified Autonomy (superseded by this for autonomous features)
 - **SPEC-E36**: "The Stream" (related Redis event patterns)
+
+## Verdict
+
+**Strong design for the autonomous features problem.** The vault is the key insight — it makes workers truly generic and enables full decoupling between bot (sensor) and worker (brain).
+
+Main trade-off is **added complexity** vs **scalability + autonomous features**. For a solo dev, complexity matters. But:
+
+- Each piece is simple (vault = Redis hashes, inbox = Redis streams, REST = HTTP calls)
+- Migration can be incremental (start with one bot, keep others on old pattern)
+- Solves a real problem (autonomous features are currently broken)
+
+**Recommendation:** Worth building. Start with Phase 1 (vault) + Phase 2 (REST client), validate the pattern works, then continue with remaining phases.
