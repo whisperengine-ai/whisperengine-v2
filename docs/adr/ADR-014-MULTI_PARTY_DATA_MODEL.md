@@ -397,17 +397,33 @@ Drop `v2_chat_history` once all reads migrated.
 - [x] Update User node creation to set `is_bot` property
 - [x] Create `:AUTHORED` relationship when author != conversation partner
 
-**Code Integration:**
-- [x] `memory_manager.add_message()`: Add author parameters
-- [x] `memory_manager._save_vector_memory()`: Add author to payload  
-- [x] `memory_manager.save_typed_memory()`: Add author tracking (bot-generated)
-- [x] `memory_manager.save_summary_vector()`: Add author fields (bot-generated)
-- [x] `memory_manager.get_chat_history()`: Query and display author info
+**Code Integration (memory_manager.py):**
+- [x] `add_message()`: Add author parameters
+- [x] `_save_vector_memory()`: Add author to payload  
+- [x] `save_typed_memory()`: Add author tracking (bot-generated)
+- [x] `save_summary_vector()`: Add author fields (bot-generated)
+- [x] `get_chat_history()`: Query and display author info
+
+**Code Integration (Discord handlers):**
 - [x] `message_handler.py`: Pass `author_id`, `author_is_bot` when saving messages
 - [x] `daily_life.py`: Pass author fields for autonomous messages
 - [x] `broadcast/manager.py`: Author fields for broadcast posts and proactive DMs
 - [x] `vision/manager.py`: Author fields for image analysis memories
+
+**Code Integration (Direct Qdrant writes):**
+- [x] `memory/diary.py`: Diary entries with author fields
+- [x] `memory/dreams.py`: Dream entries with author fields
+- [x] `memory/shared_artifacts.py`: Shared artifacts with author fields
+
+**Code Integration (Worker tasks):**
+- [x] `workers/tasks/diary_tasks.py`: Uses `save_typed_memory()` (covered)
+- [x] `workers/tasks/dream_tasks.py`: Uses `save_typed_memory()` (covered)
+- [x] `tools/insight_tools.py`: Uses `save_typed_memory()` (covered)
+- [x] `agents/reverie/graph.py`: Uses `save_typed_memory()` (covered)
+
+**Code Integration (Knowledge):**
 - [x] `knowledge_manager.save_facts()`: Already handles `is_self_reflection` for bots
+- [x] `knowledge_manager.add_memory_node()`: Author tracking fields
 
 **Prompt Engineering (Context Formatting):**
 - [x] `master_graph.py`: Format memories with `[Author (bot)]:` prefix
