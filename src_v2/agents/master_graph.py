@@ -276,8 +276,9 @@ class MasterGraphAgent:
             elif complexity == "COMPLEX_LOW":
                 tools_available = True
             else:
-                # Default SIMPLE -> fast -> no tools
-                tools_available = False
+                # Default (SIMPLE) -> character agent -> has tools
+                # All queries now have single-tool-call capability for better personalization
+                tools_available = True
         
         # 1. Build base system context (Identity, Trust, Goals, Knowledge, Diary, Dreams)
         # Pass the pre-fetched context to avoid re-fetching
@@ -386,8 +387,9 @@ class MasterGraphAgent:
         if complexity == "COMPLEX_LOW":
             return "character"
             
-        # Default -> Fast
-        return "fast"
+        # Default (SIMPLE) -> Character Agent (ensures all queries have tool access)
+        # This allows even simple queries to use mem_search for better personalization
+        return "character"
 
     async def reflective_subgraph_node(self, state: SuperGraphState):
         """Wraps the ReflectiveGraphAgent."""
