@@ -22,7 +22,14 @@ All autonomous behavior (polling AND event-driven) is **disabled in code** due t
 - Cron jobs (dreams, diaries, session processing) via worker
 - All memory, knowledge, and learning systems
 
-**See:** [ADR-013](docs/adr/ADR-013-STREAMING_VS_POLLING.md), [SPEC-E36](docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md)
+**Proposed Solution:** [ADR-016: Worker Secrets Vault & Generic Workers](docs/adr/ADR-016-WORKER_SECRETS_VAULT.md)
+- Redis config vault (secrets + LLM params published by bot)
+- Generic workers (any worker handles any bot via vault lookup)
+- Per-bot inboxes (not shared stream)
+- Workers send to Discord via REST API (no gateway conflict)
+- Bot becomes thin gateway (~1ms per message vs 1.5-11s today)
+
+**See also:** [ADR-013](docs/adr/ADR-013-STREAMING_VS_POLLING.md), [SPEC-E36](docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md)
 
 ---
 
@@ -49,15 +56,19 @@ The following tasks are blocked pending multi-bot coordination solution:
 | Event Processing | ⛔ Blocked | Worker can't access Discord (needs bot token) |
 | Validation & Cutover | ⛔ Blocked | Requires working implementation |
 
-**The Correct Fix (deferred):**
-1. Per-bot inboxes: `mailbox:{bot_name}:inbox` — not shared stream
-2. Coordination at decision time: "Did another bot just post?" check  
-3. Bot writes to OWN inbox only — no N² duplication
+**The Correct Fix: [ADR-016](docs/adr/ADR-016-WORKER_SECRETS_VAULT.md)**
+1. **Config vault**: Bot publishes secrets + LLM config to Redis on startup
+2. **Generic workers**: Any worker handles any bot (fetches config from vault)
+3. **Per-bot inboxes**: `inbox:{bot_name}` — not shared stream, no N² duplication
+4. **Discord REST API**: Workers send messages via REST (same token, no gateway conflict)
+5. **Coordination**: Workers check `channel:{id}:recent_bot_posts` before responding
 
-### 🔜 Next Steps (After Coordination Design)
-- [ ] Design multi-bot coordination mechanism
-- [ ] Implement per-bot inbox architecture
-- [ ] Add "did another bot respond?" check to decision logic
+### 🔜 Next Steps (ADR-016 Implementation)
+- [ ] **Phase 1**: Config vault (`src_v2/core/vault.py`) — bot publishes secrets + LLM config
+- [ ] **Phase 2**: Discord REST client (`src_v2/discord/rest_client.py`) — workers send via REST
+- [ ] **Phase 3**: Generic worker — reads from all inboxes, fetches config per job
+- [ ] **Phase 4**: Bot inbox publishing — channel messages → `XADD inbox:{bot_name}`
+- [ ] **Phase 5**: Coordination layer — `channel:{id}:recent_bot_posts` check
 - [ ] Re-enable autonomous features with coordination
 
 ---

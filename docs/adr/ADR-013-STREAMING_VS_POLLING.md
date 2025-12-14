@@ -37,6 +37,18 @@ This ADR's design is correct in principle:
 
 But implementation requires more careful work than was done.
 
+### Proposed Solution: ADR-016
+
+[ADR-016: Worker Secrets Vault & Generic Workers](./ADR-016-WORKER_SECRETS_VAULT.md) builds on this design:
+
+1. **Config Vault**: Bot publishes secrets + LLM config to Redis (`vault:{bot}:*`)
+2. **Generic Workers**: Any worker handles any bot (fetches config from vault)
+3. **Discord REST API**: Workers send messages via REST (same token, no gateway conflict)
+4. **Bot = Thin Gateway**: ~1ms per message (just `XADD` to inbox)
+5. **Worker = Brain**: All LLM, memory, knowledge work happens in workers
+
+This enables the event-driven architecture while solving the "worker can't send to Discord" problem.
+
 ---
 
 ## Origin

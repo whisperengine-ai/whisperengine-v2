@@ -56,12 +56,21 @@ Rather than ship broken behavior (pile-on, duplicate processing), we disabled al
 - Cron jobs (dreams, diaries) via worker
 - All memory/knowledge systems
 
-### The Correct Design (ADR-013)
+### The Correct Design (ADR-013 + ADR-016)
 
 ADR-013 specifies the fix:
 1. **Per-bot inboxes:** `mailbox:{bot_name}:inbox` - not a shared stream
 2. **Coordination at decision time:** Check "did another bot just post?" before responding
 3. **Bot writes to OWN inbox only** - no N² duplication
+
+[ADR-016: Worker Secrets Vault & Generic Workers](../adr/ADR-016-WORKER_SECRETS_VAULT.md) adds the missing piece:
+1. **Config Vault:** Bot publishes secrets + LLM config to Redis (`vault:{bot}:*`)
+2. **Generic Workers:** Any worker handles any bot (fetches config from vault)
+3. **Discord REST API:** Workers send messages via REST (same token, no gateway conflict)
+4. **Bot = Thin Gateway:** ~1ms per message (just `XADD` to inbox), no blocking
+5. **Worker = Brain:** All LLM, memory, knowledge work offloaded to workers
+
+This solves the "worker can't access Discord" blocker.
 
 This requires significant refactoring and is deferred.
 
