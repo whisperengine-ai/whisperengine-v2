@@ -47,10 +47,9 @@ class WhisperBot(commands.Bot):
     async def setup_hook(self) -> None:
         """Async setup hook called before the bot starts."""
         
-        # Start Daily Life System
-        self.daily_scheduler.start()
-        self.action_poller.start()
-
+        # Daily Life System - DISABLED pending architecture redesign
+        # self.daily_scheduler.start()
+        # self.action_poller.start()
 
         # Load slash commands
         from src_v2.discord.commands import setup as setup_commands
