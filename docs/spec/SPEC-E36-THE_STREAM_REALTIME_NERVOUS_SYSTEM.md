@@ -1,9 +1,9 @@
 # SPEC-E36: The Stream (Real-time Nervous System)
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Created:** December 11, 2025
 **Updated:** December 13, 2025
-**Status:** ✅ Phase 1 Complete, 📋 Phase 2 Proposed
+**Status:** ✅ Phase 2 Complete (Event-Driven Architecture)
 **Priority:** 🟡 Medium
 **Dependencies:** Redis
 **Superseded by:** ADR-013 (for Phase 2 architecture)
@@ -21,10 +21,10 @@ The initial implementation added **immediate triggers** for high-signal events:
 - Still uses snapshot model underneath
 - Debounce via Redis key
 
-### Phase 2: Full Event-Driven (📋 PROPOSED - ADR-013)
+### Phase 2: Full Event-Driven (✅ COMPLETE - Dec 13, 2025)
 The next evolution replaces the polling/snapshot model entirely:
-- ALL channel events → Redis streams
-- Explicit state machines (IDLE→WATCHING→ENGAGED→COOLING)
+- ALL channel events → Redis streams (`whisper:events`)
+- Stream Consumer (Worker) → Inbox Logic → Action
 - On-demand context fetching (no pre-scraping)
 - Natural threading (reply to the message that triggered engagement)
 

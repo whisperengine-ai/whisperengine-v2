@@ -1,10 +1,8 @@
 # ADR-013: Event-Driven Architecture with State Machines
 
-**Status:** 📋 Proposed  
-**Date:** December 13, 2025 (Revised)  
-**Last Updated:** December 13, 2025 (Added Inbox/Outbox "Ant Mailbox" pattern)
-**Deciders:** Mark, Claude (collaborative)
-
+**Status:** ✅ Accepted & Implemented
+**Date:** December 13, 2025 (Revised)
+**Last Updated:** December 13, 2025 (Implemented Stream Consumer)
 ## Origin
 
 | Field | Value |

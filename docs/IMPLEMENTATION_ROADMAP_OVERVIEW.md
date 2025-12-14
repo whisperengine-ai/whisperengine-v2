@@ -99,10 +99,10 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| 🟡 Medium | **Event Capture** | Redis stream capture in `on_message` (fire-and-forget) | **2-3 days** | 📋 Week 2 |
+| 🟡 Medium | **Event Capture** | Redis stream capture in `on_message` (fire-and-forget) | **2-3 days** | ✅ Complete |
 | 🟡 Medium | **State Machines** | ConversationStateMachine (IDLE→ENGAGED→COOLING) | **3-4 days** | 📋 Week 3 |
-| 🟡 Medium | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | 📋 Week 4 |
-| ⚪ Low | **Validation** | Parallel run, tune thresholds, feature flag | **3-4 days** | 📋 Week 5 |
+| 🟡 Medium | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | ✅ Complete |
+| ⚪ Low | **Validation** | Parallel run, tune thresholds, feature flag | **3-4 days** | 🔄 Active |
 
 **Reference Documents:**
 - [`ADR-013: Event-Driven Architecture`](./adr/ADR-013-STREAMING_VS_POLLING.md) — Full streaming design
