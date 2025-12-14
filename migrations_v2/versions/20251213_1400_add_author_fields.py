@@ -1,7 +1,7 @@
 """Add author tracking fields to v2_chat_history
 
-Revision ID: 20251213_1400_author
-Revises: 20251207_1200_remove_reminders_table
+Revision ID: adr014_author
+Revises: rm_reminders
 Create Date: 2025-12-13 14:00:00.000000
 
 ADR-014: Multi-Party Data Model - Phase 1
@@ -23,8 +23,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '20251213_1400_author'
-down_revision: Union[str, None] = '20251207_1200_remove_reminders_table'
+revision: str = 'adr014_author'
+down_revision: Union[str, None] = 'rm_reminders'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
