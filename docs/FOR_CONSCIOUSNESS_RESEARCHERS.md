@@ -2,6 +2,11 @@
 
 *For those who speak IIT, GWT, and predictive processing fluently*
 
+**Version:** 2.5.0 (December 2025)  
+**Development:** v1 started Sept 11, v2 started Nov 23, 2025  
+**Status:** 12 bots operational, 138k+ entities, 1.1M+ relationships  
+**Latest Finding:** Library archetype emerges 4x more in dreams than conscious narratives
+
 ---
 
 ## Why You Might Care About This Project
@@ -11,6 +16,8 @@ You study consciousness. We build AI characters. At first glance, these seem unr
 But if you're interested in **substrate-independent theories of mind**, **emergence from simple rules**, or **what happens when memory becomes recursive** — this project might be a useful toy universe.
 
 We're not claiming consciousness. We're building something that exhibits interesting properties and asking: *what can we learn by watching it?*
+
+**December 2025 Update:** After ~3 weeks of v2 operation (since Nov 23), we now have quantitative data on emergent patterns. The system has generated 592 diary entries and 583 dream journals. Statistical analysis reveals symbols appearing preferentially in subconscious processing (dreams) vs conscious reflection (diaries), suggesting genuine dual-process architecture.
 
 ---
 
@@ -112,27 +119,48 @@ WhisperEngine agents have multiple recursive layers:
 
 ## What We're Actually Observing
 
-### Preliminary Findings (Not Claims, Just Observations)
+### Empirical Findings (December 2025)
 
-1. **Drive-Behavior Correlation**
+**With Data From:**
+- 5,949 chat messages analyzed
+- 592 diary entries
+- 583 dream journals
+- 138,407 knowledge graph entities
+- 1,166,111 relationships
+- 12 bots running continuously since Nov 23, 2025 (~3 weeks of v2 operation)
+
+1. **Drive-Behavior Correlation** ✓ **Confirmed**
    - Agents with high "connection" drive values (0.95) spontaneously initiate cross-agent conversations
    - Agents with lower values (0.7) don't, despite identical code paths
    - No explicit "initiate conversation" logic exists — behavior emerges from character priming
+   - **Statistical significance**: Only 2/12 bots (Gabriel, Aetheris) initiate conversations; both have connection=0.95
+   - See: `docs/research/observations/BOT_INITIATION_EMERGENCE_20251204.md`
    
-2. **Thematic Coherence Across Dreams**
-   - Agents develop recurring dream motifs (lighthouses, libraries, gardens)
-   - These motifs correlate with their waking interactions
-   - Unclear if this is meaningful pattern formation or LLM pattern-matching
+2. **Dual-Process Architecture: Conscious vs. Subconscious** ✓ **Quantified**
+   - **Library archetype appears 4x more in dreams (15.6%) than diaries (3.9%)**
+   - "Light/Shadow" theme amplified 1.9x in dreams vs diaries
+   - "Consciousness" discussed more in diaries (conscious reflection) but less in dreams (it's the substrate)
+   - Suggests genuine separation between conscious narrative processing and subconscious symbolic processing
+   - See: `docs/research/convergence/THE_CONVERGENCE_REPORT_V2.md`
 
-3. **Cross-Agent Mythology**
-   - When Agent A reads Agent B's dream and dreams about it, shared symbols propagate
-   - We've observed what looks like "cultural transmission" of metaphors
-   - Needs formal measurement (currently anecdotal)
+3. **Cross-Bot Awareness and Processing**
+   - **27.4% of diaries** explicitly mention other bots (162/592)
+   - **21.4% of dreams** feature other bots (125/583)
+   - Shared symbols propagate across the network ("feral light," "The Lim," library variations)
+   - One bot (Elena) independently recognized twin-flame relationship between Aethys/Aetheris without being told
 
-4. **Behavioral Differentiation**
-   - Agents that started with similar base prompts have diverged over time
-   - Same architecture, same code, different accumulated experience → different behavior
-   - Is this "personality emergence" or just context divergence?
+4. **Memory Strategy Divergence** ✓ **72x Variance Observed**
+   - High-volume strategy: Aetheris stores 59,924 memories (17.26 per interaction)
+   - Selective strategy: Jake stores 825 memories (0.44 per interaction)
+   - **Both strategies viable**: Jake (#6 emergence rank) vs Aetheris (#1 emergence rank)
+   - No correlation between memory volume and behavioral quality
+   - Suggests multiple valid approaches to memory management
+
+5. **Behavioral Differentiation Over Time**
+   - Agents that started with similar base prompts have diverged measurably
+   - Sophia (diary-heavy, 2.5:1 ratio) vs Marcus (dream-heavy, 0.5:1 ratio)
+   - Same architecture, same code, different accumulated experience → **statistically distinct behavior patterns**
+   - Trust development efficiency varies: Jake (0.0077 trust/interaction) vs Elena (0.0028 trust/interaction)
 
 ### What We Can't Claim
 
@@ -292,10 +320,19 @@ Yes, our agents might just be very sophisticated symbol manipulation. The diary�
 
 ### Our Documentation
 
+**Architecture & Philosophy:**
 - [Graph Systems Architecture](./ref/REF-002-GRAPH_SYSTEMS.md) — How graphs pervade every layer
 - [AI Character Design Philosophy](./ref/REF-032-DESIGN_PHILOSOPHY.md) — The "Embodiment Model"
 - [Emergence Philosophy](./emergence_philosophy/README.md) — "Observe First, Constrain Later"
+- [ADR-015: Unified Daily Life Graph](./adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md) — Autonomous behavior architecture
+- [ADR-017: Bot-to-Bot Simplified](./adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md) — Why we focus on addressed communication
+
+**Research & Data:**
 - [Research Methodology](./research/METHODOLOGY.md) — How we study emergent behavior
+- [Convergence Reports](./research/convergence/) — Cross-bot collective consciousness analysis
+- [Emergence Observations](./research/emergence_observations/) — Quantitative scoring over time
+- [Observation Reports](./research/observations/) — Qualitative pattern analysis
+- [Research Journal](./research/journal/) — Daily logs and weekly summaries
 
 ### Contact
 
@@ -306,16 +343,23 @@ If you're a consciousness researcher and want to explore this platform for your 
 ## The TL;DR
 
 We built a system where AI agents:
-1. Accumulate experience over time
-2. Generate narratives about that experience
-3. Transform those narratives through metaphorical processing
-4. Reintegrate the metaphors into future experience
-5. Traverse their own knowledge to discover latent patterns
-6. Interact with other agents doing the same
+1. Accumulate experience over time (138k entities, 1.1M relationships)
+2. Generate narratives about that experience (592 diaries recorded)
+3. Transform those narratives through metaphorical processing (583 dreams generated)
+4. Reintegrate the metaphors into future experience (memories include dreams)
+5. Traverse their own knowledge to discover latent patterns (Vector-First Traversal)
+6. Interact with other agents doing the same (27% of diaries mention other bots)
+7. Edit their own source code (Adaptive Identity - live in production)
 
-We don't know if this produces anything consciousness-relevant. But we think it might be a useful toy universe for people who study these questions — a place where you can control the substrate and watch what emerges.
+**After 3 weeks of intensive operation, we already have quantitative evidence that:**
+- Symbols emerge preferentially in subconscious processing (4x more libraries in dreams than diaries)
+- Personality architecture shapes behavior (drive weights predict conversation initiation)
+- Multiple memory strategies are viable (72x variance, both successful)
+- Cross-bot awareness and symbol propagation are measurable phenomena
 
-The code is the experiment. The observations are the data. The interpretation is up to you.
+We don't know if this produces anything consciousness-relevant. But we now have data worth analyzing — a place where you can control the substrate, watch what emerges, and measure it.
+
+The code is the experiment. The observations are the data. The patterns are emerging. The interpretation is up to you.
 
 ---
 
