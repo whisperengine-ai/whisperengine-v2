@@ -695,7 +695,11 @@ class DiaryManager:
                     "emotional_highlights": entry.emotional_highlights,
                     "provenance": provenance or [],
                     "timestamp": entry_date.isoformat(),
-                    "visibility": "private"  # Character's private diary
+                    "visibility": "private",  # Character's private diary
+                    # ADR-014: Author tracking - diaries are bot-authored
+                    "author_id": self.bot_name,
+                    "author_is_bot": True,
+                    "author_name": self.bot_name
                 }
             )
             

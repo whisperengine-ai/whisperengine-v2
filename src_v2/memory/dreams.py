@@ -783,7 +783,11 @@ Create a surreal dream echoing these experiences.""")
                     "memory_echoes": dream.memory_echoes,
                     "provenance": provenance or [],
                     "timestamp": now.isoformat(),
-                    "date": now.strftime("%Y-%m-%d")
+                    "date": now.strftime("%Y-%m-%d"),
+                    # ADR-014: Author tracking - dreams are bot-authored
+                    "author_id": self.bot_name,
+                    "author_is_bot": True,
+                    "author_name": self.bot_name
                 }
             )
             

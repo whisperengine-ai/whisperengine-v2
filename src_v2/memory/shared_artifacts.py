@@ -39,6 +39,10 @@ class SharedArtifactManager:
                 "user_id": user_id,
                 "confidence": confidence,
                 "created_at": datetime.now(timezone.utc).isoformat(),
+                # ADR-014: Author tracking - shared artifacts are bot-authored
+                "author_id": source_bot,
+                "author_is_bot": True,
+                "author_name": source_bot,
                 **metadata
             }
 
