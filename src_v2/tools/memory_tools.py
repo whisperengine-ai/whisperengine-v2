@@ -263,7 +263,7 @@ class SearchSummariesTool(BaseTool):
             collection_name = f"whisperengine_memory_{self.character_name}"
             results = await memory_manager.search_summaries(query, self.user_id, start_timestamp=start_ts, collection_name=collection_name)
             if not results:
-                return "No relevant summaries found."
+                return "NOT IN MY RECORDS: No conversation summaries found for that time period or topic. This may be before my records began or we didn't discuss this."
             
             # Limit results for Reflective Mode to reduce token bloat
             limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
@@ -457,7 +457,7 @@ RESULTS include [Graph: ...] context showing related facts and linked memories f
                 logger.info(f"[SearchEpisodesTool] No results for query: '{query}'")
             
             if not results:
-                return "No specific memories found."
+                return "NOT IN MY RECORDS: I searched my memory but found nothing matching that query. I genuinely don't have this stored - please don't try to reconstruct or imagine what it might have been."
             
             # Filter out low-value results:
             # - Meta-questions about memory/channel (these are queries, not content)
@@ -482,7 +482,7 @@ RESULTS include [Graph: ...] context showing related facts and linked memories f
             
             if not filtered_results:
                 logger.info(f"[SearchEpisodesTool] All {len(results)} results filtered out (meta-questions or too short)")
-                return "No substantive memories found matching your query."
+                return "NOT IN MY RECORDS: I found some results but they were all meta-questions, not actual content. I don't have the specific memory you're looking for stored."
             
             # Limit results for Reflective Mode to reduce token bloat
             limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
@@ -917,7 +917,7 @@ Input is the 'session_id' found in the output of 'old_summaries'."""
         try:
             messages = await session_manager.get_session_messages(session_id)
             if not messages:
-                return f"No messages found for session {session_id}."
+                return f"NOT IN MY RECORDS: No messages found for session {session_id}. This session may have been deleted or never existed."
             
             formatted = []
             for msg in messages:
@@ -953,7 +953,7 @@ This searches the 'content' property of Memory nodes in the graph."""
         try:
             results = await knowledge_manager.search_memories_in_graph(self.user_id, query)
             if not results:
-                return "No matching memories found in the graph."
+                return "NOT IN MY RECORDS: No exact matches found in the knowledge graph. If you're looking for specific text (a poem, letter, etc.), I genuinely don't have it stored."
             
             formatted = []
             for r in results:
