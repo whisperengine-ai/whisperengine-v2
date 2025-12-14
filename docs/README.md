@@ -31,6 +31,11 @@ docs/
 │   ├── ROADMAP_V2.5_EVOLUTION.md      # The path to v2.5 (Predictive Processing)
 │   └── PHASE_2_ROADMAP.md             # Detailed Phase 2 items
 │
+├── proposals/                         # 💡 Research Proposals
+│   ├── PROP-005-ASYNC_WORKER_ARCHITECTURE.md # Background worker redesign
+│   ├── PROP-006-EXPLOITING_INTERNAL_MEMORY_TYPES.md # Using diaries/dreams/reveries
+│   └── ambient-graph-memory-proposal.md # Associative memory triggers
+│
 ├── adr/                               # 🏗️ Architecture Decision Records
 │   ├── README.md                      # ADR index & format guide
 │   ├── ADR-001-EMBODIMENT_MODEL.md    # No "AI self" behind character
