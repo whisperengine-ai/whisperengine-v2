@@ -298,6 +298,36 @@ class MasterGraphAgent:
         has_documents = context_variables.get("has_documents", False)
         memories = context_data.get("memories", [])
         
+        # Check for temporal query mismatch (SPEC-E32: anti-confabulation)
+        # If user asked about a specific date but we have no memories from that date, warn the agent
+        classification = state.get("classification", {})
+        query_extraction = classification.get("query") if classification else None
+        time_range = query_extraction.get("time_range") if query_extraction else None
+        
+        temporal_warning = ""
+        if time_range:
+            start_date = time_range.get("start", "")
+            end_date = time_range.get("end", "")
+            
+            # Check if any memories fall within the requested range
+            has_matching_memory = False
+            for mem in memories:
+                mem_ts = mem.get("timestamp", "")
+                if mem_ts:
+                    mem_date = mem_ts[:10]  # Extract YYYY-MM-DD
+                    if start_date <= mem_date <= end_date:
+                        has_matching_memory = True
+                        break
+            
+            if not has_matching_memory and memories:
+                # We have memories but none from the requested date
+                temporal_warning = f"\n\n⚠️ TEMPORAL MISMATCH: The user is asking about {start_date} to {end_date}, but NONE of the memories below are from that date range. My database records may not go back that far. DO NOT fabricate or reconstruct content that supposedly happened on that date. Instead, tell the user honestly that you don't have records from that specific date.\n"
+                logger.info(f"Temporal mismatch detected: requested {start_date} to {end_date}, no matching memories")
+            elif not memories:
+                # No memories at all
+                temporal_warning = f"\n\n⚠️ TEMPORAL QUERY: The user is asking about {start_date} to {end_date}, but I found NO memories from that time period. My database records may not go back that far. DO NOT fabricate content. Tell the user honestly that you don't have records from that date.\n"
+                logger.info(f"Temporal query with no results: requested {start_date} to {end_date}")
+
         if memories and not has_documents:
             memory_context = ""
             for mem in memories:
@@ -346,6 +376,10 @@ class MasterGraphAgent:
                 system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
         elif has_documents:
             logger.debug("Skipping memory context injection for document-focused request")
+        
+        # Add temporal warning if applicable (anti-confabulation)
+        if temporal_warning:
+            system_content += temporal_warning
 
         # 3. Template Variable Substitution
         # Replace {user_name}, {current_datetime}, and any other context variables

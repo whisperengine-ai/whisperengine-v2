@@ -255,9 +255,28 @@ class SearchSummariesTool(BaseTool):
     def _run(self, query: str, time_range: Optional[str] = None) -> str:
         raise NotImplementedError("Use _arun instead")
 
+    def _extract_date_from_query(self, query: str) -> Optional[str]:
+        """Extract a specific date reference from the query."""
+        import re
+        patterns = [
+            r'(?:dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?',
+            r'(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(?:dec(?:ember)?)(?:\s*,?\s*(\d{4}))?',
+        ]
+        query_lower = query.lower()
+        for pattern in patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                day = match.group(1)
+                year = match.group(2) if match.lastindex >= 2 and match.group(2) else "2025"
+                return f"2025-12-{int(day):02d}"
+        return None
+
     async def _arun(self, query: str, time_range: Optional[str] = None) -> str:
         try:
             start_ts = self._parse_time_range(time_range) if time_range else None
+            
+            # Detect if user is asking about a specific date
+            target_date = self._extract_date_from_query(query)
             
             # IMPORTANT: Pass collection_name to avoid worker context issues
             collection_name = f"whisperengine_memory_{self.character_name}"
@@ -269,11 +288,18 @@ class SearchSummariesTool(BaseTool):
             limit = settings.REFLECTIVE_MEMORY_RESULT_LIMIT
             results = results[:limit]
             
+            # Check if any results match the target date
+            date_warning = ""
+            if target_date:
+                has_match = any(target_date in r.get('timestamp', '') for r in results)
+                if not has_match:
+                    date_warning = f"\n\n⚠️ DATE MISMATCH: You asked about {target_date}, but NONE of these summaries are from that date. My records may not go back that far. DO NOT fabricate - tell the user you don't have records from that specific date."
+            
             formatted = "\n".join([
                 f"- [Session: {r.get('session_id', 'unknown')}] [Score: {r['meaningfulness']}/5] {r['content']} ({r['timestamp'][:10]})" 
                 for r in results
             ])
-            return f"Found {len(results)} Summaries (top matches):\n{formatted}"
+            return f"Found {len(results)} Summaries (top matches):\n{formatted}{date_warning}"
         except Exception as e:
             return f"Error searching summaries: {e}"
 
@@ -422,9 +448,39 @@ RESULTS include [Graph: ...] context showing related facts and linked memories f
             logger.error(f"Raw history search failed: {e}")
             return []
 
+    def _extract_date_from_query(self, query: str) -> Optional[str]:
+        """Extract a specific date reference from the query (e.g., 'Dec 1', 'December 3rd')."""
+        import re
+        # Match patterns like "Dec 1", "December 3rd", "dec 1 2025", "December 1st, 2025"
+        patterns = [
+            r'(?:dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?',
+            r'(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(?:dec(?:ember)?)(?:\s*,?\s*(\d{4}))?',
+        ]
+        query_lower = query.lower()
+        for pattern in patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                day = match.group(1)
+                year = match.group(2) if match.lastindex >= 2 and match.group(2) else "2025"
+                return f"2025-12-{int(day):02d}"  # Normalize to YYYY-MM-DD
+        return None
+
+    def _check_date_match(self, results: List[dict], target_date: str) -> bool:
+        """Check if any results are from the target date."""
+        for r in results:
+            timestamp = r.get('timestamp', '')
+            if timestamp and target_date in timestamp:
+                return True
+        return False
+
     async def _arun(self, query: str) -> str:
         try:
             logger.info(f"[SearchEpisodesTool] Query: '{query}' for user {self.user_id}")
+            
+            # Detect if user is asking about a specific date
+            target_date = self._extract_date_from_query(query)
+            if target_date:
+                logger.info(f"[SearchEpisodesTool] Detected date query: {target_date}")
             
             # Use standard memory search (episodes) with correct collection
             collection_name = f"whisperengine_memory_{self.character_name}"
@@ -530,7 +586,16 @@ RESULTS include [Graph: ...] context showing related facts and linked memories f
                         formatted_lines.append(f"- ({relative_time}) {content}{graph_context}")
             
             formatted = "\n".join(formatted_lines)
-            return f"Found {len(filtered_results)} memories:\n{formatted}"
+            
+            # Check if user asked about a specific date but results are from different dates
+            date_warning = ""
+            if target_date:
+                has_matching_date = self._check_date_match(filtered_results, target_date)
+                if not has_matching_date:
+                    date_warning = f"\n\n⚠️ DATE MISMATCH: You asked about {target_date}, but NONE of these results are from that date. My records may not go back that far, or we didn't have a conversation that day. DO NOT fabricate content - tell the user you don't have records from that specific date."
+                    logger.info(f"[SearchEpisodesTool] Date mismatch warning: asked for {target_date}, no matching results")
+            
+            return f"Found {len(filtered_results)} memories:\n{formatted}{date_warning}"
         except Exception as e:
             logger.error(f"Error searching memories: {e}")
             return f"Error searching memories: {e}"
