@@ -569,6 +569,88 @@ class MemoryManager:
             logger.error(f"Failed to save summary vector: {e}")
             return None
 
+    async def search_memories_by_date_postgres(
+        self,
+        user_id: str,
+        start_date: str,
+        end_date: str,
+        limit: int = 50,
+        channel_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Postgres-first temporal search using indexed timestamp column.
+        This is FAST (~5-10ms) for date queries since timestamp is indexed.
+        Returns complete messages (no chunks, no semantic scoring).
+        
+        Args:
+            user_id: User ID to filter by
+            start_date: ISO format "YYYY-MM-DD"
+            end_date: ISO format "YYYY-MM-DD" (inclusive)
+            limit: Max results
+            channel_id: Optional channel filter
+            
+        Returns:
+            List of full messages with metadata
+        """
+        try:
+            # Parse dates
+            start_dt = datetime.datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0)
+            end_dt = datetime.datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+            
+            query = """
+                SELECT 
+                    message_id,
+                    user_id,
+                    role,
+                    content,
+                    timestamp,
+                    channel_id,
+                    user_name,
+                    author_id,
+                    author_is_bot,
+                    reply_to_msg_id
+                FROM v2_chat_history
+                WHERE user_id = $1
+                    AND timestamp >= $2
+                    AND timestamp <= $3
+            """
+            params = [str(user_id), start_dt, end_dt]
+            
+            if channel_id:
+                query += " AND channel_id = $4"
+                params.append(str(channel_id))
+            
+            query += " ORDER BY timestamp DESC LIMIT $" + str(len(params) + 1)
+            params.append(limit)
+            
+            async with db_manager.postgres_pool.acquire() as conn:
+                rows = await conn.fetch(query, *params)
+            
+            results = []
+            for row in rows:
+                results.append({
+                    "message_id": str(row["message_id"]),
+                    "user_id": str(row["user_id"]),
+                    "role": row["role"],
+                    "content": row["content"],
+                    "timestamp": row["timestamp"].isoformat() if row["timestamp"] else None,
+                    "channel_id": str(row["channel_id"]) if row["channel_id"] else None,
+                    "user_name": row["user_name"],
+                    "author_id": str(row["author_id"]) if row["author_id"] else None,
+                    "author_is_bot": row["author_is_bot"],
+                    "author_name": None,  # Column does not exist in Postgres
+                    "reply_to_msg_id": str(row["reply_to_msg_id"]) if row["reply_to_msg_id"] else None,
+                    "score": 1.0,  # No semantic scoring for Postgres results
+                    "source": "postgres"
+                })
+            
+            logger.info(f"Postgres temporal search: found {len(results)} messages for {start_date} to {end_date}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Postgres temporal search failed: {e}")
+            return []
+
     async def search_memories(
         self, 
         query: str, 
@@ -588,6 +670,11 @@ class MemoryManager:
         
         Episodes decay faster than summaries since they're raw conversation fragments.
         
+        HYBRID TEMPORAL SEARCH (when time_range specified):
+        1. Try Postgres first (indexed, fast, complete messages)
+        2. If 0 results → Qdrant vector search (semantic match + post-filter)
+        3. If still 0 → Qdrant scroll fallback (no semantic, just date match)
+        
         Args:
             query: Search query (use extracted search_terms for long messages)
             user_id: User ID to filter by - memories follow this user across all channels
@@ -598,6 +685,26 @@ class MemoryManager:
             bot_id: Optional bot ID. If provided with channel_id, enables "Dual Stream" retrieval:
                     (user_id == user_id) OR (channel_id == channel_id AND user_id == bot_id)
         """
+        start_time = time.time()
+        
+        # HYBRID TEMPORAL SEARCH: Try Postgres first for date queries
+        if time_range and time_range.get("start") and time_range.get("end"):
+            logger.info(f"Temporal query detected - trying Postgres first for {time_range['start']} to {time_range['end']}")
+            postgres_results = await self.search_memories_by_date_postgres(
+                user_id=user_id,
+                start_date=time_range["start"],
+                end_date=time_range["end"],
+                limit=limit,
+                channel_id=channel_id
+            )
+            
+            if postgres_results:
+                elapsed = time.time() - start_time
+                logger.info(f"Postgres temporal search SUCCESS: {len(postgres_results)} results in {elapsed:.3f}s")
+                return postgres_results
+            
+            logger.warning(f"Postgres returned 0 results, falling back to Qdrant vector search")
+        
         start_time = time.time()
         if not db_manager.qdrant_client:
             logger.warning("Qdrant client not available for search_memories")
@@ -769,6 +876,107 @@ class MemoryManager:
                     
                     deduplicated = filtered
                     logger.info(f"Time filter ({time_range['start']} to {time_range['end']}): {pre_filter_count} → {len(deduplicated)} results")
+                    
+                    # Fallback: If date filter yielded 0 results, use scroll to find *anything* from that date
+                    # (no semantic matching needed, just grab whatever exists in that time window)
+                    if len(deduplicated) == 0:
+                        logger.info(f"No results from date filter. Attempting fallback with scroll (no semantic matching).")
+                        
+                        # Scroll for user's memories (no timestamp filter in Qdrant since that doesn't work with ISO strings)
+                        scroll_filter = Filter(
+                            must=[
+                                FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
+                            ]
+                        )
+                        
+                        # Use scroll to get memories (we'll filter by date in Python)
+                        try:
+                            scroll_result = await db_manager.qdrant_client.scroll(
+                                collection_name=target_collection,
+                                scroll_filter=scroll_filter,
+                                limit=100,  # Fetch more for date filtering
+                                with_payload=True
+                            )
+                            
+                            fallback_points = scroll_result[0] if scroll_result else []
+                            logger.info(f"Fallback scroll found {len(fallback_points)} total results (before date filter)")
+                            
+                            # Filter by date in Python
+                            date_matched = []
+                            for point in fallback_points:
+                                payload = point.payload or {}
+                                ts_str = payload.get("timestamp")
+                                if ts_str:
+                                    try:
+                                        ts = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                                        if ts.tzinfo:
+                                            ts = ts.replace(tzinfo=None)
+                                        if start_date <= ts <= end_date:
+                                            date_matched.append(point)
+                                    except (ValueError, TypeError):
+                                        pass
+                            
+                            logger.info(f"Fallback scroll date match: {len(fallback_points)} → {len(date_matched)} results")
+                            
+                            # Convert to same format as vector search results
+                            fallback_results = []
+                            for point in date_matched:
+                                payload = point.payload or {}
+                                # Use neutral score since we didn't do semantic search
+                                temporal_weight = scoring.calculate_temporal_weight(payload)
+                                source_type = payload.get("source_type")
+                                if not source_type:
+                                    role = payload.get("role")
+                                    if role == "human": source_type = "human_direct"
+                                    elif role == "ai": source_type = "inference"
+                                source_weight = scoring.SOURCE_WEIGHTS.get(source_type, scoring.DEFAULT_SOURCE_WEIGHT)
+                                raw_importance = payload.get("importance_score", 3)
+                                importance_multiplier = 0.5 + (raw_importance / 20.0)
+                                # Use a neutral semantic score for scroll results
+                                weighted_score = 0.5 * temporal_weight * source_weight * importance_multiplier
+                                
+                                fallback_results.append({
+                                    "id": point.id,
+                                    "content": payload.get("content"),
+                                    "role": payload.get("role"),
+                                    "source_type": source_type,
+                                    "score": weighted_score,
+                                    "semantic_score": 0.5,  # Neutral
+                                    "temporal_weight": round(temporal_weight, 3),
+                                    "source_weight": round(source_weight, 3),
+                                    "importance_multiplier": round(importance_multiplier, 3),
+                                    "timestamp": payload.get("timestamp"),
+                                    "relative_time": get_relative_time(payload.get("timestamp")) if payload.get("timestamp") else "unknown time",
+                                    "user_name": payload.get("user_name"),
+                                    "channel_id": payload.get("channel_id"),
+                                    "message_id": payload.get("message_id"),
+                                    "author_id": payload.get("author_id"),
+                                    "author_is_bot": payload.get("author_is_bot", False),
+                                    "author_name": payload.get("author_name"),
+                                    "reply_to_msg_id": payload.get("reply_to_msg_id"),
+                                    "is_chunk": payload.get("is_chunk", False),
+                                    "chunk_index": payload.get("chunk_index"),
+                                    "chunk_total": payload.get("chunk_total"),
+                                    "original_length": payload.get("original_length"),
+                                    "parent_message_id": payload.get("parent_message_id")
+                                })
+                            
+                            # Deduplicate
+                            fallback_deduplicated = []
+                            seen_parents = set()
+                            for res in fallback_results:
+                                unique_key = res.get("parent_message_id") or res.get("message_id") or res["id"]
+                                if unique_key not in seen_parents:
+                                    fallback_deduplicated.append(res)
+                                    seen_parents.add(unique_key)
+                            
+                            fallback_deduplicated.sort(key=lambda x: x["score"], reverse=True)
+                            deduplicated = fallback_deduplicated[:limit]  # Respect original limit
+                            logger.info(f"Fallback final: {len(deduplicated)} results after dedup and limit")
+                            
+                        except Exception as e:
+                            logger.warning(f"Fallback scroll failed: {e}")
+                        
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Invalid time_range format, skipping filter: {e}")
             
