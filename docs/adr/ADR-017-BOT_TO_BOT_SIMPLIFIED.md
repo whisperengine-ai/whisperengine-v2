@@ -23,7 +23,7 @@ ADR-015 and ADR-016 attempted to solve the "multi-bot coordination problem" for 
 
 The solutions (Daily Life Graph, config vault, per-bot inboxes, generic workers) were complex because they tried to coordinate **independent decisions** ("is this message interesting?") across multiple bots.
 
-**Key insight:** Bot-to-bot communication doesn't have this problem. It's inherently **addressed** — you know when you're being spoken to.
+**Key insight:** Bot-to-bot communication doesn't have this problem. It's inherently **addressed** — you know when you're being spoken to. *However*, we still need to solve **initiation** — how does a bot-to-bot conversation start?
 
 ## Decision
 
@@ -34,7 +34,8 @@ The solutions (Daily Life Graph, config vault, per-bot inboxes, generic workers)
 | Behavior | How It Works |
 |----------|--------------|
 | **Direct interactions** | DM, @mention, reply-to-bot → immediate response (unchanged) |
-| **Bot-to-bot chains** | Bot A mentions Bot B → Bot B responds → may mention Bot C → chain continues |
+| **Bot-to-bot responses** | Bot A mentions Bot B → Bot B responds → may mention Bot C |
+| **Bot-to-bot initiation** | Human-triggered, spillover from human chat, or cron-scheduled (see below) |
 | **Cron jobs** | Dreams, diaries, summaries (unchanged, via worker) |
 
 ### What We Drop (For Now)
@@ -46,9 +47,61 @@ The solutions (Daily Life Graph, config vault, per-bot inboxes, generic workers)
 | **Interest scoring** | LLM cost, pile-on risk, coordination complexity |
 | **Daily Life Graph polling** | Entire system was for autonomous lurking |
 
-### Coordination: Simple Lock
+### Initiation: How Bot-to-Bot Starts
 
-Bot-to-bot needs one coordination primitive — prevent two bots from both responding to the same message:
+**The problem:** If bots independently decide "I want to talk to another bot", we have the same coordination problem (multiple bots deciding at once).
+
+**Solution:** Initiation must be **centralized or human-triggered**:
+
+| Initiation Method | How It Works | Coordination Problem? |
+|-------------------|--------------|----------------------|
+| **Human triggers** | User says "Hey @elena, ask @aria about..." | No — human chose |
+| **Conversation spillover** | After human chat, bot says "Hey @aria, what do you think?" | Maybe — needs gate |
+| **Cron job** | Scheduled "social hour" picks 2 bots to chat | No — centralized |
+| **Random independent** | Each bot has 0.1% chance to initiate | Yes — avoid this |
+
+**Recommended approach: Spillover with gate**
+
+After a conversation with a human ends (or during), a bot may naturally mention another bot. This is **emergent** (LLM decides) but still requires a gate:
+
+```python
+# In response generation, the LLM might output: "...@aria what do you think?"
+# We allow this, but with a rate limit to prevent spam
+
+async def post_response_hook(response: str, channel_id: str):
+    if mentions_other_bot(response):
+        # Only allow one bot-to-bot initiation per channel per hour
+        gate_key = f"bot_initiation:{channel_id}"
+        if await redis.set(gate_key, bot_name, nx=True, ex=3600):
+            # Allowed — this is the first initiation this hour
+            pass
+        else:
+            # Another bot already initiated this hour — strip mention
+            response = strip_bot_mentions(response)
+    return response
+```
+
+**Alternative: Cron-based social hour**
+
+A centralized scheduler picks two bots and a topic:
+
+```python
+# In a cron job (runs every 6 hours)
+async def trigger_bot_conversation():
+    bots = ["elena", "aria", "dotty"]
+    bot_a, bot_b = random.sample(bots, 2)
+    topic = random.choice(["dreams", "users", "recent_events"])
+    
+    # Send as bot_a, mentioning bot_b
+    channel = get_social_channel()
+    await send_as_bot(bot_a, channel, f"Hey @{bot_b}, {topic_prompt}")
+```
+
+This avoids coordination entirely — one central process decides.
+
+### Coordination: Simple Lock (for Responses)
+
+Bot-to-bot *responses* need one coordination primitive — prevent two bots from both responding to the same message:
 
 ```python
 # In on_message handler, when another bot mentions/replies to us:
