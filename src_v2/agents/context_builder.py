@@ -529,11 +529,13 @@ Do NOT address {current_user} by any other name. Do NOT confuse them with people
             # Look back 7 days for absence patterns
             min_ts = (datetime.datetime.now() - datetime.timedelta(days=7)).timestamp()
             
+            collection_name = f"whisperengine_memory_{character_name}"
             absences = await memory_manager.search_memories_advanced(
                 query="meta-memory absence knowledge gap",
                 metadata_filter={"type": "absence"},
                 limit=5,
-                min_timestamp=min_ts
+                min_timestamp=min_ts,
+                collection_name=collection_name
             )
             
             if not absences:
