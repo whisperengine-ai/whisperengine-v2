@@ -233,9 +233,6 @@ class MessageHandler:
         if self.bot.user and message.author.id == self.bot.user.id:
             return
 
-        # Capture event to Redis Stream (The Stream)
-        await self._capture_event(message)
-
         # Cross-bot detection (Phase E6) - Handle bot messages differently
         if message.author.bot:
             # EXCEPTION: Allow broadcast channel posts from OTHER bots to flow through

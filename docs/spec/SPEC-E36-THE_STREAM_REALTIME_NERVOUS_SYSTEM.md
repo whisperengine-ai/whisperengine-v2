@@ -95,3 +95,69 @@ We must prevent the bot from becoming hyper-active.
 1.  **Refactor:** Extract `run_daily_life_cycle` into a standalone, idempotent task.
 2.  **Triggers:** Add logic to `on_message` in `bot.py`.
 3.  **Locking:** Ensure Redis locking is robust.
+
+---
+
+## Known Gaps & Future Work
+
+### Events NOT Currently Streamed (Dec 13, 2025)
+
+The Redis Stream (`whisper:events`) currently **only captures `message` events**. The following Discord events are handled via direct event handlers but are NOT pushed to the Stream:
+
+| Event | Current Handler | Gap |
+|-------|-----------------|-----|
+| **Reactions on Bot Messages** | `event_handler.on_reaction_add()` | Updates trust directly; bot cannot "react to reactions" |
+| **Reaction Removals** | `event_handler.on_reaction_remove()` | Reverts trust; not streamed |
+| **Message Edits** | Not implemented | Bot cannot notice when users edit messages |
+| **Message Deletes** | Not implemented | Bot cannot notice deleted messages |
+| **Typing Indicators** | Not implemented | Bot cannot anticipate incoming messages |
+| **Voice State Changes** | Not implemented | Bot cannot notice users joining/leaving voice |
+| **Thread Creation** | Not implemented | Bot cannot notice new threads |
+| **Presence Updates** | Not implemented | Bot cannot notice when users come online |
+
+### Why This Matters
+
+1. **Reactions as Conversation Signals:** A user adding 👀 or 🤔 to a message might be an invitation to elaborate. Currently, this signal is lost.
+2. **Edit Awareness:** If a user edits their message to clarify something, the bot has no way to notice and re-process.
+3. **Social Awareness:** Presence and typing indicators could inform "reach out" decisions.
+
+### Future Implementation (When Needed)
+
+To add a new event type to the Stream:
+
+1. Add capture in `event_handler.py`:
+   ```python
+   async def on_reaction_add(self, reaction, user):
+       # Existing trust logic...
+       
+       # NEW: Push to Stream for autonomous processing
+       if settings.STREAM_CAPTURE_REACTIONS:
+           await db_manager.redis_client.xadd(
+               settings.REDIS_STREAM_KEY,
+               {
+                   "type": "reaction_add",
+                   "event_id": f"{reaction.message.id}_{user.id}_{reaction.emoji}",
+                   "message_id": str(reaction.message.id),
+                   "channel_id": str(reaction.message.channel.id),
+                   "user_id": str(user.id),
+                   "emoji": str(reaction.emoji),
+                   "is_on_bot_message": "1" if reaction.message.author.id == self.bot.user.id else "0"
+               }
+           )
+   ```
+
+2. Handle in `stream_consumer.py`:
+   ```python
+   async def _process_event(self, message_id, data):
+       event_type = event.get("type")
+       if event_type == "message":
+           await self._handle_message_event(event)
+       elif event_type == "reaction_add":
+           await self._handle_reaction_event(event)
+   ```
+
+### Decision: Deferred
+
+**Rationale:** The current implementation covers the primary use case (lurking and replying to messages). Reaction-based engagement is a "nice to have" that adds complexity. We will revisit if users/research shows demand for reaction-aware behavior.
+
+**Added:** December 13, 2025
