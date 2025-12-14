@@ -89,7 +89,7 @@ When the bot "wakes up" (next user message or daily greeting):
 *   New Edge Type: `[:REVERIE_LINK]` (links Memory nodes that were associated during reverie).
 
 ### Qdrant Schema
-*   `source_type`: Uses `"dream"` (internal).
+*   `source_type`: A new type, `"reverie"`, will be used to distinguish these internal cognitive artifacts from the narrative "dreams" created for the user-facing Dream Journal. This prevents accidental mixing of abstract connections and creative stories.
 
 ## Risks & Mitigations
 
