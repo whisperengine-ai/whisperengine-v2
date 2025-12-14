@@ -17,7 +17,7 @@ from src_v2.tools.memory_tools import (
     SearchSummariesTool, SearchEpisodesTool, LookupFactsTool,
     UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool, RecallBotConversationTool,
     CreateUserGoalTool, ExploreGraphTool, DiscoverCommonGroundTool,
-    CharacterEvolutionTool, ReadFullMemoryTool
+    CharacterEvolutionTool, ReadFullMemoryTool, FetchSessionTranscriptTool
 )
 from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.agents.composite_tools import AnalyzeTopicTool
@@ -86,6 +86,7 @@ class ReflectiveGraphAgent:
         tools = [
             # Memory & Knowledge Tools
             SearchSummariesTool(user_id=user_id, character_name=bot_name),
+            FetchSessionTranscriptTool(),
             SearchEpisodesTool(user_id=user_id, character_name=bot_name),
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),
@@ -162,7 +163,7 @@ class ReflectiveGraphAgent:
         
         # Build tool categories list
         tool_categories = [
-            "1. Memory & Knowledge: old_summaries, mem_search, full_memory, lookup_user_facts, update_user_facts, analyze_topic, read_document",
+            "1. Memory & Knowledge: old_summaries, fetch_session_transcript, mem_search, full_memory, lookup_user_facts, update_user_facts, analyze_topic, read_document",
             "2. My Inner Life: search_my_thoughts (my diaries, dreams, observations, gossip, epiphanies)",
             "3. Graph & Relationships: graph_walk, common_ground, char_evolve",
             "4. Introspection: conv_patterns, find_themes",
@@ -183,7 +184,8 @@ class ReflectiveGraphAgent:
             ("read_document", "Read the full content of an attached file. Use this when the user says 'check this out' or asks about a file."),
             ("full_memory", "Fetch the COMPLETE content of a fragmented memory. ALWAYS use this when: (1) you see [Fragment X/Y] in search results and the user asks for 'full text', 'exact words', or 'complete message', OR (2) the fragment seems cut off mid-sentence. Pass the message ID shown in parentheses."),
             ("mem_search", "Search the USER's past conversations, quotes, or things they mentioned."),
-            ("old_summaries", "Search summarized conversation history for broader context."),
+            ("old_summaries", "Search summarized conversation history for broader context. Returns session_ids."),
+            ("fetch_session_transcript", "Fetch the FULL transcript of a past session using a session_id found in old_summaries. Use this to find specific messages (poems, letters) that vector search missed."),
             ("lookup_user_facts", "Look up stored facts about the user (preferences, background, etc.)."),
             ("update_user_facts", "Store new facts learned about the user."),
             ("analyze_topic", "Deep analysis of a topic combining multiple memory sources."),

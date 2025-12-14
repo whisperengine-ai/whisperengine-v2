@@ -25,7 +25,8 @@ from src_v2.tools.memory_tools import (
     RecallBotConversationTool,
     SearchMyThoughtsTool,
     CreateUserGoalTool,
-    ReadFullMemoryTool
+    ReadFullMemoryTool,
+    FetchSessionTranscriptTool
 )
 from src_v2.tools.document_tools import ReadDocumentTool
 from src_v2.tools.universe_tools import CheckPlanetContextTool, GetUniverseOverviewTool, GetSiblingBotInfoTool
@@ -79,6 +80,7 @@ You have access to tools that let you look things up. Use them when:
 
 Available tools:
 - old_summaries: Past conversations and topics (days/weeks ago)
+- fetch_session_transcript: Get full transcript of a past session (use session_id from old_summaries)
 - mem_search: Specific details and quotes from memory
 - read_document: Read the full content of an attached file
 - lookup_user_facts: Facts about the user from the knowledge graph
@@ -194,6 +196,7 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
         tools: List[BaseTool] = [
             # Memory & Knowledge Tools
             SearchSummariesTool(user_id=user_id, character_name=bot_name),
+            FetchSessionTranscriptTool(),
             SearchEpisodesTool(user_id=user_id, character_name=bot_name),
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),

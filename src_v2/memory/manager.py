@@ -1148,13 +1148,16 @@ class MemoryManager:
                         author_is_bot = row.get('author_is_bot', False)
                         
                         if channel_id:
-                            # In group contexts, show who said what
-                            if author_id and author_id != str(user_id):
+                            # In group contexts, ALWAYS show who said what for clarity
+                            # This creates a clear script-like format:
+                            # [Mark]: Hi
+                            # [Jake (bot)]: Hello
+                            if author_id:
                                 display_name = row['user_name'] or f"User {author_id}"
                                 bot_tag = " (bot)" if author_is_bot else ""
                                 content = f"[{display_name}{bot_tag}]: {content}"
-                            elif row['user_id'] != str(user_id):
-                                # Legacy fallback for messages without author_id
+                            else:
+                                # Legacy fallback
                                 display_name = row['user_name'] or f"User {row['user_id']}"
                                 content = f"[{display_name}]: {content}"
                         
@@ -1163,9 +1166,31 @@ class MemoryManager:
                             
                         messages.append(HumanMessage(content=content))
                     elif row['role'] == 'ai':
-                        # Add timestamp context to AI messages as well (suffix)
-                        content = f"{row['content']} ({rel_time})"
-                        messages.append(AIMessage(content=content))
+                        # ADR-014: Multi-party handling
+                        # Check if this is ME or ANOTHER BOT
+                        # In group contexts, other bots should be treated as external inputs (HumanMessage)
+                        # to avoid identity confusion.
+                        
+                        is_me = True
+                        if channel_id and row.get('user_name'):
+                            # Check if the message author matches the current character
+                            # character_name is usually lowercase (e.g. 'elena'), user_name might be 'Elena'
+                            if row['user_name'].lower() != character_name.lower():
+                                is_me = False
+                        
+                        content = row['content']
+                        
+                        if not is_me and channel_id:
+                            # It's another bot in a group channel
+                            # Treat as HumanMessage with explicit attribution
+                            display_name = row['user_name']
+                            content = f"[{display_name} (bot)]: {content} ({rel_time})"
+                            messages.append(HumanMessage(content=content))
+                        else:
+                            # It's me (or DM), keep as AIMessage
+                            # Add timestamp context
+                            content = f"{content} ({rel_time})"
+                            messages.append(AIMessage(content=content))
                         
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")

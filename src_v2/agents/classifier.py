@@ -279,6 +279,8 @@ COMPLEXITY LEVELS:
    - "Read this article: https://..." (simple URL reading)
 3. COMPLEX_MID: Needs 3-5 steps. Synthesis of multiple facts, emotional analysis, moderate reasoning, OR image generation.
 {image_gen_example}
+   - "Read me the letter you wrote" (specific recall request requiring multi-step search)
+   - "What did you say about X?" (specific recall request)
    - "What are the pros and cons of X?" (analysis)
    - "Critique this design" or "Evaluate this idea" (deep reasoning)
    - "What do you think about [complex topic]?" (opinion/synthesis)
@@ -294,6 +296,7 @@ COMPLEXITY LEVELS:
 
 IMPORTANT CONTEXT RULES:
 - Any request to generate, create, draw, paint, show, or visualize an image MUST be classified as COMPLEX_MID or higher (to enable Reflective Mode).
+- Any request to "read", "recite", "repeat", or "find" a specific past message, poem, letter, or text MUST be classified as COMPLEX_MID or higher (to enable multi-step memory search tools).
 - If the input contains [Attached File Content] or [Attached Files:], default to COMPLEX_MID unless the user just wants a simple acknowledgement.
 - If recent history mentions documents, files, or images, and the user asks a follow-up question (like "search", "look for X", "what about Y", "can you see them", "pros and cons", "thoughts?"), classify as COMPLEX_MID since they likely refer to the document content and require analysis.
 - Short imperative commands like "do a search", "look it up", "find it" after document discussion = COMPLEX_LOW (needs memory search tool).

@@ -9,6 +9,7 @@ from src_v2.memory.manager import memory_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.config.settings import settings
+from src_v2.core.database import db_manager
 
 
 # =============================================================================
@@ -269,7 +270,7 @@ class SearchSummariesTool(BaseTool):
             results = results[:limit]
             
             formatted = "\n".join([
-                f"- [Score: {r['meaningfulness']}/5] {r['content']} ({r['timestamp'][:10]})" 
+                f"- [Session: {r.get('session_id', 'unknown')}] [Score: {r['meaningfulness']}/5] {r['content']} ({r['timestamp'][:10]})" 
                 for r in results
             ])
             return f"Found {len(results)} Summaries (top matches):\n{formatted}"
@@ -340,6 +341,85 @@ This searches your actual memories, not just the current channel. If user mentio
     def _run(self, query: str) -> str:
         raise NotImplementedError("Use _arun instead")
 
+    async def _search_raw_history(self, query: str) -> List[dict]:
+        if not db_manager.postgres_pool:
+            return []
+            
+        try:
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Search for messages containing the query
+                # We want both human and AI messages to get full context
+                rows = await conn.fetch("""
+                    SELECT id, content, timestamp, role, user_name, channel_id
+                    FROM v2_chat_history
+                    WHERE user_id = $1 
+                    AND character_name = $2
+                    AND content ILIKE $3
+                    ORDER BY timestamp DESC
+                    LIMIT 5
+                """, self.user_id, self.character_name, f"%{query}%")
+                
+                results = []
+                for row in rows:
+                    # Format similar to vector search results
+                    results.append({
+                        "content": row['content'],
+                        "timestamp": row['timestamp'].isoformat() if row['timestamp'] else "",
+                        "role": row['role'],
+                        "score": 1.0, # High score for exact keyword match
+                        "source": "history_keyword",
+                        "channel_id": row['channel_id']
+                    })
+                    
+                    # Context Expansion:
+                    # If we found a HUMAN message asking for something (e.g. "write me a letter"),
+                    # the AI's response is likely the content we want, even if it doesn't contain the keyword.
+                    if row['role'] == 'human':
+                        try:
+                            # Find the immediate next AI response
+                            if row['channel_id']:
+                                query_response = """
+                                    SELECT content, timestamp, role, user_name, channel_id
+                                    FROM v2_chat_history
+                                    WHERE channel_id = $1
+                                    AND timestamp > $2
+                                    AND role = 'ai'
+                                    ORDER BY timestamp ASC
+                                    LIMIT 1
+                                """
+                                args = (row['channel_id'], row['timestamp'])
+                            else:
+                                query_response = """
+                                    SELECT content, timestamp, role, user_name, channel_id
+                                    FROM v2_chat_history
+                                    WHERE user_id = $1
+                                    AND character_name = $2
+                                    AND timestamp > $3
+                                    AND role = 'ai'
+                                    ORDER BY timestamp ASC
+                                    LIMIT 1
+                                """
+                                args = (self.user_id, self.character_name, row['timestamp'])
+                                
+                            response_row = await conn.fetchrow(query_response, *args)
+                            
+                            if response_row:
+                                results.append({
+                                    "content": response_row['content'],
+                                    "timestamp": response_row['timestamp'].isoformat() if response_row['timestamp'] else "",
+                                    "role": "ai",
+                                    "score": 1.5, # Boost score above the keyword match (1.0) to prioritize the ANSWER over the question
+                                    "source": "history_context",
+                                    "channel_id": response_row['channel_id']
+                                })
+                        except Exception as e:
+                            logger.warning(f"Failed to fetch context response: {e}")
+                            
+                return results
+        except Exception as e:
+            logger.error(f"Raw history search failed: {e}")
+            return []
+
     async def _arun(self, query: str) -> str:
         try:
             logger.info(f"[SearchEpisodesTool] Query: '{query}' for user {self.user_id}")
@@ -347,6 +427,21 @@ This searches your actual memories, not just the current channel. If user mentio
             # Use standard memory search (episodes) with correct collection
             collection_name = f"whisperengine_memory_{self.character_name}"
             results = await memory_manager.search_memories(query, self.user_id, collection_name=collection_name)
+            
+            # Augment with raw history search (keyword match)
+            # This helps find specific messages that might not be in vector store
+            if len(query) > 3:
+                raw_results = await self._search_raw_history(query)
+                if raw_results:
+                    logger.info(f"[SearchEpisodesTool] Found {len(raw_results)} raw history matches")
+                    # Deduplicate based on content
+                    existing_contents = {r.get('content') for r in results}
+                    for rr in raw_results:
+                        if rr['content'] not in existing_contents:
+                            results.append(rr)
+            
+            # Re-sort by score to ensure high-value raw matches bubble up
+            results.sort(key=lambda x: x.get('score', 0), reverse=True)
             
             # Log raw results for debugging
             if results:
@@ -811,3 +906,39 @@ Pass the message ID shown in the search result (e.g., "1234567890")."""
                 return f"Could not find full content for message {message_id}."
         except Exception as e:
             return f"Error reading memory: {e}"
+
+
+class FetchSessionTranscriptInput(BaseModel):
+    session_id: str = Field(description="The UUID of the session to retrieve.")
+
+class FetchSessionTranscriptTool(BaseTool):
+    name: str = "fetch_session_transcript"
+    description: str = """Retrieve the full transcript of a past conversation session.
+
+USE THIS WHEN:
+- You found a relevant summary using 'old_summaries' and want to see the actual messages.
+- You need the exact wording of a poem, letter, or long explanation from a past session.
+- You want to see the full context of a conversation mentioned in a summary.
+
+Input is the 'session_id' found in the output of 'old_summaries'."""
+    args_schema: Type[BaseModel] = FetchSessionTranscriptInput
+    
+    def _run(self, session_id: str) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, session_id: str) -> str:
+        from src_v2.memory.session import session_manager
+        try:
+            messages = await session_manager.get_session_messages(session_id)
+            if not messages:
+                return f"No messages found for session {session_id}."
+            
+            formatted = []
+            for msg in messages:
+                role = "User" if msg['role'] == 'human' else "You"
+                timestamp = msg['timestamp'][:16].replace('T', ' ') if msg['timestamp'] else ""
+                formatted.append(f"[{timestamp}] {role}: {msg['content']}")
+            
+            return f"Transcript for Session {session_id}:\n\n" + "\n\n".join(formatted)
+        except Exception as e:
+            return f"Error fetching transcript: {e}"
