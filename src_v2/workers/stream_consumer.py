@@ -161,6 +161,18 @@ class StreamConsumer:
         # We'd need to check if the reference is to us.
         
         if should_engage:
+            # --- Debouncing (Phase 2) ---
+            # Check if we are in a cooldown period
+            last_action_key = f"{settings.REDIS_KEY_PREFIX}bot:{settings.DISCORD_BOT_NAME}:last_autonomous_action"
+            last_action_ts = await self.redis.get(last_action_key)
+            
+            if last_action_ts:
+                import time
+                now = time.time()
+                if now - float(last_action_ts) < 60:  # 60s cooldown
+                    logger.info(f"StreamConsumer: Cooling down (last action {int(now - float(last_action_ts))}s ago). Ignoring {trigger_reason}.")
+                    return
+
             logger.info(f"StreamConsumer: Engaging for {trigger_reason} in {channel_id}")
             
             # Fetch Context from Discord

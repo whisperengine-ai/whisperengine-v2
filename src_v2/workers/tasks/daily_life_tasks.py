@@ -64,6 +64,12 @@ async def process_daily_life(ctx, snapshot_data: dict):
                     
                 await redis.rpush(key, cmd.model_dump_json())
                 logger.info(f"Enqueued action for {bot_name}: {cmd.action_type}")
+            
+            # Update Last Autonomous Action Timestamp (for Debouncing)
+            if commands:
+                import time
+                last_action_key = f"{settings.REDIS_KEY_PREFIX}bot:{bot_name}:last_autonomous_action"
+                await redis.set(last_action_key, str(time.time()))
         
         finally:
             # Release Lock
