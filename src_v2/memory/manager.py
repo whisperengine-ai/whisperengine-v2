@@ -785,6 +785,7 @@ class MemoryManager:
             # Enrich results with graph neighborhood (linked memories, facts)
             final_results = deduplicated[:limit]
             try:
+                from src_v2.knowledge.manager import knowledge_manager
                 vector_ids = [r["id"] for r in final_results]
                 if vector_ids:
                     neighborhood = await knowledge_manager.get_memory_neighborhood(vector_ids)
