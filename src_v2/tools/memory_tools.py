@@ -333,7 +333,9 @@ USE THIS WHEN:
 - Looking for specific details, quotes, or moments from ANY past conversation
 - User asks "do you remember X?" about something they told you
 
-This searches your actual memories, not just the current channel. If user mentioned something in DMs and now asks about it in a channel, you'll find it here."""
+This searches your actual memories, not just the current channel. If user mentioned something in DMs and now asks about it in a channel, you'll find it here.
+
+RESULTS include [Graph: ...] context showing related facts and linked memories from the knowledge graph. Use this enriched context to give more complete answers."""
     args_schema: Type[BaseModel] = SearchEpisodesInput
     user_id: str = Field(exclude=True)
     character_name: str = Field(default="default", exclude=True)
@@ -488,36 +490,13 @@ This searches your actual memories, not just the current channel. If user mentio
             
             logger.info(f"[SearchEpisodesTool] Returning {len(filtered_results)} memories (limit={limit})")
             
-            # Phase 2.5.1: Fetch Unified Memory Neighborhood for these results
-            # This ensures the reflective agent sees the "Enriched Graph" connections
-            neighborhood_text = ""
-            try:
-                memory_ids = [r.get("id") for r in filtered_results if r.get("id")]
-                if memory_ids:
-                    neighborhood = await knowledge_manager.get_memory_neighborhood(memory_ids)
-                    if neighborhood:
-                        seen_assoc = set()
-                        lines = []
-                        for item in neighborhood:
-                            # Format: Entity (Predicate) or Memory: Content (Link Type)
-                            if "entity" in item and "predicate" in item:
-                                assoc = f"{item['entity']} ({item['predicate']})"
-                                if assoc not in seen_assoc:
-                                    lines.append(f"- {assoc}")
-                                    seen_assoc.add(assoc)
-                        
-                        if lines:
-                            neighborhood_text = "\n\n[Graph Connections]\n" + "\n".join(lines)
-            except Exception as e:
-                logger.warning(f"Failed to fetch neighborhood in tool: {e}")
-
             # Include relative time to help identify recent vs old memories
             formatted_lines = []
             for r in filtered_results:
                 relative_time = r.get('relative_time', 'unknown time')
                 content = r.get('content', '')
                 
-                # Add fragment indicator
+                # Add fragment indicator (for chunked long messages)
                 if r.get('is_chunk'):
                     idx = r.get('chunk_index', 0) + 1
                     total = r.get('chunk_total', '?')
@@ -528,27 +507,34 @@ This searches your actual memories, not just the current channel. If user mentio
                     if msg_id:
                         content += f" (ID: {msg_id})"
                 
+                # Add graph context if available (from search_memories enrichment)
+                graph_context = ""
+                if r.get("graph_context"):
+                    context_items = r["graph_context"][:3] # Limit to top 3 connections per memory
+                    graph_context = f" [Graph: {'; '.join(context_items)}]"
+
                 # ADR-014: Include author attribution for multi-party context
                 author_name = r.get('author_name')
                 author_is_bot = r.get('author_is_bot', False)
                 if author_name:
                     bot_tag = " (bot)" if author_is_bot else ""
-                    formatted_lines.append(f"- [{author_name}{bot_tag}] ({relative_time}) {content}")
+                    formatted_lines.append(f"- [{author_name}{bot_tag}] ({relative_time}) {content}{graph_context}")
                 else:
                     # Legacy memories - use role hint
                     role = r.get('role', '')
                     if role == 'human':
-                        formatted_lines.append(f"- [User] ({relative_time}) {content}")
+                        formatted_lines.append(f"- [User] ({relative_time}) {content}{graph_context}")
                     elif role == 'ai':
-                        formatted_lines.append(f"- [You] ({relative_time}) {content}")
+                        formatted_lines.append(f"- [You] ({relative_time}) {content}{graph_context}")
                     else:
-                        formatted_lines.append(f"- ({relative_time}) {content}")
+                        formatted_lines.append(f"- ({relative_time}) {content}{graph_context}")
             
             formatted = "\n".join(formatted_lines)
-            return f"Found {len(filtered_results)} memories:\n{formatted}{neighborhood_text}"
+            return f"Found {len(filtered_results)} memories:\n{formatted}"
         except Exception as e:
-            logger.error(f"[SearchEpisodesTool] Error: {e}")
-            return f"Error searching episodes: {e}"
+            logger.error(f"Error searching memories: {e}")
+            return f"Error searching memories: {e}"
+
 
 class LookupFactsInput(BaseModel):
     query: str = Field(description="The natural language query for user facts (e.g. 'What is my dog's name?').")
@@ -942,3 +928,39 @@ Input is the 'session_id' found in the output of 'old_summaries'."""
             return f"Transcript for Session {session_id}:\n\n" + "\n\n".join(formatted)
         except Exception as e:
             return f"Error fetching transcript: {e}"
+
+
+class SearchGraphMemoriesInput(BaseModel):
+    query: str = Field(description="The text to search for in the knowledge graph memories.")
+
+class SearchGraphMemoriesTool(BaseTool):
+    name: str = "graph_memory_search"
+    description: str = """Search for memories in the Knowledge Graph using exact text matching.
+    
+USE THIS WHEN:
+- Vector search (mem_search) fails to find a specific phrase or keyword.
+- You are looking for a specific word like "poem", "letter", "code", or a specific name.
+- You suspect the memory exists but semantic search is missing it.
+
+This searches the 'content' property of Memory nodes in the graph."""
+    args_schema: Type[BaseModel] = SearchGraphMemoriesInput
+    user_id: str = Field(exclude=True)
+
+    def _run(self, query: str) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self, query: str) -> str:
+        try:
+            results = await knowledge_manager.search_memories_in_graph(self.user_id, query)
+            if not results:
+                return "No matching memories found in the graph."
+            
+            formatted = []
+            for r in results:
+                ts = r.get('timestamp', '')[:10]
+                content = r.get('content', '')
+                formatted.append(f"- [{ts}] {content}")
+            
+            return f"Found {len(results)} graph memories:\n" + "\n".join(formatted)
+        except Exception as e:
+            return f"Error searching graph memories: {e}"

@@ -781,7 +781,38 @@ class MemoryManager:
                 except Exception as e:
                     logger.error(f"Failed to log memory search metrics: {e}")
 
-            return deduplicated[:limit]
+            # Phase 2.5.1: Vector-First Traversal (Graph Enrichment)
+            # Enrich results with graph neighborhood (linked memories, facts)
+            final_results = deduplicated[:limit]
+            try:
+                vector_ids = [r["id"] for r in final_results]
+                if vector_ids:
+                    neighborhood = await knowledge_manager.get_memory_neighborhood(vector_ids)
+                    
+                    # Map neighborhood back to results
+                    # neighborhood is list of dicts with 'memory_id'
+                    graph_map = {}
+                    for n in neighborhood:
+                        mid = n["memory_id"]
+                        if mid not in graph_map:
+                            graph_map[mid] = []
+                        
+                        # Format the graph connection
+                        if n.get("entity"):
+                            # Fact connection
+                            graph_map[mid].append(f"Related Fact: {n['entity']} ({n['predicate']})")
+                        elif n.get("linked_memory_content"):
+                            # Memory connection
+                            graph_map[mid].append(f"Linked Memory: {n['linked_memory_content']} ({n['predicate']})")
+                    
+                    # Attach to results
+                    for res in final_results:
+                        if res["id"] in graph_map:
+                            res["graph_context"] = graph_map[res["id"]]
+            except Exception as e:
+                logger.warning(f"Failed to enrich memories with graph context: {e}")
+
+            return final_results
             
         except Exception as e:
             logger.error(f"Failed to search memories: {e}")

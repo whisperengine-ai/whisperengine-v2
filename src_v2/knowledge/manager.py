@@ -1261,6 +1261,37 @@ PRIVACY RESTRICTION ENABLED:
         entities = await self.get_user_entities(user_id)
         return len(entities)
 
+    @require_db("neo4j", default_return=[])
+    async def search_memories_in_graph(self, user_id: str, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search for memories in the Knowledge Graph using string matching.
+        This serves as a fallback/complement to vector search.
+        
+        Args:
+            user_id: The user ID to search memories for
+            query: The text string to search for (case-insensitive)
+            limit: Max results
+            
+        Returns:
+            List of dicts with memory content, timestamp, and vector_id
+        """
+        try:
+            cypher = """
+            MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)
+            WHERE toLower(m.content) CONTAINS toLower($query)
+            RETURN m.content as content, m.timestamp as timestamp, m.vector_id as vector_id
+            ORDER BY m.timestamp DESC
+            LIMIT $limit
+            """
+            
+            async with db_manager.neo4j_driver.session() as session:
+                result = await session.run(cypher, user_id=user_id, query=query, limit=limit)
+                records = await result.data()
+                return records
+        except Exception as e:
+            logger.error(f"Failed to search memories in graph: {e}")
+            return []
+
 
 # Global instance
 knowledge_manager = KnowledgeManager()
