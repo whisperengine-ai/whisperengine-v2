@@ -1,9 +1,12 @@
 import asyncio
 import discord
+from datetime import datetime
 from loguru import logger
 from typing import Any, Optional
+from influxdb_client.client.write.point import Point
 from src_v2.config.settings import settings
 from src_v2.core.character import character_manager
+from src_v2.core.database import db_manager
 from src_v2.evolution.trust import trust_manager
 
 class EventHandler:
@@ -218,6 +221,26 @@ class EventHandler:
                 # For now, we'll just log it and maybe update trust
                 logger.info(f"Received {feedback_type} feedback from user {user.id} on message {reaction.message.id}")
                 
+                # 3. Record reaction in InfluxDB for analytics
+                if db_manager.influxdb_write_api:
+                    try:
+                        point = Point("reaction_event") \
+                            .tag("bot_name", self.bot.character_name) \
+                            .tag("user_id", str(user.id)) \
+                            .tag("message_id", str(reaction.message.id)) \
+                            .tag("action", "add") \
+                            .field("reaction", emoji_str) \
+                            .field("feedback_type", feedback_type) \
+                            .time(datetime.utcnow())
+                        
+                        db_manager.influxdb_write_api.write(
+                            bucket=settings.INFLUXDB_BUCKET,
+                            record=point
+                        )
+                        logger.debug(f"Recorded reaction_event: {emoji_str} ({feedback_type}) by {user.id}")
+                    except Exception as e:
+                        logger.error(f"Failed to write reaction to InfluxDB: {e}")
+                
                 # If milestone reached, send to the channel where the reaction occurred (consistent with message_handler)
                 if milestone:
                     try:
@@ -242,6 +265,25 @@ class EventHandler:
                 change = -1 if emoji_str in ["👍", "❤️", "🔥", "✨"] else 1
                 await trust_manager.update_trust(str(user.id), self.bot.character_name, change)
                 logger.info(f"Reverted feedback from user {user.id} on message {reaction.message.id}")
+                
+                # Record removal in InfluxDB
+                if db_manager.influxdb_write_api:
+                    try:
+                        point = Point("reaction_event") \
+                            .tag("bot_name", self.bot.character_name) \
+                            .tag("user_id", str(user.id)) \
+                            .tag("message_id", str(reaction.message.id)) \
+                            .tag("action", "remove") \
+                            .field("reaction", emoji_str) \
+                            .time(datetime.utcnow())
+                        
+                        db_manager.influxdb_write_api.write(
+                            bucket=settings.INFLUXDB_BUCKET,
+                            record=point
+                        )
+                        logger.debug(f"Recorded reaction_event removal: {emoji_str} by {user.id}")
+                    except Exception as e:
+                        logger.error(f"Failed to write reaction removal to InfluxDB: {e}")
 
         except Exception as e:
             logger.error(f"Error handling reaction remove: {e}")
