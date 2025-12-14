@@ -81,40 +81,41 @@ class DailyLifeScheduler:
         if focus_channel_id:
             channels_to_poll.add(focus_channel_id)
         
-        # A. Configured Watchlist (Always check these)
+        # A. Configured Watchlist (Exclusive - if set, only poll these)
         if settings.discord_check_watch_channels_list:
             channels_to_poll.update(settings.discord_check_watch_channels_list)
-            
-        # B. Activity-Driven Polling
-        try:
-            signals = await server_monitor.get_activity_signals(since_minutes=15)
-            # Take top 10 active channels
-            for signal in signals[:10]:
-                channels_to_poll.add(signal.channel_id)
-        except Exception as e:
-            logger.warning(f"Failed to get activity signals: {e}")
-
-        # C. Exploration (Only if not focused)
-        if not focus_channel_id:
+            logger.debug(f"Using exclusive watch channels: {len(channels_to_poll)} configured")
+        else:
+            # B. Activity-Driven Polling (only when no watch channels configured)
             try:
-                all_candidates = []
-                for guild in self.bot.guilds:
-                    for channel in guild.text_channels:
-                        perms = channel.permissions_for(guild.me)
-                        if perms.read_messages and perms.send_messages:
-                            if str(channel.id) not in channels_to_poll:
-                                all_candidates.append(channel)
-                
-                if all_candidates:
-                    # Pick up to 3 random channels for exploration (increased from 1)
-                    # This ensures the bot discovers new channels faster
-                    sample_size = min(3, len(all_candidates))
-                    exploration_channels = random.sample(all_candidates, sample_size)
-                    for ch in exploration_channels:
-                        channels_to_poll.add(str(ch.id))
-                        logger.debug(f"Exploration: Added channel {ch.name} ({ch.id}) to snapshot")
+                signals = await server_monitor.get_activity_signals(since_minutes=15)
+                # Take top 10 active channels
+                for signal in signals[:10]:
+                    channels_to_poll.add(signal.channel_id)
             except Exception as e:
-                logger.warning(f"Failed to select exploration channel: {e}")
+                logger.warning(f"Failed to get activity signals: {e}")
+
+            # C. Exploration (Only if not focused and no watch channels)
+            if not focus_channel_id:
+                try:
+                    all_candidates = []
+                    for guild in self.bot.guilds:
+                        for channel in guild.text_channels:
+                            perms = channel.permissions_for(guild.me)
+                            if perms.read_messages and perms.send_messages:
+                                if str(channel.id) not in channels_to_poll:
+                                    all_candidates.append(channel)
+                    
+                    if all_candidates:
+                        # Pick up to 3 random channels for exploration (increased from 1)
+                        # This ensures the bot discovers new channels faster
+                        sample_size = min(3, len(all_candidates))
+                        exploration_channels = random.sample(all_candidates, sample_size)
+                        for ch in exploration_channels:
+                            channels_to_poll.add(str(ch.id))
+                            logger.debug(f"Exploration: Added channel {ch.name} ({ch.id}) to snapshot")
+                except Exception as e:
+                    logger.warning(f"Failed to select exploration channel: {e}")
             
         channels_data = []
         

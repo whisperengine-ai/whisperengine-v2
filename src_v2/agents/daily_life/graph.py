@@ -213,7 +213,6 @@ class DailyLifeGraph:
                 
                 for i, msg_emb in enumerate(msg_embeddings):
                     msg = relevant_messages[i]
-                    is_watch_channel = msg.channel_id in watch_channels
                     trust_level = author_trust.get(msg.author_id, 1)
                     is_friend = trust_level >= settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD
                     
@@ -223,23 +222,17 @@ class DailyLifeGraph:
                     sims = [np.dot(msg_emb, int_emb) for int_emb in interest_embeddings]
                     max_sim = max(sims) if sims else 0.0
                     
-                    # Boost relevance for watch channels (we want to be more engaged there)
-                    if is_watch_channel:
-                        scored.append(ScoredMessage(
-                            message=msg, 
-                            score=0.95, # High score to ensure it gets picked
-                            relevance_reason=f"watch_channel (topic_sim={max_sim:.2f})"
-                        ))
+                    # Score based purely on topic relevance + relationship
                     # SOCIAL BOOST: Friends get noticed even without topic match
-                    elif is_friend:
+                    if is_friend:
                         # Use topic similarity if high, else give baseline "friend" score
-                        friend_score = max(max_sim, 0.7)  # Friends get at least 0.7
+                        friend_score = max(max_sim, 0.65)  # Friends get at least 0.65
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=float(friend_score), 
                             relevance_reason=f"friend_trust_L{trust_level} (topic_sim={max_sim:.2f})"
                         ))
-                    elif max_sim > 0.55:  # Threshold for relevance (strangers need topic match)
+                    elif max_sim > 0.60:  # Threshold for relevance (strangers need topic match)
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=float(max_sim), 
