@@ -1837,7 +1837,7 @@ Level 3 (Trigger):  Drift detected → dynamic source weights
 
 > **Note:** Dream Journal and Reverie are distinct features:
 > - **Dream Journal** (`dream_journal_graph.py`): Generates first-person dream narratives that are broadcast to users. Uses generator-critic loop with first-person enforcement.
-> - **Reverie** (`reverie/graph.py`): Background memory consolidation process that links memories together. Invisible to users.
+> - **Reverie** (`reverie/graph.py`): Background memory consolidation process that links memories together. Invisible to users. Future extension: self-reflection (see ADR-018).
 
 **Spec:** [ref/REF-006-AGENT_GRAPH_SYSTEM.md](./ref/REF-006-AGENT_GRAPH_SYSTEM.md)
 

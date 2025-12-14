@@ -113,3 +113,46 @@ When the bot "wakes up" (next user message or daily greeting):
 3.  **Step 3:** Integrate with `DailyLifeScheduler` to trigger on idle.
 4.  **Step 4:** Add `get_unconsolidated_memories()` query to `MemoryManager`.
 5.  **Step 5:** Test with `tests_v2/test_dream_cycle.py`.
+
+---
+
+## Future Extensions
+
+### Self-Reflection & Meta-Learning (Proposed, See ADR-018)
+
+**Concept:** Extend Reverie to include self-analysis during idle time.
+
+**How it would work:**
+- Add `reflect_on_self` node to ReverieGraph after `generate_reverie`
+- Analyzes bot's own reasoning traces (from Phase B5)
+- Extracts patterns: "What approaches do I tend to use?"
+- Stores as `self_pattern` memory type (reuses existing schema)
+- Bot can reference own patterns: "I notice I tend to use Socratic questioning..."
+
+**Example emergent behaviors:**
+- Marcus learns: "I default to Socratic questioning with defensive users" (confidence: 0.85)
+- Dream learns: "I over-apologize — users want more directness" (effectiveness: ineffective)
+- Ryan learns: "Music metaphors work for creative topics, confuse in technical contexts" (mixed)
+
+**Data model:** No schema changes
+- Uses existing `memory_type` field with new value `self_pattern`
+- Metadata: `{confidence: float, effectiveness: "effective"|"mixed"|"ineffective"}`
+- Source type: `inference` (same as epiphanies)
+
+**Cost:** ~$0.003 per reverie cycle (1 extra LLM call), ~$0.15/month per bot
+
+**Integration points:**
+- **Character Context:** Self-patterns injected into system prompt
+- **Trace Learning (B5):** Pattern-aligned traces score higher
+- **Adaptive Identity (2.6):** Self-knowledge informs self-editing
+
+**Risks & mitigations:**
+- **Self-delusion:** Bot invents patterns from noise → Require minimum 5 traces, store confidence scores
+- **Overfitting:** Bot becomes rigid → Store effectiveness, mark "mixed" patterns as experimental
+- **Personality lock-in:** Bot can't evolve → Allow pattern updates and decay
+
+**Decision:** Deferred until after multi-party schema (ADR-014/017). Rationale: Follows "Observe First" principle — let's see bot-to-bot behavior before adding self-reflection. Also avoids delay on critical path work.
+
+**See:** Full proposal in `/reverie-self-reflection-enhancement.md` (December 14, 2025)
+
+**Status:** 📋 Future Option (not committed)
