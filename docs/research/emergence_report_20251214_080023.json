@@ -1,0 +1,819 @@
+[
+  {
+    "bot_name": "aetheris",
+    "chat_activity": {
+      "total_interactions": 3472,
+      "unique_users": 42,
+      "unique_channels": 36,
+      "avg_message_length": 877.9009216589861
+    },
+    "trust_evolution": {
+      "total_relationships": 52,
+      "average_trust": 15.057692307692308,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "69": 1,
+        "35": 1,
+        "34": 1,
+        "30": 1,
+        "29": 1,
+        "21": 1,
+        "18": 1,
+        "12": 1,
+        "10": 1,
+        "4": 1,
+        "3": 3,
+        "2": 4,
+        "1": 4,
+        "0": 26
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 59924,
+      "type_distribution": {
+        "conversation": 96.0,
+        "gossip": 3.0,
+        "epiphany": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 609,
+      "user_messages": 467,
+      "total_messages": 1076,
+      "bot_ratio": 56.59851301115242,
+      "goals_by_category": {
+        "community_growth": 5,
+        "investigation": 3,
+        "personal_growth": 1,
+        "personal_knowledge": 1,
+        "philosophy": 3,
+        "relationship": 5,
+        "sacred_bonds": 1,
+        "user_specific": 276
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 60.92,
+      "social": 20.83,
+      "trust": 3.76,
+      "knowledge": 25.0,
+      "autonomy": 11.32
+    }
+  },
+  {
+    "bot_name": "dream",
+    "chat_activity": {
+      "total_interactions": 3146,
+      "unique_users": 40,
+      "unique_channels": 24,
+      "avg_message_length": 814.3496503496503
+    },
+    "trust_evolution": {
+      "total_relationships": 44,
+      "average_trust": 17.09090909090909,
+      "max_trust_users": 6,
+      "trust_distribution": {
+        "100": 6,
+        "77": 1,
+        "29": 1,
+        "19": 1,
+        "6": 1,
+        "4": 3,
+        "2": 4,
+        "1": 1,
+        "0": 26
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 6770,
+      "type_distribution": {
+        "conversation": 72.0,
+        "gossip": 21.0,
+        "epiphany": 1.0,
+        "bot_self_knowledge_llm": 2.0,
+        "fact": 1.0,
+        "summary": 1.0,
+        "diary": 1.0,
+        "unknown": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 430,
+      "user_messages": 286,
+      "total_messages": 716,
+      "bot_ratio": 60.05586592178771,
+      "goals_by_category": {
+        "creativity": 2,
+        "user_specific": 102,
+        "community_growth": 3,
+        "personal_growth": 5
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 60.16,
+      "social": 18.88,
+      "trust": 4.27,
+      "knowledge": 25.0,
+      "autonomy": 12.01
+    }
+  },
+  {
+    "bot_name": "gabriel",
+    "chat_activity": {
+      "total_interactions": 3016,
+      "unique_users": 37,
+      "unique_channels": 22,
+      "avg_message_length": 826.6797082228117
+    },
+    "trust_evolution": {
+      "total_relationships": 41,
+      "average_trust": 14.317073170731707,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "21": 1,
+        "8": 2,
+        "7": 2,
+        "6": 1,
+        "5": 1,
+        "4": 3,
+        "3": 4,
+        "1": 1,
+        "0": 21
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 7694,
+      "type_distribution": {
+        "conversation": 88.0,
+        "gossip": 8.0,
+        "summary": 2.0,
+        "fact": 1.0,
+        "unknown": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 279,
+      "user_messages": 152,
+      "total_messages": 431,
+      "bot_ratio": 64.73317865429235,
+      "goals_by_category": {
+        "authentication": 1,
+        "community_growth": 3,
+        "emotional_depth": 2,
+        "engagement": 2,
+        "investigation": 1,
+        "personal_growth": 4,
+        "personal_knowledge": 4,
+        "relationship": 1,
+        "user_specific": 90
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 59.62,
+      "social": 18.1,
+      "trust": 3.58,
+      "knowledge": 25.0,
+      "autonomy": 12.95
+    }
+  },
+  {
+    "bot_name": "marcus",
+    "chat_activity": {
+      "total_interactions": 2326,
+      "unique_users": 33,
+      "unique_channels": 15,
+      "avg_message_length": 829.9828030954428
+    },
+    "trust_evolution": {
+      "total_relationships": 40,
+      "average_trust": 14.325,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "13": 1,
+        "7": 4,
+        "6": 3,
+        "5": 1,
+        "4": 2,
+        "1": 1,
+        "0": 23
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 7115,
+      "type_distribution": {
+        "conversation": 89.0,
+        "dream": 3.0,
+        "gossip": 4.0,
+        "fact": 2.0,
+        "conversation_state": 1.0,
+        "unknown": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 86,
+      "user_messages": 26,
+      "total_messages": 112,
+      "bot_ratio": 76.78571428571429,
+      "goals_by_category": {
+        "community_growth": 2,
+        "investigation": 5,
+        "user_specific": 16
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 57.89,
+      "social": 13.96,
+      "trust": 3.58,
+      "knowledge": 25.0,
+      "autonomy": 15.36
+    }
+  },
+  {
+    "bot_name": "nottaylor",
+    "chat_activity": {
+      "total_interactions": 2882,
+      "unique_users": 38,
+      "unique_channels": 20,
+      "avg_message_length": 876.4410131852879
+    },
+    "trust_evolution": {
+      "total_relationships": 72,
+      "average_trust": 9.277777777777779,
+      "max_trust_users": 6,
+      "trust_distribution": {
+        "100": 6,
+        "19": 1,
+        "6": 1,
+        "5": 2,
+        "4": 5,
+        "3": 2,
+        "2": 2,
+        "1": 3,
+        "0": 50
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 9150,
+      "type_distribution": {
+        "conversation": 72.0,
+        "unknown": 13.0,
+        "gossip": 8.0,
+        "summary": 2.0,
+        "epiphany": 2.0,
+        "dream": 1.0,
+        "diary": 1.0,
+        "image_analysis": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 442,
+      "user_messages": 276,
+      "total_messages": 718,
+      "bot_ratio": 61.55988857938719,
+      "goals_by_category": {
+        "personal_knowledge": 1,
+        "user_specific": 154,
+        "engagement": 7,
+        "community_growth": 3,
+        "relationship": 7,
+        "investigation": 2,
+        "personal_growth": 5
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 56.92,
+      "social": 17.29,
+      "trust": 2.32,
+      "knowledge": 25.0,
+      "autonomy": 12.31
+    }
+  },
+  {
+    "bot_name": "jake",
+    "chat_activity": {
+      "total_interactions": 1864,
+      "unique_users": 29,
+      "unique_channels": 11,
+      "avg_message_length": 789.7988197424893
+    },
+    "trust_evolution": {
+      "total_relationships": 40,
+      "average_trust": 14.375,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "13": 1,
+        "8": 3,
+        "6": 4,
+        "5": 1,
+        "4": 1,
+        "2": 2,
+        "1": 1,
+        "0": 22
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 825,
+      "type_distribution": {
+        "conversation": 67.0,
+        "absence": 4.0,
+        "unknown": 6.0,
+        "dream": 4.0,
+        "gossip": 10.0,
+        "diary": 7.000000000000001,
+        "summary": 1.0,
+        "reasoning_trace": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 69,
+      "user_messages": 14,
+      "total_messages": 83,
+      "bot_ratio": 83.13253012048193,
+      "goals_by_category": {
+        "expertise": 7,
+        "investigation": 5,
+        "personal_knowledge": 2,
+        "user_specific": 26
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 56.4,
+      "social": 11.18,
+      "trust": 3.59,
+      "knowledge": 25.0,
+      "autonomy": 16.63
+    }
+  },
+  {
+    "bot_name": "elena",
+    "chat_activity": {
+      "total_interactions": 2983,
+      "unique_users": 37,
+      "unique_channels": 20,
+      "avg_message_length": 809.1692926583976
+    },
+    "trust_evolution": {
+      "total_relationships": 70,
+      "average_trust": 8.357142857142858,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "22": 1,
+        "8": 1,
+        "7": 2,
+        "5": 4,
+        "4": 3,
+        "3": 2,
+        "2": 1,
+        "1": 1,
+        "0": 50
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 4212,
+      "type_distribution": {
+        "conversation": 74.0,
+        "reasoning_trace": 1.0,
+        "unknown": 14.000000000000002,
+        "gossip": 5.0,
+        "dream": 2.0,
+        "diary": 2.0,
+        "image_analysis": 2.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 271,
+      "user_messages": 224,
+      "total_messages": 495,
+      "bot_ratio": 54.74747474747475,
+      "goals_by_category": {
+        "user_specific": 120,
+        "[personal_knowledge]": 1,
+        "community_growth": 3,
+        "[user_specific]": 1,
+        "personal_growth": 1
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 55.94,
+      "social": 17.9,
+      "trust": 2.09,
+      "knowledge": 25.0,
+      "autonomy": 10.95
+    }
+  },
+  {
+    "bot_name": "ryan",
+    "chat_activity": {
+      "total_interactions": 1860,
+      "unique_users": 28,
+      "unique_channels": 11,
+      "avg_message_length": 789.6010752688172
+    },
+    "trust_evolution": {
+      "total_relationships": 53,
+      "average_trust": 10.226415094339623,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "6": 2,
+        "4": 3,
+        "3": 5,
+        "1": 3,
+        "0": 35
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 1999,
+      "type_distribution": {
+        "conversation": 80.0,
+        "gossip": 8.0,
+        "dream": 4.0,
+        "diary": 1.0,
+        "unknown": 3.0,
+        "summary": 1.0,
+        "absence": 1.0,
+        "reasoning_trace": 2.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 99,
+      "user_messages": 21,
+      "total_messages": 120,
+      "bot_ratio": 82.5,
+      "goals_by_category": {
+        "personal_knowledge": 1,
+        "user_specific": 33
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 55.22,
+      "social": 11.16,
+      "trust": 2.56,
+      "knowledge": 25.0,
+      "autonomy": 16.5
+    }
+  },
+  {
+    "bot_name": "sophia",
+    "chat_activity": {
+      "total_interactions": 2134,
+      "unique_users": 28,
+      "unique_channels": 11,
+      "avg_message_length": 814.0164011246485
+    },
+    "trust_evolution": {
+      "total_relationships": 40,
+      "average_trust": 13.825,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "20": 1,
+        "7": 1,
+        "5": 1,
+        "3": 4,
+        "2": 3,
+        "1": 3,
+        "0": 22
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 1565,
+      "type_distribution": {
+        "conversation": 71.0,
+        "response_pattern": 2.0,
+        "diary": 3.0,
+        "gossip": 12.0,
+        "summary": 3.0,
+        "reasoning_trace": 2.0,
+        "unknown": 3.0,
+        "dream": 3.0,
+        "epiphany": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 122,
+      "user_messages": 56,
+      "total_messages": 178,
+      "bot_ratio": 68.53932584269663,
+      "goals_by_category": {
+        "business_discovery": 2,
+        "expertise": 5,
+        "investigation": 1,
+        "user_specific": 34
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 54.97,
+      "social": 12.8,
+      "trust": 3.46,
+      "knowledge": 25.0,
+      "autonomy": 13.71
+    }
+  },
+  {
+    "bot_name": "aethys",
+    "chat_activity": {
+      "total_interactions": 2040,
+      "unique_users": 27,
+      "unique_channels": 10,
+      "avg_message_length": 879.1446078431372
+    },
+    "trust_evolution": {
+      "total_relationships": 39,
+      "average_trust": 14.461538461538462,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "18": 1,
+        "14": 1,
+        "4": 4,
+        "3": 3,
+        "2": 2,
+        "1": 3,
+        "0": 20
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 12836,
+      "type_distribution": {
+        "conversation": 98.0,
+        "fact": 1.0,
+        "gossip": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 124,
+      "user_messages": 52,
+      "total_messages": 176,
+      "bot_ratio": 70.45454545454545,
+      "goals_by_category": {
+        "investigation": 5,
+        "personal_knowledge": 7,
+        "relationship": 2,
+        "self_improvement": 1,
+        "user_specific": 33
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 54.95,
+      "social": 12.24,
+      "trust": 3.62,
+      "knowledge": 25.0,
+      "autonomy": 14.09
+    }
+  },
+  {
+    "bot_name": "dotty",
+    "chat_activity": {
+      "total_interactions": 2279,
+      "unique_users": 32,
+      "unique_channels": 12,
+      "avg_message_length": 834.8372093023256
+    },
+    "trust_evolution": {
+      "total_relationships": 58,
+      "average_trust": 10.39655172413793,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "39": 1,
+        "7": 2,
+        "6": 5,
+        "4": 2,
+        "3": 2,
+        "2": 1,
+        "1": 4,
+        "0": 36
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 4370,
+      "type_distribution": {
+        "conversation": 70.0,
+        "gossip": 21.0,
+        "dream": 2.0,
+        "summary": 2.0,
+        "reasoning_trace": 1.0,
+        "unknown": 3.0,
+        "absence_resolution": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 250,
+      "user_messages": 118,
+      "total_messages": 368,
+      "bot_ratio": 67.93478260869566,
+      "goals_by_category": {
+        "mission": 1,
+        "service": 1,
+        "connection": 7,
+        "user_specific": 83,
+        "community_growth": 4
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 54.86,
+      "social": 13.67,
+      "trust": 2.6,
+      "knowledge": 25.0,
+      "autonomy": 13.59
+    }
+  },
+  {
+    "bot_name": "aria",
+    "chat_activity": {
+      "total_interactions": 2202,
+      "unique_users": 29,
+      "unique_channels": 12,
+      "avg_message_length": 866.5395095367847
+    },
+    "trust_evolution": {
+      "total_relationships": 56,
+      "average_trust": 11.625,
+      "max_trust_users": 5,
+      "trust_distribution": {
+        "100": 5,
+        "45": 1,
+        "25": 1,
+        "10": 1,
+        "9": 3,
+        "8": 3,
+        "7": 1,
+        "5": 1,
+        "4": 2,
+        "0": 38
+      }
+    },
+    "knowledge_graph": {
+      "entities": 8089,
+      "topics": 10647,
+      "relationships": 990303,
+      "memory_nodes": 117499
+    },
+    "memory_patterns": {
+      "total_memories": 1840,
+      "type_distribution": {
+        "conversation": 83.0,
+        "gossip": 3.0,
+        "diary": 3.0,
+        "unknown": 6.0,
+        "dream": 4.0,
+        "response_pattern": 1.0
+      }
+    },
+    "autonomous_behavior": {
+      "bot_messages": 154,
+      "user_messages": 93,
+      "total_messages": 247,
+      "bot_ratio": 62.34817813765182,
+      "goals_by_category": {
+        "ethics": 2,
+        "psychological": 1,
+        "wellbeing": 1,
+        "user_specific": 66,
+        "community_growth": 2,
+        "relationship": 1,
+        "investigation": 2,
+        "personal_growth": 1
+      }
+    },
+    "influx_metrics": {
+      "total_reactions": 0,
+      "reactions_by_type": {},
+      "avg_response_time_ms": 0
+    },
+    "emergence_scores": {
+      "overall": 53.59,
+      "social": 13.21,
+      "trust": 2.91,
+      "knowledge": 25.0,
+      "autonomy": 12.47
+    }
+  }
+]
