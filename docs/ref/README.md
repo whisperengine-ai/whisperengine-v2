@@ -49,6 +49,12 @@
 |-----|------|-------------|
 | [REF-020](./REF-020-API_REFERENCE.md) | API Reference | REST API documentation |
 
+### Operations & Optimization
+
+| REF | Name | Description |
+|-----|------|-------------|
+| [REF-050](./REF-050-LLM_USAGE_AND_COSTS.md) | LLM Usage & Costs | Model tiers, task mapping, and cost optimization |
+
 ---
 
 ## REF Format Template
