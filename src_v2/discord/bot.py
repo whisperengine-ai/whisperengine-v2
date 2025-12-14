@@ -68,10 +68,12 @@ class WhisperBot(commands.Bot):
         # - Cron jobs (dreams, diaries, session processing) via worker
         # - All memory, knowledge, and learning systems
         #
-        # See: ADR-013 for the proposed fix (per-bot inboxes + coordination)
+        # See: ADR-017 for simplified approach (per-channel bot assignment)
         # =======================================================================
-        # self.daily_scheduler.start()
-        # self.action_poller.start()
+        # Re-enabled December 13, 2025 - ADR-014 author tracking in place
+        # Coordination via config: each bot watches its own channels only
+        self.daily_scheduler.start()
+        self.action_poller.start()
 
         # Load slash commands
         from src_v2.discord.commands import setup as setup_commands
