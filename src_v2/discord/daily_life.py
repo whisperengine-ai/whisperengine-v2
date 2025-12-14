@@ -36,6 +36,9 @@ class DailyLifeScheduler:
     def start(self):
         if self.is_running:
             return
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            logger.info("DailyLifeScheduler disabled (ENABLE_AUTONOMOUS_ACTIVITY=false)")
+            return
         self.is_running = True
         self._task = self.bot.loop.create_task(self._loop(), name="daily_life_scheduler")
         logger.info("DailyLifeScheduler started.")
@@ -226,6 +229,10 @@ class DailyLifeScheduler:
 
     async def _snapshot_and_send(self):
         """Capture environment and enqueue task (Periodic)."""
+        # Safety check - flag might have changed at runtime
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return
+            
         snapshot = await self._create_snapshot()
         
         # --- Silence Tracking (Phase E34) ---
