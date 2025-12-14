@@ -106,12 +106,16 @@ class StreamConsumer:
                 logger.error(f"Error in StreamConsumer loop: {e}")
                 await asyncio.sleep(5)  # Backoff
 
-    async def _process_event(self, message_id: str, data: Dict[bytes, bytes]):
+    async def _process_event(self, message_id: str, data: Dict[Any, Any]):
         """
         Decide if an event is worth waking up for.
         """
-        # Decode bytes to strings
-        event = {k.decode('utf-8'): v.decode('utf-8') for k, v in data.items()}
+        # Decode bytes to strings if necessary (Redis client might have decode_responses=True)
+        event = {}
+        for k, v in data.items():
+            key = k.decode('utf-8') if isinstance(k, bytes) else k
+            value = v.decode('utf-8') if isinstance(v, bytes) else v
+            event[key] = value
         
         event_type = event.get("type")
         

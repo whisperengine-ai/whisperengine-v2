@@ -78,12 +78,8 @@ async def startup(ctx: Dict[str, Any]) -> None:
     # Initialize database connections
     await db_manager.connect_all()
     
-    # Start Stream Consumer (The Nervous System)
-    # Only start if we are in a worker context that supports it (e.g. not just a script)
-    # We attach it to ctx so we can stop it later
-    stream_consumer = StreamConsumer()
-    await stream_consumer.start()
-    ctx["stream_consumer"] = stream_consumer
+    # StreamConsumer is now run in the Bot process (src_v2/discord/bot.py)
+    # because it needs the specific DISCORD_TOKEN to fetch context.
     
     ctx["db_connected"] = True
     logger.info("Worker ready to process jobs")
@@ -92,10 +88,6 @@ async def startup(ctx: Dict[str, Any]) -> None:
 async def shutdown(ctx: Dict[str, Any]) -> None:
     """Called when worker shuts down."""
     logger.info("Worker shutting down...")
-    
-    # Stop Stream Consumer
-    if "stream_consumer" in ctx:
-        await ctx["stream_consumer"].stop()
     
     # Close database connections (use individual close methods)
     if db_manager.postgres_pool:
