@@ -216,11 +216,14 @@ async def get_user_state(request: UserStateRequest) -> UserStateResponse:
     trust_info = await trust_manager.get_relationship_level(user_id, bot_name)
     
     # Get recent memories (last 5) - use a general search
+    # IMPORTANT: Pass collection_name to avoid worker context issues
     try:
+        collection_name = f"whisperengine_memory_{bot_name}"
         memories = await memory_manager.search_memories(
             query="conversation history",  # Generic query
             user_id=user_id,
-            limit=5
+            limit=5,
+            collection_name=collection_name
         )
         memory_list = [
             {"content": m.get("content", "")[:200], "score": m.get("score", 0)}

@@ -1,34 +1,89 @@
 # SPEC-E36: The Stream (Real-time Nervous System)
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Created:** December 11, 2025
 **Updated:** December 13, 2025
-**Status:** ✅ Phase 1 Complete, 📋 Phase 2 Proposed
-**Priority:** 🟡 Medium
-**Dependencies:** Redis
+**Status:** ⏸️ SUSPENDED - Architecture Redesign Required
+**Priority:** 🔴 Blocked
+**Dependencies:** Redis, Multi-Bot Coordination
 **Superseded by:** ADR-013 (for Phase 2 architecture)
 
-> ✅ **Emergence Check:** Responsiveness is a prerequisite for social emergence. If the bot takes 7 minutes to notice a joke, the moment is lost. This feature enables the *timing* necessary for emergent social dynamics.
+> ⚠️ **SUSPENDED:** Both polling and event-driven autonomous features are disabled as of December 13, 2025. See "Architecture Problem" section below.
 
 ---
 
-## Evolution: Phase 1 → Phase 2
+## Architecture Problem (December 13, 2025)
 
-### Phase 1: Hybrid Triggers (✅ COMPLETE - Dec 11, 2025)
+### The Multi-Bot Coordination Failure
+
+Both the polling system and the event-driven stream implementation suffer from the same fundamental flaw: **no coordination between multiple bots**.
+
+**The Problem:**
+```
+1 Discord message arrives in #general (3 bots present: Elena, Aria, Dotty)
+
+Polling approach:
+  → Elena's 7-min poll fires → decides to respond
+  → Aria's 7-min poll fires → decides to respond  
+  → Dotty's 7-min poll fires → decides to respond
+  = "Pile-on" - all 3 bots reply to same message
+
+Event-driven approach (attempted):
+  → Elena captures event to shared stream
+  → Aria captures event to shared stream
+  → Dotty captures event to shared stream
+  = 3 duplicate events (N writes)
+  
+  → Each bot's consumer reads ALL events
+  = 9 processing calls for 1 message (N² reads)
+  = Even worse pile-on + wasted compute
+```
+
+**Root Cause:** Each bot makes independent decisions without knowing what other bots are doing. There's no coordination layer.
+
+### Why We Disabled It
+
+Rather than ship broken behavior (pile-on, duplicate processing), we disabled all autonomous features until the architecture is fixed.
+
+**What's Disabled:**
+- `DailyLifeScheduler` - 7-minute polling loop
+- `ActionPoller` - Autonomous action execution
+- Event capture to Redis stream
+- StreamConsumer
+
+**What Still Works:**
+- Direct interactions (DMs, @mentions, replies)
+- Cron jobs (dreams, diaries) via worker
+- All memory/knowledge systems
+
+### The Correct Design (ADR-013)
+
+ADR-013 specifies the fix:
+1. **Per-bot inboxes:** `mailbox:{bot_name}:inbox` - not a shared stream
+2. **Coordination at decision time:** Check "did another bot just post?" before responding
+3. **Bot writes to OWN inbox only** - no N² duplication
+
+This requires significant refactoring and is deferred.
+
+---
+
+## Historical Context
+
+### Phase 1: Hybrid Triggers (✅ IMPLEMENTED, ⏸️ DISABLED)
 The initial implementation added **immediate triggers** for high-signal events:
 - Trusted user (Level >= 4) messages
 - Watchlist channel activity
 - Still uses snapshot model underneath
 - Debounce via Redis key
 
-### Phase 2: Full Event-Driven (📋 PROPOSED - ADR-013)
-The next evolution replaces the polling/snapshot model entirely:
-- ALL channel events → Redis streams
-- Explicit state machines (IDLE→WATCHING→ENGAGED→COOLING)
-- On-demand context fetching (no pre-scraping)
-- Natural threading (reply to the message that triggered engagement)
+**Status:** Code exists but is disabled due to pile-on problem.
 
-See **ADR-013: Event-Driven Architecture** for full Phase 2 design.
+### Phase 2: Full Event-Driven (❌ FAILED IMPLEMENTATION)
+Attempted to replace polling with Redis streams:
+- ALL channel events → shared Redis stream
+- StreamConsumer processes events
+
+**Status:** Implementation was architecturally broken (N² processing). Rolled back.
 
 ---
 

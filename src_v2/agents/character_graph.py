@@ -193,7 +193,7 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
         bot_name = character_name or "default"
         tools: List[BaseTool] = [
             # Memory & Knowledge Tools
-            SearchSummariesTool(user_id=user_id),
+            SearchSummariesTool(user_id=user_id, character_name=bot_name),
             SearchEpisodesTool(user_id=user_id, character_name=bot_name),
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),

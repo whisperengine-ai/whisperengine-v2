@@ -1,9 +1,43 @@
 # ADR-013: Event-Driven Architecture with State Machines
 
-**Status:** 📋 Proposed  
+**Status:** ⏸️ Deferred - Implementation Attempt Failed  
 **Date:** December 13, 2025 (Revised)  
-**Last Updated:** December 13, 2025 (Added Inbox/Outbox "Ant Mailbox" pattern)
+**Last Updated:** December 13, 2025 (Implementation suspended, polling also disabled)
 **Deciders:** Mark, Claude (collaborative)
+
+---
+
+## ⚠️ Implementation Status (December 13, 2025)
+
+### What Happened
+
+We attempted to implement the event-driven architecture (Phase 2 of SPEC-E36) but the implementation was **architecturally broken**:
+
+1. **Shared Stream Problem:** All N bots wrote to a single `whisper:events` stream, causing N duplicate events per message
+2. **N² Processing:** Each bot's StreamConsumer read ALL events, resulting in N² processing calls
+3. **Worker Discord Access:** StreamConsumer was moved to bot process because worker lacks `DISCORD_TOKEN`, defeating the purpose of backend offloading
+4. **Pile-On Unchanged:** No coordination mechanism was added, so multiple bots still responded to the same message
+
+### Current State
+
+**ALL autonomous features are disabled:**
+- `DailyLifeScheduler.start()` — commented out
+- `ActionPoller.start()` — commented out
+- Event capture to stream — removed
+- StreamConsumer — removed from bot
+
+**Bots only respond to direct engagement** (DMs, @mentions, replies). Cron jobs (dreams, diaries) still run via worker.
+
+### The Correct Design
+
+This ADR's design is correct in principle:
+- **Per-bot inboxes:** `mailbox:{bot_name}:inbox` (not shared stream)
+- **Coordination at decision time:** "Did another bot just post?" check
+- **Bot writes to OWN inbox only**
+
+But implementation requires more careful work than was done.
+
+---
 
 ## Origin
 

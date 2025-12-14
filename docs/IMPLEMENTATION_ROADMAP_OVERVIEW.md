@@ -95,17 +95,36 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **Adaptive Identity** | Self-Editing Persona (Phase 2.6) | **1 week** | 🔄 Active |
 | 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **Ongoing** | 🔄 Active |
 
-#### 📅 Upcoming (ADR-013 Implementation)
+#### ⚠️ BLOCKED: ADR-013 Implementation (Multi-Bot Coordination Problem)
+
+> **December 13, 2025:** All autonomous features (polling AND event-driven) are **disabled in code** pending architecture redesign. See [ADR-013](./adr/ADR-013-STREAMING_VS_POLLING.md) and [SPEC-E36](./spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md).
+
+**The Problem:**
+- Multiple bots in same channel all decide to respond independently → "pile-on"
+- Event-driven stream made it worse: N bots × N events = N² processing
+- No coordination mechanism exists to prevent duplicate responses
+
+**Current State:**
+- `DailyLifeScheduler.start()` — commented out in `bot.py`
+- `ActionPoller.start()` — commented out in `bot.py`
+- Bots only respond to direct interactions (DMs, @mentions, replies)
+- Cron jobs (dreams, diaries) still run via worker
+
+**The Correct Fix (deferred):**
+1. Per-bot inboxes: `mailbox:{bot_name}:inbox` — not shared stream
+2. Coordination at decision time: "Did another bot just post?" check
+3. Bot writes to OWN inbox only — no N² duplication
 
 | Priority | Phase | Description | Time | Status |
 |----------|-------|-------------|------|--------|
-| 🟡 Medium | **Event Capture** | Redis stream capture in `on_message` (fire-and-forget) | **2-3 days** | 📋 Week 2 |
-| 🟡 Medium | **State Machines** | ConversationStateMachine (IDLE→ENGAGED→COOLING) | **3-4 days** | 📋 Week 3 |
-| 🟡 Medium | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | 📋 Week 4 |
-| ⚪ Low | **Validation** | Parallel run, tune thresholds, feature flag | **3-4 days** | 📋 Week 5 |
+| 🔴 Blocked | **Event Capture** | Redis stream capture in `on_message` | **2-3 days** | ⛔ Blocked by coordination problem |
+| 🔴 Blocked | **State Machines** | ConversationStateMachine (IDLE→ENGAGED→COOLING) | **3-4 days** | ⛔ Blocked |
+| 🔴 Blocked | **Event Processing** | Worker consuming stream, on-demand Discord fetch | **3-4 days** | ⛔ Blocked |
+| 🔴 Blocked | **Multi-Bot Coordination** | Per-bot inboxes + "did another bot respond?" check | **TBD** | ⛔ Requires design |
 
 **Reference Documents:**
-- [`ADR-013: Event-Driven Architecture`](./adr/ADR-013-STREAMING_VS_POLLING.md) — Full streaming design
+- [`ADR-013: Event-Driven Architecture`](./adr/ADR-013-STREAMING_VS_POLLING.md) — Full streaming design (deferred)
+- [`SPEC-E36: The Stream`](./spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md) — Architecture problem documented
 - [`ADR-014: Multi-Party Data Model`](./adr/ADR-014-MULTI_PARTY_DATA_MODEL.md) — Schema evolution
 - [`CURRENT_STATE.md`](../CURRENT_STATE.md) — Detailed weekly roadmap
 
@@ -134,7 +153,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 All proposed roadmap items have been implemented. The system is feature-complete for:
 - **Persistent Memory** (Qdrant vectors + absence tracking + trace learning)
 - **Knowledge Graph** (Neo4j + enrichment + temporal scoring + multi-character walks + ambient retrieval)
-- **Autonomous Agency** (Unified via Daily Life Graph - ADR-010)
+- **Autonomous Agency** (⚠️ Code disabled — multi-bot coordination problem. See ADR-013)
 - **v2.5: Unified Memory** (Dual-write architecture unifying Vector + Graph, enabling unified memory)
 
 ---

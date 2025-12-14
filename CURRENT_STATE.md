@@ -4,6 +4,28 @@
 
 ---
 
+## ⚠️ AUTONOMOUS FEATURES SUSPENDED (December 13, 2025)
+
+All autonomous behavior (polling AND event-driven) is **disabled in code** due to a fundamental multi-bot coordination problem.
+
+**The Problem:**
+- Multiple bots in same channel all decide to respond independently → "pile-on" behavior
+- Attempted event-driven architecture made it worse: N bots × N events = N² processing
+- No coordination mechanism exists to prevent duplicate responses
+
+**What's Disabled:**
+- `DailyLifeScheduler.start()` — commented out in `bot.py`
+- `ActionPoller.start()` — commented out in `bot.py`
+
+**What Still Works:**
+- Direct interactions (DMs, @mentions, replies to bot)
+- Cron jobs (dreams, diaries, session processing) via worker
+- All memory, knowledge, and learning systems
+
+**See:** [ADR-013](docs/adr/ADR-013-STREAMING_VS_POLLING.md), [SPEC-E36](docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md)
+
+---
+
 ## 📋 Implementation Roadmap (Prioritized)
 
 ### ✅ Completed (Dec 13, 2025 - Social Tuning)
@@ -17,36 +39,26 @@
 - [x] ✅ ADR-014: Multi-Party Data Model (documented)
 - [x] ✅ All documentation cross-referenced and aligned
 
-### 🔜 Next Week: Foundation (Week of Dec 16)
-- [ ] **Observe:** Monitor logs for `friend_trust_L{x}`, trust milestones, multi-party learning
-- [ ] **Phase 0:** Clarify real-time path in code (comments, metrics)
-- [ ] **Schema:** Add `author_id`, `author_is_bot`, `reply_to_id` to v2_chat_history
-- [ ] **Backfill:** Populate author_id from existing role field
+### ⛔ BLOCKED: Event-Driven Architecture
+The following tasks are blocked pending multi-bot coordination solution:
 
-### 📅 Week 2: Event Capture (Week of Dec 23)
-- [ ] **Event emission:** Add Redis stream capture in `on_message` (fire-and-forget)
-- [ ] **No behavior change:** Just capture, don't process yet
-- [ ] **Monitoring:** Add metrics for event volume
+| Task | Status | Blocker |
+|------|--------|---------|
+| Event Capture | ⛔ Blocked | N² processing with shared stream |
+| State Machines | ⛔ Blocked | No coordination between bots |
+| Event Processing | ⛔ Blocked | Worker can't access Discord (needs bot token) |
+| Validation & Cutover | ⛔ Blocked | Requires working implementation |
 
-### 📅 Week 3: State Machines (Week of Dec 30)
-- [ ] **ConversationStateMachine class:** IDLE→WATCHING→ENGAGED→COOLING
-- [ ] **Redis state storage:** Per-channel state hashes
-- [ ] **Decay timer:** Background task to transition stale states
+**The Correct Fix (deferred):**
+1. Per-bot inboxes: `mailbox:{bot_name}:inbox` — not shared stream
+2. Coordination at decision time: "Did another bot just post?" check  
+3. Bot writes to OWN inbox only — no N² duplication
 
-### 📅 Week 4: Event Processing (Week of Jan 6)
-- [ ] **Event worker:** Consume stream, check state, decide action
-- [ ] **On-demand fetch:** Fetch Discord history only when engaging
-- [ ] **Wire to AgentEngine:** Same cognitive pipeline as real-time
-
-### 📅 Week 5: Validation & Cutover (Week of Jan 13)
-- [ ] **Parallel run:** Both systems active, compare behaviors
-- [ ] **Tune thresholds:** Interest detection, state timeouts
-- [ ] **Feature flag:** Enable/disable new system
-
-### Later: Full Schema Migration (Q1 2025)
-- [ ] Create v2_conversations, v2_messages, v2_participants tables
-- [ ] Dual-write migration
-- [ ] Deprecate v2_chat_history
+### 🔜 Next Steps (After Coordination Design)
+- [ ] Design multi-bot coordination mechanism
+- [ ] Implement per-bot inbox architecture
+- [ ] Add "did another bot respond?" check to decision logic
+- [ ] Re-enable autonomous features with coordination
 
 ---
 

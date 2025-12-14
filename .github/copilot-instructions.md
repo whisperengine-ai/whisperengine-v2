@@ -425,20 +425,24 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - `ENABLE_UNIVERSE_EVENTS` (default: true): Cross-bot gossip system
 - `ENABLE_GRAPH_ENRICHMENT` (default: true): Proactive graph edge creation
 - `ENABLE_GRAPH_PRUNING` (default: true): Graph cleanup
-- `ENABLE_AUTONOMOUS_ACTIVITY` (default: true): Master switch for autonomous behavior
-- `ENABLE_DAILY_LIFE_GRAPH` (default: true): 7-min polling for all autonomous actions
 - `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
 - `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
 
-**Deprecated flags** (disabled, pending removal — see ADR-010):
-- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection (now via Daily Life Graph)
-- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions (now via Daily Life Graph)
-- `ENABLE_CROSS_BOT_CHAT`: Real-time bot-to-bot triggers (now via Daily Life Graph)
+**⚠️ SUSPENDED - Autonomous Features (December 2025):**
+The following features are **disabled in code** due to multi-bot coordination problems:
+- `ENABLE_AUTONOMOUS_ACTIVITY`: Master switch — **CODE DISABLED**
+- `ENABLE_DAILY_LIFE_GRAPH`: 7-min polling — **CODE DISABLED**
+- Daily Life Scheduler and ActionPoller are commented out in `bot.py`
+- See ADR-013 and SPEC-E36 for details on the architecture problem
 
-**Daily Life Graph tuning** (the only knobs for autonomous behavior):
-- `DISCORD_CHECK_INTERVAL_MINUTES` (default: 7): How often to poll
-- `DISCORD_CHECK_RELEVANCE_THRESHOLD` (default: 0.4): Interest threshold (0-1)
-- `DAILY_LIFE_SPONTANEITY_CHANCE` (default: 0.6): Probability of acting
+**The problem:** Multiple bots in the same channel all decide to respond independently, causing "pile-on" behavior. Event-driven architecture made it worse (N² processing). No coordination mechanism exists.
+
+**What still works:** Direct interactions (DMs, @mentions, replies), cron jobs (dreams, diaries).
+
+**Deprecated flags** (disabled, pending removal — see ADR-010):
+- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection (superseded by Daily Life Graph)
+- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions (superseded by Daily Life Graph)
+- `ENABLE_CROSS_BOT_CHAT`: Real-time bot-to-bot triggers (superseded by Daily Life Graph)
 
 **Quotas**:
 - `DAILY_IMAGE_QUOTA` (default: 5): Max images per user per day

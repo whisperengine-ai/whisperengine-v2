@@ -31,11 +31,15 @@ class ContextBuilder:
         Fetches all context in parallel.
         """
         
+        # IMPORTANT: Always pass collection_name explicitly to avoid using
+        # the default collection (which may be wrong in worker context)
+        collection_name = f"whisperengine_memory_{character_name}"
+        
         # Define tasks
         tasks = {
             "history": memory_manager.get_recent_history(user_id, character_name, limit=limit_history),
-            "memories": memory_manager.search_memories(query, user_id, limit=limit_memories),
-            "summaries": memory_manager.search_summaries(query, user_id, limit=limit_summaries),
+            "memories": memory_manager.search_memories(query, user_id, limit=limit_memories, collection_name=collection_name),
+            "summaries": memory_manager.search_summaries(query, user_id, limit=limit_summaries, collection_name=collection_name),
             "knowledge": knowledge_manager.query_graph(user_id, query, bot_name=character_name),
             "trust": trust_manager.get_relationship_level(user_id, character_name)
         }

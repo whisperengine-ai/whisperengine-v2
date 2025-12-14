@@ -249,6 +249,7 @@ class SearchSummariesTool(BaseTool):
     description: str = "Searches high-level summaries of past conversations. Use this to recall topics, events, or emotional context from days or weeks ago."
     args_schema: Type[BaseModel] = SearchSummariesInput
     user_id: str = Field(exclude=True) # Exclude from LLM schema
+    character_name: str = Field(default="default", exclude=True)  # For collection_name
 
     def _run(self, query: str, time_range: Optional[str] = None) -> str:
         raise NotImplementedError("Use _arun instead")
@@ -257,7 +258,9 @@ class SearchSummariesTool(BaseTool):
         try:
             start_ts = self._parse_time_range(time_range) if time_range else None
             
-            results = await memory_manager.search_summaries(query, self.user_id, start_timestamp=start_ts)
+            # IMPORTANT: Pass collection_name to avoid worker context issues
+            collection_name = f"whisperengine_memory_{self.character_name}"
+            results = await memory_manager.search_summaries(query, self.user_id, start_timestamp=start_ts, collection_name=collection_name)
             if not results:
                 return "No relevant summaries found."
             

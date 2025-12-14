@@ -85,7 +85,7 @@ class ReflectiveGraphAgent:
         bot_name = character_name or settings.DISCORD_BOT_NAME or "default"
         tools = [
             # Memory & Knowledge Tools
-            SearchSummariesTool(user_id=user_id),
+            SearchSummariesTool(user_id=user_id, character_name=bot_name),
             SearchEpisodesTool(user_id=user_id, character_name=bot_name),
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),

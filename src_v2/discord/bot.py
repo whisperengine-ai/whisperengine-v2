@@ -47,7 +47,29 @@ class WhisperBot(commands.Bot):
     async def setup_hook(self) -> None:
         """Async setup hook called before the bot starts."""
         
-        # Daily Life System - DISABLED pending architecture redesign
+        # =======================================================================
+        # AUTONOMOUS FEATURES DISABLED - December 13, 2025
+        # =======================================================================
+        # The Daily Life System (polling + event-driven) is disabled pending
+        # architecture redesign. The core problem: MULTI-BOT COORDINATION.
+        #
+        # Problem discovered:
+        # - Multiple bots in same channel all see the same message
+        # - Each bot independently decides to respond → "pile-on" behavior
+        # - Event-driven stream made it worse (N bots × N events = N² processing)
+        # - No coordination mechanism to prevent duplicate responses
+        #
+        # What's disabled:
+        # - DailyLifeScheduler: 7-minute polling for lurking/reactions/posts
+        # - ActionPoller: Execution of queued autonomous actions
+        #
+        # What still works:
+        # - Direct interactions (DMs, @mentions, replies to bot)
+        # - Cron jobs (dreams, diaries, session processing) via worker
+        # - All memory, knowledge, and learning systems
+        #
+        # See: ADR-013 for the proposed fix (per-bot inboxes + coordination)
+        # =======================================================================
         # self.daily_scheduler.start()
         # self.action_poller.start()
 
