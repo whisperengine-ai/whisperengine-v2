@@ -34,29 +34,53 @@ Implement a **Redis-based secrets vault** with **generic workers** and **per-bot
 
 ### 1. Secrets Vault (Redis)
 
-Bots publish their secrets to Redis on startup:
+Bots publish their secrets AND config to Redis on startup:
 
 ```python
 # Bot process (on startup + periodic refresh)
-await redis.hset(f"secrets:{bot_name}", mapping={
+await redis.hset(f"vault:{bot_name}:secrets", mapping={
     "discord_token": token,
     "openai_api_key": settings.OPENAI_API_KEY,
     "anthropic_api_key": settings.ANTHROPIC_API_KEY,
-    # ... other LLM keys
 })
-await redis.expire(f"secrets:{bot_name}", 86400)  # 24h TTL, bot refreshes
+
+await redis.hset(f"vault:{bot_name}:llm", mapping={
+    "main_model": settings.MAIN_MODEL,           # e.g., "claude-sonnet-4-20250514"
+    "main_temperature": str(settings.MAIN_TEMPERATURE),  # e.g., "0.8"
+    "reflective_model": settings.REFLECTIVE_MODEL,
+    "reflective_temperature": str(settings.REFLECTIVE_TEMPERATURE),
+    "router_model": settings.ROUTER_MODEL,
+    "embedding_model": settings.EMBEDDING_MODEL,
+})
+
+await redis.hset(f"vault:{bot_name}:discord", mapping={
+    "bot_user_id": str(bot.user.id),
+    "guild_ids": json.dumps([g.id for g in bot.guilds]),
+})
+
+await redis.expire(f"vault:{bot_name}:secrets", 86400)
+await redis.expire(f"vault:{bot_name}:llm", 86400)
+await redis.expire(f"vault:{bot_name}:discord", 86400)
 ```
 
-Workers read secrets on demand:
+Workers read config on demand:
 
 ```python
-class SecretsVault:
-    async def get(self, bot_name: str, key: str) -> str:
-        return await redis.hget(f"secrets:{bot_name}", key)
+class ConfigVault:
+    async def get_secret(self, bot_name: str, key: str) -> str:
+        return await redis.hget(f"vault:{bot_name}:secrets", key)
+    
+    async def get_llm_config(self, bot_name: str) -> dict:
+        return await redis.hgetall(f"vault:{bot_name}:llm")
+    
+    async def get_discord_config(self, bot_name: str) -> dict:
+        return await redis.hgetall(f"vault:{bot_name}:discord")
 
 # Usage
-vault = SecretsVault()
-token = await vault.get("elena", "discord_token")
+vault = ConfigVault()
+token = await vault.get_secret("elena", "discord_token")
+llm_config = await vault.get_llm_config("elena")
+# llm_config = {"main_model": "claude-sonnet-4-20250514", "main_temperature": "0.8", ...}
 ```
 
 ### 2. Generic Workers (Any Worker → Any Bot)
@@ -110,10 +134,13 @@ Workers pull from all inboxes (or round-robin), look up secrets per job.
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      Redis                                           │
 │                                                                      │
-│   secrets:elena   {discord_token, openai_key, ...}                  │
-│   secrets:dotty   {discord_token, openai_key, ...}                  │
-│   inbox:elena     [event1, event2, ...]                             │
-│   inbox:dotty     [event1, event2, ...]                             │
+│   vault:elena:secrets  {discord_token, openai_key, ...}             │
+│   vault:elena:llm      {main_model, main_temperature, ...}          │
+│   vault:elena:discord  {bot_user_id, guild_ids}                     │
+│   vault:dotty:secrets  {...}                                        │
+│   vault:dotty:llm      {...}                                        │
+│   inbox:elena          [event1, event2, ...]                        │
+│   inbox:dotty          [event1, event2, ...]                        │
 │   channel:123:recent_bot_posts  [elena@12:01, dotty@12:02]         │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -125,13 +152,14 @@ Workers pull from all inboxes (or round-robin), look up secrets per job.
 │  Loop:                                                               │
 │    1. XREAD from inbox:* (any bot's inbox)                          │
 │    2. Extract bot_name from event                                    │
-│    3. Fetch secrets: vault.get(bot_name, "discord_token")           │
-│    4. Load character config for bot_name                             │
-│    5. Should I respond? (LLM / heuristics)                          │
-│    6. Check coordination: channel:{id}:recent_bot_posts             │
-│    7. If yes: Generate response (LLM with bot's key)                │
-│    8. Send via Discord REST API (with bot's token)                  │
-│    9. Record: ZADD channel:{id}:recent_bot_posts bot_name {ts}      │
+│    3. Fetch config: vault.get_llm_config(bot_name)                  │
+│    4. Fetch secrets: vault.get_secret(bot_name, "discord_token")    │
+│    5. Load character config for bot_name                             │
+│    6. Should I respond? (LLM / heuristics)                          │
+│    7. Check coordination: channel:{id}:recent_bot_posts             │
+│    8. If yes: Generate response (LLM with bot's model + params)     │
+│    9. Send via Discord REST API (with bot's token)                  │
+│   10. Record: ZADD channel:{id}:recent_bot_posts bot_name {ts}      │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -156,6 +184,54 @@ async def send_message(channel_id: str, content: str, token: str):
 
 No conflict — bot holds gateway, workers use REST.
 
+### 6. HTTP API (Enqueue + Poll)
+
+The HTTP API (`/api/chat`) remains synchronous from the client's perspective, but delegates to workers:
+
+```python
+# Bot HTTP handler (thin)
+@app.post("/api/chat")
+async def chat(request: ChatRequest):
+    job_id = str(uuid.uuid4())
+    
+    # Enqueue to worker (non-blocking, ~1ms)
+    await redis.xadd(f"inbox:{bot_name}", {
+        "job_id": job_id,
+        "type": "http_chat",
+        "user_id": request.user_id,
+        "message": request.message,
+    })
+    
+    # Poll for response (worker writes to response:{job_id})
+    for _ in range(300):  # 30 second timeout
+        response = await redis.get(f"response:{job_id}")
+        if response:
+            await redis.delete(f"response:{job_id}")  # cleanup
+            return json.loads(response)
+        await asyncio.sleep(0.1)
+    
+    raise HTTPException(504, "Timeout waiting for response")
+
+# Worker writes response when done
+async def process_http_chat(job: dict):
+    job_id = job["job_id"]
+    # ... do all the heavy work ...
+    response = await generate_response(...)
+    
+    # Write response for bot to pick up
+    await redis.setex(
+        f"response:{job_id}",
+        60,  # 60s TTL (cleanup if bot never reads)
+        json.dumps({"response": response, "metadata": {...}})
+    )
+```
+
+**Why this approach:**
+- Same API contract — clients don't change
+- Bot stays thin (enqueue ~1ms, poll ~100ms overhead)
+- Worker does all heavy lifting
+- Backward compatible with existing tests and integrations
+
 ## Consequences
 
 ### Positive
@@ -166,8 +242,34 @@ No conflict — bot holds gateway, workers use REST.
 4. **Dynamic credential rotation**: Change token, restart bot, workers auto-update
 5. **Solves gateway constraint**: Workers use REST, no conflict with bot's gateway
 6. **Enables autonomous features**: Workers can now send to Discord directly
-7. **Natural coordination**: Workers share state via Redis (`recent_bot_posts`)
+7. **Natural coordination**: Workers share state via Redis (`recent_bot_posts`)8. **Bot becomes ultra-thin**: No LLM calls, no embeddings, no DB queries — just event capture
+9. **Bot never blocks**: `XADD` to Redis is ~1ms, bot stays responsive to Discord
+10. **Horizontal scaling**: Add workers for compute, bot stays lightweight
 
+### Bot Process Comparison
+
+| Operation | Before (Coupled) | After (Vault) |
+|-----------|------------------|---------------|
+| Receive message | ✅ Bot | ✅ Bot |
+| Generate embedding | ❌ Bot (100-500ms) | ✅ Worker |
+| Query memories | ❌ Bot (50-200ms) | ✅ Worker |
+| Query knowledge graph | ❌ Bot (50-200ms) | ✅ Worker |
+| LLM call | ❌ Bot (1-10s) | ✅ Worker |
+| Store memory | ❌ Bot | ✅ Worker |
+| Send response | ❌ Bot | ✅ Worker (REST) |
+| **Total blocking time** | **1.5-11s** | **~1ms** |
+
+The bot process becomes a pure event gateway — receives from Discord, publishes to Redis, done. All compute-heavy work moves to workers which can scale independently.
+
+### Scalability Implications
+
+```
+Before: 10 concurrent users → bot blocks on LLM → Discord rate limits → dropped messages
+
+After:  10 concurrent users → bot queues 10 events in ~10ms
+        Workers process in parallel → responses flow back via REST
+        Bot never blocks, never hits Discord gateway limits
+```
 ### Negative
 
 1. **Secrets in Redis**: Acceptable for internal Docker network; may need encryption for external access
@@ -209,11 +311,12 @@ External secrets management service.
 
 ## Implementation Plan
 
-### Phase 1: Secrets Vault
+### Phase 1: Config Vault
 
-1. Add `SecretsVault` class to `src_v2/core/secrets.py`
-2. Bot publishes secrets on startup (`publish_secrets()`)
-3. Periodic refresh (every hour)
+1. Add `ConfigVault` class to `src_v2/core/vault.py`
+2. Namespaced keys: `vault:{bot}:secrets`, `vault:{bot}:llm`, `vault:{bot}:discord`
+3. Bot publishes all config on startup (`publish_vault()`)
+4. Periodic refresh (every hour)
 
 ### Phase 2: Discord REST Client
 
@@ -224,8 +327,9 @@ External secrets management service.
 ### Phase 3: Generic Worker
 
 1. Modify worker to read from multiple inboxes
-2. Look up secrets per job based on `bot_name`
-3. Load character config dynamically
+2. Look up config + secrets per job based on `bot_name`
+3. Instantiate LLM client with bot's model/temperature settings
+4. Load character config dynamically
 
 ### Phase 4: Bot Inbox Publishing
 
