@@ -48,8 +48,8 @@ class WhisperBot(commands.Bot):
         """Async setup hook called before the bot starts."""
         
         # Start Daily Life System
-        self.daily_scheduler.start()
-        self.action_poller.start()
+        # self.daily_scheduler.start()
+        # self.action_poller.start()
 
 
         # Load slash commands
