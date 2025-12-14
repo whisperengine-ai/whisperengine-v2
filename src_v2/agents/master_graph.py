@@ -300,13 +300,28 @@ class MasterGraphAgent:
         if memories and not has_documents:
             memory_context = ""
             for mem in memories:
-                # Format: Content (Time) - timestamp at END to avoid LLM echoing it as content
+                # Format: [Author]: Content (Time) - timestamp at END to avoid LLM echoing it as content
                 rel_time = mem.get("relative_time", "unknown time")
                 content = mem.get("content", "")
                 # Truncate very long memories to avoid bloating context
                 if len(content) > 500:
                     content = content[:500] + "..."
-                memory_context += f"- {content} ({rel_time})\n"
+                
+                # ADR-014: Show author for multi-party attribution
+                author_name = mem.get("author_name")
+                author_is_bot = mem.get("author_is_bot", False)
+                if author_name:
+                    bot_tag = " (bot)" if author_is_bot else ""
+                    memory_context += f"- [{author_name}{bot_tag}]: {content} ({rel_time})\n"
+                else:
+                    # Legacy memories without author - use role as hint
+                    role = mem.get("role", "unknown")
+                    if role == "human":
+                        memory_context += f"- [User]: {content} ({rel_time})\n"
+                    elif role == "ai":
+                        memory_context += f"- [You]: {content} ({rel_time})\n"
+                    else:
+                        memory_context += f"- {content} ({rel_time})\n"
             
             if memory_context:
                 system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{memory_context}\n"

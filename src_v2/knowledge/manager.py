@@ -317,24 +317,48 @@ PRIVACY RESTRICTION ENABLED:
             logger.error(f"Fact correction failed: {e}")
             return "Failed to update fact."
 
-    async def add_memory_node(self, user_id: str, vector_id: str, content: str, timestamp: str, source_type: str, bot_name: Optional[str] = None):
+    async def add_memory_node(
+        self, 
+        user_id: str, 
+        vector_id: str, 
+        content: str, 
+        timestamp: str, 
+        source_type: str, 
+        bot_name: Optional[str] = None,
+        # ADR-014: Author tracking fields
+        author_id: Optional[str] = None,
+        author_is_bot: bool = False
+    ):
         """
         Creates a (:Memory) node in the graph linked to the user.
         This enables 'Vector-First Traversal' (Phase 2.5.1).
+        
+        ADR-014: Now includes author_id and author_is_bot to properly
+        attribute memories in multi-party conversations.
         """
         if not db_manager.neo4j_driver:
             return
 
         query = """
         MERGE (u:User {id: $user_id})
+        ON CREATE SET u.is_bot = false
         CREATE (m:Memory {
             id: $vector_id,
             content: $content,
             timestamp: $timestamp,
             source_type: $source_type,
-            bot_name: $bot_name
+            bot_name: $bot_name,
+            author_id: $author_id,
+            author_is_bot: $author_is_bot
         })
         MERGE (u)-[:HAS_MEMORY]->(m)
+        
+        // ADR-014: If author is different from user (bot response), link to author too
+        WITH m
+        WHERE $author_id IS NOT NULL AND $author_id <> $user_id
+        MERGE (a:User {id: $author_id})
+        ON CREATE SET a.is_bot = $author_is_bot
+        MERGE (a)-[:AUTHORED]->(m)
         """
         
         try:
@@ -346,7 +370,9 @@ PRIVACY RESTRICTION ENABLED:
                     content=content, 
                     timestamp=timestamp, 
                     source_type=source_type,
-                    bot_name=bot_name
+                    bot_name=bot_name,
+                    author_id=author_id,
+                    author_is_bot=author_is_bot
                 )
                 logger.debug(f"Created graph memory node {vector_id}")
         except Exception as e:

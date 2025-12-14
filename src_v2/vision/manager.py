@@ -65,6 +65,7 @@ class VisionManager:
             logger.info(f"Image description generated: {description[:50]}...")
 
             # Store in Memory
+            # ADR-014: This is bot-generated analysis of user's image
             memory_content = f"[Visual Memory] User sent an image. Description: {description}"
             
             await memory_manager.add_message(
@@ -73,7 +74,11 @@ class VisionManager:
                 role="system",
                 content=memory_content,
                 channel_id=channel_id,
-                metadata={"type": "image_analysis", "image_url": image_url}
+                metadata={"type": "image_analysis", "image_url": image_url},
+                # ADR-014: Bot authored this analysis
+                author_id=settings.DISCORD_BOT_NAME,
+                author_is_bot=True,
+                author_name=settings.DISCORD_BOT_NAME
             )
             
             return str(description)

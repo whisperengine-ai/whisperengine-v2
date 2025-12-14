@@ -360,6 +360,10 @@ class ActionPoller:
                 # Save the INCOMING message first (what we're replying to)
                 if cmd.action_type == "reply" and cmd.target_author_id and cmd.target_content:
                     try:
+                        # ADR-014: Include author fields - the target is the actual author
+                        # Determine if target is a bot (check cmd metadata or name patterns)
+                        target_is_bot = cmd.target_is_bot if hasattr(cmd, 'target_is_bot') else False
+                        
                         await memory_manager.add_message(
                             user_id=cmd.target_author_id,
                             character_name=self.bot.character_name,
@@ -368,7 +372,11 @@ class ActionPoller:
                             user_name=cmd.target_author_name or "Unknown",
                             channel_id=str(channel.id),
                             message_id=cmd.target_message_id,
-                            source_type=MemorySourceType.BOT_OBSERVATION  # Mark as bot-observed
+                            source_type=MemorySourceType.BOT_OBSERVATION,  # Mark as bot-observed
+                            # ADR-014: Author tracking
+                            author_id=cmd.target_author_id,
+                            author_is_bot=target_is_bot,
+                            author_name=cmd.target_author_name
                         )
                         logger.debug(f"Saved incoming message {cmd.target_message_id} from {cmd.target_author_name}")
                         
@@ -439,6 +447,7 @@ class ActionPoller:
                         # Channel post: use channel ID as context (not bot ID)
                         context_user_id = f"channel_{channel.id}"
                     
+                    # ADR-014: Bot is the author of this autonomous message
                     await memory_manager.add_message(
                         user_id=context_user_id,
                         character_name=self.bot.character_name,
@@ -448,7 +457,12 @@ class ActionPoller:
                         channel_id=str(channel.id),
                         message_id=str(sent_msg.id),
                         metadata=action_metadata,
-                        source_type=MemorySourceType.INFERENCE
+                        source_type=MemorySourceType.INFERENCE,
+                        # ADR-014: Author tracking - bot is author
+                        author_id=settings.DISCORD_BOT_NAME,
+                        author_is_bot=True,
+                        author_name=self.bot.character_name,
+                        reply_to_msg_id=cmd.target_message_id if cmd.action_type == "reply" else None
                     )
                     logger.info(f"Saved autonomous action to memory: {sent_msg.id} (context: {context_user_id})")
                 

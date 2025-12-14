@@ -381,6 +381,7 @@ class BroadcastManager:
             
             # Store as AI message (role="ai") with no user_id (broadcast, not to specific user)
             # Use a special "broadcast" user_id so it can be retrieved
+            # ADR-014: Bot is the author of broadcast posts
             await memory_manager.add_message(
                 user_id="__broadcast__",  # Special ID for broadcast memories
                 character_name=character_name,
@@ -393,7 +394,11 @@ class BroadcastManager:
                 metadata={
                     "post_type": post_type.value,
                     "is_broadcast": True
-                }
+                },
+                # ADR-014: Author tracking - bot authored this broadcast
+                author_id=settings.DISCORD_BOT_NAME,
+                author_is_bot=True,
+                author_name=character_name
             )
             
             logger.debug(f"Stored broadcast memory for {character_name}: {post_label}")
@@ -711,6 +716,7 @@ class BroadcastManager:
                                 # Save to memory/history
                                 try:
                                     from src_v2.memory.manager import memory_manager
+                                    # ADR-014: Bot is the author of proactive DMs
                                     await memory_manager.add_message(
                                         user_id=str(user_id),
                                         character_name=item["character_name"],
@@ -719,7 +725,11 @@ class BroadcastManager:
                                         user_name=user.name,
                                         channel_id=str(sent_msg.channel.id),
                                         message_id=str(sent_msg.id),
-                                        metadata={"provenance": item.get("provenance"), "type": "proactive_dm"}
+                                        metadata={"provenance": item.get("provenance"), "type": "proactive_dm"},
+                                        # ADR-014: Author tracking
+                                        author_id=settings.DISCORD_BOT_NAME,
+                                        author_is_bot=True,
+                                        author_name=item["character_name"]
                                     )
                                 except Exception as mem_err:
                                     logger.error(f"Failed to save DM to memory: {mem_err}")

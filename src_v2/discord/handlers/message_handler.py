@@ -794,6 +794,7 @@ class MessageHandler:
                     memory_content = doc_context.format_for_memory(user_message)
                     metadata = doc_context.get_memory_metadata()
 
+                    # ADR-014: Include author fields for proper attribution
                     await memory_manager.add_message(
                         user_id, 
                         character.name, 
@@ -802,7 +803,12 @@ class MessageHandler:
                         channel_id=channel_id, 
                         message_id=str(message.id),
                         user_name=message.author.display_name,
-                        metadata=metadata
+                        metadata=metadata,
+                        # ADR-014: Author tracking
+                        author_id=str(message.author.id),
+                        author_is_bot=message.author.bot,
+                        author_name=message.author.display_name,
+                        reply_to_msg_id=str(message.reference.message_id) if message.reference else None
                     )
                     
                     # Log Message Event to InfluxDB
@@ -1234,6 +1240,7 @@ class MessageHandler:
                     # Save the full response to memory (not chunked)
                     # Use the last message ID as the primary reference
                     if sent_messages:
+                        # ADR-014: Bot is the author of this response
                         await memory_manager.add_message(
                             user_id, 
                             character.name, 
@@ -1241,7 +1248,12 @@ class MessageHandler:
                             response, 
                             channel_id=channel_id, 
                             message_id=str(sent_messages[-1].id),
-                            user_name=message.author.display_name
+                            user_name=message.author.display_name,
+                            # ADR-014: Author tracking - bot is author
+                            author_id=settings.DISCORD_BOT_NAME,
+                            author_is_bot=True,
+                            author_name=character.name,
+                            reply_to_msg_id=str(message.id)  # Bot is replying to user's message
                         )
                     
                     # NOTE: Goal analysis is now handled at session end via batch goal analysis.

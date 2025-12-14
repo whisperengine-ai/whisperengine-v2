@@ -142,19 +142,75 @@ class MemoryManager:
 
     @require_db("postgres")
     @retry_db_operation(max_retries=3)
-    async def add_message(self, user_id: str, character_name: str, role: str, content: str, user_name: Optional[str] = None, channel_id: str = None, message_id: str = None, metadata: Dict[str, Any] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None):
+    async def add_message(
+        self, 
+        user_id: str, 
+        character_name: str, 
+        role: str, 
+        content: str, 
+        user_name: Optional[str] = None, 
+        channel_id: str = None, 
+        message_id: str = None, 
+        metadata: Dict[str, Any] = None, 
+        importance_score: int = 3, 
+        source_type: Optional[MemorySourceType] = None,
+        # ADR-014: Author tracking fields
+        author_id: Optional[str] = None,
+        author_is_bot: bool = False,
+        author_name: Optional[str] = None,
+        reply_to_msg_id: Optional[str] = None
+    ):
         """
         Adds a message to the history.
-        role: 'human' or 'ai'
-        importance_score: 1-10 scale of how important this message is (default 3 for raw chat)
+        
+        Args:
+            user_id: Conversation partner (who the bot is talking WITH)
+            character_name: Which bot's memory collection
+            role: 'human' or 'ai' (kept for compatibility)
+            content: Message text
+            user_name: Display name of conversation partner
+            channel_id: Discord channel ID
+            message_id: Discord message ID
+            metadata: Additional metadata
+            importance_score: 1-10 scale (default 3)
+            source_type: How the message was captured
+            author_id: WHO wrote THIS message (ADR-014)
+            author_is_bot: Is the author a bot? (ADR-014)
+            author_name: Display name of author (ADR-014)
+            reply_to_msg_id: Discord msg ID this replies to (ADR-014)
         """
+        # ADR-014: Derive author_id from role if not provided (backward compatibility)
+        if author_id is None:
+            if role in ("human", "user"):
+                author_id = str(user_id)
+                author_is_bot = False
+                author_name = author_name or user_name
+            else:
+                # For AI messages, we don't have bot's Discord ID here
+                # Caller should provide it; fallback to character_name
+                author_id = character_name
+                author_is_bot = True
+                author_name = author_name or character_name
+        
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
-                    INSERT INTO v2_chat_history (user_id, character_name, role, content, user_name, channel_id, message_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO v2_chat_history 
+                    (user_id, character_name, role, content, user_name, channel_id, message_id, author_id, author_is_bot, reply_to_msg_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     ON CONFLICT (message_id) DO NOTHING
-                """, str(user_id), character_name, role, content, user_name or "User", str(channel_id) if channel_id else None, str(message_id) if message_id else None)
+                """, 
+                    str(user_id), 
+                    character_name, 
+                    role, 
+                    content, 
+                    user_name or "User", 
+                    str(channel_id) if channel_id else None, 
+                    str(message_id) if message_id else None,
+                    str(author_id) if author_id else None,
+                    author_is_bot,
+                    str(reply_to_msg_id) if reply_to_msg_id else None
+                )
             
             # Also save to vector memory
             # Derive collection name from character_name to support cross-bot operations (e.g., gossip injection)
@@ -169,7 +225,12 @@ class MemoryManager:
                 collection_name=target_collection,
                 importance_score=importance_score,
                 source_type=source_type,
-                user_name=user_name
+                user_name=user_name,
+                # ADR-014: Pass author fields to vector memory
+                author_id=author_id,
+                author_is_bot=author_is_bot,
+                author_name=author_name,
+                reply_to_msg_id=reply_to_msg_id
             )
             
         except Exception as e:
@@ -183,7 +244,10 @@ class MemoryManager:
         metadata: Optional[Dict[str, Any]] = None,
         collection_name: Optional[str] = None,
         importance_score: int = 3,
-        source_type: Optional[MemorySourceType] = None
+        source_type: Optional[MemorySourceType] = None,
+        # ADR-014: Author tracking (for typed memories, bot is usually the author)
+        author_id: Optional[str] = None,
+        author_is_bot: bool = True  # Default True since typed memories are bot-generated
     ) -> None:
         """
         Public method to save typed memories (epiphanies, reasoning traces, patterns, etc.).
@@ -199,9 +263,14 @@ class MemoryManager:
             collection_name: Optional override for collection name
             importance_score: Importance score (1-5, default 3)
             source_type: Source of the memory (human, inference, dream, gossip)
+            author_id: Who created this memory (defaults to bot)
+            author_is_bot: Whether author is a bot (defaults to True for typed memories)
         """
         full_metadata = metadata or {}
         full_metadata["type"] = memory_type
+        
+        # ADR-014: For typed memories, bot is the author unless specified
+        effective_author_id = author_id or settings.DISCORD_BOT_NAME
         
         await self._save_vector_memory(
             user_id=user_id,
@@ -210,18 +279,42 @@ class MemoryManager:
             metadata=full_metadata,
             collection_name=collection_name,
             importance_score=importance_score,
-            source_type=source_type
+            source_type=source_type,
+            # ADR-014: Author tracking
+            author_id=effective_author_id,
+            author_is_bot=author_is_bot,
+            author_name=settings.DISCORD_BOT_NAME if author_is_bot else None
         )
 
     @require_db("qdrant")
     @retry_db_operation(max_retries=3)
-    async def _save_vector_memory(self, user_id: str, role: str, content: str, metadata: Optional[Dict[str, Any]] = None, channel_id: Optional[str] = None, message_id: Optional[str] = None, collection_name: Optional[str] = None, importance_score: int = 3, source_type: Optional[MemorySourceType] = None, user_name: Optional[str] = None):
+    async def _save_vector_memory(
+        self, 
+        user_id: str, 
+        role: str, 
+        content: str, 
+        metadata: Optional[Dict[str, Any]] = None, 
+        channel_id: Optional[str] = None, 
+        message_id: Optional[str] = None, 
+        collection_name: Optional[str] = None, 
+        importance_score: int = 3, 
+        source_type: Optional[MemorySourceType] = None, 
+        user_name: Optional[str] = None,
+        # ADR-014: Author tracking fields
+        author_id: Optional[str] = None,
+        author_is_bot: bool = False,
+        author_name: Optional[str] = None,
+        reply_to_msg_id: Optional[str] = None
+    ):
         """
         Embeds and saves a memory to Qdrant.
         
         For long messages (>CHUNK_THRESHOLD chars), splits into overlapping chunks
         so that each chunk's embedding accurately represents its specific content.
         This improves semantic search for phrases buried in long documents.
+        
+        ADR-014: Now includes author_id, author_is_bot, author_name fields
+        to properly attribute messages in multi-party conversations.
         """
         start_time = time.time()
         
@@ -234,6 +327,17 @@ class MemoryManager:
                     source_type = MemorySourceType.INFERENCE
                 else:
                     source_type = MemorySourceType.INFERENCE  # Default for other types
+            
+            # ADR-014: Derive author_id if not provided (backward compatibility)
+            effective_author_id = author_id
+            effective_author_is_bot = author_is_bot
+            if effective_author_id is None:
+                if role in ("human", "user"):
+                    effective_author_id = str(user_id)
+                    effective_author_is_bot = False
+                else:
+                    effective_author_id = settings.DISCORD_BOT_NAME
+                    effective_author_is_bot = True
             
             target_collection = collection_name or self.collection_name
             
@@ -268,6 +372,11 @@ class MemoryManager:
                         "importance_score": importance_score,
                         "source_type": source_type.value,
                         "user_name": user_name,
+                        # ADR-014: Author tracking fields
+                        "author_id": str(effective_author_id) if effective_author_id else None,
+                        "author_is_bot": effective_author_is_bot,
+                        "author_name": author_name,
+                        "reply_to_msg_id": str(reply_to_msg_id) if reply_to_msg_id else None,
                         # Chunk-specific metadata
                         "is_chunk": True,
                         "chunk_index": chunk_idx,
@@ -308,7 +417,10 @@ class MemoryManager:
                             content=smart_truncate(chunk_content, 500),
                             timestamp=timestamp_str,
                             source_type=source_type.value,
-                            bot_name=settings.DISCORD_BOT_NAME
+                            bot_name=settings.DISCORD_BOT_NAME,
+                            # ADR-014: Author tracking
+                            author_id=str(effective_author_id) if effective_author_id else None,
+                            author_is_bot=effective_author_is_bot
                         )
                 except Exception as e:
                     logger.warning(f"Failed to create memory graph nodes for chunks: {e}")
@@ -333,7 +445,12 @@ class MemoryManager:
                     "message_id": str(message_id) if message_id else None,
                     "importance_score": importance_score,
                     "source_type": source_type.value,
-                    "user_name": user_name
+                    "user_name": user_name,
+                    # ADR-014: Author tracking fields
+                    "author_id": str(effective_author_id) if effective_author_id else None,
+                    "author_is_bot": effective_author_is_bot,
+                    "author_name": author_name,
+                    "reply_to_msg_id": str(reply_to_msg_id) if reply_to_msg_id else None
                 }
                 
                 # Metadata can override type (e.g., for save_typed_memory)
@@ -365,7 +482,10 @@ class MemoryManager:
                         content=smart_truncate(content, 500),  # Truncate for graph storage
                         timestamp=timestamp_str,
                         source_type=source_type.value,
-                        bot_name=settings.DISCORD_BOT_NAME
+                        bot_name=settings.DISCORD_BOT_NAME,
+                        # ADR-014: Author tracking
+                        author_id=str(effective_author_id) if effective_author_id else None,
+                        author_is_bot=effective_author_is_bot
                     )
                 except Exception as e:
                     # Non-blocking: log but don't fail the memory write
@@ -422,7 +542,11 @@ class MemoryManager:
                 "meaningfulness_score": meaningfulness_score,
                 "emotions": emotions,
                 "topics": topics or [],
-                "timestamp": datetime.datetime.now().isoformat()
+                "timestamp": datetime.datetime.now().isoformat(),
+                # ADR-014: Summaries are authored by the bot
+                "author_id": settings.DISCORD_BOT_NAME,
+                "author_is_bot": True,
+                "author_name": settings.DISCORD_BOT_NAME
             }
             
             if channel_id:
@@ -573,6 +697,11 @@ class MemoryManager:
                     "user_name": payload.get("user_name"),
                     "channel_id": payload.get("channel_id"),
                     "message_id": payload.get("message_id"),
+                    # ADR-014: Author tracking
+                    "author_id": payload.get("author_id"),
+                    "author_is_bot": payload.get("author_is_bot", False),
+                    "author_name": payload.get("author_name"),
+                    "reply_to_msg_id": payload.get("reply_to_msg_id"),
                     # Chunk metadata for hydration
                     "is_chunk": payload.get("is_chunk", False),
                     "chunk_index": payload.get("chunk_index"),
@@ -978,18 +1107,20 @@ class MemoryManager:
         try:
             async with db_manager.postgres_pool.acquire() as conn:
                 if channel_id:
-                    # Fetch by channel_id (Group Context)
+                    # Fetch by channel_id (Group Context) - ADR-014: Include author fields
                     rows = await conn.fetch("""
-                        SELECT role, content, user_id, user_name, timestamp 
+                        SELECT role, content, user_id, user_name, timestamp,
+                               author_id, author_is_bot
                         FROM v2_chat_history 
                         WHERE channel_id = $1 AND character_name = $2
                         ORDER BY timestamp DESC
                         LIMIT $3
                     """, str(channel_id), character_name, limit)
                 else:
-                    # Fetch by user_id (DM Context)
+                    # Fetch by user_id (DM Context) - ADR-014: Include author fields
                     rows = await conn.fetch("""
-                        SELECT role, content, user_id, user_name, timestamp 
+                        SELECT role, content, user_id, user_name, timestamp,
+                               author_id, author_is_bot
                         FROM v2_chat_history 
                         WHERE user_id = $1 AND character_name = $2
                         ORDER BY timestamp DESC
@@ -1011,10 +1142,21 @@ class MemoryManager:
                             # Middle truncation is better: preserves start (context) and end (instruction/conclusion)
                             content = smart_truncate(content, max_length=4000)
                         
-                        # In group contexts (channel_id present), distinguish other users
-                        if channel_id and row['user_id'] != str(user_id):
-                            display_name = row['user_name'] or f"User {row['user_id']}"
-                            content = f"[{display_name}]: {content}"
+                        # ADR-014: Use author_id for attribution in group contexts
+                        # Show name if it's another user in the channel
+                        author_id = row.get('author_id')
+                        author_is_bot = row.get('author_is_bot', False)
+                        
+                        if channel_id:
+                            # In group contexts, show who said what
+                            if author_id and author_id != str(user_id):
+                                display_name = row['user_name'] or f"User {author_id}"
+                                bot_tag = " (bot)" if author_is_bot else ""
+                                content = f"[{display_name}{bot_tag}]: {content}"
+                            elif row['user_id'] != str(user_id):
+                                # Legacy fallback for messages without author_id
+                                display_name = row['user_name'] or f"User {row['user_id']}"
+                                content = f"[{display_name}]: {content}"
                         
                         # Add timestamp context (suffix to avoid LLM echoing)
                         content = f"{content} ({rel_time})"

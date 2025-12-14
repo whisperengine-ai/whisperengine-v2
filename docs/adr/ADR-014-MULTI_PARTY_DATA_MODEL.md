@@ -50,6 +50,23 @@ In a Discord channel with multiple humans and bots:
 | Sessions don't work in channels | Sessions are `(user_id, character_name)` pairs |
 | Role is ambiguous | In multi-bot channels, whose "ai" is it? |
 
+### Current Hacks (Will Be Fixed)
+
+The codebase has workarounds that paper over this problem:
+
+```python
+# daily_life.py: Fake user_id for channel posts
+if cmd.action_type == "reply" and cmd.target_author_id:
+    context_user_id = cmd.target_author_id
+else:
+    context_user_id = f"channel_{channel.id}"  # HACK: Not a real user
+```
+
+This causes:
+- Queries like `WHERE user_id = 'channel_123'` that find nothing useful
+- Facts learned from channel conversations attributed to a fake user
+- Trust scores for "channel_123" that mean nothing
+
 ### Key Insight: Three Different Concepts Conflated
 
 The current `user_id` field conflates three things:
@@ -62,7 +79,7 @@ In 1:1 DMs, these are the same. In channels, they're different.
 
 ## Decision
 
-### New Schema: Conversation + Message + Participant
+### Long-term Vision: Conversation + Message + Participant
 
 ```sql
 -- Conversations: A context where messages happen
@@ -97,6 +114,8 @@ v2_participants:
   message_count   -- How many messages they sent
 ```
 
+**Note:** This is the FULL schema for Phase 2+. Phase 1 only adds columns to existing table.
+
 ### How This Solves the Problems
 
 | Problem | Solution |
@@ -107,18 +126,222 @@ v2_participants:
 | Sessions | Sessions become conversation-scoped, not user-scoped |
 | Role ambiguity | No more "role" field — just `author_is_bot` |
 
-### Migration Strategy
+---
 
-**Phase 1: Add author_id (Non-Breaking)**
+## Phase 1: Minimum Viable Schema (DO FIRST)
+
+This is the **minimum change needed** to unblock ADR-017 (bot-to-bot conversations).
+
+### All Three Data Stores Need Updates
+
+| Store | Current State | Problem | Fix |
+|-------|---------------|---------|-----|
+| **PostgreSQL** | `user_id` = conversation partner | Can't distinguish author | Add `author_id`, `author_is_bot` |
+| **Qdrant** | `user_id` in payload | Same problem | Add `author_id`, `author_is_bot` to payload |
+| **Neo4j** | `User` nodes only | Bots not represented | Add `is_bot` to User nodes OR separate `Bot` nodes |
+
+---
+
+### 1. PostgreSQL Changes
+
 ```sql
+-- Add author tracking to existing table (non-breaking)
 ALTER TABLE v2_chat_history ADD COLUMN author_id TEXT;
 ALTER TABLE v2_chat_history ADD COLUMN author_is_bot BOOLEAN DEFAULT FALSE;
-ALTER TABLE v2_chat_history ADD COLUMN reply_to_id INTEGER;
+ALTER TABLE v2_chat_history ADD COLUMN reply_to_msg_id TEXT;  -- Discord message ID we're replying to
+
+-- Index for efficient author queries
+CREATE INDEX idx_v2_chat_history_author ON v2_chat_history(author_id);
+CREATE INDEX idx_v2_chat_history_author_bot ON v2_chat_history(author_id, author_is_bot);
 ```
 
-Backfill:
-- For `role = 'human'`: `author_id = user_id`
-- For `role = 'ai'`: `author_id = character_name` (bot)
+**Backfill:**
+```sql
+UPDATE v2_chat_history 
+SET author_id = CASE 
+    WHEN role = 'human' THEN user_id
+    WHEN role = 'ai' THEN character_name  -- Will be replaced with bot Discord ID
+    ELSE user_id
+END,
+author_is_bot = (role = 'ai')
+WHERE author_id IS NULL;
+```
+
+---
+
+### 2. Qdrant Payload Changes
+
+Current payload structure:
+```python
+payload = {
+    "type": "conversation",
+    "user_id": str(user_id),      # Conversation partner - AMBIGUOUS
+    "role": role,                  # "human" or "ai" - NOT WHO WROTE IT
+    "content": content,
+    "timestamp": timestamp_str,
+    "channel_id": str(channel_id),
+    "message_id": str(message_id),
+    "source_type": source_type.value,
+    "user_name": user_name
+}
+```
+
+**New payload fields:**
+```python
+payload = {
+    # ... existing fields ...
+    "user_id": str(user_id),       # Keep for compatibility (conversation partner)
+    "role": role,                   # Keep for compatibility
+    # NEW FIELDS:
+    "author_id": str(author_id),    # WHO wrote this message
+    "author_is_bot": author_is_bot, # Is author a bot?
+    "author_name": author_name,     # Display name of author
+    "reply_to_msg_id": reply_to_msg_id,  # Threading
+}
+```
+
+**Qdrant doesn't require migration** — new fields are automatically indexed. Old vectors just won't have these fields (use `user_id` as fallback).
+
+**Query changes:**
+```python
+# Before: Find bot messages (unreliable - role doesn't mean author)
+Filter(must=[FieldCondition(key="role", match=MatchValue(value="ai"))])
+
+# After: Find messages written BY bots
+Filter(must=[FieldCondition(key="author_is_bot", match=MatchValue(value=True))])
+
+# After: Find messages written by specific bot
+Filter(must=[FieldCondition(key="author_id", match=MatchValue(value=bot_discord_id))])
+```
+
+---
+
+### 3. Neo4j Changes
+
+Current graph model:
+```
+(:User {id: discord_id})-[:FACT]->(:Entity)
+(:User)-[:HAS_MEMORY]->(:Memory)
+(:Character {name: bot_name})  # Only for self-reflection
+```
+
+**Problem:** When Bot A talks to Bot B:
+- We create `(:User {id: bot_a_id})` — but this is a bot, not a human
+- Facts learned from Bot A are stored as if it's a human user
+- No way to query "what do bots know?"
+
+**Solution Option A: Add `is_bot` to User nodes (minimal change)**
+```cypher
+-- Add is_bot property to User nodes
+MATCH (u:User)
+SET u.is_bot = false  -- Default for existing users
+
+-- When creating new User node for a bot:
+MERGE (u:User {id: $author_id})
+ON CREATE SET u.is_bot = $is_bot, u.name = $author_name
+```
+
+**Solution Option B: Separate Bot nodes (cleaner, more work)**
+```cypher
+-- Create Bot node type
+(:Bot {id: discord_id, name: character_name})
+
+-- Facts from bots use Bot nodes
+(:Bot)-[:FACT]->(:Entity)
+
+-- Bot-to-bot conversations
+(:Bot)-[:TALKED_TO]->(:Bot)
+```
+
+**Recommended: Option A** — less disruptive, facts work the same way, just tagged.
+
+---
+
+### Code Changes Required
+
+**1. `memory_manager.add_message()` — Add author fields:**
+
+```python
+async def add_message(
+    self,
+    user_id: str,           # Context user (conversation partner)
+    character_name: str,     # Which bot's collection
+    role: str,              # "human" or "ai" (keep for compatibility)
+    content: str,
+    user_name: Optional[str] = None,
+    channel_id: str = None,
+    message_id: str = None,
+    # NEW FIELDS:
+    author_id: str = None,           # WHO wrote this message
+    author_is_bot: bool = False,     # Is author a bot?
+    reply_to_msg_id: str = None,     # Discord msg ID we're replying to
+    ...
+):
+    # If author_id not provided, derive from role
+    if author_id is None:
+        author_id = user_id if role == "human" else str(self.bot_user_id)
+        author_is_bot = (role == "ai")
+```
+
+**2. `bot.py` — Pass author info when saving messages:**
+
+```python
+# When saving human message:
+await memory_manager.add_message(
+    user_id=str(message.author.id),
+    character_name=self.character_name,
+    role="human",
+    content=message.content,
+    author_id=str(message.author.id),      # NEW
+    author_is_bot=message.author.bot,       # NEW
+    reply_to_msg_id=str(message.reference.message_id) if message.reference else None,  # NEW
+    ...
+)
+
+# When saving bot response:
+await memory_manager.add_message(
+    user_id=str(message.author.id),  # Still the user we're talking to
+    character_name=self.character_name,
+    role="ai",
+    content=response,
+    author_id=str(self.bot.user.id),        # NEW: Bot's Discord ID
+    author_is_bot=True,                      # NEW
+    reply_to_msg_id=str(message.id),         # NEW: Reply to user's message
+    ...
+)
+```
+
+**3. `knowledge_tasks.py` — Use author_id for fact attribution:**
+
+```python
+# Before: Facts attributed to user_id (the conversation partner)
+await knowledge_manager.save_facts(user_id, facts, character_name)
+
+# After: Facts attributed to author_id (who actually said it)
+await knowledge_manager.save_facts(author_id, facts, character_name, is_bot=author_is_bot)
+```
+
+### What Phase 1 Enables
+
+| Use Case | Before | After |
+|----------|--------|-------|
+| Bot A talks to Bot B | `user_id = bot_a_id, role = "human"` 🤔 | `author_id = bot_a_id, author_is_bot = true` ✅ |
+| Query "what did bots say?" | Can't distinguish | `WHERE author_is_bot = true` |
+| Learn facts from bot convo | Attributed to "human" | Attributed to correct author |
+| Reply threading | No way to track | `reply_to_msg_id` links messages |
+
+---
+
+## Phase 2-5: Full Schema Migration (DEFERRED)
+
+The full normalized schema (`v2_conversations`, `v2_messages`, `v2_participants`) is **deferred** until we need:
+- Multi-party sessions (not just 1:1)
+- Efficient participant queries
+- Conversation-level metadata
+
+Phase 1 is sufficient for bot-to-bot conversations.
+
+### Migration Strategy (When Ready)
 
 **Phase 2: Create New Tables (Parallel)**
 Create `v2_conversations`, `v2_messages`, `v2_participants` alongside existing tables.
@@ -132,63 +355,85 @@ Update queries to use new schema.
 **Phase 5: Deprecate Old Schema**
 Drop `v2_chat_history` once all reads migrated.
 
+---
+
 ## Consequences
 
 ### Positive
-- Multi-party conversations work correctly
+- Bot-to-bot conversations stored correctly across all 3 stores
 - Learning attributes facts to correct authors
-- Trust updates for all participants
-- Threading (`reply_to_id`) enables conversation reconstruction
-- Cleaner separation of concerns
+- Reply threading enables conversation reconstruction
+- Non-breaking migration (additive)
+- Qdrant needs no migration (payload fields auto-indexed)
 
 ### Negative
-- Schema migration complexity
-- Dual-write period adds latency
-- Existing queries need rewriting
-- More JOINs in queries
+- `role` field becomes semi-redundant (but keep for compatibility)
+- `user_id` still overloaded (context partner vs author) until Phase 2
+- Need to backfill existing Postgres data
+- Neo4j `User` nodes now include bots (slight semantic confusion)
 
 ### Neutral
-- Storage slightly higher (normalized vs denormalized)
-- Index strategy changes
+- Storage slightly higher (new columns/fields)
+- New indexes needed in Postgres
 
-## Alternatives Considered
+---
 
-### A: Keep Current Schema + Convention
-Use `user_id` conventions like `channel_{id}` for channel posts.
+## Implementation Checklist
 
-**Rejected:** This is a hack that doesn't fix learning/trust attribution.
+### Phase 1 (Do Now) — ✅ COMPLETE (Dec 13, 2025)
 
-### B: JSON Blob for Participants
-Store participant list as JSON in existing table.
+**PostgreSQL:**
+- [x] Migration file: Add `author_id`, `author_is_bot`, `reply_to_msg_id` columns
+- [x] Backfill script: Populate from existing `role` and `user_id`
+- [x] Update `add_message()` INSERT statement
 
-**Rejected:** Can't efficiently query/index, joins are awkward.
+**Qdrant:**
+- [x] Update `_save_vector_memory()` payload to include `author_id`, `author_is_bot`, `author_name`
+- [x] Update `search_memories()` to return author fields in results
+- [x] (No migration needed - new fields auto-indexed)
 
-### C: Separate Channel History Table
-Create `v2_channel_history` with different schema.
+**Neo4j:**
+- [x] Update `add_memory_node()` to pass `is_bot` flag
+- [x] Update User node creation to set `is_bot` property
+- [x] Create `:AUTHORED` relationship when author != conversation partner
 
-**Rejected:** Code duplication, harder to search across DMs and channels.
+**Code Integration:**
+- [x] `memory_manager.add_message()`: Add author parameters
+- [x] `memory_manager._save_vector_memory()`: Add author to payload  
+- [x] `memory_manager.save_typed_memory()`: Add author tracking (bot-generated)
+- [x] `memory_manager.save_summary_vector()`: Add author fields (bot-generated)
+- [x] `memory_manager.get_chat_history()`: Query and display author info
+- [x] `message_handler.py`: Pass `author_id`, `author_is_bot` when saving messages
+- [x] `daily_life.py`: Pass author fields for autonomous messages
+- [x] `broadcast/manager.py`: Author fields for broadcast posts and proactive DMs
+- [x] `vision/manager.py`: Author fields for image analysis memories
+- [x] `knowledge_manager.save_facts()`: Already handles `is_self_reflection` for bots
 
-## Implementation Order
+**Prompt Engineering (Context Formatting):**
+- [x] `master_graph.py`: Format memories with `[Author (bot)]:` prefix
+- [x] `tools/memory_tools.py`: SearchEpisodesTool returns author attribution
+- [x] Legacy fallback: Uses `role` field when `author_id` missing
 
-1. **ADR-014** (this doc) — Approve data model direction
-2. **Phase 1 migration** — Add `author_id`, `author_is_bot`, `reply_to_id` to existing table
-3. **Update learning pipeline** — Use `author_id` for fact attribution
-4. **Update trust pipeline** — Update all participants
-5. **Phase 2-5** — Full schema migration (can be deferred)
+**Tests:**
+- [ ] Verify bot message stored with correct `author_id`
+- [ ] Verify facts attributed to correct author
+- [ ] Verify Qdrant filter `author_is_bot=True` works
+- [ ] Verify Neo4j User node has `is_bot` property
+- [ ] Verify memory context shows `[BotName (bot)]:` format
 
-## Relationship to ADR-013 (Event-Driven Architecture)
+### Phase 2+ (Deferred)
 
-These two ADRs work together:
+- [ ] Design `v2_conversations` table
+- [ ] Design `v2_messages` table  
+- [ ] Design `v2_participants` table
+- [ ] Implement dual-write
+- [ ] Migrate read queries
+- [ ] Deprecate `v2_chat_history`
 
-| ADR-013 (Architecture) | ADR-014 (Data Model) |
-|------------------------|----------------------|
-| How events flow | How data is stored |
-| State machines | Conversation records |
-| On-demand context fetch | What gets fetched |
-| Response threading | `reply_to_id` field |
-
-**Implementation order:** ADR-013 can be implemented first (event capture, state machines) using the existing schema. ADR-014's Phase 1 (add `author_id`) enables proper attribution. Full schema migration can happen later.
+---
 
 ## Related ADRs
-- ADR-013: Event-Driven Architecture (processing architecture)
-- ADR-012: Unified Architecture (current system design)
+
+- **ADR-017**: Bot-to-Bot Simplified → **Depends on Phase 1**
+- **ADR-013**: Event-Driven Architecture (processing architecture) → Deferred
+- **ADR-012**: Unified Architecture (current system design)

@@ -433,7 +433,21 @@ This searches your actual memories, not just the current channel. If user mentio
                     if msg_id:
                         content += f" (ID: {msg_id})"
                 
-                formatted_lines.append(f"- ({relative_time}) {content}")
+                # ADR-014: Include author attribution for multi-party context
+                author_name = r.get('author_name')
+                author_is_bot = r.get('author_is_bot', False)
+                if author_name:
+                    bot_tag = " (bot)" if author_is_bot else ""
+                    formatted_lines.append(f"- [{author_name}{bot_tag}] ({relative_time}) {content}")
+                else:
+                    # Legacy memories - use role hint
+                    role = r.get('role', '')
+                    if role == 'human':
+                        formatted_lines.append(f"- [User] ({relative_time}) {content}")
+                    elif role == 'ai':
+                        formatted_lines.append(f"- [You] ({relative_time}) {content}")
+                    else:
+                        formatted_lines.append(f"- ({relative_time}) {content}")
             
             formatted = "\n".join(formatted_lines)
             return f"Found {len(filtered_results)} memories:\n{formatted}{neighborhood_text}"
