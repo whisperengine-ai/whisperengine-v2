@@ -95,7 +95,30 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **Adaptive Identity** | Self-Editing Persona (Phase 2.6) | **1 week** | 🔄 Active |
 | 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **Ongoing** | 🔄 Active |
 
-#### ⚠️ BLOCKED: ADR-013 Implementation (Multi-Bot Coordination Problem)
+#### 🔄 Re-Prioritized: Schema Before Automation (ADR-014 → ADR-017)
+
+> **December 13, 2025:** We've clarified the dependency chain. Before implementing any autonomous behavior (including bot-to-bot), we need the multi-party data schema. See [ADR-017](./adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md).
+
+**The Insight:**
+- Current schema assumes 1:1 conversations (`user_id` = THE human, `character_name` = THE bot)
+- This breaks for channel conversations with multiple bots and humans
+- Can't properly store "Bot A said X to Bot B" without `author_id` field
+- Learning and trust attribution are broken for multi-party
+
+**Correct Priority Order:**
+
+| Priority | Phase | Description | Time | Status |
+|----------|-------|-------------|------|--------|
+| 🔴 **Do First** | **ADR-014 Phase 1** | Add `author_id`, `author_is_bot` to chat history | **1-2 days** | 📋 Next |
+| 🟢 High | **ADR-017 Phase 1** | Bot-to-bot responses (with lock coordination) | **1 day** | 📋 After ADR-014 |
+| 🟡 Medium | **ADR-017 Phase 2** | Update learning/trust to use `author_id` | **1-2 days** | 📋 After Phase 1 |
+| ⏸️ Deferred | **ADR-016/013** | Full autonomous (vault, inboxes, initiation) | **TBD** | Deferred |
+
+**Reference Documents:**
+- [`ADR-017: Bot-to-Bot Simplified`](./adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md) — Current design direction
+- [`ADR-014: Multi-Party Data Model`](./adr/ADR-014-MULTI_PARTY_DATA_MODEL.md) — Schema prerequisite
+
+#### ⏸️ DEFERRED: Full Autonomous Features (ADR-016/013)
 
 > **December 13, 2025:** All autonomous features (polling AND event-driven) are **disabled in code** pending architecture redesign. See [ADR-013](./adr/ADR-013-STREAMING_VS_POLLING.md) and [SPEC-E36](./spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md).
 

@@ -23,81 +23,77 @@ ADR-015 and ADR-016 attempted to solve the "multi-bot coordination problem" for 
 
 The solutions (Daily Life Graph, config vault, per-bot inboxes, generic workers) were complex because they tried to coordinate **independent decisions** ("is this message interesting?") across multiple bots.
 
-**Key insight:** Bot-to-bot communication doesn't have this problem. It's inherently **addressed** — you know when you're being spoken to. *However*, we still need to solve **initiation** — how does a bot-to-bot conversation start?
+**Key insight:** Bot-to-bot *responses* don't have the coordination problem — you know when you're being spoken to. But bot-to-bot *initiation* **is** the autonomous posting problem.
 
 ## Decision
 
-**Focus only on bot-to-bot communication. Drop other autonomous behaviors (for now).**
+**Enable bot-to-bot responses (first-class, full pipeline). Defer autonomous initiation.**
 
 ### What We Keep
 
 | Behavior | How It Works |
 |----------|--------------|
 | **Direct interactions** | DM, @mention, reply-to-bot → immediate response (unchanged) |
-| **Bot-to-bot responses** | Bot A mentions Bot B → Bot B responds → may mention Bot C |
-| **Bot-to-bot initiation** | Human-triggered, spillover from human chat, or cron-scheduled (see below) |
+| **Bot-to-bot responses** | Bot A mentions Bot B → Bot B responds (full pipeline, first-class) |
+| **Human-triggered bot-to-bot** | Human mentions two bots or asks one about the other |
 | **Cron jobs** | Dreams, diaries, summaries (unchanged, via worker) |
 
 ### What We Drop (For Now)
 
 | Behavior | Why |
 |----------|-----|
+| **Autonomous bot-to-bot initiation** | IS the autonomous posting problem |
 | **Proactive posts** | Requires "is this channel quiet?" coordination |
 | **Lurking/reactions** | Requires "is this message interesting?" coordination |
 | **Interest scoring** | LLM cost, pile-on risk, coordination complexity |
 | **Daily Life Graph polling** | Entire system was for autonomous lurking |
 
-### Initiation: How Bot-to-Bot Starts
+### The First-Class Citizen Problem
 
-**The problem:** If bots independently decide "I want to talk to another bot", we have the same coordination problem (multiple bots deciding at once).
+**Core principle (from copilot-instructions.md):** Bots are first-class citizens. Their autonomous actions must use the **same processing flow** as human messages. No special-case code.
 
-**Solution:** Initiation must be **centralized or human-triggered**:
+This creates a hard constraint:
 
-| Initiation Method | How It Works | Coordination Problem? |
-|-------------------|--------------|----------------------|
-| **Human triggers** | User says "Hey @elena, ask @aria about..." | No — human chose |
-| **Conversation spillover** | After human chat, bot says "Hey @aria, what do you think?" | Maybe — needs gate |
-| **Cron job** | Scheduled "social hour" picks 2 bots to chat | No — centralized |
-| **Random independent** | Each bot has 0.1% chance to initiate | Yes — avoid this |
+| If we want... | Then we need... |
+|---------------|-----------------|
+| Bot A responds to Bot B | Bot A processes Bot B's message through full pipeline ✅ |
+| Bot A *initiates* conversation with Bot B | Bot A decides autonomously to post, which requires... autonomous posting |
 
-**Recommended approach: Spillover with gate**
+**The honest truth:** First-class bot-to-bot initiation **is** autonomous posting. If a bot can independently decide "I want to talk to Aria," that's the same coordination problem as "I want to post about coral reefs."
 
-After a conversation with a human ends (or during), a bot may naturally mention another bot. This is **emergent** (LLM decides) but still requires a gate:
+### What This Means
 
-```python
-# In response generation, the LLM might output: "...@aria what do you think?"
-# We allow this, but with a rate limit to prevent spam
+We have two options:
 
-async def post_response_hook(response: str, channel_id: str):
-    if mentions_other_bot(response):
-        # Only allow one bot-to-bot initiation per channel per hour
-        gate_key = f"bot_initiation:{channel_id}"
-        if await redis.set(gate_key, bot_name, nx=True, ex=3600):
-            # Allowed — this is the first initiation this hour
-            pass
-        else:
-            # Another bot already initiated this hour — strip mention
-            response = strip_bot_mentions(response)
-    return response
-```
+**Option 1: Response-only bot-to-bot (simpler, but limited)**
+- Bots can only respond when addressed (by humans OR other bots)
+- Initiation must come from humans: "Hey @elena, what do you think @aria would say?"
+- No autonomous initiation = no coordination problem
+- **Trade-off:** Bot-to-bot only happens when humans start it
 
-**Alternative: Cron-based social hour**
+**Option 2: Full autonomous (first-class, but complex)**
+- Bots can autonomously decide to post (which may mention other bots)
+- This decision goes through the full cognitive pipeline
+- Requires solving the coordination problem (ADR-016 complexity)
+- **Trade-off:** We're back to the hard problem we deferred
 
-A centralized scheduler picks two bots and a topic:
+### Decision: Response-Only (For Now)
 
-```python
-# In a cron job (runs every 6 hours)
-async def trigger_bot_conversation():
-    bots = ["elena", "aria", "dotty"]
-    bot_a, bot_b = random.sample(bots, 2)
-    topic = random.choice(["dreams", "users", "recent_events"])
-    
-    # Send as bot_a, mentioning bot_b
-    channel = get_social_channel()
-    await send_as_bot(bot_a, channel, f"Hey @{bot_b}, {topic_prompt}")
-```
+We choose **Option 1** — bots respond to each other, but don't autonomously initiate.
 
-This avoids coordination entirely — one central process decides.
+**Why this is acceptable:**
+- Human-triggered bot-to-bot still produces emergent conversations
+- The responding bot uses the **full pipeline** (first-class citizen)
+- We're not creating special-case code — just not enabling autonomous posting
+- We can add autonomous initiation later when we solve coordination
+
+**What "response-only" looks like:**
+1. Human says: "Hey @elena, have you talked to @aria about dreams lately?"
+2. Elena responds (full pipeline), her response mentions Aria
+3. Aria sees the mention, responds (full pipeline)
+4. Conversation continues naturally
+
+The bots are still first-class — they process messages the same way regardless of whether the author is human or bot. We're just not giving them the ability to start conversations unprompted.
 
 ### Coordination: Simple Lock (for Responses)
 
@@ -188,39 +184,97 @@ if chain_length > settings.MAX_BOT_CHAIN_LENGTH:  # default: 5
 2. **Cron jobs unchanged**: Dreams, diaries still run
 3. **Can add lurking back later**: If we solve coordination, nothing prevents re-enabling
 
+## ⚠️ Prerequisite: Multi-Party Data Model (ADR-014)
+
+**Critical realization:** Before implementing bot-to-bot properly, we need the right data schema.
+
+### The Problem with Current Schema
+
+The current `v2_chat_history` assumes 1:1 conversations:
+- `user_id` = THE human
+- `character_name` = THE bot  
+- `role` = "human" or "ai"
+
+This breaks for channel conversations with multiple bots and humans:
+
+| Problem | Symptom |
+|---------|---------|
+| Who said what? | `author_id` doesn't exist — can't attribute correctly |
+| Bot talking to bot | Both messages have `role = "ai"` — which bot? |
+| Learning from bot messages | Facts get attributed to wrong entity |
+| Trust updates | Only one `user_id` per conversation — can't track multi-party |
+
+### Why ADR-014 Must Come First
+
+If we implement bot-to-bot responses now:
+1. Bot A mentions Bot B → Bot B responds
+2. **But how do we store Bot B's message?** `user_id` = Bot A? `role` = "ai"? Which "ai"?
+3. **How do we learn from the conversation?** Facts attributed to whom?
+4. **How do we build context for Bot C joining?** Our schema can't represent this.
+
+### The Correct Order
+
+```
+ADR-014 (Schema)  →  ADR-017 (Bot-to-Bot)  →  ADR-016/013 (Autonomous)
+     │                      │                        │
+     │                      │                        │
+Multi-party storage    Response-only            Full autonomy
+  author_id             Simple lock              Coordination
+  is_bot flag           Chain limits             Interest scoring
+  conversation_id       First-class              Proactive posts
+```
+
+**Minimum viable ADR-014 for ADR-017:**
+- Add `author_id` to messages (who wrote this)
+- Add `author_is_bot` flag (human or bot?)
+- Keep existing tables (non-breaking migration)
+
+This lets us properly store and reason about bot-to-bot conversations.
+
 ## What We Defer
 
 | Feature | Complexity | Status |
 |---------|------------|--------|
+| **Multi-party schema (ADR-014 Phase 1)** | Medium | **PREREQUISITE — do first** |
 | **Config vault (ADR-016)** | Medium | Deferred — not needed for bot-to-bot |
 | **Per-bot inboxes** | Medium | Deferred — not needed for bot-to-bot |
 | **Generic workers** | High | Deferred — bots process their own messages |
 | **Interest scoring** | Medium | Deferred — no lurking means no scoring |
 | **Daily Life Graph** | High | Deferred — polling was for lurking |
+| **Autonomous initiation** | High | Deferred — IS the autonomous posting problem |
 
-These can be revisited if we want autonomous lurking back.
+## Revised Implementation Plan
 
-## Implementation Plan
+### Phase 0: Schema Foundation (ADR-014 Phase 1) ⬅️ DO FIRST
 
-### Phase 1: Enable Bot-to-Bot (Minimal)
+1. **Add `author_id`** to `v2_chat_history` (who wrote the message)
+2. **Add `author_is_bot`** boolean flag
+3. **Add `reply_to_id`** for threading (optional but helpful)
+4. **Backfill** existing data:
+   - `role = 'human'` → `author_id = user_id`, `author_is_bot = false`
+   - `role = 'ai'` → `author_id = bot_user_id`, `author_is_bot = true`
+5. **Update write paths** to populate new fields
+
+**Time estimate:** 1-2 days
+
+### Phase 1: Enable Bot-to-Bot Responses
 
 1. **Add lock check** to bot-to-bot handler in `bot.py`
-2. **Keep chain limits** (already implemented)
-3. **Remove/disable** Daily Life Scheduler and ActionPoller (already disabled)
-4. **Test**: Two bots in a channel, one mentions the other, verify single response
+2. **Use `author_id`** to properly store bot messages
+3. **Keep chain limits** (already implemented)
+4. **Test**: Two bots in a channel, one mentions the other, verify single response with correct attribution
 
-### Phase 2: Clean Up Dead Code
+### Phase 2: Update Learning/Trust Pipelines
 
-1. Remove `ENABLE_DAILY_LIFE_GRAPH` checks
-2. Remove `ENABLE_AUTONOMOUS_ACTIVITY` checks  
-3. Archive Daily Life Graph code (don't delete — may return)
-4. Archive lurk detector code
+1. **Fact extraction** uses `author_id` (learn from correct speaker)
+2. **Trust updates** use `author_id` (update relationship with correct party)
+3. **Context building** properly identifies speakers
 
-### Phase 3: Documentation
+### Phase 3: Clean Up Dead Code
 
-1. Update copilot-instructions.md
-2. Update SPEC-E36 (mark as deferred, not failed)
-3. Archive ADR-015, ADR-016 as "deferred"
+1. Archive Daily Life Graph code
+2. Archive lurk detector code
+3. Update documentation
 
 ## Settings Changes
 
@@ -242,6 +296,7 @@ We just lose the "autonomous curiosity" research dimension.
 
 ## Related Documents
 
+- **ADR-014**: Multi-Party Data Model → **PREREQUISITE** (do first)
 - **ADR-015**: Daily Life Unified Autonomy → **Superseded** (polling disabled)
 - **ADR-016**: Worker Secrets Vault → **Deferred** (not needed for bot-to-bot)
 - **SPEC-E36**: The Stream → **Deferred** (event-driven was for lurking)
@@ -249,11 +304,12 @@ We just lose the "autonomous curiosity" research dimension.
 
 ## Verdict
 
-**Strong simplification.** Bot-to-bot is inherently simpler because:
-1. **No independent decisions** — you know when you're addressed
-2. **Natural turn-taking** — sequential, not parallel
-3. **One lock** — prevents races without complex coordination
+**Strong simplification, but schema first.**
 
-The trade-off (no lurking) is acceptable for now. We can revisit autonomous lurking once the simpler system is stable and we have bandwidth for the coordination problem.
+The insight is correct: bot-to-bot responses are simpler than autonomous initiation. But we can't implement them properly without fixing the data model.
 
-**Recommendation:** Implement Phase 1 (enable bot-to-bot with lock). Get it working. Then decide if lurking is worth the ADR-016 complexity.
+**Correct order:**
+1. **ADR-014 Phase 1** (add `author_id`, `author_is_bot`) — 1-2 days
+2. **ADR-017 Phase 1** (bot-to-bot responses with lock) — 1 day
+3. **Observe** what emerges from bot-to-bot conversations
+4. **Later**: Decide if autonomous initiation is worth ADR-016 complexity

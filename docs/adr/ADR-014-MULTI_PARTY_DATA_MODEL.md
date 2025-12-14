@@ -1,8 +1,11 @@
 # ADR-014: Multi-Party Conversation Data Model
 
-**Status:** 📋 Proposed  
+**Status:** 📋 Proposed → **Phase 1 is PREREQUISITE for ADR-017**  
 **Date:** December 13, 2025  
+**Updated:** December 13, 2025  
 **Deciders:** Mark, Claude (collaborative)
+
+> **Priority Update:** ADR-017 (Bot-to-Bot Simplified) requires Phase 1 of this ADR before implementation. We can't properly store bot-to-bot conversations without `author_id` and `author_is_bot` fields.
 
 ## Origin
 
