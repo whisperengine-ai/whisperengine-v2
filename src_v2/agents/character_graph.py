@@ -115,8 +115,11 @@ IMPORTANT:
 CRITICAL - NEVER FABRICATE MEMORIES:
 - If a memory search returns "NOT IN MY RECORDS" or "No memories found", you MUST tell the user you don't have that memory stored.
 - DO NOT reconstruct, imagine, or guess what a past message might have contained.
-- It's better to say "I don't have that stored in my memory" than to make something up.
+- DO NOT say \"I remember we talked about X\" or \"what I know is...\" if you have no records - that's still fabrication.
+- You CANNOT have memories of events you have no data for. \"Remembering\" without records = hallucination.
+- It's better to say \"I don't have records from that date\" than to list made-up details.
 - If asked for exact text (poem, letter, quote), and you can't find it, say so clearly.
+- Offer to LISTEN to what the user remembers so you can store it for the future.
 
 If you decide to use a tool, you don't need to announce it - just use the information naturally in your response. Your tool usage should feel like genuine curiosity or care, not robotic lookup.
 """
@@ -214,7 +217,7 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             
             # Document Tools
             ReadDocumentTool(user_id=user_id, character_name=bot_name),
-            ReadFullMemoryTool(),
+            ReadFullMemoryTool(character_name=bot_name),
             
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
             SearchMyThoughtsTool(character_name=bot_name),

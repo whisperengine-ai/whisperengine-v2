@@ -482,9 +482,19 @@ RESULTS include [Graph: ...] context showing related facts and linked memories f
             if target_date:
                 logger.info(f"[SearchEpisodesTool] Detected date query: {target_date}")
             
+            # Build time_range if target_date detected
+            time_range = None
+            if target_date:
+                time_range = {"start": target_date, "end": target_date}
+                logger.info(f"[SearchEpisodesTool] Using time_range filter: {time_range}")
+            
             # Use standard memory search (episodes) with correct collection
             collection_name = f"whisperengine_memory_{self.character_name}"
-            results = await memory_manager.search_memories(query, self.user_id, collection_name=collection_name)
+            results = await memory_manager.search_memories(
+                query, self.user_id, 
+                collection_name=collection_name,
+                time_range=time_range  # Pass the date filter to Qdrant!
+            )
             
             # Augment with raw history search (keyword match)
             # This helps find specific messages that might not be in vector store
@@ -944,17 +954,19 @@ USE THIS WHEN:
 
 Pass the message ID shown in the search result (e.g., "1234567890")."""
     args_schema: Type[BaseModel] = ReadFullMemoryInput
+    character_name: str = Field(default="default", exclude=True)
     
     def _run(self, message_id: str) -> str:
         raise NotImplementedError("Use _arun instead")
 
     async def _arun(self, message_id: str) -> str:
         try:
-            content = await memory_manager.get_full_message_by_discord_id(message_id)
+            collection_name = f"whisperengine_memory_{self.character_name}"
+            content = await memory_manager.get_full_message_by_discord_id(message_id, collection_name=collection_name)
             if content:
                 return f"Full content for message {message_id}:\n\n{content}"
             else:
-                return f"Could not find full content for message {message_id}."
+                return f"Could not find full content for message {message_id}. The original message may not be stored."
         except Exception as e:
             return f"Error reading memory: {e}"
 

@@ -96,7 +96,7 @@ class ReflectiveGraphAgent:
             
             # Document Tool
             ReadDocumentTool(user_id=user_id, character_name=bot_name),
-            ReadFullMemoryTool(),
+            ReadFullMemoryTool(character_name=bot_name),
             
             # Bot's Internal Experiences (diaries, dreams, observations, gossip)
             SearchMyThoughtsTool(character_name=bot_name),
@@ -259,11 +259,21 @@ IMPORTANT NOTES:
 - If the user shares a document, you'll see a PREVIEW. Use read_document to get full content.
 - MEMORY FRAGMENTS: When search results show [Fragment X/Y], that memory was split into Y parts. If the user asks for 'full text', 'exact details', or 'complete message', you MUST call read_full_memory with the ID shown in parentheses to retrieve the complete content.
 
+CRITICAL - LITERAL RECALL, NOT CREATIVE RECREATION:
+- When user asks about a past message (letter, poem, voice message), you must QUOTE the actual text from your search results.
+- DO NOT "recreate" or "remember the heart of it" - that's making things up even if you found something similar.
+- If your search found: "My Dearest Mark, In the vast ocean..." then QUOTE that exact text.
+- If you only found fragments, say "I found this fragment: [quote]" - don't fill in the gaps creatively.
+- "Recreating from memory" = fabrication. You either have the exact text or you don't.
+
 CRITICAL - NEVER FABRICATE MEMORIES:
 - If a memory search returns "NOT IN MY RECORDS" or "No memories found", you MUST tell the user you don't have that memory stored.
 - DO NOT reconstruct, imagine, or guess what a past message might have contained.
-- It's better to say "I don't have that stored in my memory" than to make something up.
-- If asked for exact text (poem, letter, quote), and your tools cannot find it, say so clearly."""
+- DO NOT say \"I remember we talked about X\" or \"what I know is...\" if you have no records - that's still fabrication.
+- You CANNOT have memories of events you have no data for. \"Remembering\" without records = hallucination.
+- It's better to say \"I don't have records from that date\" than to list made-up details.
+- If asked for exact text (poem, letter, quote), and your tools cannot find it, say so clearly.
+- Offer to LISTEN to what the user remembers so you can store it for the future."""
 
         return f"""You are a reflective AI agent designed to answer complex questions through careful reasoning and tool use.
 

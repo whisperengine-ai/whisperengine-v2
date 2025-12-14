@@ -637,10 +637,20 @@ class MemoryManager:
                         FieldCondition(key="channel_id", match=MatchValue(value=str(channel_id)))
                     )
                 
+                # NOTE: Qdrant DatetimeRange filtering doesn't work reliably with ISO string timestamps.
+                # We use post-filtering instead (see below). But we fetch more results to compensate.
+                # The time_range filtering happens after the vector search.
+                if time_range:
+                    logger.debug(f"Time range requested: {time_range['start']} to {time_range['end']} (will post-filter)")
+                
                 query_filter = Filter(must=must_conditions)
             
             # Fetch more for re-ranking
-            fetch_limit = max(limit * 3, 15)
+            # If time_range is specified, fetch MANY more since we'll post-filter by date
+            if time_range:
+                fetch_limit = max(limit * 20, 200)  # Aggressive fetch for date-filtered queries
+            else:
+                fetch_limit = max(limit * 3, 15)
             
             search_result = await db_manager.qdrant_client.query_points(
                 collection_name=target_collection,
@@ -649,7 +659,7 @@ class MemoryManager:
                 limit=fetch_limit
             )
             
-            logger.debug(f"Found {len(search_result.points)} memory results for re-ranking")
+            logger.info(f"Found {len(search_result.points)} memory results for re-ranking (fetch_limit={fetch_limit})")
             
             # === WEIGHTED SCORING FOR EPISODES ===
             results = []
@@ -758,7 +768,7 @@ class MemoryManager:
                             filtered.append(res)
                     
                     deduplicated = filtered
-                    logger.debug(f"Time filter ({time_range['start']} to {time_range['end']}): {pre_filter_count} → {len(deduplicated)} results")
+                    logger.info(f"Time filter ({time_range['start']} to {time_range['end']}): {pre_filter_count} → {len(deduplicated)} results")
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Invalid time_range format, skipping filter: {e}")
             
@@ -869,34 +879,80 @@ class MemoryManager:
             logger.error(f"Failed to get recent memories: {e}")
             return []
 
-    async def get_full_message_by_discord_id(self, message_id: str) -> Optional[str]:
+    async def get_full_message_by_discord_id(self, message_id: str, collection_name: Optional[str] = None) -> Optional[str]:
         """
-        Fetch the full message content from Postgres by Discord message_id.
+        Fetch the full message content by Discord message_id.
         
-        Use this to hydrate chunked memories back to their full original content.
-        When a memory search returns a chunk (is_chunk=True), you can use the
-        message_id to fetch the complete original message.
+        First tries Postgres (v2_chat_history), then falls back to reassembling
+        chunks from Qdrant if Postgres doesn't have the data.
         
         Args:
             message_id: Discord message snowflake ID (stored in both Qdrant and Postgres)
+            collection_name: Optional Qdrant collection to search for chunks
         
         Returns:
             Full message content, or None if not found
         """
-        if not db_manager.postgres_pool:
-            logger.warning("Postgres pool not available for get_full_message_by_discord_id")
-            return None
+        # Try Postgres first (fastest, has full content)
+        if db_manager.postgres_pool:
+            try:
+                async with db_manager.postgres_pool.acquire() as conn:
+                    result = await conn.fetchval(
+                        "SELECT content FROM v2_chat_history WHERE message_id = $1",
+                        str(message_id)
+                    )
+                    if result:
+                        return result
+            except Exception as e:
+                logger.error(f"Postgres lookup failed for {message_id}: {e}")
         
-        try:
-            async with db_manager.postgres_pool.acquire() as conn:
-                result = await conn.fetchval(
-                    "SELECT content FROM v2_chat_history WHERE message_id = $1",
-                    str(message_id)
+        # Fallback: Reassemble chunks from Qdrant
+        if db_manager.qdrant_client:
+            try:
+                target_collection = collection_name or self.collection_name
+                
+                # Search for all chunks with this parent_message_id
+                search_result = await db_manager.qdrant_client.scroll(
+                    collection_name=target_collection,
+                    scroll_filter=Filter(
+                        must=[
+                            FieldCondition(key="parent_message_id", match=MatchValue(value=str(message_id)))
+                        ]
+                    ),
+                    limit=20,  # Max chunks we expect
+                    with_payload=True
                 )
-                return result
-        except Exception as e:
-            logger.error(f"Failed to fetch full message for {message_id}: {e}")
-            return None
+                
+                points = search_result[0] if search_result else []
+                
+                if points:
+                    # Sort by chunk_index and reassemble
+                    chunks = sorted(points, key=lambda p: p.payload.get("chunk_index", 0))
+                    full_content = "".join(p.payload.get("content", "") for p in chunks)
+                    logger.info(f"Reassembled {len(chunks)} chunks for message {message_id}")
+                    return full_content
+                
+                # Maybe message_id is the message itself, not a parent - try direct lookup
+                search_result = await db_manager.qdrant_client.scroll(
+                    collection_name=target_collection,
+                    scroll_filter=Filter(
+                        must=[
+                            FieldCondition(key="message_id", match=MatchValue(value=str(message_id)))
+                        ]
+                    ),
+                    limit=1,
+                    with_payload=True
+                )
+                
+                points = search_result[0] if search_result else []
+                if points:
+                    return points[0].payload.get("content")
+                    
+            except Exception as e:
+                logger.error(f"Qdrant chunk reassembly failed for {message_id}: {e}")
+        
+        logger.warning(f"Could not find full message for {message_id} in Postgres or Qdrant")
+        return None
 
     async def search_memories_advanced(
         self,

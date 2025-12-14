@@ -304,14 +304,17 @@ IMPORTANT CONTEXT RULES:
 QUERY EXTRACTION (for improved memory retrieval):
 When relevant, extract query components into the "query" field to help find the right memories:
 
-- search_terms: If message is long (>500 chars), extract the key search terms (names, topics, dates, events mentioned). Max 50 words. Focus on WHAT the user is asking about, not the full message.
+- search_terms: ONLY extract if message is long (>500 chars). Extract key search terms (names, topics, events). Max 50 words.
   Example: "I had an amazing day at the beach with my dog Max and we built sandcastles..." → "beach dog Max sandcastles"
+  IMPORTANT: If extracting time_range, do NOT extract search_terms. Let the date filter do the work.
+  For "tell me about Dec 1" or "what did we discuss last week", leave search_terms empty/null.
 
 - time_range: If user references a time period for memory lookup, convert to ISO dates. Today is {today}.
   - "yesterday" → {{"start": "{yesterday}", "end": "{today}"}}
   - "last week" → {{"start": "{week_ago}", "end": "{today}"}}
   - "3 days ago" → convert appropriately
   - "in November" → {{"start": "2025-11-01", "end": "2025-11-30"}}
+  - "Dec 1" or "December 1st" → {{"start": "2025-12-01", "end": "2025-12-01"}}
 
 - entity_names: If user mentions specific people, pets, places by name that should be looked up.
   Example: "Do you remember my sister Sarah and her cat Luna?" → ["Sarah", "Luna"]

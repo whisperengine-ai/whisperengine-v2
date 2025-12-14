@@ -321,11 +321,11 @@ class MasterGraphAgent:
             
             if not has_matching_memory and memories:
                 # We have memories but none from the requested date
-                temporal_warning = f"\n\n⚠️ TEMPORAL MISMATCH: The user is asking about {start_date} to {end_date}, but NONE of the memories below are from that date range. My database records may not go back that far. DO NOT fabricate or reconstruct content that supposedly happened on that date. Instead, tell the user honestly that you don't have records from that specific date.\n"
+                temporal_warning = f"\n\n⚠️ TEMPORAL MISMATCH: The user is asking about {start_date} to {end_date}, but NONE of the memories below are from that date range. My database records may not go back that far.\n\nCRITICAL: You CANNOT \"remember\" specific details (topics, quotes, events, letter titles) from a date you have no records of. Do NOT list things that \"happened\" - you genuinely don't know. Simply tell the user: \"I don't have records from that date - my stored history starts from [earliest date you can see]. Would you like to tell me about it so I can remember it going forward?\"\n"
                 logger.info(f"Temporal mismatch detected: requested {start_date} to {end_date}, no matching memories")
             elif not memories:
                 # No memories at all
-                temporal_warning = f"\n\n⚠️ TEMPORAL QUERY: The user is asking about {start_date} to {end_date}, but I found NO memories from that time period. My database records may not go back that far. DO NOT fabricate content. Tell the user honestly that you don't have records from that date.\n"
+                temporal_warning = f"\n\n⚠️ TEMPORAL QUERY: The user is asking about {start_date} to {end_date}, but I found NO memories from that time period. My database records may not go back that far.\n\nCRITICAL: You CANNOT \"remember\" specific details from a date you have no records of. Do NOT make up topics, quotes, or events. Simply tell the user: \"I don't have records from that date. Would you like to share what we discussed so I can remember it?\"\n"
                 logger.info(f"Temporal query with no results: requested {start_date} to {end_date}")
 
         if memories and not has_documents:
