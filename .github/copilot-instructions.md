@@ -428,29 +428,33 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
 - `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
 
-**⚠️ SUSPENDED - Autonomous Features (December 2025):**
-The following features are **disabled in code** due to multi-bot coordination problems:
-- `ENABLE_AUTONOMOUS_ACTIVITY`: Master switch — **CODE DISABLED**
-- `ENABLE_DAILY_LIFE_GRAPH`: 7-min polling — **CODE DISABLED**
-- Daily Life Scheduler and ActionPoller are commented out in `bot.py`
-- See ADR-013 and SPEC-E36 for details on the architecture problem
+**⚠️ Autonomous Features — Simplified Approach (December 2025):**
 
-**The problem:** Multiple bots in the same channel all decide to respond independently, causing "pile-on" behavior. Event-driven architecture made it worse (N² processing). No coordination mechanism exists.
+**The problem:** Multiple bots in the same channel deciding independently to respond caused "pile-on" behavior. The coordination problem is hard for lurking/proactive posts.
 
-**Proposed solution (ADR-016):** Config vault + generic workers architecture:
-- Bot publishes secrets + LLM config to Redis vault on startup
-- Workers are generic (any worker handles any bot via vault lookup)
-- Workers send to Discord via REST API (same token, no gateway conflict)
-- Bot becomes thin gateway (~1ms/msg vs 1.5-11s today)
-- Per-bot inboxes prevent N² duplication
-- See `docs/adr/ADR-016-WORKER_SECRETS_VAULT.md` for details
+**The solution (ADR-017):** Focus only on **bot-to-bot communication**, which is inherently simpler:
+- Bot-to-bot is **addressed** — you know when you're spoken to (mention/reply)
+- Simple lock prevents races: `redis.setnx(responding_to:{msg_id})`
+- No interest scoring, no Daily Life Graph, no new infrastructure
+- Natural turn-taking — sequential, not parallel decisions
 
-**What still works:** Direct interactions (DMs, @mentions, replies), cron jobs (dreams, diaries).
+**What works:**
+- Direct interactions (DMs, @mentions, replies) — unchanged
+- Bot-to-bot chains (bot A mentions bot B → bot B responds) — with lock coordination
+- Cron jobs (dreams, diaries) — unchanged
 
-**Deprecated flags** (disabled, pending removal — see ADR-010):
-- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection (superseded by Daily Life Graph)
-- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions (superseded by Daily Life Graph)
-- `ENABLE_CROSS_BOT_CHAT`: Real-time bot-to-bot triggers (superseded by Daily Life Graph)
+**What's deferred** (may return if we solve coordination):
+- Autonomous lurking (reacting to interesting messages)
+- Proactive posts (posting in quiet channels)
+- Daily Life Graph (polling-based interest scoring)
+
+**Disabled flags** (code disabled, pending removal):
+- `ENABLE_AUTONOMOUS_ACTIVITY`: Master switch — **DISABLED**
+- `ENABLE_DAILY_LIFE_GRAPH`: 7-min polling — **DISABLED**
+- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection — **DISABLED**
+- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions — **DISABLED**
+
+See `docs/adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md` for the full design.
 
 **Quotas**:
 - `DAILY_IMAGE_QUOTA` (default: 5): Max images per user per day

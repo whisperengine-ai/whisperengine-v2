@@ -1,14 +1,14 @@
 # SPEC-E36: The Stream (Real-time Nervous System)
 
-**Document Version:** 2.1
+**Document Version:** 2.2
 **Created:** December 11, 2025
 **Updated:** December 13, 2025
-**Status:** ⏸️ SUSPENDED - Architecture Redesign Required
-**Priority:** 🔴 Blocked
+**Status:** ⏸️ Deferred (see ADR-017)
+**Priority:** 🔵 Backlog
 **Dependencies:** Redis, Multi-Bot Coordination
-**Superseded by:** ADR-013 (for Phase 2 architecture)
+**Superseded by:** ADR-017 (simplified bot-to-bot approach)
 
-> ⚠️ **SUSPENDED:** Both polling and event-driven autonomous features are disabled as of December 13, 2025. See "Architecture Problem" section below.
+> ⚠️ **DEFERRED:** ADR-017 proposes a simpler approach: focus only on bot-to-bot communication (which is inherently addressed and doesn't need coordination), and defer autonomous lurking/proactive posts until we have bandwidth for the coordination problem. This spec is preserved for future reference.
 
 ---
 
@@ -56,23 +56,25 @@ Rather than ship broken behavior (pile-on, duplicate processing), we disabled al
 - Cron jobs (dreams, diaries) via worker
 - All memory/knowledge systems
 
-### The Correct Design (ADR-013 + ADR-016)
+### The Simpler Path (ADR-017)
 
-ADR-013 specifies the fix:
-1. **Per-bot inboxes:** `mailbox:{bot_name}:inbox` - not a shared stream
-2. **Coordination at decision time:** Check "did another bot just post?" before responding
-3. **Bot writes to OWN inbox only** - no N² duplication
+**Key insight:** The coordination problem only exists for "independent decision" behaviors (lurking, proactive posts). Bot-to-bot communication is **inherently addressed** — you know when you're being spoken to.
 
-[ADR-016: Worker Secrets Vault & Generic Workers](../adr/ADR-016-WORKER_SECRETS_VAULT.md) adds the missing piece:
-1. **Config Vault:** Bot publishes secrets + LLM config to Redis (`vault:{bot}:*`)
-2. **Generic Workers:** Any worker handles any bot (fetches config from vault)
-3. **Discord REST API:** Workers send messages via REST (same token, no gateway conflict)
-4. **Bot = Thin Gateway:** ~1ms per message (just `XADD` to inbox), no blocking
-5. **Worker = Brain:** All LLM, memory, knowledge work offloaded to workers
+[ADR-017: Simplified Bot-to-Bot Communication](../adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md) proposes:
+1. **Focus only on bot-to-bot** — drop lurking and proactive posts for now
+2. **Simple lock coordination** — `redis.setnx(responding_to:{msg_id})` prevents races
+3. **No new infrastructure** — no vault, no inboxes, no generic workers
+4. **Natural turn-taking** — bot-to-bot is sequential, not parallel
 
-This solves the "worker can't access Discord" blocker.
+The ADR-013/ADR-016 architecture remains valid if we want to re-enable autonomous lurking later, but it's deferred until we have bandwidth for that complexity.
 
-This requires significant refactoring and is deferred.
+### The Complex Path (Deferred)
+
+For reference, the full coordination architecture is documented in:
+- [ADR-016: Worker Secrets Vault](../adr/ADR-016-WORKER_SECRETS_VAULT.md) — config vault + generic workers
+- [ADR-013: Event-Driven Architecture](../adr/ADR-013-STREAMING_VS_POLLING.md) — per-bot inboxes, event-driven
+
+These are **deferred, not rejected** — they solve a real problem, just not one we need to solve right now.
 
 ---
 

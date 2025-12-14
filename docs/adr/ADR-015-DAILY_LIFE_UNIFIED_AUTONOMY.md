@@ -1,8 +1,11 @@
 # ADR-015: Unified Autonomous Behavior via Daily Life Graph
 
-**Status:** ✅ Accepted  
+**Status:** ⏸️ Deferred (see ADR-017)  
 **Date:** December 11, 2025  
+**Updated:** December 13, 2025  
 **Deciders:** Mark Castillo
+
+> ⚠️ **DEFERRED:** This approach was suspended due to multi-bot coordination problems (pile-on behavior). ADR-017 proposes a simpler bot-to-bot only approach that avoids the coordination problem entirely. This ADR is preserved for historical context and may be revisited if we solve coordination.
 
 ---
 
@@ -257,23 +260,24 @@ Does curiosity-driven exploration lead to more organic engagement than scheduled
 
 ## Related Documents
 
-- `docs/spec/SPEC-E31-DAILY_LIFE_GRAPH.md` — Daily Life Graph specification
-- `docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md` — Phase 1 triggers (implemented)
+- `docs/adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md` — **CURRENT:** Simplified bot-to-bot only approach
+- `docs/spec/SPEC-E31-DAILY_LIFE_GRAPH.md` — Daily Life Graph specification (deferred)
+- `docs/spec/SPEC-E36-THE_STREAM_REALTIME_NERVOUS_SYSTEM.md` — Event-driven architecture (deferred)
 - `docs/adr/ADR-013-STREAMING_VS_POLLING.md` — Event-driven architecture design (deferred)
 - `docs/adr/ADR-014-MULTI_PARTY_DATA_MODEL.md` — Multi-party data model (supports ADR-013)
-- `docs/adr/ADR-016-WORKER_SECRETS_VAULT.md` — **PROPOSED:** Config vault + generic workers (solves ADR-013 blockers)
+- `docs/adr/ADR-016-WORKER_SECRETS_VAULT.md` — Config vault + generic workers (deferred)
 - `docs/spec/SPEC-C02-CHANNEL_LURKING.md` — **DEPRECATED** lurking spec
-- `docs/spec/SPEC-E06-CHARACTER_TO_CHARACTER.md` — Bot-to-bot (now via Daily Life only)
+- `docs/spec/SPEC-E06-CHARACTER_TO_CHARACTER.md` — Bot-to-bot (now via ADR-017)
 - `docs/adr/ADR-006-FEATURE_FLAGS.md` — Feature flag philosophy
 
 ## Evolution Path
 
 ```
-ADR-015 (Current)     →  ADR-016 (Proposed)      →  ADR-013 (Future)
-Polling + Unified        Config Vault + Workers      Full Event-Driven
-7-min cycle              Per-bot inboxes             State Machines
-Snapshot-based           Worker sends via REST       On-demand fetch
-Bot does everything      Bot = gateway, Worker = brain
+ADR-017 (Current)     →  ADR-016 (Deferred)      →  ADR-013 (Future)
+Bot-to-bot only          Config Vault + Workers      Full Event-Driven
+Simple lock              Per-bot inboxes             State Machines
+No lurking               Worker sends via REST       Autonomous lurking
+Minimal complexity       Bot = gateway               Bot = sensor
 ```
 
 **Note:** ADR-015 (polling) is currently DISABLED due to pile-on problems. ADR-016 proposes the architecture that unblocks ADR-013.

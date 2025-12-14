@@ -1,8 +1,11 @@
 # ADR-016: Worker Secrets Vault & Generic Workers
 
-**Status:** 📋 Proposed  
+**Status:** ⏸️ Deferred (see ADR-017)  
 **Date:** 2024-12-13  
+**Updated:** December 13, 2025  
 **Deciders:** Mark, Claude (collaborative)
+
+> ⚠️ **DEFERRED:** This architecture was designed to solve multi-bot coordination for ALL autonomous behaviors (lurking, proactive posts, bot-to-bot). ADR-017 proposes focusing only on bot-to-bot communication, which doesn't require this complexity. This ADR is preserved for future reference if we want to re-enable autonomous lurking.
 
 ## Origin
 
