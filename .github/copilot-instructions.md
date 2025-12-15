@@ -265,16 +265,8 @@ memories, facts, trust, goals = await asyncio.gather(
   - `run_summarization`: Session summary generation (post-session)
   - `run_reflection`: User pattern analysis across sessions
   - `run_knowledge_extraction`: Fact extraction to Neo4j (offloaded from response pipeline)
-  - `run_dream_generation`: Dream journal generation (uses DreamJournalAgent)
-  - `run_reverie_cycle`: Reverie memory consolidation (background, invisible to users)
 - `src_v2/agents/insight_graph.py`: LangGraph agent for pattern detection and epiphanies
-- `src_v2/agents/dream_journal_graph.py`: Dream Journal generator (first-person narrative broadcast)
-- `src_v2/agents/reverie/graph.py`: Reverie (background memory consolidation, NOT dream journal)
 - `src_v2/tools/insight_tools.py`: Introspection tools (analyze_patterns, detect_themes, etc.)
-
-> **IMPORTANT DISTINCTION:**
-> - **Dream Journal** (`dream_journal_graph.py`): Generates first-person dream narratives that are **broadcast to users**. Uses generator-critic loop with first-person enforcement.
-> - **Reverie** (`reverie/graph.py`): Background memory consolidation that links memories together. **Invisible to users**. Does NOT generate dream narratives.
 
 ### Character & Evolution
 - `src_v2/core/character.py`: Loads `characters/{name}/character.md`, `.yaml` files
@@ -290,11 +282,11 @@ memories, facts, trust, goals = await asyncio.gather(
 - `src_v2/agents/daily_life/graph.py`: **Daily Life Graph** — unified autonomous behavior (replies, reactions, posts)
 - `src_v2/voice/`: Voice channels, TTS (ElevenLabs)
 
-**Autonomous Behavior (ADR-015):** All autonomous activity flows through the Daily Life Graph:
+**Autonomous Behavior (ADR-010):** All autonomous activity flows through the Daily Life Graph:
 - 7-minute polling cycle (`DISCORD_CHECK_INTERVAL_MINUTES`)
 - LLM-scored interest (not keyword matching)
 - Handles: replies to users, replies to bots, reactions, proactive posts
-- See `docs/adr/ADR-015-DAILY_LIFE_UNIFIED_AUTONOMY.md`
+- See `docs/adr/ADR-010-DAILY_LIFE_UNIFIED_AUTONOMY.md`
 
 **Deprecated (disabled, pending removal):**
 - `src_v2/discord/lurk_detector.py` — Real-time keyword-based lurking
@@ -425,36 +417,20 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - `ENABLE_UNIVERSE_EVENTS` (default: true): Cross-bot gossip system
 - `ENABLE_GRAPH_ENRICHMENT` (default: true): Proactive graph edge creation
 - `ENABLE_GRAPH_PRUNING` (default: true): Graph cleanup
+- `ENABLE_AUTONOMOUS_ACTIVITY` (default: true): Master switch for autonomous behavior
+- `ENABLE_DAILY_LIFE_GRAPH` (default: true): 7-min polling for all autonomous actions
 - `ENABLE_VOICE_RESPONSES` (default: false): TTS audio generation (ElevenLabs)
 - `ENABLE_IMAGE_GENERATION` (default: true): Image generation (BFL/Replicate/Fal)
 
-**⚠️ Autonomous Features — Simplified Approach (December 2025):**
+**Deprecated flags** (disabled, pending removal — see ADR-010):
+- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection (now via Daily Life Graph)
+- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions (now via Daily Life Graph)
+- `ENABLE_CROSS_BOT_CHAT`: Real-time bot-to-bot triggers (now via Daily Life Graph)
 
-**The problem:** Multiple bots in the same channel deciding independently to respond caused "pile-on" behavior. The coordination problem is hard for lurking/proactive posts.
-
-**The solution (ADR-017):** Focus only on **bot-to-bot communication**, which is inherently simpler:
-- Bot-to-bot is **addressed** — you know when you're spoken to (mention/reply)
-- Simple lock prevents races: `redis.setnx(responding_to:{msg_id})`
-- No interest scoring, no Daily Life Graph, no new infrastructure
-- Natural turn-taking — sequential, not parallel decisions
-
-**What works:**
-- Direct interactions (DMs, @mentions, replies) — unchanged
-- Bot-to-bot chains (bot A mentions bot B → bot B responds) — with lock coordination
-- Cron jobs (dreams, diaries) — unchanged
-
-**What's deferred** (may return if we solve coordination):
-- Autonomous lurking (reacting to interesting messages)
-- Proactive posts (posting in quiet channels)
-- Daily Life Graph (polling-based interest scoring)
-
-**Disabled flags** (code disabled, pending removal):
-- `ENABLE_AUTONOMOUS_ACTIVITY`: Master switch — **DISABLED**
-- `ENABLE_DAILY_LIFE_GRAPH`: 7-min polling — **DISABLED**
-- `ENABLE_AUTONOMOUS_REPLIES`: Real-time lurk detection — **DISABLED**
-- `ENABLE_AUTONOMOUS_REACTIONS`: Real-time emoji reactions — **DISABLED**
-
-See `docs/adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md` for the full design.
+**Daily Life Graph tuning** (the only knobs for autonomous behavior):
+- `DISCORD_CHECK_INTERVAL_MINUTES` (default: 7): How often to poll
+- `DISCORD_CHECK_RELEVANCE_THRESHOLD` (default: 0.4): Interest threshold (0-1)
+- `DAILY_LIFE_SPONTANEITY_CHANCE` (default: 0.6): Probability of acting
 
 **Quotas**:
 - `DAILY_IMAGE_QUOTA` (default: 5): Max images per user per day
@@ -543,11 +519,6 @@ See `docs/adr/ADR-017-BOT_TO_BOT_SIMPLIFIED.md` for the full design.
 - **Troubleshooting**: `QUICK_REFERENCE.md` (Docker networking, migrations, common issues)
 - **Research Journal**: `docs/research/` (daily logs, weekly summaries, experiment templates)
 - **Emergent Behavior Philosophy**: `docs/emergence_philosophy/` (Claude collaboration on system behavior principles)
-
-**Architecture Evolution (v2.5 → v3.0):**
-- **ADR-013**: Event-Driven Architecture — future streaming replacement for polling
-- **ADR-014**: Multi-Party Data Model — schema refactor for group conversations
-- **SPEC-E36**: "The Stream" — Redis-based real-time event system (Phase 2 = ADR-013)
 
 ---
 

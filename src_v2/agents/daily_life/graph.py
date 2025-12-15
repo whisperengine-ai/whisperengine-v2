@@ -163,12 +163,6 @@ class DailyLifeGraph:
             # Skip if mentions bot (main process handles this)
             if m.mentions_bot:
                 continue
-            
-            # Skip if mentions ANOTHER bot (respect direct address)
-            # If the message mentions another bot, we should not autonomously reply
-            # unless we are explicitly mentioned (handled above)
-            if any(u.is_bot for u in m.mentioned_users):
-                continue
                 
             # Skip if already replied to
             if m.id in replied_to_ids:
@@ -213,6 +207,7 @@ class DailyLifeGraph:
                 
                 for i, msg_emb in enumerate(msg_embeddings):
                     msg = relevant_messages[i]
+                    is_watch_channel = msg.channel_id in watch_channels
                     trust_level = author_trust.get(msg.author_id, 1)
                     is_friend = trust_level >= settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD
                     
@@ -222,17 +217,23 @@ class DailyLifeGraph:
                     sims = [np.dot(msg_emb, int_emb) for int_emb in interest_embeddings]
                     max_sim = max(sims) if sims else 0.0
                     
-                    # Score based purely on topic relevance + relationship
+                    # Boost relevance for watch channels (we want to be more engaged there)
+                    if is_watch_channel:
+                        scored.append(ScoredMessage(
+                            message=msg, 
+                            score=0.95, # High score to ensure it gets picked
+                            relevance_reason=f"watch_channel (topic_sim={max_sim:.2f})"
+                        ))
                     # SOCIAL BOOST: Friends get noticed even without topic match
-                    if is_friend:
+                    elif is_friend:
                         # Use topic similarity if high, else give baseline "friend" score
-                        friend_score = max(max_sim, 0.65)  # Friends get at least 0.65
+                        friend_score = max(max_sim, 0.7)  # Friends get at least 0.7
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=float(friend_score), 
                             relevance_reason=f"friend_trust_L{trust_level} (topic_sim={max_sim:.2f})"
                         ))
-                    elif max_sim > 0.60:  # Threshold for relevance (strangers need topic match)
+                    elif max_sim > 0.55:  # Threshold for relevance (strangers need topic match)
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=float(max_sim), 
@@ -371,7 +372,7 @@ class DailyLifeGraph:
                 if can_reply:
                     instructions.append("- Reply if you are mentioned directly.")
                     instructions.append("- Reply if the topic is highly relevant and you have something valuable to add.")
-                    instructions.append(f"- If the author is a FRIEND (Trust >= {settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD}), you MAY reply if you have something unique to say, but do not feel obligated to reply to every message. Respect their space and avoid interrupting unless necessary.")
+                    instructions.append(f"- If the author is a FRIEND (Trust >= {settings.DAILY_LIFE_FRIEND_TRUST_THRESHOLD}), feel free to banter, react, or acknowledge them even if the topic isn't 'important'. Relationships matter.")
                     instructions.append("- IGNORE if the conversation has reached a natural conclusion or if you have already replied enough.")
                     instructions.append("- IGNORE if the user's message is just an acknowledgement (e.g. 'ok', 'cool', 'thanks') unless they are a friend and you want to keep talking.")
                     instructions.append("- When replying, your response will be THREADED to that specific message. Choose the message you're most directly responding to.")
