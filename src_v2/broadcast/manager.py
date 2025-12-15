@@ -23,6 +23,7 @@ from src_v2.discord.utils.message_utils import chunk_message
 from src_v2.intelligence.activity import server_monitor
 from src_v2.utils.time_utils import get_configured_timezone
 from src_v2.artifacts.discord_utils import extract_pending_artifacts
+from src_v2.memory.session import session_manager
 
 
 class PostType(str, Enum):
@@ -382,6 +383,8 @@ class BroadcastManager:
             # Store as AI message (role="ai") with no user_id (broadcast, not to specific user)
             # Use a special "broadcast" user_id so it can be retrieved
             # ADR-014: Bot is the author of broadcast posts
+            session_id = await session_manager.get_active_session("__broadcast__", character_name)
+            
             await memory_manager.add_message(
                 user_id="__broadcast__",  # Special ID for broadcast memories
                 character_name=character_name,
@@ -398,6 +401,7 @@ class BroadcastManager:
                 # ADR-014: Author tracking - bot authored this broadcast
                 author_id=settings.DISCORD_BOT_NAME,
                 author_is_bot=True,
+                session_id=session_id,
                 author_name=character_name
             )
             
@@ -716,6 +720,9 @@ class BroadcastManager:
                                 # Save to memory/history
                                 try:
                                     from src_v2.memory.manager import memory_manager
+                                    
+                                    session_id = await session_manager.get_active_session(str(user_id), item["character_name"])
+
                                     # ADR-014: Bot is the author of proactive DMs
                                     await memory_manager.add_message(
                                         user_id=str(user_id),
@@ -729,7 +736,8 @@ class BroadcastManager:
                                         # ADR-014: Author tracking
                                         author_id=settings.DISCORD_BOT_NAME,
                                         author_is_bot=True,
-                                        author_name=item["character_name"]
+                                        author_name=item["character_name"],
+                                        session_id=session_id
                                     )
                                 except Exception as mem_err:
                                     logger.error(f"Failed to save DM to memory: {mem_err}")

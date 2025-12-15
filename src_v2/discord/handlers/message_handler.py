@@ -814,7 +814,8 @@ class MessageHandler:
                         author_id=str(message.author.id),
                         author_is_bot=message.author.bot,
                         author_name=message.author.display_name,
-                        reply_to_msg_id=str(message.reference.message_id) if message.reference else None
+                        reply_to_msg_id=str(message.reference.message_id) if message.reference else None,
+                        session_id=session_id
                     )
                     
                     # Log Message Event to InfluxDB
@@ -1259,7 +1260,8 @@ class MessageHandler:
                             author_id=settings.DISCORD_BOT_NAME,
                             author_is_bot=True,
                             author_name=character.name,
-                            reply_to_msg_id=str(message.id)  # Bot is replying to user's message
+                            reply_to_msg_id=str(message.id),  # Bot is replying to user's message
+                            session_id=session_id
                         )
                     
                     # NOTE: Goal analysis is now handled at session end via batch goal analysis.

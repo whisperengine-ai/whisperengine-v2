@@ -580,27 +580,12 @@ Do NOT address {user_name} by any other name. Do NOT confuse them with people fr
             return ""
 
     async def get_stigmergy_context(self, user_message: str, user_id: str, character_name: str) -> str:
-        """Retrieves shared artifacts (epiphanies, diaries, dreams) from other bots."""
-        try:
-            from src_v2.memory.shared_artifacts import shared_artifact_manager
-            other_bot_insights = await shared_artifact_manager.discover_artifacts(
-                query=user_message,
-                artifact_types=["epiphany", "diary", "dream"],
-                exclude_bot=character_name,
-                user_id=user_id,
-                limit=settings.STIGMERGIC_DISCOVERY_LIMIT
-            )
-            
-            if other_bot_insights:
-                stigmergic_context = "\n\n[INSIGHTS FROM OTHER CHARACTERS]\n"
-                for insight in other_bot_insights:
-                    source = (insight.get("source_bot") or "unknown").title()
-                    content = insight.get("content", "")[:200]
-                    stigmergic_context += f"- {source} noticed: {content}\n"
-                logger.debug(f"Injected {len(other_bot_insights)} shared artifacts")
-                return stigmergic_context
-            
-            return ""
-        except Exception as e:
-            logger.warning(f"Failed to get stigmergy context: {e}")
-            return ""
+        """
+        DEPRECATED: Passive stigmergic injection is disabled (ADR-015).
+        Cross-bot awareness is now handled via the sibling_info tool (pull-based).
+        
+        This method is kept for backward compatibility but returns empty string.
+        """
+        # ADR-015: Passive injection disabled due to identity contamination risk.
+        # Bots should use sibling_info tool to actively query sibling thoughts.
+        return ""

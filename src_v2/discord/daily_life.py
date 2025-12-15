@@ -12,6 +12,7 @@ from src_v2.core.database import db_manager
 from src_v2.workers.task_queue import TaskQueue
 from src_v2.agents.daily_life.models import SensorySnapshot, ChannelSnapshot, MessageSnapshot, ActionCommand, MentionSnapshot
 from src_v2.memory.manager import memory_manager
+from src_v2.memory.session import session_manager
 from src_v2.memory.models import MemorySourceType
 from src_v2.intelligence.activity import server_monitor
 from src_v2.discord.utils.message_utils import chunk_message
@@ -373,6 +374,9 @@ class ActionPoller:
                         # Determine if target is a bot (check cmd metadata or name patterns)
                         target_is_bot = cmd.target_is_bot if hasattr(cmd, 'target_is_bot') else False
                         
+                        # Get/Create Session for consistency
+                        session_id = await session_manager.get_active_session(cmd.target_author_id, self.bot.character_name)
+                        
                         await memory_manager.add_message(
                             user_id=cmd.target_author_id,
                             character_name=self.bot.character_name,
@@ -385,7 +389,8 @@ class ActionPoller:
                             # ADR-014: Author tracking
                             author_id=cmd.target_author_id,
                             author_is_bot=target_is_bot,
-                            author_name=cmd.target_author_name
+                            author_name=cmd.target_author_name,
+                            session_id=session_id
                         )
                         logger.debug(f"Saved incoming message {cmd.target_message_id} from {cmd.target_author_name}")
                         
@@ -466,6 +471,9 @@ class ActionPoller:
                         # Channel post: use channel ID as context (not bot ID)
                         context_user_id = f"channel_{channel.id}"
                     
+                    # Get/Create Session
+                    session_id = await session_manager.get_active_session(context_user_id, self.bot.character_name)
+                    
                     # ADR-014: Bot is the author of this autonomous message
                     await memory_manager.add_message(
                         user_id=context_user_id,
@@ -481,7 +489,8 @@ class ActionPoller:
                         author_id=settings.DISCORD_BOT_NAME,
                         author_is_bot=True,
                         author_name=self.bot.character_name,
-                        reply_to_msg_id=cmd.target_message_id if cmd.action_type == "reply" else None
+                        reply_to_msg_id=cmd.target_message_id if cmd.action_type == "reply" else None,
+                        session_id=session_id
                     )
                     logger.info(f"Saved autonomous action to memory: {last_msg.id} (context: {context_user_id})")
                 

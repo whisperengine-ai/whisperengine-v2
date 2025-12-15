@@ -207,7 +207,7 @@ class ReflectiveGraphAgent:
             # Context
             ("planet_ctx", "Get context about the current server/planet."),
             ("universe", "Get overview of all planets/servers in the universe."),
-            ("sibling_info", "Get info about sibling bots (Dotty, Elena, Aria, etc.). Use when: user mentions another bot's name, asks 'do you know [bot]?', shares a document about a bot, or asks about your AI friends/siblings."),
+            ("sibling_info", "Get info about sibling bots (Dotty, Elena, Aria, etc.) - their personality, thoughts, dreams, recent activity. Use when: user mentions another bot, asks 'do you know [bot]?', you're curious about what a sibling is thinking, or want to reference their ideas."),
             
             # Discord search
             ("chan_search", "Search recent channel messages by keyword. Use for 'what did I just say?' or 'what happened earlier?'."),

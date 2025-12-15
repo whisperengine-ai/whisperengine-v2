@@ -314,7 +314,9 @@ class Settings(BaseSettings):
         return self._parse_list_string(self.BOT_BROADCAST_CHANNEL_ID)
 
     # --- Stigmergic Shared Artifacts (Phase E13) ---
-    ENABLE_STIGMERGIC_DISCOVERY: bool = True  # Allow bots to discover each other's artifacts
+    # DISABLED: Passive injection caused identity contamination (ADR-015).
+    # Cross-bot awareness now handled via sibling_info tool (pull-based).
+    ENABLE_STIGMERGIC_DISCOVERY: bool = False  # Allow bots to discover each other's artifacts
     STIGMERGIC_CONFIDENCE_THRESHOLD: float = 0.7  # Min confidence for cross-bot artifacts
     STIGMERGIC_DISCOVERY_LIMIT: int = 3  # Max artifacts from other bots per query
 

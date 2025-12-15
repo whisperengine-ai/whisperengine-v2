@@ -186,6 +186,12 @@ Returns: List of sibling bots, or detailed info about a specific bot including:
                     lines.append(f"\n🧠 WHAT I KNOW ABOUT THEM:")
                     lines.append(shared_knowledge)
             
+            # 5. Get their recent thoughts/artifacts (dreams, epiphanies, diary entries)
+            recent_thoughts = await self._get_sibling_artifacts(target_name)
+            if recent_thoughts:
+                lines.append(f"\n💭 THEIR RECENT THOUGHTS:")
+                lines.append(recent_thoughts)
+            
             if len(lines) <= 2:
                 lines.append(f"\nI don't have much information about {target_name.title()} yet. We may not have interacted much, or they might be a new sibling!")
             
@@ -309,3 +315,46 @@ Returns: List of sibling bots, or detailed info about a specific bot including:
         except Exception as e:
             logger.debug(f"Could not get shared knowledge: {e}")
             return None
+
+    async def _get_sibling_artifacts(self, bot_name: str) -> Optional[str]:
+        """Get recent thoughts/artifacts (dreams, epiphanies, diary) from another bot."""
+        try:
+            from src_v2.memory.shared_artifacts import shared_artifact_manager
+            
+            # Query artifacts from this specific bot
+            if not db_manager.qdrant_client:
+                return None
+            
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            
+            # Search for recent artifacts from this bot
+            results = await db_manager.qdrant_client.scroll(
+                collection_name=shared_artifact_manager.COLLECTION_NAME,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="source_bot", match=MatchValue(value=bot_name.lower()))
+                    ]
+                ),
+                limit=3,
+                with_payload=True
+            )
+            
+            if not results or not results[0]:
+                return None
+            
+            lines = []
+            for point in results[0]:
+                payload = point.payload
+                art_type = payload.get("type", "thought")
+                content = payload.get("content", "")[:200]
+                if len(payload.get("content", "")) > 200:
+                    content += "..."
+                
+                # Format as third-person observation
+                lines.append(f"• [{art_type.title()}] {bot_name.title()} thought: \"{content}\"")
+            
+            return "\n".join(lines) if lines else None
+        except Exception as e:
+            logger.debug(f"Could not get sibling artifacts: {e}")
+            return None
+

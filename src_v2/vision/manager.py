@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage
 from src_v2.agents.llm_factory import create_llm
 from src_v2.config.settings import settings
 from src_v2.memory.manager import memory_manager
+from src_v2.memory.session import session_manager
 
 
 class VisionManager:
@@ -68,6 +69,8 @@ class VisionManager:
             # ADR-014: This is bot-generated analysis of user's image
             memory_content = f"[Visual Memory] User sent an image. Description: {description}"
             
+            session_id = await session_manager.get_active_session(user_id, settings.DISCORD_BOT_NAME or "default_bot")
+
             await memory_manager.add_message(
                 user_id=user_id,
                 character_name=settings.DISCORD_BOT_NAME or "default_bot",
@@ -78,7 +81,8 @@ class VisionManager:
                 # ADR-014: Bot authored this analysis
                 author_id=settings.DISCORD_BOT_NAME,
                 author_is_bot=True,
-                author_name=settings.DISCORD_BOT_NAME
+                author_name=settings.DISCORD_BOT_NAME,
+                session_id=session_id
             )
             
             return str(description)
