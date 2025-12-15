@@ -186,7 +186,8 @@ class MasterGraphAgent:
         if prefetched_knowledge:
             context_results["knowledge"] = prefetched_knowledge
 
-        memories = []
+        user_memories = []
+        broadcast_memories = []
         
         for i, key in enumerate(task_keys):
             result = results[i]
@@ -198,15 +199,20 @@ class MasterGraphAgent:
                     context_results[key] = "" # Default to empty string
             else:
                 if key == "user_memories":
-                    memories.extend(result)
+                    user_memories.extend(result)
                 elif key == "broadcast_memories":
-                    memories.extend(result)
+                    broadcast_memories.extend(result)
                 else:
                     context_results[key] = result
 
         if prefetched_memories:
-            memories = prefetched_memories
+            user_memories = prefetched_memories
 
+        context_results["user_memories"] = user_memories
+        context_results["broadcast_memories"] = broadcast_memories
+        
+        # Combine for neighborhood search and backward compatibility
+        memories = user_memories + broadcast_memories
         context_results["memories"] = memories
         
         # Phase 2.5.1: Unified Memory - Fetch Memory Neighborhood
@@ -296,7 +302,16 @@ class MasterGraphAgent:
         # SKIP memory injection if the user uploaded documents - this prevents context pollution
         # where the LLM confuses past conversation memories with the current document analysis request
         has_documents = context_variables.get("has_documents", False)
-        memories = context_data.get("memories", [])
+        
+        # Retrieve separated memories
+        user_memories = context_data.get("user_memories", [])
+        broadcast_memories = context_data.get("broadcast_memories", [])
+        
+        # Fallback for backward compatibility
+        if not user_memories and not broadcast_memories:
+            user_memories = context_data.get("memories", [])
+            
+        all_memories = user_memories + broadcast_memories
         
         # Check for temporal query mismatch (SPEC-E32: anti-confabulation)
         # If user asked about a specific date but we have no memories from that date, warn the agent
@@ -311,7 +326,7 @@ class MasterGraphAgent:
             
             # Check if any memories fall within the requested range
             has_matching_memory = False
-            for mem in memories:
+            for mem in all_memories:
                 mem_ts = mem.get("timestamp", "")
                 if mem_ts:
                     mem_date = mem_ts[:10]  # Extract YYYY-MM-DD
@@ -319,61 +334,75 @@ class MasterGraphAgent:
                         has_matching_memory = True
                         break
             
-            if not has_matching_memory and memories:
+            if not has_matching_memory and all_memories:
                 # We have memories but none from the requested date
                 temporal_warning = f"\n\n⚠️ TEMPORAL MISMATCH: The user is asking about {start_date} to {end_date}, but NONE of the memories below are from that date range. My database records may not go back that far.\n\nCRITICAL: You CANNOT \"remember\" specific details (topics, quotes, events, letter titles) from a date you have no records of. Do NOT list things that \"happened\" - you genuinely don't know. Simply tell the user: \"I don't have records from that date - my stored history starts from [earliest date you can see]. Would you like to tell me about it so I can remember it going forward?\"\n"
                 logger.info(f"Temporal mismatch detected: requested {start_date} to {end_date}, no matching memories")
-            elif not memories:
+            elif not all_memories:
                 # No memories at all
                 temporal_warning = f"\n\n⚠️ TEMPORAL QUERY: The user is asking about {start_date} to {end_date}, but I found NO memories from that time period. My database records may not go back that far.\n\nCRITICAL: You CANNOT \"remember\" specific details from a date you have no records of. Do NOT make up topics, quotes, or events. Simply tell the user: \"I don't have records from that date. Would you like to share what we discussed so I can remember it?\"\n"
                 logger.info(f"Temporal query with no results: requested {start_date} to {end_date}")
 
-        if memories and not has_documents:
-            memory_context = ""
-            for mem in memories:
-                # Format: [Author]: Content (Time) - timestamp at END to avoid LLM echoing it as content
-                rel_time = mem.get("relative_time", "unknown time")
-                content = mem.get("content", "")
-                # Truncate very long memories to avoid bloating context
-                if len(content) > 500:
-                    content = content[:500] + "..."
-                
-                # ADR-014: Show author for multi-party attribution
-                author_name = mem.get("author_name")
-                author_is_bot = mem.get("author_is_bot", False)
-                if author_name:
-                    bot_tag = " (bot)" if author_is_bot else ""
-                    memory_context += f"- [{author_name}{bot_tag}]: {content} ({rel_time})\n"
-                else:
-                    # Legacy memories without author - use role as hint
-                    role = mem.get("role", "unknown")
-                    if role == "human":
-                        memory_context += f"- [User]: {content} ({rel_time})\n"
-                    elif role == "ai":
-                        memory_context += f"- [You]: {content} ({rel_time})\n"
-                    else:
-                        memory_context += f"- {content} ({rel_time})\n"
+        if (user_memories or broadcast_memories) and not has_documents:
             
-            if memory_context:
-                system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{memory_context}\n"
-                
-                # Phase 2.5.1: Inject Unified Memory Context (Graph Connections)
-                neighborhood = context_data.get("unified_neighborhood", [])
-                if neighborhood:
-                    unified_text = ""
-                    seen_associations = set()
+            def format_memory_list(mems):
+                formatted = ""
+                for mem in mems:
+                    # Format: [Author]: Content (Time) - timestamp at END to avoid LLM echoing it as content
+                    rel_time = mem.get("relative_time", "unknown time")
+                    content = mem.get("content", "")
+                    # Truncate very long memories to avoid bloating context
+                    if len(content) > 500:
+                        content = content[:500] + "..."
                     
-                    for item in neighborhood:
-                        # Format: Entity (Predicate)
-                        assoc = f"{item['entity']} ({item['predicate']})"
-                        if assoc not in seen_associations:
-                            unified_text += f"- Associated with: {assoc}\n"
-                            seen_associations.add(assoc)
+                    # ADR-014: Show author for multi-party attribution
+                    author_name = mem.get("author_name")
+                    author_is_bot = mem.get("author_is_bot", False)
                     
-                    if unified_text:
-                        system_content += f"\n[ASSOCIATIVE CONNECTIONS]\n(These concepts are structurally linked to the memories above)\n{unified_text}\n"
+                    if author_name:
+                        bot_tag = " (bot)" if author_is_bot else ""
+                        formatted += f"- [{author_name}{bot_tag}]: {content} ({rel_time})\n"
+                    else:
+                        # Legacy memories without author - use role as hint
+                        role = mem.get("role", "unknown")
+                        user_name = mem.get("user_name")
+                        
+                        if role == "human":
+                            # Fallback to user_name if available, otherwise "User"
+                            name_label = user_name if user_name else "User"
+                            formatted += f"- [{name_label}]: {content} ({rel_time})\n"
+                        elif role == "ai":
+                            formatted += f"- [You]: {content} ({rel_time})\n"
+                        else:
+                            formatted += f"- {content} ({rel_time})\n"
+                return formatted
 
-                system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
+            user_memory_context = format_memory_list(user_memories)
+            broadcast_memory_context = format_memory_list(broadcast_memories)
+            
+            if user_memory_context:
+                system_content += f"\n\n[RELEVANT MEMORY & KNOWLEDGE]\n{user_memory_context}\n"
+            
+            if broadcast_memory_context:
+                system_content += f"\n\n[SHARED/PUBLIC CONTEXT (GOSSIP/NEWS)]\n(These are public events or things you heard, NOT direct conversations with the current user)\n{broadcast_memory_context}\n"
+                
+            # Phase 2.5.1: Inject Unified Memory Context (Graph Connections)
+            neighborhood = context_data.get("unified_neighborhood", [])
+            if neighborhood:
+                unified_text = ""
+                seen_associations = set()
+                
+                for item in neighborhood:
+                    # Format: Entity (Predicate)
+                    assoc = f"{item['entity']} ({item['predicate']})"
+                    if assoc not in seen_associations:
+                        unified_text += f"- Associated with: {assoc}\n"
+                        seen_associations.add(assoc)
+                
+                if unified_text:
+                    system_content += f"\n[ASSOCIATIVE CONNECTIONS]\n(These concepts are structurally linked to the memories above)\n{unified_text}\n"
+
+            system_content += "(Use this information naturally. Do not explicitly state 'I see in my memory' or 'According to the database'. Treat this as your own knowledge.)\n"
         elif has_documents:
             logger.debug("Skipping memory context injection for document-focused request")
         
@@ -392,6 +421,11 @@ class MasterGraphAgent:
         if "{current_datetime}" in system_content:
             now_str = datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M")
             system_content = system_content.replace("{current_datetime}", now_str)
+
+        # 4. Final Identity Anchor (Anti-Identity-Bleed)
+        # MUST be the absolute last thing in the prompt to override any memory context
+        if context_variables.get("user_name"):
+            system_content += self.context_builder.get_identity_anchor(context_variables["user_name"])
 
         return {"system_prompt": system_content} 
 

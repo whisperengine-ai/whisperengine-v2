@@ -161,23 +161,23 @@ class ContextBuilder:
             if context_variables.get("additional_context"):
                 system_content += f"\n\n{context_variables['additional_context']}"
 
-            # 2.13 Final Identity Anchor (Anti-Identity-Bleed)
-            # Place at very end of context where LLMs pay most attention
-            # This guards against memories/diary from other users bleeding into current conversation
-            if context_variables.get("user_name"):
-                current_user = context_variables["user_name"]
-                system_content += f"""
-
-[CURRENT CONVERSATION - IDENTITY ANCHOR]
-You are NOW talking to: {current_user}
-Any memories prefixed with "[With X]:" are from PAST conversations with X, not {current_user}.
-Do NOT address {current_user} by any other name. Do NOT confuse them with people from your memories.
-"""
-
         except Exception as e:
             logger.error(f"Failed to inject evolution/goal state: {e}")
 
         return system_content
+
+    def get_identity_anchor(self, user_name: str) -> str:
+        """
+        Returns the Identity Anchor block.
+        This MUST be placed at the very end of the system prompt, AFTER memories.
+        """
+        return f"""
+
+[CURRENT CONVERSATION - IDENTITY ANCHOR]
+You are NOW talking to: {user_name}
+Any memories prefixed with "[With X]:" are from PAST conversations with X, not {user_name}.
+Do NOT address {user_name} by any other name. Do NOT confuse them with people from your memories.
+"""
 
     async def get_evolution_context(self, user_id: str, character_name: str) -> str:
         """Retrieves and formats trust, mood, and feedback insights."""
