@@ -1,4 +1,6 @@
 import operator
+import json
+import re
 from typing import List, Optional, Dict, Any, TypedDict, Annotated
 from loguru import logger
 from langgraph.graph import StateGraph, END
@@ -27,8 +29,9 @@ class SummaryGraphAgent:
     def __init__(self):
         # Use main model for summarization (high quality for important memory artifacts)
         # Summaries are async background jobs and affect all future retrievals,
-        # so quality > speed here
-        self.llm = create_llm(temperature=0.3, mode="main")
+        # so quality > speed here.
+        # Note: We use a sanitizer fallback to handle if the model outputs fenced JSON.
+        self.llm = create_llm(temperature=0.3, mode="main", max_tokens=1024)
         self.structured_llm = self.llm.with_structured_output(SummaryResult)
         
         # Build graph
@@ -49,6 +52,25 @@ class SummaryGraphAgent:
         )
         
         self.graph = workflow.compile()
+
+    def _clean_json_text(self, text: str) -> Optional[str]:
+        """Attempt to extract a valid JSON object from LLM text.
+        Handles fenced blocks (```json ... ```), and generic text with embedded JSON.
+        Returns the JSON substring or None if not found.
+        """
+        if not text:
+            return None
+        s = text.strip()
+        # Try to extract fenced JSON block
+        fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", s, flags=re.IGNORECASE | re.DOTALL)
+        if fence_match:
+            return fence_match.group(1).strip()
+        # Fallback: find first '{' and last '}'
+        start = s.find("{")
+        end = s.rfind("}")
+        if start != -1 and end != -1 and start < end:
+            return s[start:end+1]
+        return None
 
     async def generator(self, state: SummaryAgentState):
         """Generates the summary draft."""
@@ -100,7 +122,24 @@ Original Conversation:
             result = await self.structured_llm.ainvoke(messages)
         except Exception as e:
             logger.warning(f"Summary generation failed (attempt {steps}): {e}")
-            result = None
+            # Fallback: request raw output and sanitize JSON fences
+            try:
+                raw = await self.llm.ainvoke(messages)
+                raw_text = getattr(raw, "content", str(raw))
+                cleaned = self._clean_json_text(raw_text)
+                if cleaned:
+                    try:
+                        data = json.loads(cleaned)
+                        result = SummaryResult.model_validate(data)
+                        logger.info("Summary fallback succeeded by cleaning fenced JSON.")
+                    except Exception as e2:
+                        logger.warning(f"Summary fallback parse failed: {e2}")
+                        result = None
+                else:
+                    result = None
+            except Exception as e3:
+                logger.warning(f"Summary raw fallback failed: {e3}")
+                result = None
         
         return {
             "summary_result": result,
