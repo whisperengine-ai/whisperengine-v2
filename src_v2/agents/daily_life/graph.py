@@ -18,6 +18,7 @@ from src_v2.memory.embeddings import EmbeddingService
 from src_v2.agents.llm_factory import create_llm
 from src_v2.agents.master_graph import master_graph_agent
 from src_v2.core.character import CharacterManager
+from src_v2.utils.json_utils import extract_json_from_text
 from src_v2.core.goals import goal_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.evolution.drives import drive_manager
@@ -415,14 +416,14 @@ Format:
                     
                     logger.info(f"Planner raw response: {response.content[:100]}...")
                     
-                    # Parse JSON (simplified for now, ideally use structured output)
+                    # Parse JSON using robust utility
                     content = self._get_content_str(response.content)
-                    if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0]
-                    elif "```" in content:
-                        content = content.split("```")[1].split("```")[0]
+                    data = extract_json_from_text(content)
+                    
+                    if not data:
+                        logger.warning("Failed to parse planner JSON response")
+                        return {"actions": []}
                         
-                    data = json.loads(content)
                     for a in data.get("actions", []):
                         intent = a["intent"]
                         # Enforce flags again just in case LLM hallucinates

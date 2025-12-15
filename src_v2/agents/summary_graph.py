@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 
 from src_v2.agents.llm_factory import create_llm
 from src_v2.memory.summarizer import SummaryResult
+from src_v2.utils.json_utils import extract_json_from_text
 
 # Define State
 class SummaryAgentState(TypedDict):
@@ -52,25 +53,6 @@ class SummaryGraphAgent:
         )
         
         self.graph = workflow.compile()
-
-    def _clean_json_text(self, text: str) -> Optional[str]:
-        """Attempt to extract a valid JSON object from LLM text.
-        Handles fenced blocks (```json ... ```), and generic text with embedded JSON.
-        Returns the JSON substring or None if not found.
-        """
-        if not text:
-            return None
-        s = text.strip()
-        # Try to extract fenced JSON block
-        fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", s, flags=re.IGNORECASE | re.DOTALL)
-        if fence_match:
-            return fence_match.group(1).strip()
-        # Fallback: find first '{' and last '}'
-        start = s.find("{")
-        end = s.rfind("}")
-        if start != -1 and end != -1 and start < end:
-            return s[start:end+1]
-        return None
 
     async def generator(self, state: SummaryAgentState):
         """Generates the summary draft."""
@@ -126,10 +108,9 @@ Original Conversation:
             try:
                 raw = await self.llm.ainvoke(messages)
                 raw_text = getattr(raw, "content", str(raw))
-                cleaned = self._clean_json_text(raw_text)
-                if cleaned:
+                data = extract_json_from_text(raw_text)
+                if data:
                     try:
-                        data = json.loads(cleaned)
                         result = SummaryResult.model_validate(data)
                         logger.info("Summary fallback succeeded by cleaning fenced JSON.")
                     except Exception as e2:

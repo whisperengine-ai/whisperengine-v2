@@ -74,6 +74,8 @@ RULES:
 - NEVER use CREATE or MERGE - this is a READ-ONLY query function. Only use MATCH/OPTIONAL MATCH/RETURN.
 - Do not include any explanation or text before or after the query.
 - Do not use markdown code blocks.
+- CRITICAL: In WHERE clauses, do NOT use pattern syntax like (n:User {id: ...}). Use (n:User AND n.id = ...) instead.
+- CRITICAL: When using OR conditions in WHERE clauses, ensure proper parentheses grouping.
 
 {privacy_instructions}
 """),
