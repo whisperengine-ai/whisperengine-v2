@@ -1008,7 +1008,7 @@ Be evocative and brief. Write as stream-of-consciousness notes, not formal prose
 
         try:
             response = await self.llm.ainvoke([
-                SystemMessage(content=f"You are the dreaming mind of {self.character_name}, finding patterns in the subconscious."),
+                SystemMessage(content=f"You are {self.character_name}'s subconscious mind, finding patterns and themes in your memories."),
                 HumanMessage(content=prompt)
             ])
             
@@ -1048,7 +1048,7 @@ Be introspective and brief."""
 
         try:
             response = await self.llm.ainvoke([
-                SystemMessage(content=f"You are {self.character_name} writing a diary reflection."),
+                SystemMessage(content=f"You are {self.character_name}, reflecting on your day in your private diary."),
                 HumanMessage(content=prompt)
             ])
             
