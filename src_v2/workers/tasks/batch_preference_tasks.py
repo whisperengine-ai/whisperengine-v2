@@ -49,7 +49,7 @@ async def run_batch_preference_extraction(
                 SELECT role, content 
                 FROM v2_chat_history 
                 WHERE session_id = $1 
-                ORDER BY created_at ASC
+                ORDER BY timestamp ASC
             """, session_id)
             messages = [{"role": r["role"], "content": r["content"]} for r in rows]
     

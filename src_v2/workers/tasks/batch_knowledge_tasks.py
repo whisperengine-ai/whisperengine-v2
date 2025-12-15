@@ -14,7 +14,6 @@ from loguru import logger
 async def run_batch_knowledge_extraction(
     ctx: Dict[str, Any],
     user_id: str,
-    messages: List[Dict[str, str]],
     character_name: str = "unknown",
     session_id: str = ""
 ) -> Dict[str, Any]:
@@ -37,6 +36,20 @@ async def run_batch_knowledge_extraction(
     Returns:
         Dict with success status and extracted fact count
     """
+    from src_v2.core.database import db_manager
+
+    # Fetch messages from DB
+    messages = []
+    if db_manager.postgres_pool:
+        async with db_manager.postgres_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT role, content 
+                FROM v2_chat_history 
+                WHERE session_id = $1 
+                ORDER BY timestamp ASC
+            """, session_id)
+            messages = [{"role": r["role"], "content": r["content"]} for r in rows]
+
     # Filter to only human messages (we extract facts about the user)
     human_messages = [
         m["content"] for m in messages 

@@ -67,13 +67,13 @@ class AnalyzePatternsTool(BaseTool):
 
 
 class DetectThemesInput(BaseModel):
-    query: str = Field(default="themes topics interests hobbies", description="What themes to search for.")
+    query: str = Field(default="themes topics interests hobbies", description="What themes to search for. Must be a simple string, not JSON.")
 
 
 class DetectThemesTool(BaseTool):
     """Detects recurring themes in a user's conversations."""
     name: str = "find_themes"
-    description: str = "Identifies themes that appear repeatedly in a user's conversations, such as hobbies, concerns, or life events they keep mentioning."
+    description: str = "Identifies themes that appear repeatedly in a user's conversations. Input should be a simple search string like 'hobbies' or 'work', NOT a JSON object."
     args_schema: Type[BaseModel] = DetectThemesInput
     
     user_id: str = Field(exclude=True)

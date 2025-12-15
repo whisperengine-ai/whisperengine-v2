@@ -58,7 +58,7 @@ EXAMPLES:
 
 RULES:
 - Use the parameter $user_id for the User node by default.
-- If the question specifies a specific User ID (e.g. "user with id 123"), use that ID string directly in the query (e.g. {{id: '123'}}).
+- If the question specifies a specific User ID (e.g. "user with id 123"), use that ID string directly in the query.
 - ALWAYS use the parameter $bot_name for the Character node.
 - If the query is ambiguous about the target (User vs Character), search BOTH.
 - Return the relevant properties (usually o.name or r.predicate).
@@ -74,7 +74,7 @@ RULES:
 - NEVER use CREATE or MERGE - this is a READ-ONLY query function. Only use MATCH/OPTIONAL MATCH/RETURN.
 - Do not include any explanation or text before or after the query.
 - Do not use markdown code blocks.
-- CRITICAL: In WHERE clauses, do NOT use pattern syntax like (n:User {id: ...}). Use (n:User AND n.id = ...) instead.
+- CRITICAL: In WHERE clauses, do NOT use pattern syntax with properties inside the node. Use (n:User AND n.id = ...) instead.
 - CRITICAL: When using OR conditions in WHERE clauses, ensure proper parentheses grouping.
 
 {privacy_instructions}

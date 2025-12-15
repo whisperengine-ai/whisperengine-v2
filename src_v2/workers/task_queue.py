@@ -204,8 +204,7 @@ class TaskQueue:
         self,
         user_id: str,
         character_name: str,
-        session_id: str,
-        messages: List[Dict[str, str]]
+        session_id: str
     ) -> Optional[str]:
         """
         Queue a job to extract preferences from an entire conversation session.
@@ -217,7 +216,6 @@ class TaskQueue:
             user_id: Discord user ID
             character_name: The name of the bot
             session_id: Session identifier
-            messages: List of message dicts with 'role' and 'content' keys
             
         Returns:
             Job ID if queued, None if queue unavailable
@@ -231,16 +229,14 @@ class TaskQueue:
             _job_id=job_id,
             user_id=user_id,
             character_name=character_name,
-            session_id=session_id,
-            messages=messages
+            session_id=session_id
         )
 
     async def enqueue_batch_goal_analysis(
         self,
         user_id: str,
         character_name: str,
-        session_id: str,
-        messages: List[Dict[str, str]]
+        session_id: str
     ) -> Optional[str]:
         """
         Queue a job to analyze goal progress from an entire conversation session.
@@ -254,7 +250,6 @@ class TaskQueue:
             user_id: Discord user ID
             character_name: The name of the bot
             session_id: Session identifier
-            messages: List of message dicts with 'role' and 'content' keys
             
         Returns:
             Job ID if queued, None if queue unavailable
@@ -268,8 +263,7 @@ class TaskQueue:
             _job_id=job_id,
             user_id=user_id,
             character_name=character_name,
-            session_id=session_id,
-            messages=messages
+            session_id=session_id
         )
 
     async def enqueue_vision_analysis(
@@ -292,7 +286,6 @@ class TaskQueue:
         user_id: str,
         character_name: str,
         session_id: str,
-        messages: List[Dict[str, str]],
         user_name: Optional[str] = None,
         channel_id: Optional[str] = None
     ) -> Optional[str]:
@@ -303,7 +296,6 @@ class TaskQueue:
             user_id: Discord user ID
             character_name: Bot character name
             session_id: Conversation session ID
-            messages: List of message dicts with 'role' and 'content' keys
             user_name: User's display name (for diary provenance)
             channel_id: Optional channel ID for shared context retrieval
         """
@@ -315,7 +307,6 @@ class TaskQueue:
             user_id=user_id,
             character_name=character_name,
             session_id=session_id,
-            messages=messages,
             user_name=user_name,
             channel_id=channel_id
         )
@@ -371,7 +362,6 @@ class TaskQueue:
     async def enqueue_batch_knowledge_extraction(
         self, 
         user_id: str, 
-        messages: List[Dict[str, str]], 
         character_name: str,
         session_id: str = ""
     ) -> Optional[str]:
@@ -383,7 +373,6 @@ class TaskQueue:
         
         Args:
             user_id: Discord user ID
-            messages: List of message dicts with 'role' and 'content' keys
             character_name: The name of the bot (for privacy segmentation)
             session_id: Optional session identifier
             
@@ -398,7 +387,6 @@ class TaskQueue:
             _queue_name=self.QUEUE_COGNITION,
             _job_id=job_id,
             user_id=user_id,
-            messages=messages,
             character_name=character_name,
             session_id=session_id
         )

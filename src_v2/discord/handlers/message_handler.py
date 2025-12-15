@@ -100,7 +100,6 @@ async def enqueue_post_conversation_tasks(
         try:
             await task_queue.enqueue_batch_knowledge_extraction(
                 user_id=user_id,
-                messages=messages,
                 character_name=character_name,
                 session_id=session_id
             )
@@ -112,7 +111,6 @@ async def enqueue_post_conversation_tasks(
         try:
             await task_queue.enqueue_batch_preference_extraction(
                 user_id=user_id,
-                messages=messages,
                 character_name=character_name,
                 session_id=session_id
             )
@@ -123,7 +121,6 @@ async def enqueue_post_conversation_tasks(
     try:
         await task_queue.enqueue_batch_goal_analysis(
             user_id=user_id,
-            messages=messages,
             character_name=character_name,
             session_id=session_id
         )
@@ -136,7 +133,6 @@ async def enqueue_post_conversation_tasks(
             user_id=user_id,
             character_name=character_name,
             session_id=session_id,
-            messages=messages,
             user_name=user_name
         )
     except Exception as e:
