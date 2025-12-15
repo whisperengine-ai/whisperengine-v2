@@ -1,3 +1,32 @@
+x-bot-defaults: &bot-defaults
+  image: whisperengine-v2:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  volumes:
+    - .:/app
+    - /app/.venv
+    - ./logs:/app/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+    neo4j:
+      condition: service_healthy
+    qdrant:
+      condition: service_healthy
+    influxdb:
+      condition: service_healthy
+  networks:
+    - v2_network
+  environment: &common-env
+    TZ: America/Los_Angeles
+    REDIS_URL: redis://redis:6379/0
+    POSTGRES_URL: postgresql://whisper:password@postgres:5432/whisperengine_v2
+    QDRANT_URL: http://qdrant:6333
+    NEO4J_URL: bolt://neo4j:7687
+    INFLUXDB_URL: http://influxdb:8086
+
 services:
   # ========================================
   # SHARED INFRASTRUCTURE (Always Available)
@@ -31,6 +60,10 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data_v2:/qdrant/storage
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"] 
       interval: 10s
@@ -128,449 +161,220 @@ services:
   # ========================================
 
   elena:
+    <<: *bot-defaults
     profiles: ["elena", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-elena
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.elena
     environment:
-      - DISCORD_BOT_NAME=elena
-      - TZ=America/Los_Angeles
-      - REDIS_URL=redis://redis:6379/0
+      <<: *common-env
+      DISCORD_BOT_NAME: elena
     ports:
       - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   ryan:
+    <<: *bot-defaults
     profiles: ["ryan", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-ryan
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.ryan
     environment:
-      - DISCORD_BOT_NAME=ryan
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: ryan
     ports:
       - "8001:8001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   dotty:
+    <<: *bot-defaults
     profiles: ["dotty", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-dotty
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.dotty
     environment:
-      - DISCORD_BOT_NAME=dotty
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: dotty
     ports:
       - "8002:8002"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   aria:
+    <<: *bot-defaults
     profiles: ["aria", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-aria
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.aria
     environment:
-      - DISCORD_BOT_NAME=aria
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: aria
     ports:
       - "8003:8003"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   dream:
+    <<: *bot-defaults
     profiles: ["dream", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-dream
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.dream
     environment:
-      - DISCORD_BOT_NAME=dream
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: dream
     ports:
       - "8004:8004"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   jake:
+    <<: *bot-defaults
     profiles: ["jake", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-jake
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.jake
     environment:
-      - DISCORD_BOT_NAME=jake
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: jake
     ports:
       - "8005:8005"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   sophia:
+    <<: *bot-defaults
     profiles: ["sophia", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-sophia
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.sophia
     environment:
-      - DISCORD_BOT_NAME=sophia
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: sophia
     ports:
       - "8006:8006"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   marcus:
+    <<: *bot-defaults
     profiles: ["marcus", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-marcus
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.marcus
     environment:
-      - DISCORD_BOT_NAME=marcus
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: marcus
     ports:
       - "8007:8007"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   nottaylor:
+    <<: *bot-defaults
     profiles: ["nottaylor", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-nottaylor
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.nottaylor
     environment:
-      - DISCORD_BOT_NAME=nottaylor
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: nottaylor
     ports:
       - "8008:8008"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   gabriel:
+    <<: *bot-defaults
     profiles: ["gabriel", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-gabriel
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.gabriel
     environment:
-      - DISCORD_BOT_NAME=gabriel
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: gabriel
     ports:
       - "8009:8009"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8009/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   aethys:
+    <<: *bot-defaults
     profiles: ["aethys", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-aethys
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.aethys
     environment:
-      - DISCORD_BOT_NAME=aethys
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: aethys
     ports:
       - "8010:8010"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   aetheris:
+    <<: *bot-defaults
     profiles: ["aetheris", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-aetheris
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     env_file:
       - .env.aetheris
     environment:
-      - DISCORD_BOT_NAME=aetheris
-      - TZ=America/Los_Angeles
+      <<: *common-env
+      DISCORD_BOT_NAME: aetheris
     ports:
       - "8011:8011"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - v2_network
 
   # ========================================
   # API SERVER (Standalone)
@@ -584,34 +388,14 @@ services:
   #   docker compose --profile api --env-file .env.api up api
 
   api:
+    <<: *bot-defaults
     profiles: ["api"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: whisperengine-v2-api
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
     environment:
-      - TZ=America/Los_Angeles
-      - REDIS_URL=redis://redis:6379/0
+      <<: *common-env
     command: uvicorn src_v2.api.app:app --host 0.0.0.0 --port 8000 --workers 4
     ports:
       - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      influxdb:
-        condition: service_healthy
-    networks:
-      - v2_network
 
   # ========================================
   # BACKGROUND WORKERS (Shared across all bots)
@@ -622,146 +406,78 @@ services:
   # 1. COGNITION WORKER (Deep reasoning, slow tasks)
   # - Diaries, Dreams, Reflection, Strategy
   worker-cognition:
+    <<: *bot-defaults
     profiles: ["worker", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     deploy:
-      replicas: 3
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
     env_file:
       - .env.worker
     environment:
-      - DISCORD_BOT_NAME=worker-cognition
-      - DISCORD_TOKEN=not_needed_for_worker
-      - TZ=America/Los_Angeles
-      - REDIS_URL=redis://redis:6379/0
-      - ARQ_QUEUE_NAME=arq:cognition
+      <<: *common-env
+      DISCORD_BOT_NAME: worker-cognition
+      DISCORD_TOKEN: not_needed_for_worker
+      ARQ_QUEUE_NAME: arq:cognition
     command: ["python", "-m", "src_v2.workers.worker"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - v2_network
 
   # 2. ACTION WORKER (Outbound effects)
   # - Image Gen, Voice Gen, Posts, Proactive Messages
   worker-action:
+    <<: *bot-defaults
     profiles: ["worker", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     deploy:
       replicas: 1
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
+      resources:
+        limits:
+          memory: 1G
     env_file:
       - .env.worker
     environment:
-      - DISCORD_BOT_NAME=worker-action
-      - DISCORD_TOKEN=not_needed_for_worker
-      - TZ=America/Los_Angeles
-      - REDIS_URL=redis://redis:6379/0
-      - ARQ_QUEUE_NAME=arq:action
+      <<: *common-env
+      DISCORD_BOT_NAME: worker-action
+      DISCORD_TOKEN: not_needed_for_worker
+      ARQ_QUEUE_NAME: arq:action
     command: ["python", "-m", "src_v2.workers.worker"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - v2_network
 
   # 3. SENSORY WORKER (Fast analysis)
   # - Sentiment, Intent, Fact Extraction, Gossip
   worker-sensory:
+    <<: *bot-defaults
     profiles: ["worker", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     deploy:
       replicas: 1
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
+      resources:
+        limits:
+          memory: 1G
     env_file:
       - .env.worker
     environment:
-      - DISCORD_BOT_NAME=worker-sensory
-      - DISCORD_TOKEN=not_needed_for_worker
-      - TZ=America/Los_Angeles
-      - REDIS_URL=redis://redis:6379/0
-      - ARQ_QUEUE_NAME=arq:sensory
+      <<: *common-env
+      DISCORD_BOT_NAME: worker-sensory
+      DISCORD_TOKEN: not_needed_for_worker
+      ARQ_QUEUE_NAME: arq:sensory
     command: ["python", "-m", "src_v2.workers.worker"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - v2_network
 
   # 4. SOCIAL WORKER (Inter-agent communication)
   # - Gossip, Cross-bot messaging
   worker-social:
+    <<: *bot-defaults
     profiles: ["worker", "all"]
-    image: whisperengine-v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     deploy:
       replicas: 1
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /app/.venv
-      - ./logs:/app/logs
+      resources:
+        limits:
+          memory: 1G
     env_file:
       - .env.worker
     environment:
-      - DISCORD_BOT_NAME=worker-social
-      - DISCORD_TOKEN=not_needed_for_worker
-      - TZ=America/Los_Angeles
-      - REDIS_URL=redis://redis:6379/0
-      - ARQ_QUEUE_NAME=arq:social
+      <<: *common-env
+      DISCORD_BOT_NAME: worker-social
+      DISCORD_TOKEN: not_needed_for_worker
+      ARQ_QUEUE_NAME: arq:social
     command: ["python", "-m", "src_v2.workers.worker"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - v2_network
 
 volumes:
   postgres_data_v2:
