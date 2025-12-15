@@ -14,6 +14,7 @@ from src_v2.agents.daily_life.models import SensorySnapshot, ChannelSnapshot, Me
 from src_v2.memory.manager import memory_manager
 from src_v2.memory.models import MemorySourceType
 from src_v2.intelligence.activity import server_monitor
+from src_v2.discord.utils.message_utils import chunk_message
 
 class DailyLifeScheduler:
     """
@@ -431,23 +432,28 @@ class ActionPoller:
                     logger.warning(f"Skipping action {cmd.action_type}: Empty content")
                     return
 
-                kwargs = {"content": cmd.content}
-                if ref:
-                    kwargs["reference"] = ref
-                    # Mention author if it's a reply to a user, but maybe not if it's a bot?
-                    # For now, default to mention=True for visibility, or False if we want to be subtle.
-                    # Let's default to True for replies to ensure they see it.
-                    kwargs["mention_author"] = True
+                # Send message (handles chunking automatically)
+                from src_v2.discord.utils.message_utils import send_chunked_message
                 
-                sent_msg = await channel.send(**kwargs)
+                sent_messages = await send_chunked_message(
+                    channel=channel,
+                    content=cmd.content,
+                    reference=ref,
+                    mention_author=True if ref else False
+                )
                 
                 # Save to memory (Postgres + Qdrant) with rich metadata for diary
-                if self.bot.user:
+                if self.bot.user and sent_messages:
+                    # Use the last message ID as the primary reference (consistent with MessageHandler)
+                    last_msg = sent_messages[-1]
+                    
                     # Build metadata for diary generation
                     action_metadata = {
                         "action_type": cmd.action_type,  # "reply" or "post"
                         "channel_name": channel.name if hasattr(channel, 'name') else "unknown",
                         "context": cmd.target_content or "",  # What we were replying to
+                        "is_chunked": len(sent_messages) > 1,
+                        "chunk_count": len(sent_messages)
                     }
                     
                     # --- FIX: Use proper user_id for channel context ---
@@ -465,10 +471,10 @@ class ActionPoller:
                         user_id=context_user_id,
                         character_name=self.bot.character_name,
                         role="ai",
-                        content=cmd.content,
+                        content=cmd.content,  # Save full content, not chunks
                         user_name=self.bot.user.display_name,
                         channel_id=str(channel.id),
-                        message_id=str(sent_msg.id),
+                        message_id=str(last_msg.id),
                         metadata=action_metadata,
                         source_type=MemorySourceType.INFERENCE,
                         # ADR-014: Author tracking - bot is author
@@ -477,7 +483,7 @@ class ActionPoller:
                         author_name=self.bot.character_name,
                         reply_to_msg_id=cmd.target_message_id if cmd.action_type == "reply" else None
                     )
-                    logger.info(f"Saved autonomous action to memory: {sent_msg.id} (context: {context_user_id})")
+                    logger.info(f"Saved autonomous action to memory: {last_msg.id} (context: {context_user_id})")
                 
                 # --- FIRST-CLASS CITIZENSHIP: Update trust for ALL context users ---
                 # Even if we're just posting (not replying to anyone specific),

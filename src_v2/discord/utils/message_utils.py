@@ -99,3 +99,44 @@ def is_image(attachment: discord.Attachment) -> bool:
         return True
         
     return False
+
+async def send_chunked_message(
+    channel: discord.abc.Messageable,
+    content: str,
+    reference: Optional[discord.MessageReference] = None,
+    mention_author: bool = False,
+    files: Optional[List[discord.File]] = None
+) -> List[discord.Message]:
+    """
+    Sends a message to a channel, chunking it if necessary.
+    Handles replies and file attachments (attached to first chunk).
+    
+    Args:
+        channel: The channel to send to
+        content: The message content
+        reference: Optional message reference for reply
+        mention_author: Whether to mention the author in reply
+        files: Optional list of files to attach
+        
+    Returns:
+        List of sent discord.Message objects
+    """
+    chunks = chunk_message(content)
+    sent_messages = []
+    
+    for i, chunk in enumerate(chunks):
+        kwargs = {"content": chunk}
+        
+        # Only attach files to the first chunk
+        if i == 0 and files:
+            kwargs["files"] = files
+            
+        # Only reply/mention on the first chunk
+        if i == 0 and reference:
+            kwargs["reference"] = reference
+            kwargs["mention_author"] = mention_author
+            
+        sent_msg = await channel.send(**kwargs)
+        sent_messages.append(sent_msg)
+        
+    return sent_messages
