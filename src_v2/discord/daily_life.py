@@ -426,6 +426,11 @@ class ActionPoller:
                     except ValueError:
                         pass
                 
+                # Validate content before sending
+                if not cmd.content or not str(cmd.content).strip():
+                    logger.warning(f"Skipping action {cmd.action_type}: Empty content")
+                    return
+
                 kwargs = {"content": cmd.content}
                 if ref:
                     kwargs["reference"] = ref

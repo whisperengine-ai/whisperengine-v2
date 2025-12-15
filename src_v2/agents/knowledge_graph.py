@@ -26,7 +26,8 @@ class KnowledgeGraphAgent:
     
     def __init__(self):
         # Use utility model for extraction (low temp)
-        self.llm = create_llm(temperature=0.0, mode="utility")
+        # Set max_tokens to prevent runaway generation loops (e.g. 65k tokens)
+        self.llm = create_llm(temperature=0.0, mode="utility", max_tokens=4096)
         self.structured_llm = self.llm.with_structured_output(FactExtractionResult)
         
         # Build graph

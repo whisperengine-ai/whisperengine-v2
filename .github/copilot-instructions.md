@@ -468,6 +468,7 @@ python run_v2.py elena    # Local Python run (only for debugging, requires infra
 - ❌ **Don't use system Python** → Always `source .venv/bin/activate`
 - ❌ **Don't skip type hints** → Breaks AI code generation
 - ❌ **Don't assume hot-reload** → Restart after code changes
+- ❌ **Don't assume `restart` reloads env vars** → Must `stop` then `start` for ANY environment variable change
 - ❌ **Don't edit `src/` legacy code** → Only `src_v2/`
 - ✅ **DO use `asyncio.gather` for parallel DB calls** → 3-5x faster context retrieval
 - ✅ **DO log context in errors** → Speeds debugging with AI

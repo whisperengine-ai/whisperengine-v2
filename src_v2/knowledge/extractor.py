@@ -16,7 +16,8 @@ class FactExtractionResult(BaseModel):
 
 class FactExtractor:
     def __init__(self):
-        base_llm = create_llm(temperature=0.0, mode="utility")  # Low temp for extraction
+        # Low temp for extraction, max_tokens to prevent loops
+        base_llm = create_llm(temperature=0.0, mode="utility", max_tokens=4096)
         
         parser = JsonOutputParser(pydantic_object=FactExtractionResult)
         

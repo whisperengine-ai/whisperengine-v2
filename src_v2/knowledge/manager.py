@@ -68,6 +68,8 @@ RULES:
 - If the question is about general knowledge (songs, movies, history, celebrities, facts about the world), return exactly: RETURN "NO_ANSWER"
 - If the question cannot be answered by the schema (e.g. asking for chat history, weather, time), return exactly: RETURN "NO_ANSWER"
 - Do NOT use UNION queries. Instead, use a single MATCH with OR conditions or multiple patterns separated by commas.
+- Ensure the query contains exactly ONE 'RETURN' clause, and it must be at the very end.
+- Do not chain multiple queries with semicolons.
 - NEVER respond with a conversational message. Only output Cypher or RETURN "NO_ANSWER".
 - NEVER use CREATE or MERGE - this is a READ-ONLY query function. Only use MATCH/OPTIONAL MATCH/RETURN.
 - Do not include any explanation or text before or after the query.
