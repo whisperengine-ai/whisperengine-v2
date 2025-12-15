@@ -252,7 +252,7 @@ class ReflectiveGraphAgent:
         # Build special notes section
         special_notes = """
 IMPORTANT NOTES:
-- Voice messages and audio responses are handled AUTOMATICALLY by the system based on user request. You do NOT need to call any tool for voice/audio.
+- Voice messages and audio responses are handled AUTOMATICALLY based on user request. You do NOT need to call any tool for voice/audio.
 - When calling generate_image, copy ALL visual details into the prompt. The tool cannot see your reasoning.
 - If image_type='other', describe the subject only - do NOT include your own appearance.
 - When asked to search/explore/analyze, call the tool immediately. Don't just describe what you'll do.

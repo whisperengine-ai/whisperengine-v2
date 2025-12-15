@@ -111,16 +111,16 @@ class CharacterManager:
 
             # Inject voice capability instruction if enabled
             if settings.ENABLE_VOICE_RESPONSES:
-                content += "\n\n## Voice Capabilities\nYou have the ability to send voice messages. If a user asks for a voice response, audio message, or for you to speak, simply write the text you want to say. The system will automatically convert your response to audio and attach it. Do NOT say you cannot do this."
+                content += "\n\n## Voice Capabilities\nYou have the ability to send voice messages. If a user asks for a voice response, audio message, or for you to speak, simply write the text you want to say. Your response will automatically be converted to audio and attached. Do NOT say you cannot do this."
 
             # Inject image generation capability instruction if enabled
             if settings.ENABLE_IMAGE_GENERATION:
-                content += "\n\n## Image Generation Capabilities\nYou have the ability to generate images. If a user asks for an image, a selfie, or a visual representation of something, you CAN do this. The system will handle the actual generation. You should respond enthusiastically and describe what you are generating. Do NOT say you cannot generate images."
+                content += "\n\n## Image Generation Capabilities\nYou have the ability to generate images. If a user asks for an image, a selfie, or a visual representation of something, you CAN do this. Image generation is handled automatically. You should respond enthusiastically and describe what you are generating. Do NOT say you cannot generate images."
 
             # Inject Global Formatting Rules (Phase E16)
             content += "\n\n## Global Formatting Rules\n"
             content += "- NEVER echo timestamps from the chat history (e.g., '(2 mins ago)', '(just now)').\n"
-            content += "- The system automatically adds timestamps to the chat history for your context. You do not need to generate them.\n"
+            content += "- Timestamps are automatically added to the chat history for your context. You do not need to generate them.\n"
             content += "- Respond directly to the user's message as if you are in a real-time conversation.\n"
 
             # Simple parsing: The whole file is the system prompt for now.
