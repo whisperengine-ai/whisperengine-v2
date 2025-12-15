@@ -14,7 +14,6 @@ from loguru import logger
 async def run_batch_goal_analysis(
     ctx: Dict[str, Any],
     user_id: str,
-    messages: List[Dict[str, str]],
     character_name: str = "unknown",
     session_id: str = ""
 ) -> Dict[str, Any]:
@@ -30,14 +29,14 @@ async def run_batch_goal_analysis(
     Args:
         ctx: arq context
         user_id: Discord user ID
-        messages: List of message dicts with 'role' and 'content' keys
         character_name: Name of the bot that had the conversation
-        session_id: Optional session identifier for logging
+        session_id: Session identifier for logging and DB lookup
         
     Returns:
         Dict with success status and goal analysis stats
     """
     from src_v2.evolution.goals import goal_manager, goal_analyzer
+    from src_v2.core.database import db_manager
     
     # Check if there are any active goals before doing expensive processing
     active_goals = await goal_manager.get_active_goals(user_id, character_name)
@@ -49,6 +48,18 @@ async def run_batch_goal_analysis(
             "reason": "no_active_goals",
             "user_id": user_id
         }
+    
+    # Fetch messages from DB
+    messages = []
+    if db_manager.postgres_pool:
+        async with db_manager.postgres_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT role, content 
+                FROM v2_chat_history 
+                WHERE session_id = $1 
+                ORDER BY created_at ASC
+            """, session_id)
+            messages = [{"role": r["role"], "content": r["content"]} for r in rows]
     
     # Build conversation text from all messages
     if not messages:

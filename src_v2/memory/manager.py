@@ -158,7 +158,8 @@ class MemoryManager:
         author_id: Optional[str] = None,
         author_is_bot: bool = False,
         author_name: Optional[str] = None,
-        reply_to_msg_id: Optional[str] = None
+        reply_to_msg_id: Optional[str] = None,
+        session_id: Optional[str] = None
     ):
         """
         Adds a message to the history.
@@ -178,6 +179,8 @@ class MemoryManager:
             author_is_bot: Is the author a bot? (ADR-014)
             author_name: Display name of author (ADR-014)
             reply_to_msg_id: Discord msg ID this replies to (ADR-014)
+            session_id: Session identifier for grouping messages
+
         """
         # ADR-014: Derive author_id from role if not provided (backward compatibility)
         if author_id is None:
@@ -196,8 +199,8 @@ class MemoryManager:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO v2_chat_history 
-                    (user_id, character_name, role, content, user_name, channel_id, message_id, author_id, author_is_bot, reply_to_msg_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    (user_id, character_name, role, content, user_name, channel_id, message_id, author_id, author_is_bot, reply_to_msg_id, session_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                     ON CONFLICT (message_id) DO NOTHING
                 """, 
                     str(user_id), 
@@ -209,7 +212,8 @@ class MemoryManager:
                     str(message_id) if message_id else None,
                     str(author_id) if author_id else None,
                     author_is_bot,
-                    str(reply_to_msg_id) if reply_to_msg_id else None
+                    str(reply_to_msg_id) if reply_to_msg_id else None,
+                    str(session_id) if session_id else None
                 )
             
             # Also save to vector memory
@@ -230,7 +234,8 @@ class MemoryManager:
                 author_id=author_id,
                 author_is_bot=author_is_bot,
                 author_name=author_name,
-                reply_to_msg_id=reply_to_msg_id
+                reply_to_msg_id=reply_to_msg_id,
+                session_id=session_id
             )
             
         except Exception as e:
@@ -304,7 +309,8 @@ class MemoryManager:
         author_id: Optional[str] = None,
         author_is_bot: bool = False,
         author_name: Optional[str] = None,
-        reply_to_msg_id: Optional[str] = None
+        reply_to_msg_id: Optional[str] = None,
+        session_id: Optional[str] = None
     ):
         """
         Embeds and saves a memory to Qdrant.
@@ -377,6 +383,7 @@ class MemoryManager:
                         "author_is_bot": effective_author_is_bot,
                         "author_name": author_name,
                         "reply_to_msg_id": str(reply_to_msg_id) if reply_to_msg_id else None,
+                        "session_id": str(session_id) if session_id else None,
                         # Chunk-specific metadata
                         "is_chunk": True,
                         "chunk_index": chunk_idx,

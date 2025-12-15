@@ -6,7 +6,6 @@ async def run_summarization(
     user_id: str,
     character_name: str,
     session_id: str,
-    messages: List[Dict[str, Any]],
     user_name: Optional[str] = None,
     channel_id: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -18,7 +17,6 @@ async def run_summarization(
         user_id: Discord user ID
         character_name: Bot character name
         session_id: Conversation session ID
-        messages: List of message dicts with 'role' and 'content' keys
         user_name: User's display name (for diary provenance)
         channel_id: Optional channel ID for shared context retrieval
         
@@ -27,20 +25,33 @@ async def run_summarization(
     """
     logger.info(f"Processing summarization for session {session_id} (user: {user_id}, character: {character_name})")
     
-    # Check data availability before LLM call
-    if not messages or len(messages) < 2:
-        logger.info(f"Summarization skipped for session {session_id}: insufficient messages ({len(messages) if messages else 0})")
-        return {
-            "success": True,
-            "skipped": True,
-            "reason": "insufficient_messages",
-            "session_id": session_id
-        }
-    
     try:
         # Lazy import to avoid circular dependencies
         from src_v2.memory.summarizer import SummaryManager
         from src_v2.agents.summary_graph import summary_graph_agent
+        from src_v2.core.database import db_manager
+        
+        # Fetch messages from DB
+        messages = []
+        if db_manager.postgres_pool:
+            async with db_manager.postgres_pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT role, content 
+                    FROM v2_chat_history 
+                    WHERE session_id = $1 
+                    ORDER BY created_at ASC
+                """, session_id)
+                messages = [{"role": r["role"], "content": r["content"]} for r in rows]
+        
+        # Check data availability before LLM call
+        if not messages or len(messages) < 2:
+            logger.info(f"Summarization skipped for session {session_id}: insufficient messages ({len(messages) if messages else 0})")
+            return {
+                "success": True,
+                "skipped": True,
+                "reason": "insufficient_messages",
+                "session_id": session_id
+            }
         
         # Format conversation text
         conversation_text = ""

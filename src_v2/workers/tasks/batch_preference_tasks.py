@@ -14,7 +14,6 @@ from loguru import logger
 async def run_batch_preference_extraction(
     ctx: Dict[str, Any],
     user_id: str,
-    messages: List[Dict[str, str]],
     character_name: str = "unknown",
     session_id: str = ""
 ) -> Dict[str, Any]:
@@ -30,17 +29,29 @@ async def run_batch_preference_extraction(
     Args:
         ctx: arq context
         user_id: Discord user ID
-        messages: List of message dicts with 'role' and 'content' keys
         character_name: Name of the bot that had the conversation
-        session_id: Optional session identifier for logging
+        session_id: Session identifier for logging and DB lookup
         
     Returns:
         Dict with success status and extracted preferences
     """
     from src_v2.config.settings import settings
+    from src_v2.core.database import db_manager
     
     if not settings.ENABLE_PREFERENCE_EXTRACTION:
         return {"success": True, "skipped": True, "reason": "disabled"}
+    
+    # Fetch messages from DB
+    messages = []
+    if db_manager.postgres_pool:
+        async with db_manager.postgres_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT role, content 
+                FROM v2_chat_history 
+                WHERE session_id = $1 
+                ORDER BY created_at ASC
+            """, session_id)
+            messages = [{"role": r["role"], "content": r["content"]} for r in rows]
     
     # Filter to only human messages (we extract preferences from the user)
     human_messages = [
