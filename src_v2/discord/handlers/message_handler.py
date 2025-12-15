@@ -77,6 +77,9 @@ async def enqueue_post_conversation_tasks(
     Handles summarization, reflection, insight analysis, and batch knowledge extraction
     for ALL conversation types. A user ID is a user ID - human or bot, same pipeline!
     
+    Note: No arbitrary message thresholds here. Worker-level filters (100 char minimum,
+    meaningfulness score ≥3) provide better quality control than message counts.
+    
     Args:
         user_id: Discord user ID (human or bot)
         character_name: Bot's character name
@@ -85,6 +88,13 @@ async def enqueue_post_conversation_tasks(
         user_name: Display name for diary provenance
         trigger: What triggered this (session_end, cross_bot_session, etc.)
     """
+    message_count = len(messages) if messages else 0
+    
+    logger.info(
+        f"Enqueueing post-conversation tasks for session {session_id}: "
+        f"{message_count} messages (trigger: {trigger})"
+    )
+    
     # Enqueue batch knowledge extraction (session-level, more efficient than per-message)
     if settings.ENABLE_RUNTIME_FACT_EXTRACTION:
         try:
@@ -1413,11 +1423,12 @@ class MessageHandler:
         user_id: str,
         user_name: str,
         channel_id: Optional[str] = None,
-        server_id: Optional[str] = None,
-        force_processing: bool = False
+        server_id: Optional[str] = None
     ):
         """
-        Checks if summarization is needed and enqueues it to background worker.
+        Enqueues post-conversation processing when conversation activity occurs.
+        
+        No arbitrary thresholds - let worker filters decide if conversation is worth processing.
         
         Args:
             session_id: Session ID
@@ -1425,8 +1436,6 @@ class MessageHandler:
             user_name: User's display name (for diary provenance)
             channel_id: Discord channel identifier for this conversation
             server_id: Discord server identifier (or None for DM)
-            force_processing: If True, process even if message count < threshold
-                              (used for cross-bot chain completion)
         """
         try:
             # 1. Get session start time
@@ -1445,19 +1454,13 @@ class MessageHandler:
                     server_id=server_id
                 )
             
-            # 3. Check threshold OR force processing (for cross-bot chain completion)
-            # Cross-bot chains are limited to 3-5 messages, so they rarely hit the
-            # normal threshold of 20. force_processing=True bypasses the threshold
-            # to ensure batch analysis happens when the chain ends.
-            should_process = message_count >= settings.SUMMARY_MESSAGE_THRESHOLD or (
-                force_processing and message_count >= 2  # At least a back-and-forth
-            )
-            
-            if should_process:
-                trigger_reason = "chain_complete" if force_processing else "threshold"
+            # 3. Enqueue post-conversation processing
+            # Worker-level filters (100 char min, meaningfulness ≥3) provide better
+            # quality control than arbitrary message counts.
+            if message_count >= 2:  # At least a back-and-forth
                 logger.info(
-                    f"Session {session_id} processing ({trigger_reason}): "
-                    f"{message_count} messages. Enqueueing batch analysis."
+                    f"Session {session_id}: Enqueueing batch analysis "
+                    f"({message_count} messages)"
                 )
                 
                 # Fetch messages
@@ -1484,7 +1487,7 @@ class MessageHandler:
                     session_id=session_id,
                     messages=msg_dicts,
                     user_name=user_name,
-                    trigger="session_end"
+                    trigger="session_activity"
                 )
                     
         except Exception as e:

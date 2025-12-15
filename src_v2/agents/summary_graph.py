@@ -25,8 +25,10 @@ class SummaryGraphAgent:
     """
     
     def __init__(self):
-        # Use utility model for summarization (fast but capable)
-        self.llm = create_llm(temperature=0.3, mode="utility")
+        # Use main model for summarization (high quality for important memory artifacts)
+        # Summaries are async background jobs and affect all future retrievals,
+        # so quality > speed here
+        self.llm = create_llm(temperature=0.3, mode="main")
         self.structured_llm = self.llm.with_structured_output(SummaryResult)
         
         # Build graph

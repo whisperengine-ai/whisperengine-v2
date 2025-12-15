@@ -272,9 +272,6 @@ class Settings(BaseSettings):
     DIARY_GENERATION_LOCAL_MINUTE: int = 30  # Local minute when diary is generated
     DIARY_GENERATION_JITTER_MINUTES: int = 30  # ±30 min variance (Phase E23)
     
-    # --- Session Summarization ---
-    SUMMARY_MESSAGE_THRESHOLD: int = 20  # Messages per session before auto-summarization (restored to 20 after S6)
-
     # --- Dream Sequences (Phase E3) ---
     ENABLE_DREAM_SEQUENCES: bool = True  # Generate dreams when user returns after long absence
     DREAM_INACTIVITY_HOURS: int = 24  # Hours of inactivity before triggering a dream

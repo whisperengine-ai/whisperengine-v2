@@ -16,8 +16,9 @@ class FactExtractionResult(BaseModel):
 
 class FactExtractor:
     def __init__(self):
-        # Low temp for extraction, max_tokens to prevent loops
-        base_llm = create_llm(temperature=0.0, mode="utility", max_tokens=4096)
+        # Use main model for fact extraction - facts become permanent knowledge graph nodes
+        # Quality matters here since bad facts pollute the graph forever
+        base_llm = create_llm(temperature=0.0, mode="main", max_tokens=4096)
         
         parser = JsonOutputParser(pydantic_object=FactExtractionResult)
         
