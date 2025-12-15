@@ -98,8 +98,10 @@ class CharacterManager:
                     logger.warning(f"Failed to load ux.yaml from {ux_yaml_path}: {e}")
 
             # Inject behavior into system prompt if present
-            if behavior:
-                content += behavior.to_prompt_section()
+            # MOVED: Behavior profile (Purpose, Drives, Constitution) is now injected dynamically
+            # in ContextBuilder to ensure it appears later in the context window for better adherence.
+            # if behavior:
+            #    content += behavior.to_prompt_section()
 
             # Inject emoji sets into system prompt if present
             if emoji_sets:

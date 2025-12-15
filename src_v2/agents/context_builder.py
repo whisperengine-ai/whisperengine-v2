@@ -149,6 +149,11 @@ class ContextBuilder:
             except Exception as e:
                 logger.debug(f"Failed to inject timezone context: {e}")
 
+            # 2.9.5 Core Identity & Constitution (Reinforcement)
+            # Injected LATE in the prompt (after memories/goals) to ensure adherence
+            if character.behavior:
+                system_content += character.behavior.to_prompt_section()
+
             # 2.10 Meta-Instructions (Anti-AI-Break)
             # Pass tools_available to avoid mentioning tools in fast path
             system_content += self._get_meta_instructions(tools_available=self._tools_available)
