@@ -173,7 +173,15 @@ class DiaryMaterial(BaseModel):
         if self.observations:
             sections.append("\n## Things I Noticed Today")
             for obs in self.observations[:5]:
-                sections.append(f"- {obs.get('content', '')} ({obs.get('type', 'observation')})")
+                # Observations from Neo4j have user_id, predicate, object (not content)
+                # Format them as natural language without exposing raw IDs
+                predicate = obs.get('predicate', '').replace('_', ' ').lower()
+                obj = obs.get('object', '')
+                if predicate and obj:
+                    sections.append(f"- Someone {predicate} {obj}")
+                elif obs.get('content'):
+                    # Fallback for observations that do have content field
+                    sections.append(f"- {obs.get('content', '')} ({obs.get('type', 'observation')})")
         
         if self.gossip:
             sections.append("\n## What I Heard From Others")

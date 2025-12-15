@@ -335,15 +335,26 @@ PRIVACY RESTRICTION ENABLED:
         
         ADR-014: Now includes author_id and author_is_bot to properly
         attribute memories in multi-party conversations.
+        
+        IMPORTANT: Memory nodes get a human-readable `name` property (truncated
+        content) to prevent UUID leakage in graph walks. Without this, GraphWalker
+        would expose raw Qdrant point UUIDs in dream/diary interpretations.
         """
         if not db_manager.neo4j_driver:
             return
 
+        # Create human-readable name from content to prevent UUID leak in graph walks
+        # Use first 50 chars of content or a fallback label
+        memory_name = content[:50].strip() if content else "memory"
+        if len(content) > 50:
+            memory_name += "..."
+        
         query = """
         MERGE (u:User {id: $user_id})
         ON CREATE SET u.is_bot = false
         CREATE (m:Memory {
             id: $vector_id,
+            name: $name,
             content: $content,
             timestamp: $timestamp,
             source_type: $source_type,
@@ -366,7 +377,8 @@ PRIVACY RESTRICTION ENABLED:
                 await session.run(
                     query, 
                     user_id=user_id, 
-                    vector_id=vector_id, 
+                    vector_id=vector_id,
+                    name=memory_name,
                     content=content, 
                     timestamp=timestamp, 
                     source_type=source_type,
