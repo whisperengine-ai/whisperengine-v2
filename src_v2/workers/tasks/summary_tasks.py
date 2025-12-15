@@ -49,8 +49,8 @@ async def run_summarization(
             content = msg.get('content', '')
             conversation_text += f"{role}: {content}\n"
         
-        # Skip if conversation is too short
-        if len(conversation_text) < 100:
+        # Skip if conversation is too short (lowered threshold to catch short emotional exchanges)
+        if len(conversation_text) < 30:
             logger.info(f"Summarization skipped for session {session_id}: conversation too short ({len(conversation_text)} chars)")
             return {
                 "success": True,
@@ -62,7 +62,15 @@ async def run_summarization(
         # Use Graph Agent for generation (includes critique loop)
         result = await summary_graph_agent.run(conversation_text)
         
-        if result and result.meaningfulness_score >= 3:
+        if result is None:
+            logger.warning(f"Summarization failed for session {session_id}: Agent returned None (likely JSON validation failure)")
+            return {
+                "success": False,
+                "error": "agent_returned_none",
+                "session_id": session_id
+            }
+
+        if result.meaningfulness_score >= 3:
             # Use SummaryManager for saving (it handles DB logic)
             summarizer = SummaryManager(bot_name=character_name)
             saved = await summarizer.save_summary(session_id, user_id, result, user_name=user_name, channel_id=channel_id)
@@ -82,12 +90,12 @@ async def run_summarization(
                 "session_id": session_id
             }
         else:
-            logger.info(f"Session {session_id} not meaningful enough to summarize (score: {result.meaningfulness_score if result else 0})")
+            logger.info(f"Session {session_id} not meaningful enough to summarize (score: {result.meaningfulness_score})")
             return {
                 "success": True,
                 "skipped": True,
                 "reason": "low_meaningfulness",
-                "score": result.meaningfulness_score if result else 0,
+                "score": result.meaningfulness_score,
                 "session_id": session_id
             }
             

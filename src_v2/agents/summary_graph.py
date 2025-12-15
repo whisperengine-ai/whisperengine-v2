@@ -71,10 +71,19 @@ RULES:
 4. Detect Emotions: List 2-3 dominant emotions.
 5. Extract Topics: List 1-5 key topics or themes (e.g., 'career anxiety', 'favorite movies', 'childhood memories').
    These topics help maintain narrative continuity across sessions.
+
+OUTPUT INSTRUCTION:
+You MUST output a valid JSON object matching the provided schema. Do not include any markdown formatting, code blocks, or conversational text.
 """
 
         if critique:
-            user_prompt = f"""The previous summary was critiqued. Please improve it based on this feedback:
+            if critique == "No summary generated.":
+                user_prompt = f"""The previous attempt failed to generate a valid summary. Please try again, ensuring you output VALID JSON matching the schema.
+
+Original Conversation:
+{conversation_text}"""
+            else:
+                user_prompt = f"""The previous summary was critiqued. Please improve it based on this feedback:
 {critique}
 
 Original Conversation:
@@ -87,7 +96,11 @@ Original Conversation:
             HumanMessage(content=user_prompt)
         ]
         
-        result = await self.structured_llm.ainvoke(messages)
+        try:
+            result = await self.structured_llm.ainvoke(messages)
+        except Exception as e:
+            logger.warning(f"Summary generation failed (attempt {steps}): {e}")
+            result = None
         
         return {
             "summary_result": result,
