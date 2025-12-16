@@ -19,6 +19,8 @@ from src_v2.tools.memory_tools import (
     LookupFactsTool,
     UpdateFactsTool,
     UpdatePreferencesTool,
+    GetUserPreferencesTool,
+    CheckActiveGoalsTool,
     ExploreGraphTool,
     DiscoverCommonGroundTool,
     CharacterEvolutionTool,
@@ -213,6 +215,8 @@ Do NOT generate a conversational response. Just decide on tools or respond empty
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=bot_name),
+            GetUserPreferencesTool(user_id=user_id, character_name=bot_name),
+            CheckActiveGoalsTool(user_id=user_id, character_name=bot_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=bot_name),
             
             # Document Tools

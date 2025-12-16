@@ -15,7 +15,8 @@ from src_v2.utils.image_utils import process_image_for_llm
 from src_v2.utils.llm_retry import invoke_with_retry, get_image_error_message
 from src_v2.tools.memory_tools import (
     SearchSummariesTool, SearchEpisodesTool, LookupFactsTool,
-    UpdateFactsTool, UpdatePreferencesTool, SearchMyThoughtsTool, RecallBotConversationTool,
+    UpdateFactsTool, UpdatePreferencesTool, GetUserPreferencesTool, CheckActiveGoalsTool,
+    SearchMyThoughtsTool, RecallBotConversationTool,
     CreateUserGoalTool, ExploreGraphTool, DiscoverCommonGroundTool,
     CharacterEvolutionTool, ReadFullMemoryTool, FetchSessionTranscriptTool, SearchGraphMemoriesTool
 )
@@ -92,6 +93,8 @@ class ReflectiveGraphAgent:
             LookupFactsTool(user_id=user_id, bot_name=bot_name),
             UpdateFactsTool(user_id=user_id),
             UpdatePreferencesTool(user_id=user_id, character_name=bot_name),
+            GetUserPreferencesTool(user_id=user_id, character_name=bot_name),
+            CheckActiveGoalsTool(user_id=user_id, character_name=bot_name),
             AnalyzeTopicTool(user_id=user_id, bot_name=bot_name),
             
             # Document Tool

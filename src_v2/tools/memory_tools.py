@@ -49,6 +49,7 @@ Types available:
 - 'observation': Things I've noticed about people and patterns
 - 'gossip': Interesting things I've heard from my bot friends
 - 'epiphany': Realizations and insights I've had about people
+- 'reverie': Consolidated insights from idle reflection (connections between memories)
 - 'any': Search across all types (use this for "diaries and dreams")
 
 This gives users a "peek behind the curtain" into my inner life."""
@@ -68,7 +69,7 @@ This gives users a "peek behind the curtain" into my inner life."""
             
             # Determine which types to search
             if thought_type == "any":
-                types_to_search = ["diary", "dream", "gossip", "epiphany"]
+                types_to_search = ["diary", "dream", "gossip", "epiphany", "reverie", "observation"]
             else:
                 types_to_search = [thought_type]
             
@@ -691,6 +692,91 @@ class UpdatePreferencesTool(BaseTool):
                 return "Invalid action. Use 'update' or 'delete'."
         except Exception as e:
             return f"Error updating preferences: {e}"
+
+
+class GetUserPreferencesInput(BaseModel):
+    """Input for getting user preferences. No parameters needed."""
+    pass
+
+
+class GetUserPreferencesTool(BaseTool):
+    name: str = "get_prefs"
+    description: str = """Retrieves the user's saved preferences and communication style settings.
+
+USE THIS WHEN the user asks:
+- "What do you know about how I like to communicate?"
+- "Do I have any preferences set?"
+- "What settings do I have?"
+- "How do you remember I like my responses?"
+
+Returns extracted preferences like response_style, nickname, topics_to_avoid, etc."""
+    args_schema: Type[BaseModel] = GetUserPreferencesInput
+    user_id: str = Field(exclude=True)
+    character_name: str = Field(exclude=True)
+
+    def _run(self) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self) -> str:
+        try:
+            relationship = await trust_manager.get_relationship_level(self.user_id, self.character_name)
+            preferences = relationship.get("preferences", {})
+            
+            if not preferences:
+                return "No explicit preferences have been set yet. I'll learn your preferences naturally over time."
+            
+            result = ["Your saved preferences:"]
+            for key, value in preferences.items():
+                result.append(f"- {key}: {value}")
+            
+            return "\n".join(result)
+        except Exception as e:
+            return f"Error retrieving preferences: {e}"
+
+
+class CheckActiveGoalsInput(BaseModel):
+    """Input for checking active goals. No parameters needed."""
+    pass
+
+
+class CheckActiveGoalsTool(BaseTool):
+    name: str = "check_goals"
+    description: str = """Checks what goals are currently active for this conversation.
+
+USE THIS WHEN the user asks:
+- "What are we working on?"
+- "Do I have any active goals?"
+- "What am I trying to accomplish?"
+- "What did I ask you to help me with?"
+
+Returns goals the user has explicitly requested or that were inferred from conversation patterns."""
+    args_schema: Type[BaseModel] = CheckActiveGoalsInput
+    user_id: str = Field(exclude=True)
+    character_name: str = Field(exclude=True)
+
+    def _run(self) -> str:
+        raise NotImplementedError("Use _arun instead")
+
+    async def _arun(self) -> str:
+        try:
+            from src_v2.evolution.goals import goal_manager
+            
+            active_goals = await goal_manager.get_active_goals(self.user_id, self.character_name)
+            
+            if not active_goals:
+                return "No active goals right now. If you'd like me to help you work towards something, just ask!"
+            
+            result = [f"Active Goals ({len(active_goals)}):"]
+            for goal in active_goals[:5]:  # Limit to top 5
+                result.append(f"\n• {goal['description']}")
+                result.append(f"  Success: {goal['success_criteria']}")
+                if goal.get('current_strategy'):
+                    result.append(f"  Strategy: {goal['current_strategy']}")
+            
+            return "\n".join(result)
+        except Exception as e:
+            return f"Error retrieving goals: {e}"
+
 
 class ExploreGraphInput(BaseModel):
     start_node: Optional[str] = Field(
