@@ -373,7 +373,8 @@ class MessageHandler:
                 starter_msg = message.channel.starter_message
                 
                 # If not in cache, try to fetch from parent channel
-                if not starter_msg and message.channel.parent:
+                # Note: ForumChannels do not support fetch_message
+                if not starter_msg and message.channel.parent and not isinstance(message.channel.parent, discord.ForumChannel):
                     try:
                         starter_msg = await message.channel.parent.fetch_message(message.channel.id)
                     except (discord.NotFound, discord.Forbidden):

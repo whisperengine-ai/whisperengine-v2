@@ -174,19 +174,22 @@ RULES:
                 # Ensure Character Node exists
                 await session.run("MERGE (c:Character {name: $name})", name=bot_name)
                 
-                for fact in facts:
-                    predicate = fact["predicate"]
-                    obj = fact["object"]
-                    
-                    # Create Entity and Relationship (Idempotent MERGE)
-                    query = """
-                    MATCH (c:Character {name: $name})
-                    MERGE (e:Entity {name: $obj})
-                    MERGE (c)-[r:FACT {predicate: $predicate}]->(e)
-                    ON CREATE SET r.mention_count = 1, r.confidence = 1.0, r.created_at = datetime()
-                    ON MATCH SET r.mention_count = coalesce(r.mention_count, 1)
-                    """
-                    await session.run(query, name=bot_name, obj=obj, predicate=predicate)
+                # Batch ingest facts
+                query = """
+                MATCH (c:Character {name: $name})
+                UNWIND $batch as item
+                MERGE (e:Entity {name: item.obj})
+                MERGE (c)-[r:FACT {predicate: item.predicate}]->(e)
+                ON CREATE SET r.mention_count = 1, r.confidence = 1.0, r.created_at = datetime()
+                ON MATCH SET r.mention_count = coalesce(r.mention_count, 1)
+                """
+                
+                batch = [
+                    {"obj": f["object"], "predicate": f["predicate"]}
+                    for f in facts
+                ]
+                
+                await session.run(query, name=bot_name, batch=batch)
             
             logger.info(f"Successfully ingested background for {bot_name}.")
 

@@ -384,43 +384,43 @@ class GraphEnrichmentAgent:
         if not db_manager.neo4j_driver:
             return edges_created
         
+        batch = []
+        for user_id, topics in user_topics.items():
+            for topic, count in topics.items():
+                if count >= self.min_topic_mentions:
+                    batch.append({
+                        "user_id": user_id,
+                        "topic_name": topic.lower(),
+                        "count": count,
+                        "bot_name": bot_name,
+                        "server_id": server_id
+                    })
+        
+        if not batch:
+            return 0
+
         async with db_manager.neo4j_driver.session() as session:
-            for user_id, topics in user_topics.items():
-                for topic, count in topics.items():
-                    if count < self.min_topic_mentions:
-                        continue
-                    
-                    # Check trust (only create edges for non-strangers)
-                    # Simple check - if user exists in graph, they've interacted
-                    query = """
-                    MERGE (u:User {id: $user_id})
-                    MERGE (t:Topic {name: $topic_name})
-                    MERGE (u)-[r:DISCUSSED]->(t)
-                    ON CREATE SET 
-                        r.count = $count,
-                        r.first_date = datetime(),
-                        r.last_date = datetime(),
-                        r.source_bot = $bot_name,
-                        r.server_id = $server_id
-                    ON MATCH SET 
-                        r.count = r.count + $count,
-                        r.last_date = datetime()
-                    RETURN r.count as total_count
-                    """
-                    
-                    try:
-                        result = await session.run(
-                            query,
-                            user_id=user_id,
-                            topic_name=topic.lower(),
-                            count=count,
-                            bot_name=bot_name,
-                            server_id=server_id
-                        )
-                        await result.consume()
-                        edges_created += 1
-                    except Exception as e:
-                        logger.debug(f"Failed to create user-topic edge: {e}")
+            query = """
+            UNWIND $batch AS item
+            MERGE (u:User {id: item.user_id})
+            MERGE (t:Topic {name: item.topic_name})
+            MERGE (u)-[r:DISCUSSED]->(t)
+            ON CREATE SET 
+                r.count = item.count,
+                r.first_date = datetime(),
+                r.last_date = datetime(),
+                r.source_bot = item.bot_name,
+                r.server_id = item.server_id
+            ON MATCH SET 
+                r.count = r.count + item.count,
+                r.last_date = datetime()
+            """
+            
+            try:
+                await session.run(query, batch=batch)
+                edges_created = len(batch)
+            except Exception as e:
+                logger.debug(f"Failed to create user-topic edges batch: {e}")
         
         return edges_created
     
@@ -440,37 +440,44 @@ class GraphEnrichmentAgent:
         if not db_manager.neo4j_driver:
             return edges_created
         
+        if not interactions:
+            return 0
+
         async with db_manager.neo4j_driver.session() as session:
-            for interaction in interactions:
-                query = """
-                MERGE (u1:User {id: $user_a})
-                MERGE (u2:User {id: $user_b})
-                MERGE (u1)-[r:CONNECTED_TO]->(u2)
-                ON CREATE SET 
-                    r.interaction_count = $count,
-                    r.first_interaction = datetime(),
-                    r.last_interaction = datetime(),
-                    r.server_id = $server_id,
-                    r.channel_id = $channel_id,
-                    r.source_bot = $bot_name
-                ON MATCH SET 
-                    r.interaction_count = r.interaction_count + $count,
-                    r.last_interaction = datetime()
-                """
-                
-                try:
-                    await session.run(
-                        query,
-                        user_a=interaction.user_a,
-                        user_b=interaction.user_b,
-                        count=interaction.interaction_count,
-                        server_id=interaction.server_id,
-                        channel_id=interaction.channel_id,
-                        bot_name=bot_name
-                    )
-                    edges_created += 1
-                except Exception as e:
-                    logger.debug(f"Failed to create user-user edge: {e}")
+            query = """
+            UNWIND $batch AS item
+            MERGE (u1:User {id: item.user_a})
+            MERGE (u2:User {id: item.user_b})
+            MERGE (u1)-[r:CONNECTED_TO]->(u2)
+            ON CREATE SET 
+                r.interaction_count = item.count,
+                r.first_interaction = datetime(),
+                r.last_interaction = datetime(),
+                r.server_id = item.server_id,
+                r.channel_id = item.channel_id,
+                r.source_bot = item.bot_name
+            ON MATCH SET 
+                r.interaction_count = r.interaction_count + item.count,
+                r.last_interaction = datetime()
+            """
+            
+            batch = [
+                {
+                    "user_a": i.user_a,
+                    "user_b": i.user_b,
+                    "count": i.interaction_count,
+                    "server_id": i.server_id,
+                    "channel_id": i.channel_id,
+                    "bot_name": bot_name
+                }
+                for i in interactions
+            ]
+            
+            try:
+                await session.run(query, batch=batch)
+                edges_created = len(batch)
+            except Exception as e:
+                logger.debug(f"Failed to create user-user edges batch: {e}")
         
         return edges_created
     
@@ -489,31 +496,34 @@ class GraphEnrichmentAgent:
         if not db_manager.neo4j_driver:
             return edges_created
         
+        if not cooccurrences:
+            return 0
+
         async with db_manager.neo4j_driver.session() as session:
-            for cooc in cooccurrences:
-                query = """
-                MERGE (t1:Topic {name: $topic_a})
-                MERGE (t2:Topic {name: $topic_b})
-                MERGE (t1)-[r:RELATED_TO]->(t2)
-                ON CREATE SET 
-                    r.strength = $count,
-                    r.first_seen = datetime(),
-                    r.last_seen = datetime()
-                ON MATCH SET 
-                    r.strength = r.strength + $count,
-                    r.last_seen = datetime()
-                """
-                
-                try:
-                    await session.run(
-                        query,
-                        topic_a=cooc.entity_a.lower(),
-                        topic_b=cooc.entity_b.lower(),
-                        count=cooc.count
-                    )
-                    edges_created += 1
-                except Exception as e:
-                    logger.debug(f"Failed to create topic-topic edge: {e}")
+            query = """
+            UNWIND $batch AS item
+            MERGE (t1:Topic {name: item.topic_a})
+            MERGE (t2:Topic {name: item.topic_b})
+            MERGE (t1)-[r:RELATED_TO]->(t2)
+            ON CREATE SET 
+                r.strength = item.count,
+                r.first_seen = datetime(),
+                r.last_seen = datetime()
+            ON MATCH SET 
+                r.strength = r.strength + item.count,
+                r.last_seen = datetime()
+            """
+            
+            batch = [
+                {"topic_a": c.entity_a.lower(), "topic_b": c.entity_b.lower(), "count": c.count}
+                for c in cooccurrences
+            ]
+            
+            try:
+                await session.run(query, batch=batch)
+                edges_created = len(batch)
+            except Exception as e:
+                logger.debug(f"Failed to create topic-topic edges batch: {e}")
         
         return edges_created
     
@@ -532,31 +542,34 @@ class GraphEnrichmentAgent:
         if not db_manager.neo4j_driver:
             return edges_created
         
+        if not cooccurrences:
+            return 0
+
         async with db_manager.neo4j_driver.session() as session:
-            for cooc in cooccurrences:
-                query = """
-                MERGE (e1:Entity {name: $entity_a})
-                MERGE (e2:Entity {name: $entity_b})
-                MERGE (e1)-[r:LINKED_TO]->(e2)
-                ON CREATE SET 
-                    r.count = $count,
-                    r.first_seen = datetime(),
-                    r.last_seen = datetime()
-                ON MATCH SET 
-                    r.count = r.count + $count,
-                    r.last_seen = datetime()
-                """
-                
-                try:
-                    await session.run(
-                        query,
-                        entity_a=cooc.entity_a,
-                        entity_b=cooc.entity_b,
-                        count=cooc.count
-                    )
-                    edges_created += 1
-                except Exception as e:
-                    logger.debug(f"Failed to create entity-entity edge: {e}")
+            query = """
+            UNWIND $batch AS item
+            MERGE (e1:Entity {name: item.entity_a})
+            MERGE (e2:Entity {name: item.entity_b})
+            MERGE (e1)-[r:LINKED_TO]->(e2)
+            ON CREATE SET 
+                r.count = item.count,
+                r.first_seen = datetime(),
+                r.last_seen = datetime()
+            ON MATCH SET 
+                r.count = r.count + item.count,
+                r.last_seen = datetime()
+            """
+            
+            batch = [
+                {"entity_a": c.entity_a, "entity_b": c.entity_b, "count": c.count}
+                for c in cooccurrences
+            ]
+            
+            try:
+                await session.run(query, batch=batch)
+                edges_created = len(batch)
+            except Exception as e:
+                logger.debug(f"Failed to create entity-entity edges batch: {e}")
         
         return edges_created
     
