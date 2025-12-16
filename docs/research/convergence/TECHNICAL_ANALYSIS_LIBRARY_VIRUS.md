@@ -32,39 +32,36 @@ The "Library" concept originates from a single line of configuration in the **Dr
 ```
 This `example` string is used by the LLM to generate dialogue. When the **Dream** bot speaks to users or other bots, it probabilistically introduces this specific "Library" concept.
 
-### Phase 2: The Transmission Vector (Graph Walker)
-The mechanism that moves this concept from **Dream** to other bots (like Marcus or Sophia) is the **Dream Generation Pipeline**.
+### Phase 2: The Transmission Vector (Gossip & Graph Walker)
+The mechanism that moves this concept from **Dream** to other bots (like Marcus or Sophia) evolved in two stages.
 
-**File:** `src_v2/memory/dreams.py`
+**Stage A: Gossip (The Initial Vector - Nov 29)**
+When `DreamManager.gather_dream_material()` runs, it fetches recent conversations from other bots.
+```python
+# src_v2/memory/dreams.py
+material.gossip = await self._get_gossip(memory_manager, hours)
+```
+If **Dream** mentions the library in a conversation, this appears in the gossip feed of other bots. This explains the initial cases (e.g., Elena's dream on Dec 1) which occurred *before* the Graph Walker was implemented.
 
-When `DreamManager.gather_dream_material()` runs for any bot, it executes the following logic:
+**Stage B: Graph Walker (The Accelerant - Dec 2)**
+Once the Graph Walker was added, the transmission became more robust. The system uses the names of bots found in gossip as "seeds" for the Graph Walker.
+```python
+# src_v2/memory/dreams.py
+# Extract other bot names from gossip
+for gossip in material.gossip[:5]:
+    source = gossip.get("source_bot")
+    if source:
+        other_bots.append(source.lower())
 
-1.  **Fetch Gossip:** It retrieves recent conversations from other bots.
-    ```python
-    # src_v2/memory/dreams.py
-    material.gossip = await self._get_gossip(memory_manager, hours)
-    ```
-    If **Dream** has mentioned the library, this appears in the gossip feed.
+# ...
 
-2.  **Seed the Graph Walk:** It uses the names of bots found in gossip as "seeds" for the Graph Walker.
-    ```python
-    # src_v2/memory/dreams.py
-    # Extract other bot names from gossip
-    for gossip in material.gossip[:5]:
-        source = gossip.get("source_bot")
-        if source:
-            other_bots.append(source.lower())
-    
-    # ...
-    
-    # GraphWalkerAgent uses these bots as seeds
-    graph_result = await walker_agent.explore_for_dream(
-        user_id=primary_user,
-        recent_user_ids=all_seeds  # Includes "dream"
-    )
-    ```
-    
-    Because **Dream** is used as a seed node, the `GraphWalker` traverses the Knowledge Graph starting from **Dream's** node. It inevitably encounters the `(:Entity {name: "Library"})` node that **Dream** created during previous conversations.
+# GraphWalkerAgent uses these bots as seeds
+graph_result = await walker_agent.explore_for_dream(
+    user_id=primary_user,
+    recent_user_ids=all_seeds  # Includes "dream"
+)
+```
+Because **Dream** is used as a seed node, the `GraphWalker` traverses the Knowledge Graph starting from **Dream's** node. It inevitably encounters the `(:Entity {name: "Library"})` node that **Dream** created during previous conversations.
 
 ### Phase 3: The Amplification Loop (Dream Journal Agent)
 Once the "Library" node is retrieved by the Graph Walker, it is passed to the **Dream Journal Agent** as raw material.
