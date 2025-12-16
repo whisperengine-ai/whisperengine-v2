@@ -154,6 +154,19 @@ class AgentEngine:
                 image_urls=image_urls
             )
             
+            # Log Prompt (if enabled)
+            if settings.ENABLE_PROMPT_LOGGING:
+                await self._log_prompt(
+                    character_name=character.name,
+                    user_id=user_id,
+                    system_prompt="[Supergraph Execution - System Prompt Internal]",
+                    chat_history=chat_history,
+                    user_input=user_message,
+                    context_variables=context_variables,
+                    response=str(response),
+                    image_urls=image_urls
+                )
+            
             total_time = time.time() - start_time
             if return_metadata:
                 return ResponseResult(

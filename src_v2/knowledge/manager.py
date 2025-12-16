@@ -1019,12 +1019,12 @@ PRIVACY RESTRICTION ENABLED:
                     if depth == 1:
                         query = """
                         MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
-                        RETURN 'You' as source, r.predicate as relationship, e.name as target
+                        RETURN 'You' as source, null as rel1, null as mid, r.predicate as rel2, e.name as target
                         LIMIT 15
                         UNION
                         MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)-[r2]-(m2:Memory)
                         WHERE type(r2) IN ['REVERIE_LINK', 'DREAM_ASSOCIATION', 'THEMATIC_LINK']
-                        RETURN 'Your Memory' as source, type(r2) as relationship, 'Another Memory' as target
+                        RETURN 'Your Memory' as source, null as rel1, null as mid, type(r2) as rel2, 'Another Memory' as target
                         LIMIT 5
                         """
                     elif depth == 2:
@@ -1043,8 +1043,8 @@ PRIVACY RESTRICTION ENABLED:
                         UNION
                         MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)-[r2]-(m2:Memory)
                         WHERE type(r2) IN ['REVERIE_LINK', 'DREAM_ASSOCIATION', 'THEMATIC_LINK']
-                        RETURN 'Your Memory' as source, 'HAS_MEMORY' as rel1, m.content as mid,
-                               type(r2) as rel2, m2.content as target
+                        RETURN 'Your Memory' as source, 'HAS_MEMORY' as rel1, substring(m.content, 0, 50) as mid,
+                               type(r2) as rel2, substring(m2.content, 0, 50) as target
                         LIMIT 5
                         """
                     else:  # depth == 3
@@ -1058,8 +1058,8 @@ PRIVACY RESTRICTION ENABLED:
                         UNION
                         MATCH (u:User {id: $user_id})-[:HAS_MEMORY]->(m:Memory)-[r2]-(m2:Memory)
                         WHERE type(r2) IN ['REVERIE_LINK', 'DREAM_ASSOCIATION', 'THEMATIC_LINK']
-                        RETURN 'Your Memory' as source, 'HAS_MEMORY' as rel1, m.content as mid,
-                               type(r2) as rel2, m2.content as target
+                        RETURN 'Your Memory' as source, 'HAS_MEMORY' as rel1, substring(m.content, 0, 50) as mid,
+                               type(r2) as rel2, substring(m2.content, 0, 50) as target
                         LIMIT 5
                         """
                     
@@ -1070,10 +1070,17 @@ PRIVACY RESTRICTION ENABLED:
                         return "No connections found for this user in the knowledge graph."
                     
                     for r in records:
-                        if r.get('target'):
-                            results.append(f"• {r['source']} → {r['rel1']} → {r['mid']} → {r.get('rel2', '...')} → {r['target']}")
-                        else:
-                            results.append(f"• {r['source']} → {r['rel1']} → {r['mid']}")
+                        # Handle both depth=1 (simplified) and depth=2/3 (full path) results
+                        if r.get('mid') and r.get('target'):
+                            # Depth 2/3: Full path with intermediate node
+                            results.append(f"• {r['source']} → {r.get('rel1', '...')} → {r['mid']} → {r.get('rel2', '...')} → {r['target']}")
+                        elif r.get('target'):
+                            # Depth 1: Direct connection
+                            rel = r.get('rel2') or r.get('rel1') or '...'
+                            results.append(f"• {r['source']} → {rel} → {r['target']}")
+                        elif r.get('mid'):
+                            # Incomplete path (edge case)
+                            results.append(f"• {r['source']} → {r.get('rel1', '...')} → {r['mid']}")
                 
                 elif start_node.lower() == "character":
                     # Explore from Character node
