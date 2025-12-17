@@ -74,8 +74,12 @@ class StatsFooter:
             Formatted footer string
         """
         try:
+            # BUGFIX: Log user_id to help trace context confusion
+            logger.debug(f"Generating footer for user_id={user_id}, character={character_name}")
+            
             # 1. Get Relationship Metrics
             relationship = await trust_manager.get_relationship_level(user_id, character_name)
+            logger.debug(f"Retrieved relationship for {user_id}: trust={relationship.get('trust_score')}, level={relationship.get('level_label')}")
             trust_score = relationship.get("trust_score", 0)
             level_label = relationship.get("level_label", "Stranger")
             unlocked_traits = relationship.get("unlocked_traits", [])

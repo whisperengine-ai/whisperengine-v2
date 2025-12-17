@@ -84,6 +84,10 @@ class Settings(BaseSettings):
     TYPING_SPEED_CHAR_PER_SEC: float = 0.05  # Seconds per character
     TYPING_MAX_DELAY_SECONDS: float = 4.0  # Maximum typing delay
 
+    # File Upload Limits
+    MAX_ATTACHMENTS_PER_MESSAGE: int = Field(default=10, description="Maximum number of attachments to process per message")
+    MAX_ATTACHMENT_SIZE_MB: int = Field(default=25, description="Maximum size in MB for a single attachment")
+
     # --- Databases ---
     # PostgreSQL
     POSTGRES_URL: str = Field(default="postgresql://whisper:password@localhost:5432/whisperengine_v2")

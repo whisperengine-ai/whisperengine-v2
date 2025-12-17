@@ -394,15 +394,6 @@ class ActionPoller:
                         )
                         logger.debug(f"Saved incoming message {cmd.target_message_id} from {cmd.target_author_name}")
                         
-                        # Enqueue background learning for the incoming message
-                        from src_v2.discord.handlers.message_handler import enqueue_background_learning
-                        await enqueue_background_learning(
-                            user_id=cmd.target_author_id,
-                            message_content=cmd.target_content,
-                            character_name=self.bot.character_name,
-                            context="autonomous"
-                        )
-                        
                         # --- FIRST-CLASS CITIZENSHIP: Update Trust for Bot-to-Bot ---
                         # This ensures autonomous interactions build relationships just like direct ones
                         from src_v2.evolution.trust import trust_manager

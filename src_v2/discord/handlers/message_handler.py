@@ -28,39 +28,10 @@ from src_v2.workers.task_queue import task_queue
 from src_v2.moderation.timeout_manager import timeout_manager
 from src_v2.utils.validation import ValidationError, validator, smart_truncate
 from src_v2.discord.utils.message_utils import chunk_message, is_image, extract_pending_images
+from src_v2.discord.utils.status_manager import ReflectiveStatusManager
 from src_v2.core.behavior import get_character_timezone
 from influxdb_client.client.write.point import Point
 from src_v2.core.goals import goal_manager
-
-
-async def enqueue_background_learning(
-    user_id: str,
-    message_content: str,
-    character_name: str,
-    context: str = "conversation"
-) -> None:
-    """
-    Unified background learning pipeline for ALL message types.
-    
-    A user ID is a user ID - whether human or bot. This function handles:
-    - Knowledge extraction (facts to Neo4j)
-    - Preference extraction (communication style learning)
-    
-    Args:
-        user_id: Discord user ID (human or bot - doesn't matter!)
-        message_content: The message content to learn from
-        character_name: The bot's character name
-        context: Context label for logging (conversation, cross_bot, lurk, etc.)
-    """
-    # NOTE: All per-message learning has been moved to session-end batch processing.
-    # This provides better context (full conversation) and reduces LLM costs.
-    # See enqueue_post_conversation_tasks() for:
-    #   - Batch knowledge extraction
-    #   - Batch preference extraction
-    #   - Batch goal analysis
-    #
-    # This function is kept for backward compatibility but is now a no-op.
-    return
 
 
 async def enqueue_post_conversation_tasks(
@@ -191,6 +162,544 @@ class MessageHandler:
         except Exception as exc:  # pragma: no cover - background queue failures are non-blocking
             logger.debug(f"Could not enqueue graph enrichment for {session_id}: {exc}")
 
+    async def _handle_universe_observation(self, message: discord.Message) -> None:
+        """Records presence and enqueues universe observation tasks."""
+        if not message.guild:
+            return
+
+        try:
+            # Record activity for autonomous scaling (Phase E15)
+            asyncio.create_task(server_monitor.record_message(
+                guild_id=str(message.guild.id),
+                channel_id=str(message.channel.id)
+            ))
+
+            from src_v2.universe.manager import universe_manager
+            
+            # Fire and forget presence update (lightweight, keep in-process)
+            asyncio.create_task(universe_manager.record_presence(str(message.author.id), str(message.guild.id)))
+            
+            # Enqueue message observation to background worker (Phase 2: Learning to Listen)
+            mentioned_ids = [str(m.id) for m in message.mentions]
+            reply_to_id = None
+            if message.reference and message.reference.resolved:
+                if isinstance(message.reference.resolved, discord.Message):
+                    reply_to_id = str(message.reference.resolved.author.id)
+            
+            # Only enqueue if there's meaningful content to observe
+            if message.content and len(message.content.strip()) >= 10:
+                from src_v2.workers.task_queue import TaskQueue
+                await task_queue.enqueue(
+                    "run_universe_observation",
+                    _job_id=f"universe_obs_{message.id}",
+                    _queue_name=TaskQueue.QUEUE_SENSORY,
+                    guild_id=str(message.guild.id),
+                    channel_id=str(message.channel.id),
+                    user_id=str(message.author.id),
+                    message_content=message.content,
+                    mentioned_user_ids=mentioned_ids,
+                    reply_to_user_id=reply_to_id,
+                    user_display_name=message.author.display_name
+                )
+        except Exception as e:
+            logger.debug(f"Failed to enqueue universe observation: {e}")
+
+    async def _handle_spam_detection(self, message: discord.Message) -> bool:
+        """
+        Checks for spam/cross-posting. Returns True if message was handled (deleted/warned) and should stop processing.
+        """
+        if not message.guild or not settings.ENABLE_CROSSPOST_DETECTION:
+            return False
+
+        try:
+            from src_v2.discord.spam_detector import spam_detector
+            
+            # Check whitelist
+            is_whitelisted = await spam_detector.is_whitelisted(message.author.roles, str(message.guild.id))
+            
+            if not is_whitelisted:
+                is_spam = False
+                should_warn = False
+                
+                # Check text spam
+                if message.content:
+                    is_spam, should_warn = await spam_detector.check_crosspost(
+                        user_id=str(message.author.id),
+                        channel_id=str(message.channel.id),
+                        content=message.content
+                    )
+                
+                # Check file spam
+                if not is_spam and message.attachments:
+                    is_spam, should_warn = await spam_detector.check_file_crosspost(
+                        user_id=str(message.author.id),
+                        channel_id=str(message.channel.id),
+                        attachments=message.attachments
+                    )
+                
+                if is_spam:
+                    # Action: Delete or Warn
+                    if spam_detector.action == "delete":
+                        try:
+                            await message.delete()
+                            if should_warn:
+                                warning = f"{message.author.mention} ⚠️ Message deleted for cross-posting spam."
+                                await message.channel.send(warning)
+                        except Exception as e:
+                            logger.error(f"Failed to delete spam message: {e}")
+                    else:
+                        # Warn the user (only if new detection)
+                        if should_warn:
+                            warning_msg = settings.CROSSPOST_WARNING_MESSAGE
+                            warning = f"{message.author.mention} {warning_msg}"
+                            await message.channel.send(warning)
+                        
+                    logger.warning(f"Actioned user {message.author.id} for cross-posting spam.")
+                    return True
+        except Exception as e:
+            logger.error(f"Spam detection failed: {e}")
+            
+        return False
+
+    async def _check_reply_context(self, message: discord.Message) -> bool:
+        """
+        Checks if the message is a reply to the bot or in a thread started by the bot.
+        Returns True if the bot is effectively mentioned.
+        """
+        is_mentioned = self.bot.user in message.mentions
+        
+        if is_mentioned:
+            return True
+
+        # Check for Reply without Ping
+        if message.reference:
+            try:
+                # Check resolved reference first
+                if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
+                    if message.reference.resolved.author.id == (self.bot.user.id if self.bot.user else None):
+                        logger.info("Detected reply to bot without ping.")
+                        return True
+                # Fallback: Fetch message if not resolved
+                elif message.reference.message_id:
+                    try:
+                        ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                        if ref_msg.author.id == (self.bot.user.id if self.bot.user else None):
+                            logger.info("Detected reply to bot without ping (fetched).")
+                            return True
+                    except:
+                        pass
+            except Exception as e:
+                logger.warning(f"Failed to check reply reference: {e}")
+
+        # Check for Thread Context (Thread started on bot message)
+        if isinstance(message.channel, discord.Thread):
+            try:
+                starter_msg = message.channel.starter_message
+                
+                if not starter_msg and message.channel.parent and not isinstance(message.channel.parent, discord.ForumChannel):
+                    try:
+                        starter_msg = await message.channel.parent.fetch_message(message.channel.id)
+                    except (discord.NotFound, discord.Forbidden):
+                        pass 
+                
+                if starter_msg and starter_msg.author.id == (self.bot.user.id if self.bot.user else None):
+                    logger.info("Detected message in thread started on bot message.")
+                    return True
+            except Exception as e:
+                logger.warning(f"Failed to check thread starter: {e}")
+        
+        return False
+
+    async def _handle_autonomous_trigger(self, message: discord.Message) -> None:
+        """Checks and triggers autonomous responses (Daily Life Graph)."""
+        if not settings.ENABLE_AUTONOMOUS_ACTIVITY:
+            return
+
+        should_trigger = False
+        trigger_reason = ""
+        
+        # 1. Watchlist Channel Activity
+        if str(message.channel.id) in settings.discord_check_watch_channels_list:
+            should_trigger = True
+            trigger_reason = "watchlist_activity"
+        
+        # 2. Trusted User (Level >= 4)
+        if not should_trigger:
+            try:
+                rel = await trust_manager.get_relationship_level(str(message.author.id), self.bot.character_name)
+                if rel.get("level", 1) >= 4 and random.random() < 0.4:
+                    should_trigger = True
+                    trigger_reason = f"trusted_user_level_{rel.get('level')}"
+            except Exception as e:
+                logger.debug(f"Failed to check trust for stream trigger: {e}")
+
+        if should_trigger:
+            asyncio.create_task(self.bot.daily_scheduler.trigger_immediate(message, trigger_reason))
+
+    async def _check_dm_block(self, message: discord.Message) -> bool:
+        """Returns True if DM is blocked."""
+        if isinstance(message.channel, discord.DMChannel) and settings.ENABLE_DM_BLOCK:
+            user_id = str(message.author.id)
+            if user_id not in settings.dm_allowed_user_ids_list:
+                logger.info(f"Blocked DM from user {user_id} (not in allowlist)")
+                embed = discord.Embed(
+                    title="🚫 Direct Messages Disabled",
+                    description=(
+                        "For privacy reasons, I do not accept Direct Messages.\n\n"
+                        "This ensures all interactions happen in visible server contexts "
+                        "and prevents accidental sharing of sensitive information.\n\n"
+                        "Please interact with me in a server channel instead."
+                    ),
+                    color=discord.Color.red()
+                )
+                await message.channel.send(embed=embed)
+                return True
+        return False
+
+    async def _inject_message_context(
+        self, 
+        message: discord.Message, 
+        user_message: str, 
+        user_id: str
+    ) -> Tuple[str, List[str], List[str]]:
+        """
+        Injects context from Discord links, replies, and forwarded messages.
+        Returns updated user_message, image_urls, and processed_files.
+        """
+        image_urls: List[str] = []
+        processed_files: List[str] = []
+
+        # Handle Discord Message Links (Context Injection)
+        discord_link_pattern = re.compile(
+            r'https?://(?:ptb\.|canary\.)?discord(?:app)?\.com/channels/(\d+)/(\d+)/(\d+)'
+        )
+        link_matches = discord_link_pattern.findall(user_message)
+        
+        for server_id_str, channel_id_str, message_id_str in link_matches:
+            try:
+                # Only fetch if it's from the same channel (we have access)
+                if channel_id_str == str(message.channel.id):
+                    linked_msg = await message.channel.fetch_message(int(message_id_str))
+                    if linked_msg and linked_msg.content:
+                        linked_author = linked_msg.author.display_name
+                        linked_content = smart_truncate(linked_msg.content, 2000)
+                        
+                        user_message = f"[User shared a link to an earlier message from {linked_author}: \"{linked_content}\"]\n{user_message}"
+                        logger.info(f"Injected Discord message link context from message {message_id_str}")
+                        
+                        if linked_msg.attachments:
+                            for att in linked_msg.attachments:
+                                if att.content_type and att.content_type.startswith("image/"):
+                                    image_urls.append(att.url)
+                                    logger.info(f"Included image from linked message: {att.url}")
+                else:
+                    # Different channel - try to fetch from guild
+                    if message.guild:
+                        try:
+                            linked_channel = message.guild.get_channel(int(channel_id_str))
+                            if linked_channel and isinstance(linked_channel, discord.TextChannel):
+                                linked_msg = await linked_channel.fetch_message(int(message_id_str))
+                                if linked_msg and linked_msg.content:
+                                    linked_author = linked_msg.author.display_name
+                                    linked_content = smart_truncate(linked_msg.content, 2000)
+                                    channel_name = linked_channel.name
+                                    user_message = f"[User shared a link to a message from #{channel_name} by {linked_author}: \"{linked_content}\"]\n{user_message}"
+                                    logger.info(f"Injected cross-channel Discord message link context from #{channel_name}")
+                        except (discord.Forbidden, discord.NotFound) as e:
+                            logger.debug(f"Cannot access linked message in channel {channel_id_str}: {e}")
+            except (discord.NotFound, discord.Forbidden) as e:
+                logger.debug(f"Failed to fetch linked message {message_id_str}: {e}")
+            except Exception as e:
+                logger.warning(f"Error processing Discord message link: {e}")
+
+        # Handle Replies (Context Injection)
+        if message.reference:
+            try:
+                ref_msg = None
+                if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
+                    ref_msg = message.reference.resolved
+                elif message.reference.message_id:
+                    try:
+                        ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                    except:
+                        pass 
+
+                if ref_msg:
+                    # 1. Text & Sticker Context
+                    content = ref_msg.content or ""
+                    
+                    if ref_msg.stickers:
+                        sticker_names = [s.name for s in ref_msg.stickers]
+                        content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
+
+                    ref_has_images = bool(ref_msg.attachments and any(
+                        att.content_type and att.content_type.startswith("image/") 
+                        for att in ref_msg.attachments
+                    ))
+
+                    if content or ref_has_images:
+                        ref_text = smart_truncate(content, 2000) if content else ""
+                        ref_author = ref_msg.author.display_name
+                        
+                        image_marker = " [with image]" if ref_has_images else ""
+                        
+                        is_reply_to_bot = ref_msg.author.id == (self.bot.user.id if self.bot.user else None)
+                        current_user_name = message.author.display_name
+                        
+                        if is_reply_to_bot:
+                            if ref_text:
+                                user_message = f"[CONTEXT: {current_user_name} is replying to YOUR previous message. They are commenting on what YOU wrote.]\n[Your original message was{image_marker}: \"{ref_text}\"]\n[{current_user_name}'s response]: {user_message}"
+                            else:
+                                user_message = f"[CONTEXT: {current_user_name} is replying to YOUR previous image/post. They are commenting on what YOU shared.]\n[{current_user_name}'s response]: {user_message}"
+                            logger.info(f"Injected self-reply context (user commenting on bot's message)")
+                        else:
+                            if ref_text:
+                                user_message = f"[Replying to {ref_author}{image_marker}: \"{ref_text}\"]\n{user_message}"
+                            else:
+                                user_message = f"[Replying to {ref_author}'s image{image_marker}]\n{user_message}"
+                            logger.info(f"Injected reply context: {user_message}")
+                    
+                    # 2. Attachments (Images & Documents)
+                    if ref_msg.attachments:
+                        ref_images, ref_texts = await self._process_attachments(
+                            attachments=ref_msg.attachments,
+                            channel=message.channel,
+                            user_id=user_id,
+                            silent=True,
+                            trigger_vision=True
+                        )
+                        image_urls.extend(ref_images)
+                        processed_files.extend(ref_texts)
+
+            except Exception as e:
+                logger.warning(f"Failed to resolve reply reference: {e}")
+
+        # Handle Forwarded Messages (Context Injection)
+        if hasattr(message, 'snapshots') and message.snapshots:
+            try:
+                for snapshot in message.snapshots:
+                    fwd_content = snapshot.content or ""
+                    
+                    if snapshot.stickers:
+                        sticker_names = [s.name for s in snapshot.stickers]
+                        fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
+
+                    if fwd_content:
+                        fwd_text = smart_truncate(fwd_content, 2000)
+                        user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
+                        logger.info(f"Injected forwarded context: {user_message}")
+                    
+                    if snapshot.attachments:
+                        fwd_images, fwd_texts = await self._process_attachments(
+                            attachments=snapshot.attachments,
+                            channel=message.channel,
+                            user_id=user_id,
+                            silent=True,
+                            trigger_vision=True
+                        )
+                        image_urls.extend(fwd_images)
+                        processed_files.extend(fwd_texts)
+            except Exception as e:
+                logger.warning(f"Failed to process forwarded message: {e}")
+                
+        return user_message, image_urls, processed_files
+
+    async def _build_context(
+        self, 
+        user_id: str, 
+        message: discord.Message, 
+        user_message: str, 
+        character: Any
+    ) -> Tuple[Any, Any, Any, Any, Any, Any]:
+        """
+        Retrieves context from memory, history, knowledge, summaries, universe, and nickname.
+        Returns (memories, chat_history, knowledge_facts, past_summaries, universe_context, preferred_nickname).
+        """
+        channel_id = str(message.channel.id)
+        
+        async def get_memories():
+            try:
+                mems = await memory_manager.search_memories(user_message, user_id)
+                if mems:
+                    def format_mem(m):
+                        rel = m.get('relative_time', 'unknown time')
+                        content = m.get('content', '')
+                        user_name = m.get('user_name')
+                        
+                        if len(content) > 500:
+                            content = content[:500] + "..."
+                        
+                        if m.get('is_chunk'):
+                            idx = m.get('chunk_index', 0) + 1
+                            total = m.get('chunk_total', '?')
+                            content = f"[Fragment {idx}/{total}] {content}"
+                            
+                        if user_name:
+                            return f"- [With {user_name}]: {content} ({rel})"
+                        return f"- {content} ({rel})"
+                    
+                    fmt = "\n".join([format_mem(m) for m in mems])
+                else:
+                    fmt = "No relevant memories found."
+                return mems, fmt
+            except Exception as e:
+                logger.error(f"Failed to search memories: {e}")
+                return [], "No relevant memories found."
+
+        async def get_history():
+            try:
+                return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id)
+            except Exception as e:
+                logger.error(f"Failed to retrieve chat history: {e}")
+                return []
+
+        async def get_knowledge():
+            try:
+                facts = await knowledge_manager.get_user_knowledge(user_id)
+                if "name" not in facts.lower():
+                    display_name = message.author.display_name
+                    facts += f"\n- User's Discord Display Name: {display_name}"
+                return facts
+            except Exception as e:
+                logger.error(f"Failed to retrieve knowledge facts: {e}")
+                return ""
+
+        async def get_summaries():
+            try:
+                sums = await memory_manager.search_summaries(user_message, user_id, limit=3)
+                if sums:
+                    return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']}, {s.get('relative_time', 'unknown time')})" for s in sums])
+                return ""
+            except Exception as e:
+                logger.error(f"Failed to retrieve summaries: {e}")
+                return ""
+
+        async def get_universe_context():
+            try:
+                from src_v2.universe.context_builder import universe_context_builder
+                guild_id = str(message.guild.id) if message.guild else None
+                channel_id = str(message.channel.id)
+                char_name = settings.DISCORD_BOT_NAME
+                return await universe_context_builder.build_context(user_id, guild_id, channel_id, char_name)
+            except Exception as e:
+                logger.error(f"Failed to retrieve universe context: {e}")
+                return "Location: Unknown"
+
+        async def get_user_nickname():
+            try:
+                trust_data = await trust_manager.get_relationship_level(user_id, self.bot.character_name)
+                preferences = trust_data.get('preferences', {})
+                return preferences.get('nickname') 
+            except Exception as e:
+                logger.debug(f"Failed to fetch user nickname: {e}")
+                return None
+
+        return await asyncio.gather(
+            get_memories(),
+            get_history(),
+            get_knowledge(),
+            get_summaries(),
+            get_universe_context(),
+            get_user_nickname()
+        )
+
+    async def _generate_and_stream_response(
+        self,
+        message: discord.Message,
+        user_message: str,
+        character: Any,
+        chat_history: List[Any],
+        context_vars: Dict[str, Any],
+        user_id: str,
+        image_urls: List[str],
+        force_reflective: bool,
+        complexity: str,
+        detected_intents: List[str],
+        processing_start: float,
+        use_reply: bool
+    ) -> Tuple[str, Optional[discord.Message], Optional[discord.Message]]:
+        """
+        Generates response via LLM and streams it to Discord.
+        Returns (full_response_text, active_message, status_message).
+        """
+        # Prepare callback for Reflective Mode
+        status_manager = ReflectiveStatusManager(message, use_reply)
+        
+        # Streaming Response Logic
+        full_response_text = ""
+        active_message: Optional[discord.Message] = None
+        last_update_time = 0
+        update_interval = 0.7  # Seconds between edits to avoid rate limits
+        
+        # Start typing indicator only when generation begins
+        # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
+        reading_delay = min(len(user_message) * settings.TYPING_SPEED_CHAR_PER_SEC, settings.TYPING_MAX_DELAY_SECONDS)
+        reading_delay += random.uniform(0, 1.0) # Add jitter
+        
+        elapsed = time.time() - processing_start
+        if elapsed < reading_delay:
+            await asyncio.sleep(reading_delay - elapsed)
+            
+        async with message.channel.typing():
+            async for chunk in self.bot.agent_engine.generate_response_stream(
+                character=character,
+                user_message=user_message,
+                chat_history=chat_history,
+                context_variables=context_vars,
+                user_id=user_id,
+                image_urls=image_urls,
+                callback=status_manager.update,
+                force_reflective=force_reflective,
+                preclassified_complexity=complexity,
+                preclassified_intents=detected_intents
+            ):
+                full_response_text += chunk
+                
+                # Rate limit updates
+                now = time.time()
+                if now - last_update_time > update_interval:
+                    # Only stream if length is safe and content is non-empty
+                    if len(full_response_text) < 1950 and full_response_text.strip():
+                        try:
+                            if not active_message:
+                                # Check if we have a status message to take over
+                                should_append = False
+                                prefix = ""
+                                if status_manager.status_message:
+                                    # Check if appending fits in one message
+                                    current_status = status_manager.get_current_content()
+                                    combined_len = len(current_status) + len(full_response_text) + 4 # +4 for \n\n
+                                    if combined_len < 1950: # Leave some buffer
+                                        should_append = True
+                                        prefix = current_status + "\n\n"
+                                
+                                if should_append:
+                                    active_message = status_manager.status_message
+                                    await active_message.edit(content=f"{prefix}{full_response_text}")
+                                # First message: use reply in guild channels
+                                elif use_reply:
+                                    active_message = await message.reply(full_response_text, mention_author=False)
+                                else:
+                                    active_message = await message.channel.send(full_response_text)
+                            else:
+                                # We already have an active message
+                                if active_message == status_manager.status_message:
+                                    # We are appending to status message
+                                    current_status = status_manager.get_current_content()
+                                    combined_text = f"{current_status}\n\n{full_response_text}"
+                                    if len(combined_text) < 1950:
+                                        await active_message.edit(content=combined_text)
+                                    else:
+                                        # Overflowed! Stop updating this message to avoid error.
+                                        pass
+                                else:
+                                    await active_message.edit(content=full_response_text)
+                        except Exception as e:
+                            logger.warning(f"Failed to stream update: {e}")
+                    last_update_time = now
+        
+        return full_response_text, active_message, status_manager.status_message
+
     async def on_message(self, message: discord.Message) -> None:
         """Handles incoming Discord messages and generates AI responses.
         
@@ -222,105 +731,11 @@ class MessageHandler:
             return
 
         # Universe Presence & Observation
-        if message.guild:
-            try:
-                # Record activity for autonomous scaling (Phase E15)
-                asyncio.create_task(server_monitor.record_message(
-                    guild_id=str(message.guild.id),
-                    channel_id=str(message.channel.id)
-                ))
-
-                from src_v2.universe.manager import universe_manager
-                # task_queue is already imported globally
-                
-                # Fire and forget presence update (lightweight, keep in-process)
-                asyncio.create_task(universe_manager.record_presence(str(message.author.id), str(message.guild.id)))
-                
-                # Enqueue message observation to background worker (Phase 2: Learning to Listen)
-                # This extracts topics, tracks interactions, and learns peak hours
-                mentioned_ids = [str(m.id) for m in message.mentions]
-                reply_to_id = None
-                if message.reference and message.reference.resolved:
-                    if isinstance(message.reference.resolved, discord.Message):
-                        reply_to_id = str(message.reference.resolved.author.id)
-                
-                # Only enqueue if there's meaningful content to observe
-                if message.content and len(message.content.strip()) >= 10:
-                    # Use message ID as job ID to prevent duplicate processing
-                    # if multiple bots observe the same message
-                    # Route to SENSORY queue for fast processing (no LLM required)
-                    from src_v2.workers.task_queue import TaskQueue
-                    await task_queue.enqueue(
-                        "run_universe_observation",
-                        _job_id=f"universe_obs_{message.id}",
-                        _queue_name=TaskQueue.QUEUE_SENSORY,
-                        guild_id=str(message.guild.id),
-                        channel_id=str(message.channel.id),
-                        user_id=str(message.author.id),
-                        message_content=message.content,
-                        mentioned_user_ids=mentioned_ids,
-                        reply_to_user_id=reply_to_id,
-                        user_display_name=message.author.display_name
-                    )
-                    
-                    # NOTE: Background learning (fact/preference extraction) is NOT
-                    # done here for passive observations. It's expensive (LLM calls)
-                    # and should only run for messages the bot is responding to.
-                    # Universe observation tracks topics/interactions without LLM.
-            except Exception as e:
-                logger.debug(f"Failed to enqueue universe observation: {e}")
+        await self._handle_universe_observation(message)
 
         # --- Spam Detection (Cross-posting) ---
-        if message.guild and settings.ENABLE_CROSSPOST_DETECTION:
-            try:
-                from src_v2.discord.spam_detector import spam_detector
-                
-                # Check whitelist
-                is_whitelisted = await spam_detector.is_whitelisted(message.author.roles, str(message.guild.id))
-                
-                if not is_whitelisted:
-                    is_spam = False
-                    should_warn = False
-                    
-                    # Check text spam
-                    if message.content:
-                        is_spam, should_warn = await spam_detector.check_crosspost(
-                            user_id=str(message.author.id),
-                            channel_id=str(message.channel.id),
-                            content=message.content
-                        )
-                    
-                    # Check file spam
-                    if not is_spam and message.attachments:
-                        is_spam, should_warn = await spam_detector.check_file_crosspost(
-                            user_id=str(message.author.id),
-                            channel_id=str(message.channel.id),
-                            attachments=message.attachments
-                        )
-                    
-                    if is_spam:
-                        # Action: Delete or Warn
-                        if spam_detector.action == "delete":
-                            try:
-                                await message.delete()
-                                if should_warn:
-                                    warning = f"{message.author.mention} ⚠️ Message deleted for cross-posting spam."
-                                    await message.channel.send(warning)
-                            except Exception as e:
-                                logger.error(f"Failed to delete spam message: {e}")
-                        else:
-                            # Warn the user (only if new detection)
-                            if should_warn:
-                                # Try to get character-specific warning
-                                warning_msg = settings.CROSSPOST_WARNING_MESSAGE
-                                
-                                warning = f"{message.author.mention} {warning_msg}"
-                                await message.channel.send(warning)
-                            
-                        logger.warning(f"Actioned user {message.author.id} for cross-posting spam.")
-                        return
-            except Exception as e:
-                logger.error(f"Spam detection failed: {e}")
+        if await self._handle_spam_detection(message):
+            return
 
         # Process commands first
         await self.bot.process_commands(message)
@@ -337,100 +752,16 @@ class MessageHandler:
             return
 
         # Determine if we should respond
-        # 1. Direct Message (DM)
-        # 2. Mentioned in a server
-        # 3. Replying to the bot (even without ping)
         is_dm = isinstance(message.channel, discord.DMChannel)
-        is_mentioned = self.bot.user in message.mentions
-        
-        # Check for Reply without Ping
-        if not is_mentioned and message.reference:
-            try:
-                # Check resolved reference first
-                if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
-                    if message.reference.resolved.author.id == (self.bot.user.id if self.bot.user else None):
-                        is_mentioned = True
-                        logger.info("Detected reply to bot without ping.")
-                # Fallback: Fetch message if not resolved
-                elif message.reference.message_id:
-                    try:
-                        ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                        if ref_msg.author.id == (self.bot.user.id if self.bot.user else None):
-                            is_mentioned = True
-                            logger.info("Detected reply to bot without ping (fetched).")
-                    except:
-                        pass
-            except Exception as e:
-                logger.warning(f"Failed to check reply reference: {e}")
-
-        # Check for Thread Context (Thread started on bot message)
-        # If the thread was started on a message sent by the bot, we should reply in it
-        if not is_mentioned and isinstance(message.channel, discord.Thread):
-            try:
-                # The ID of the thread is the ID of the starter message
-                # We need to check if that starter message was sent by us
-                # Try to get from cache first
-                starter_msg = message.channel.starter_message
-                
-                # If not in cache, try to fetch from parent channel
-                # Note: ForumChannels do not support fetch_message
-                if not starter_msg and message.channel.parent and not isinstance(message.channel.parent, discord.ForumChannel):
-                    try:
-                        starter_msg = await message.channel.parent.fetch_message(message.channel.id)
-                    except (discord.NotFound, discord.Forbidden):
-                        pass # Message might be deleted or we lack permissions
-                
-                if starter_msg and starter_msg.author.id == (self.bot.user.id if self.bot.user else None):
-                    is_mentioned = True
-                    logger.info("Detected message in thread started on bot message.")
-            except Exception as e:
-                logger.warning(f"Failed to check thread starter: {e}")
+        is_mentioned = await self._check_reply_context(message)
         
         # Privacy: Block DMs if enabled and user is not allowlisted
-        if is_dm and settings.ENABLE_DM_BLOCK:
-            user_id = str(message.author.id)
-            if user_id not in settings.dm_allowed_user_ids_list:
-                logger.info(f"Blocked DM from user {user_id} (not in allowlist)")
-                embed = discord.Embed(
-                    title="🚫 Direct Messages Disabled",
-                    description=(
-                        "For privacy reasons, I do not accept Direct Messages.\n\n"
-                        "This ensures all interactions happen in visible server contexts "
-                        "and prevents accidental sharing of sensitive information.\n\n"
-                        "Please interact with me in a server channel instead."
-                    ),
-                    color=discord.Color.red()
-                )
-                await message.channel.send(embed=embed)
-                return
+        if await self._check_dm_block(message):
+            return
 
         # Phase 4: Autonomous Replies (Occasional replies without mention)
-        # Phase E36: The Stream (Real-time Nervous System)
         if not is_dm and not is_mentioned and message.guild:
-            # NEW: Trigger Daily Life Graph for high-signal events
-            if settings.ENABLE_AUTONOMOUS_ACTIVITY:
-                should_trigger = False
-                trigger_reason = ""
-                
-                # 1. Watchlist Channel Activity
-                if str(message.channel.id) in settings.discord_check_watch_channels_list:
-                    should_trigger = True
-                    trigger_reason = "watchlist_activity"
-                
-                # 2. Trusted User (Level >= 4)
-                if not should_trigger:
-                    try:
-                        rel = await trust_manager.get_relationship_level(str(message.author.id), self.bot.character_name)
-                        # Only trigger 40% of the time for trusted users to prevent "pile-on" from multiple bots
-                        if rel.get("level", 1) >= 4 and random.random() < 0.4:
-                            should_trigger = True
-                            trigger_reason = f"trusted_user_level_{rel.get('level')}"
-                    except Exception as e:
-                        logger.debug(f"Failed to check trust for stream trigger: {e}")
-
-                if should_trigger:
-                    # Fire and forget - don't await the full process, just the enqueue
-                    asyncio.create_task(self.bot.daily_scheduler.trigger_immediate(message, trigger_reason))
+            await self._handle_autonomous_trigger(message)
 
         if is_dm or is_mentioned:
             # Typing indicator delayed to mimic natural reading time
@@ -459,7 +790,10 @@ class MessageHandler:
                         return
 
                 # 0. Session Management
+                # CRITICAL: Bind user_id early to prevent context confusion
                 user_id = str(message.author.id)
+                logger.debug(f"Processing message from user_id={user_id}, display_name={message.author.display_name}")
+                
                 session_id = await session_manager.get_active_session(user_id, self.bot.character_name)
                 if not session_id:
                     session_id = await session_manager.create_session(user_id, self.bot.character_name)
@@ -511,162 +845,10 @@ class MessageHandler:
                 # This prevents the bot from extracting facts from replied-to messages or forwarded content
                 raw_user_message = user_message
 
-                # Initialize attachment containers
-                image_urls: List[str] = []
-                processed_files: List[str] = []
-
-                # Handle Discord Message Links (Context Injection)
-                # Parse links like https://discord.com/channels/SERVER/CHANNEL/MESSAGE
-                discord_link_pattern = re.compile(
-                    r'https?://(?:ptb\.|canary\.)?discord(?:app)?\.com/channels/(\d+)/(\d+)/(\d+)'
+                # Inject context from links, replies, and forwards
+                user_message, image_urls, processed_files = await self._inject_message_context(
+                    message, user_message, user_id
                 )
-                link_matches = discord_link_pattern.findall(user_message)
-                
-                for server_id_str, channel_id_str, message_id_str in link_matches:
-                    try:
-                        # Only fetch if it's from the same channel (we have access)
-                        if channel_id_str == str(message.channel.id):
-                            linked_msg = await message.channel.fetch_message(int(message_id_str))
-                            if linked_msg and linked_msg.content:
-                                linked_author = linked_msg.author.display_name
-                                linked_content = smart_truncate(linked_msg.content, 2000)
-                                
-                                # Inject context about the linked message
-                                user_message = f"[User shared a link to an earlier message from {linked_author}: \"{linked_content}\"]\n{user_message}"
-                                logger.info(f"Injected Discord message link context from message {message_id_str}")
-                                
-                                # Also process any images from the linked message
-                                if linked_msg.attachments:
-                                    for att in linked_msg.attachments:
-                                        if att.content_type and att.content_type.startswith("image/"):
-                                            image_urls.append(att.url)
-                                            logger.info(f"Included image from linked message: {att.url}")
-                        else:
-                            # Different channel - we might not have access, or it's in the same server
-                            # Try to fetch from the guild if we have access
-                            if message.guild:
-                                try:
-                                    linked_channel = message.guild.get_channel(int(channel_id_str))
-                                    if linked_channel and isinstance(linked_channel, discord.TextChannel):
-                                        linked_msg = await linked_channel.fetch_message(int(message_id_str))
-                                        if linked_msg and linked_msg.content:
-                                            linked_author = linked_msg.author.display_name
-                                            linked_content = smart_truncate(linked_msg.content, 2000)
-                                            channel_name = linked_channel.name
-                                            user_message = f"[User shared a link to a message from #{channel_name} by {linked_author}: \"{linked_content}\"]\n{user_message}"
-                                            logger.info(f"Injected cross-channel Discord message link context from #{channel_name}")
-                                except (discord.Forbidden, discord.NotFound) as e:
-                                    logger.debug(f"Cannot access linked message in channel {channel_id_str}: {e}")
-                    except (discord.NotFound, discord.Forbidden) as e:
-                        logger.debug(f"Failed to fetch linked message {message_id_str}: {e}")
-                    except Exception as e:
-                        logger.warning(f"Error processing Discord message link: {e}")
-
-                # Handle Replies (Context Injection)
-                if message.reference:
-                    try:
-                        ref_msg = None
-                        if message.reference.resolved and isinstance(message.reference.resolved, discord.Message):
-                            ref_msg = message.reference.resolved
-                        elif message.reference.message_id:
-                            try:
-                                ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                            except:
-                                pass # Message might be deleted or inaccessible
-
-                        if ref_msg:
-                            # 1. Text & Sticker Context
-                            content = ref_msg.content or ""
-                            
-                            # Handle Stickers in reply
-                            if ref_msg.stickers:
-                                sticker_names = [s.name for s in ref_msg.stickers]
-                                content += f"\n[Sent Sticker(s): {', '.join(sticker_names)}]"
-
-                            # Check if the referenced message has images (for refinement detection)
-                            ref_has_images = bool(ref_msg.attachments and any(
-                                att.content_type and att.content_type.startswith("image/") 
-                                for att in ref_msg.attachments
-                            ))
-
-                            if content or ref_has_images:
-                                ref_text = smart_truncate(content, 2000) if content else ""
-                                ref_author = ref_msg.author.display_name
-                                
-                                # Add image marker for refinement detection
-                                image_marker = " [with image]" if ref_has_images else ""
-                                
-                                # CRITICAL: Check if user is replying to the bot's own message
-                                # This prevents the bot from thinking the user is sharing their own content
-                                # when they're actually commenting on the bot's content (e.g., bot's dream)
-                                is_reply_to_bot = ref_msg.author.id == (self.bot.user.id if self.bot.user else None)
-                                
-                                # Get the current user's display name for clear attribution
-                                current_user_name = message.author.display_name
-                                
-                                if is_reply_to_bot:
-                                    # Make it VERY clear that user is commenting on BOT's content
-                                    # IMPORTANT: Include user's name so bot knows WHO is replying (not just "User")
-                                    if ref_text:
-                                        user_message = f"[CONTEXT: {current_user_name} is replying to YOUR previous message. They are commenting on what YOU wrote.]\n[Your original message was{image_marker}: \"{ref_text}\"]\n[{current_user_name}'s response]: {user_message}"
-                                    else:
-                                        user_message = f"[CONTEXT: {current_user_name} is replying to YOUR previous image/post. They are commenting on what YOU shared.]\n[{current_user_name}'s response]: {user_message}"
-                                    logger.info(f"Injected self-reply context (user commenting on bot's message)")
-                                else:
-                                    # Standard reply to another user's message
-                                    if ref_text:
-                                        user_message = f"[Replying to {ref_author}{image_marker}: \"{ref_text}\"]\n{user_message}"
-                                    else:
-                                        user_message = f"[Replying to {ref_author}'s image{image_marker}]\n{user_message}"
-                                    logger.info(f"Injected reply context: {user_message}")
-                            
-                            # 2. Attachments (Images & Documents)
-                            if ref_msg.attachments:
-                                ref_images, ref_texts = await self._process_attachments(
-                                    attachments=ref_msg.attachments,
-                                    channel=message.channel,
-                                    user_id=user_id,
-                                    silent=True,
-                                    trigger_vision=True
-                                )
-                                image_urls.extend(ref_images)
-                                processed_files.extend(ref_texts)
-
-                    except Exception as e:
-                        logger.warning(f"Failed to resolve reply reference: {e}")
-
-                # Handle Forwarded Messages (Context Injection)
-                if hasattr(message, 'snapshots') and message.snapshots:
-                    try:
-                        for snapshot in message.snapshots:
-                            # 1. Text Context
-                            fwd_content = snapshot.content or ""
-                            
-                            # Handle Stickers in forward
-                            if snapshot.stickers:
-                                sticker_names = [s.name for s in snapshot.stickers]
-                                fwd_content += f"\n[Forwarded Sticker(s): {', '.join(sticker_names)}]"
-
-                            if fwd_content:
-                                fwd_text = smart_truncate(fwd_content, 2000)
-                                
-                                user_message = f"[Forwarded Message: \"{fwd_text}\"]\n{user_message}"
-                                logger.info(f"Injected forwarded context: {user_message}")
-                            
-                            # 2. Attachments
-                            if snapshot.attachments:
-                                # Note: We enable trigger_vision=True because users often forward images to ask about them
-                                fwd_images, fwd_texts = await self._process_attachments(
-                                    attachments=snapshot.attachments,
-                                    channel=message.channel,
-                                    user_id=user_id,
-                                    silent=True,
-                                    trigger_vision=True
-                                )
-                                image_urls.extend(fwd_images)
-                                processed_files.extend(fwd_texts)
-                    except Exception as e:
-                        logger.warning(f"Failed to process forwarded message: {e}")
 
                 channel_id = str(message.channel.id)
                 
@@ -702,97 +884,8 @@ class MessageHandler:
                 # and "Double Speak" (finding current msg in chat history)
                 
                 # Parallel Context Retrieval
-                async def get_memories():
-                    try:
-                        mems = await memory_manager.search_memories(user_message, user_id)
-                        if mems:
-                            # Format with relative time AND absolute date for clarity
-                            def format_mem(m):
-                                rel = m.get('relative_time', 'unknown time')
-                                content = m.get('content', '')
-                                user_name = m.get('user_name')
-                                
-                                # Truncate very long memories
-                                if len(content) > 500:
-                                    content = content[:500] + "..."
-                                
-                                # Add fragment indicator
-                                if m.get('is_chunk'):
-                                    idx = m.get('chunk_index', 0) + 1
-                                    total = m.get('chunk_total', '?')
-                                    content = f"[Fragment {idx}/{total}] {content}"
-                                    
-                                # Inject user identity if available (prevents identity bleed)
-                                if user_name:
-                                    return f"- [With {user_name}]: {content} ({rel})"
-                                return f"- {content} ({rel})"
-                            
-                            fmt = "\n".join([format_mem(m) for m in mems])
-                        else:
-                            fmt = "No relevant memories found."
-                        return mems, fmt
-                    except Exception as e:
-                        logger.error(f"Failed to search memories: {e}")
-                        return [], "No relevant memories found."
-
-                async def get_history():
-                    try:
-                        return await memory_manager.get_recent_history(user_id, character.name, channel_id=channel_id)
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve chat history: {e}")
-                        return []
-
-                async def get_knowledge():
-                    try:
-                        facts = await knowledge_manager.get_user_knowledge(user_id)
-                        # Fallback: If name is not in knowledge graph, use Discord display name
-                        if "name" not in facts.lower():
-                            display_name = message.author.display_name
-                            facts += f"\n- User's Discord Display Name: {display_name}"
-                        return facts
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve knowledge facts: {e}")
-                        return ""
-
-                async def get_summaries():
-                    try:
-                        sums = await memory_manager.search_summaries(user_message, user_id, limit=3)
-                        if sums:
-                            return "\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']}, {s.get('relative_time', 'unknown time')})" for s in sums])
-                        return ""
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve summaries: {e}")
-                        return ""
-
-                async def get_universe_context():
-                    try:
-                        from src_v2.universe.context_builder import universe_context_builder
-                        guild_id = str(message.guild.id) if message.guild else None
-                        channel_id = str(message.channel.id)
-                        char_name = settings.DISCORD_BOT_NAME
-                        return await universe_context_builder.build_context(user_id, guild_id, channel_id, char_name)
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve universe context: {e}")
-                        return "Location: Unknown"
-
-                async def get_user_nickname():
-                    """Fetch user's preferred nickname from relationship preferences."""
-                    try:
-                        trust_data = await trust_manager.get_relationship_level(user_id, self.bot.character_name)
-                        preferences = trust_data.get('preferences', {})
-                        return preferences.get('nickname')  # Returns None if not set
-                    except Exception as e:
-                        logger.debug(f"Failed to fetch user nickname: {e}")
-                        return None
-
-                # Execute all context retrieval tasks in parallel
-                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, preferred_nickname = await asyncio.gather(
-                    get_memories(),
-                    get_history(),
-                    get_knowledge(),
-                    get_summaries(),
-                    get_universe_context(),
-                    get_user_nickname()
+                (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, preferred_nickname = await self._build_context(
+                    user_id, message, user_message, character
                 )
 
                 # 2. Save User Message & Extract Knowledge
@@ -836,14 +929,6 @@ class MessageHandler:
                 except Exception as e:
                     logger.error(f"Failed to save user message to memory: {e}")
 
-                # Unified background learning pipeline (knowledge + preference extraction)
-                await enqueue_background_learning(
-                    user_id=user_id,
-                    message_content=raw_user_message,
-                    character_name=self.bot.character_name,
-                    context="dm" if is_dm else "guild"
-                )
-
                 # 2.5 Check for Summarization
                 if session_id:
                     self.bot.loop.create_task(
@@ -885,6 +970,19 @@ class MessageHandler:
 
                 # Use preferred nickname if set, otherwise fall back to Discord display name
                 effective_user_name = preferred_nickname or message.author.display_name
+                
+                # BUGFIX: Validate user_id hasn't been corrupted
+                expected_user_id = str(message.author.id)
+                if user_id != expected_user_id:
+                    logger.error(
+                        f"CRITICAL BUG: user_id mismatch! "
+                        f"Expected: {expected_user_id} (from message.author.id), "
+                        f"Actual: {user_id}, "
+                        f"Author name: {message.author.display_name}"
+                    )
+                    user_id = expected_user_id  # Force correction
+                else:
+                    logger.debug(f"user_id validation passed: {user_id}")
                 
                 context_vars = {
                     "user_name": effective_user_name,
@@ -951,171 +1049,23 @@ class MessageHandler:
                 start_time = time.time()
                 
                 # Use reply for guild channels (not DMs) to maintain conversation threading
-                # Defined early so it's available in reflective_callback
                 use_reply = not is_dm
                 
-                # Prepare callback for Reflective Mode
-                status_message: Optional[discord.Message] = None
-                status_lines: List[str] = []
-                status_lock = asyncio.Lock()
-                last_status_update = 0.0
-                status_debounce_interval = 1.0  # Minimum seconds between Discord edits
-                pending_update = False  # Track if we have unsent updates
-                
-                async def reflective_callback(text: str):
-                    """
-                    Callback for reflective agent status updates.
-                    
-                    Supports prefixes for different update types:
-                    - "HEADER:..." - Update the header line
-                    - "TOOLS:..." - Tool execution starting
-                    - "RESULT:..." - Tool results (batched)
-                    - "THOUGHT:..." or no prefix - Agent reasoning
-                    
-                    Uses debouncing to avoid Discord rate limits.
-                    """
-                    nonlocal status_message, status_lines, last_status_update, pending_update
-                    
-                    if settings.REFLECTIVE_STATUS_VERBOSITY == "none":
-                        return
-                    
-                    async with status_lock:
-                        clean_text = text.strip()
-                        if not clean_text:
-                            return
-                        
-                        # Parse prefix to determine update type
-                        if clean_text.startswith("HEADER:"):
-                            header = clean_text.replace("HEADER:", "").strip()
-                            status_lines = [f"**{header}**"] + status_lines[1:] if status_lines else [f"**{header}**"]
-                            pending_update = True
-                        elif clean_text.startswith("TOOLS:"):
-                            content = clean_text.replace("TOOLS:", "").strip()
-                            status_lines.append(content)
-                            pending_update = True
-                        elif clean_text.startswith("RESULT:"):
-                            content = clean_text.replace("RESULT:", "").strip()
-                            status_lines.append(content)
-                            pending_update = True
-                        elif clean_text.startswith("💭"):
-                            if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
-                                formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
-                                status_lines.append(formatted)
-                                pending_update = True
-                        else:
-                            if settings.REFLECTIVE_STATUS_VERBOSITY == "detailed":
-                                formatted = "\n".join([f"> {line}" for line in clean_text.split("\n")])
-                                status_lines.append(formatted)
-                                pending_update = True
-                        
-                        if not pending_update or not status_lines:
-                            return
-                        
-                        # Add header if not present
-                        if not status_lines[0].startswith("**"):
-                            status_lines.insert(0, "**🧠 Thinking...**")
-                        
-                        full_content = "\n".join(status_lines)
-                        
-                        # Truncate if too long
-                        if len(full_content) > 1900:
-                            full_content = full_content[:1900] + "\n... *(truncated)*"
-                        
-                        # Debounce logic: Always send first message, then rate-limit subsequent updates
-                        now = time.time()
-                        is_first_message = status_message is None
-                        time_since_last = now - last_status_update
-                        
-                        # Send immediately if: first message OR enough time has passed
-                        if is_first_message or time_since_last >= status_debounce_interval:
-                            try:
-                                if status_message:
-                                    await status_message.edit(content=full_content)
-                                else:
-                                    # Use reply in guild channels to maintain threading
-                                    if use_reply:
-                                        status_message = await message.reply(full_content, mention_author=False)
-                                    else:
-                                        status_message = await message.channel.send(full_content)
-                                last_status_update = now
-                                pending_update = False
-                            except discord.HTTPException as e:
-                                logger.warning(f"Failed to update reflective status: {e}")
-
-                # Streaming Response Logic
-                full_response_text = ""
-                active_message: Optional[discord.Message] = None
-                last_update_time = 0
-                update_interval = 0.7  # Seconds between edits to avoid rate limits
-                
-                # Start typing indicator only when generation begins
-                # Humanize: Wait for "reading" time (approx 0.05s per char, capped at 4s)
-                reading_delay = min(len(user_message) * settings.TYPING_SPEED_CHAR_PER_SEC, settings.TYPING_MAX_DELAY_SECONDS)
-                reading_delay += random.uniform(0, 1.0) # Add jitter
-                
-                elapsed = time.time() - processing_start
-                if elapsed < reading_delay:
-                    await asyncio.sleep(reading_delay - elapsed)
-                    
-                async with message.channel.typing():
-                    async for chunk in self.bot.agent_engine.generate_response_stream(
-                        character=character,
-                        user_message=user_message,
-                        chat_history=chat_history,
-                        context_variables=context_vars,
-                        user_id=user_id,
-                        image_urls=image_urls,
-                        callback=reflective_callback,
-                        force_reflective=force_reflective,
-                        preclassified_complexity=complexity,
-                        preclassified_intents=detected_intents
-                    ):
-                        full_response_text += chunk
-                        
-                        # Rate limit updates
-                        now = time.time()
-                        if now - last_update_time > update_interval:
-                            # Only stream if length is safe and content is non-empty
-                            if len(full_response_text) < 1950 and full_response_text.strip():
-                                try:
-                                    if not active_message:
-                                        # Check if we have a status message to take over
-                                        should_append = False
-                                        prefix = ""
-                                        if status_message:
-                                            # Check if appending fits in one message
-                                            current_status = "\n".join(status_lines)
-                                            combined_len = len(current_status) + len(full_response_text) + 4 # +4 for \n\n
-                                            if combined_len < 1950: # Leave some buffer
-                                                should_append = True
-                                                prefix = current_status + "\n\n"
-                                        
-                                        if should_append:
-                                            active_message = status_message
-                                            await active_message.edit(content=f"{prefix}{full_response_text}")
-                                        # First message: use reply in guild channels
-                                        elif use_reply:
-                                            active_message = await message.reply(full_response_text, mention_author=False)
-                                        else:
-                                            active_message = await message.channel.send(full_response_text)
-                                    else:
-                                        # We already have an active message
-                                        if active_message == status_message:
-                                            # We are appending to status message
-                                            current_status = "\n".join(status_lines)
-                                            combined_text = f"{current_status}\n\n{full_response_text}"
-                                            if len(combined_text) < 1950:
-                                                await active_message.edit(content=combined_text)
-                                            else:
-                                                # Overflowed! Stop updating this message to avoid error.
-                                                pass
-                                        else:
-                                            await active_message.edit(content=full_response_text)
-                                except Exception as e:
-                                    logger.warning(f"Failed to stream update: {e}")
-                            last_update_time = now
-                
-                response = full_response_text
+                # Generate and stream response
+                response, active_message, status_message = await self._generate_and_stream_response(
+                    message=message,
+                    user_message=user_message,
+                    character=character,
+                    chat_history=chat_history,
+                    context_vars=context_vars,
+                    user_id=user_id,
+                    image_urls=image_urls,
+                    force_reflective=force_reflective,
+                    complexity=complexity,
+                    detected_intents=detected_intents,
+                    processing_start=processing_start,
+                    use_reply=use_reply
+                )
                 
                 # Guard against empty responses
                 if not response or not response.strip():
@@ -1129,6 +1079,8 @@ class MessageHandler:
                 
                 # 3.5 Generate Stats Footer (if enabled for user)
                 from src_v2.utils.stats_footer import stats_footer
+                
+                logger.debug(f"Generating stats footer for user_id={user_id}, user_name={effective_user_name}")
                 should_show_footer = await stats_footer.is_enabled_for_user(user_id, self.bot.character_name)
                 footer_text = ""
                 
@@ -1181,23 +1133,8 @@ class MessageHandler:
                     if active_message:
                         # We already have a streaming message
                         # Just edit the text (files can't be attached to edited messages in discord.py)
-                        
-                        if active_message == status_message:
-                            current_status = "\n".join(status_lines)
-                            combined_text = f"{current_status}\n\n{message_chunks[0]}"
-                            if len(combined_text) < 2000:
-                                await active_message.edit(content=combined_text)
-                                sent_messages.append(active_message)
-                            else:
-                                # Fallback: Send as new message if it doesn't fit with status
-                                if use_reply:
-                                    sent_msg = await message.reply(message_chunks[0], mention_author=False)
-                                else:
-                                    sent_msg = await message.channel.send(message_chunks[0])
-                                sent_messages.append(sent_msg)
-                        else:
-                            await active_message.edit(content=message_chunks[0])
-                            sent_messages.append(active_message)
+                        await active_message.edit(content=message_chunks[0])
+                        sent_messages.append(active_message)
                         
                         # Send remaining chunks
                         for chunk in message_chunks[1:]:
@@ -1507,8 +1444,8 @@ class MessageHandler:
         image_urls = []
         processed_texts = []
         
-        MAX_FILES = 10
-        MAX_SIZE_MB = 25
+        MAX_FILES = settings.MAX_ATTACHMENTS_PER_MESSAGE
+        MAX_SIZE_MB = settings.MAX_ATTACHMENT_SIZE_MB
         MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
         
         # Early Notification for File Count
