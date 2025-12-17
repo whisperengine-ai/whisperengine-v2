@@ -182,6 +182,15 @@ class ContextBuilder:
 You are NOW talking to: {user_name}
 Any memories prefixed with "[With X]:" are from PAST conversations with X, not {user_name}.
 Do NOT address {user_name} by any other name. Do NOT confuse them with people from your memories.
+
+[CHAT HISTORY FORMAT - CRITICAL]
+In group channels, the chat history will show messages from multiple people.
+Messages from other users will start with their name in brackets, like:
+"[OtherUser]: Hello"
+"[SomeoneElse]: How are you?"
+
+These messages are NOT from {user_name}. They are from the person named in the brackets.
+Only attribute the message to {user_name} if it starts with "[{user_name}]:" or has no name prefix.
 """
 
     async def get_evolution_context(self, user_id: str, character_name: str) -> str:
