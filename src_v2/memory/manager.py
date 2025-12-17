@@ -1577,6 +1577,37 @@ class MemoryManager:
             logger.error(f"Failed to get activity count: {e}")
             return 0
 
+    async def get_daily_autonomous_count(self, character_name: str) -> int:
+        """
+        Counts how many autonomous messages the bot has sent TODAY (since midnight UTC).
+        Used to enforce DAILY_LIFE_MAX_AUTONOMOUS_MESSAGES.
+        """
+        if not db_manager.postgres_pool:
+            return 0
+            
+        try:
+            # Get start of today (midnight UTC)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            midnight_utc = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Convert to naive for DB query
+            midnight_naive = midnight_utc.replace(tzinfo=None)
+            
+            async with db_manager.postgres_pool.acquire() as conn:
+                # Count AI messages from autonomous sources (channel_ prefix or bot IDs)
+                # These are messages where user_id starts with 'channel_' or is a bot user_id
+                count = await conn.fetchval("""
+                    SELECT COUNT(*)
+                    FROM v2_chat_history
+                    WHERE character_name = $1 
+                    AND role = 'ai'
+                    AND timestamp > $2
+                    AND (user_id LIKE 'channel_%' OR user_id LIKE 'proactive_%' OR metadata->>'action_type' IS NOT NULL)
+                """, character_name, midnight_naive)
+                return count or 0
+        except Exception as e:
+            logger.error(f"Failed to get daily autonomous count: {e}")
+            return 0
+
     async def count_messages_since(self, user_id: str, character_name: str, timestamp: datetime.datetime) -> int:
         """Counts messages since a given timestamp."""
         if not db_manager.postgres_pool:

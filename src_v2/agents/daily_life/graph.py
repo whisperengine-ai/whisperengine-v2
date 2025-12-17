@@ -299,7 +299,15 @@ class DailyLifeGraph:
         snapshot = state["snapshot"]
         actions = []
         
-        # --- 0. Global Social Battery Check ---
+        # --- 0a. Daily Limit Check ---
+        # Enforce global daily limit for autonomous messages
+        daily_count = await memory_manager.get_daily_autonomous_count(snapshot.bot_name)
+        daily_limit = settings.DAILY_LIFE_MAX_AUTONOMOUS_MESSAGES
+        if daily_count >= daily_limit:
+            logger.info(f"Daily limit reached ({daily_count}/{daily_limit}) for {snapshot.bot_name} - skipping autonomous activity")
+            return {"planned_actions": []}
+        
+        # --- 0b. Global Social Battery Check ---
         # If the bot is "socially drained", skip all autonomous activity
         if settings.ENABLE_AUTONOMOUS_DRIVES:
             social_battery = await drive_manager.get_social_battery(snapshot.bot_name)
