@@ -252,3 +252,49 @@ If bug persists, add:
 - Added validation checkpoints at 3 critical points
 - Added defensive logging in stats footer
 - Created this documentation
+
+### 2024-12-17 - Multi-Participant Chat Review
+A comprehensive review of multi-participant handling was conducted to ensure robustness beyond simple identity bleed.
+
+#### Findings
+
+1.  **Autonomous Reply Intrusion (Fixed)**
+    *   **Issue**: Bots would reply to messages explicitly directed at other users (e.g., "Hey @UserB") or reply threads between two humans.
+    *   **Fix**: Updated `DailyLifeGraph.perceive` to strictly skip messages with *any* mentions (unless bot is included) or `reference_id` pointing to another user.
+    *   **File**: `src_v2/agents/daily_life/graph.py`
+
+2.  **Knowledge Isolation (By Design)**
+    *   **Observation**: Knowledge Graph retrieval is strictly scoped to the current `user_id`.
+    *   **Implication**: In a group chat, the bot cannot access facts about User B when talking to User A, even if those facts were stated publicly in the same channel.
+    *   **Decision**: Maintained as a privacy feature. Cross-user knowledge sharing would require a schema change (adding `channel_id` to facts) and careful privacy controls.
+
+3.  **Memory Retrieval Scope**
+    *   **Observation**: `search_memories` filters by `user_id` OR (`channel_id` + `bot_id`).
+    *   **Implication**: Bot does not "remember" what User B said in the channel history when searching for context for User A.
+    *   **Mitigation**: The immediate chat history (last X messages) *does* include all users, which provides sufficient context for immediate conversation continuity. Long-term memory remains user-isolated.
+
+4.  **Chat History Attribution (ADR-014 Compliant)**
+    *   **Observation**: `get_recent_history()` properly attributes messages in group contexts using `author_id` and `author_is_bot` fields.
+    *   **Format**: Messages from other users appear as `[Username]: message` and other bots appear as `[BotName (bot)]: message`.
+    *   **Decision**: Architecture is correct. The "Transcript Mode" collapses multi-user history into a single context block, preventing LLM confusion.
+
+5.  **Autonomous Reply Target Attribution**
+    *   **Observation**: When the Daily Life Graph generates an autonomous reply, it correctly passes `target_author_id` and `target_author_name` in the `ActionCommand`.
+    *   **Implication**: The reply is attributed to the CORRECT conversation partner (not a random user in context).
+    *   **Decision**: Architecture is sound. The `execute()` method extracts these from the `target_msg` object.
+
+6.  **Proactive Post User Tracking**
+    *   **Observation**: Proactive posts (`intent="post"`) now collect `context_user_ids` and `context_messages` for multi-party learning.
+    *   **Decision**: This ensures that when the bot posts in a channel, it can learn facts from ALL visible messages, not just the target user.
+
+#### Potential Issues Identified
+
+1.  **`reach_out` Intent Target User**
+    *   **Issue**: When a bot initiates a `reach_out` (talking to another bot), it uses `user_id="proactive_trigger"` (a synthetic ID).
+    *   **Impact**: Low. This is intentional—the bot is not having a conversation *with* a user, it's starting one.
+    *   **Recommendation**: Consider whether to attribute the initiated conversation to a specific user or keep as "system-generated" context.
+
+2.  **Knowledge Graph Queries for Autonomous Posts**
+    *   **Observation**: Proactive posts query the knowledge graph with `user_id="daily_life_proactive"` (synthetic).
+    *   **Impact**: Low. This correctly avoids leaking a specific user's facts into generic posts.
+    *   **Decision**: No change needed.

@@ -123,10 +123,13 @@ class DailyLifeGraph:
         
         # Flatten messages from all channels
         all_messages = []
+        message_map = {}  # For reply lookup
         for channel in snapshot.channels:
             is_watch_channel = channel.channel_id in watch_channels
             
             for msg in channel.messages:
+                message_map[msg.id] = msg
+                
                 # Skip own messages
                 is_own_message = False
                 if bot_id and msg.author_id == bot_id:
@@ -165,15 +168,24 @@ class DailyLifeGraph:
             if m.mentions_bot:
                 continue
             
-            # BUGFIX: Skip if message @mentions another user (conversation is directed at them)
-            # Exception: If message mentions multiple people (broadcast), we can participate
-            if m.mentioned_users and len(m.mentioned_users) == 1:
-                # Single @mention to someone else - this is a direct conversation
-                mentioned = m.mentioned_users[0]
-                if mentioned.id != bot_id:  # Not mentioning us
+            # BUGFIX: Skip if message @mentions ANY user (conversation is directed at them)
+            # If the bot isn't mentioned (checked above), and others ARE, it's private.
+            if m.mentioned_users:
+                logger.debug(
+                    f"Skipping message {m.id} - mentions users {m.mentioned_users} "
+                    f"(bot not included)"
+                )
+                continue
+
+            # BUGFIX: Skip if message is a REPLY to someone else
+            if m.reference_id and m.reference_id in message_map:
+                ref_msg = message_map[m.reference_id]
+                # If replying to someone who isn't us, stay out
+                # (If replying to us, we might want to react/reply if main process missed it)
+                if bot_id and ref_msg.author_id != bot_id:
                     logger.debug(
-                        f"Skipping message {m.id} - directed at @{mentioned.name} "
-                        f"(not bot {bot_name})"
+                        f"Skipping message {m.id} - reply to {ref_msg.author_name} "
+                        f"(not bot)"
                     )
                     continue
                 
