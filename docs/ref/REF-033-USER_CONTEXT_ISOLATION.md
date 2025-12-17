@@ -221,6 +221,15 @@ If bug persists, add:
 
 ## Changelog
 
+### 2024-12-17 - Autonomous Reply Filtering (Mention Respect)
+- **Bug Discovered**: Gabriel replied to Mark's message directed at @no.one
+- Autonomous activity was ignoring explicit @mentions to other users
+- **Fix**: Added check in Daily Life Graph `perceive()` node:
+  - Skip messages with single @mention to someone else (directed conversation)
+  - Allow messages with multiple @mentions (broadcast/group conversations)
+  - Logs when skipping directed messages for traceability
+- **Impact**: Bots now respect when a conversation is explicitly directed at someone else
+
 ### 2024-12-17 - Knowledge Retrieval Hardening
 - **Critical Discovery**: Bug manifests in knowledge graph retrieval, not just stats footer
 - User K receives Dotty's character facts (bartender, mentors students) in personality analysis

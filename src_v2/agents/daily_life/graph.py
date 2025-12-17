@@ -164,6 +164,18 @@ class DailyLifeGraph:
             # Skip if mentions bot (main process handles this)
             if m.mentions_bot:
                 continue
+            
+            # BUGFIX: Skip if message @mentions another user (conversation is directed at them)
+            # Exception: If message mentions multiple people (broadcast), we can participate
+            if m.mentioned_users and len(m.mentioned_users) == 1:
+                # Single @mention to someone else - this is a direct conversation
+                mentioned = m.mentioned_users[0]
+                if mentioned.id != bot_id:  # Not mentioning us
+                    logger.debug(
+                        f"Skipping message {m.id} - directed at @{mentioned.name} "
+                        f"(not bot {bot_name})"
+                    )
+                    continue
                 
             # Skip if already replied to
             if m.id in replied_to_ids:
