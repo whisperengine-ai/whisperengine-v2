@@ -294,6 +294,14 @@ class Settings(BaseSettings):
     # Diary and dream generation now always uses LangGraph agents.
     # The legacy ReAct DreamWeaver and feature flags have been removed.
 
+    # --- Safety & Observability (Phase S) ---
+    ENABLE_CONTENT_SAFETY_REVIEW: bool = True  # Review generated content (dreams/diaries) for PII
+    ENABLE_JAILBREAK_DETECTION: bool = True  # Block prompt injection attempts
+    ENABLE_CONSCIOUSNESS_PROBING_OBSERVATION: bool = True  # Log but don't block consciousness probing
+    
+    # Behavioral Telemetry (Phase S7/S8)
+    ENABLE_BEHAVIORAL_INTERVENTION: bool = False  # If True, block/rewrite unsafe responses. If False, log only.
+
     # --- LangSmith Tracing (Optional) ---
     # Enable LangSmith for full observability of LLM calls, tool executions, and traces
     # Sign up at https://smith.langchain.com/ (free tier: 5k traces/month)

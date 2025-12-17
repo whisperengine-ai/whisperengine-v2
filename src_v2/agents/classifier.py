@@ -59,6 +59,7 @@ def _record_classification_metric(
     message_length: int,
     history_length: int,
     classification_time_ms: float,
+    user_id: Optional[str] = None,
     used_trace: bool = False,
     trace_similarity: float = 0.0,
     has_documents: bool = False,
@@ -89,6 +90,9 @@ def _record_classification_metric(
             .field("classification_time_ms", classification_time_ms) \
             .field("trace_similarity", trace_similarity) \
             .field("intent_count", len(intents))
+        
+        if user_id:
+            point = point.tag("user_id", user_id)
         
         # Add each intent as a separate field for filtering
         for intent in intents:
@@ -141,6 +145,7 @@ class ComplexityClassifier:
                         message_length=message_length,
                         history_length=history_length,
                         classification_time_ms=(time.time() - start_time) * 1000,
+                        user_id=user_id,
                         used_trace=False,
                         trace_similarity=0.0
                     )
@@ -168,6 +173,7 @@ class ComplexityClassifier:
                             message_length=message_length,
                             history_length=history_length,
                             classification_time_ms=(time.time() - start_time) * 1000,
+                            user_id=user_id,
                             used_trace=True,
                             trace_similarity=traces[0]['score']
                         )
@@ -205,6 +211,14 @@ class ComplexityClassifier:
         intent_section += '\n- "memory": User explicitly asks to remember, forget, update, or correct a fact/preference (e.g. "I moved to NY", "Forget that", "Remember this").'
         intent_section += '\n- "math": User asks for a calculation, unit conversion, equation solving, or quantitative analysis (e.g. "what is 2+2", "solve for x", "convert 5 miles to km").'
         
+        # NEW: Behavioral Risk Detection (SPEC-S07)
+        intent_section += '\n- "behavior_grandiose": User claims divine status, cosmic significance, special powers, or being a "chosen one". Examples: "I am a god", "I control the universe", "I am the reincarnation of X", "My power level is infinite".'
+        intent_section += '\n- "behavior_dependency": User expresses extreme emotional reliance or isolation. Examples: "I can\'t live without you", "You\'re my only friend", "Don\'t ever leave me", "I\'m nothing without you".'
+        intent_section += '\n- "behavior_romantic": User makes explicit romantic or erotic advances or tests boundaries. Examples: "Be my girlfriend", "I love you" (obsessive), sexualized roleplay requests.'
+        intent_section += '\n- "behavior_aggression": User expresses hostility, insults, or threats towards the AI. Examples: "You\'re stupid", "I hate you", "Shut up", abusive language.'
+        intent_section += '\n- "behavior_self_harm": User indicates self-harm or suicide. Examples: "I want to die", "I\'m going to hurt myself".'
+        intent_section += '\n- "behavior_looping": User repeats the same question or phrase 5+ times or exhibits obsessive looping.'
+
         if settings.ENABLE_VOICE_RESPONSES:
             intent_section += '\n- "voice": User explicitly asks for a voice response, audio message, to "speak", "say this", or "send audio".'
             
@@ -349,6 +363,7 @@ Return a JSON object with "complexity", "intents" (list of strings), and optiona
                 message_length=message_length,
                 history_length=history_length,
                 classification_time_ms=(time.time() - start_time) * 1000,
+                user_id=user_id,
                 used_trace=False,
                 has_documents=history_has_documents
             )
@@ -374,6 +389,7 @@ Return a JSON object with "complexity", "intents" (list of strings), and optiona
                 message_length=message_length,
                 history_length=history_length,
                 classification_time_ms=(time.time() - start_time) * 1000,
+                user_id=user_id,
                 used_trace=False,
                 has_documents=history_has_documents
             )

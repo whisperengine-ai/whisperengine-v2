@@ -18,6 +18,7 @@ from src_v2.agents.reflective_graph import ReflectiveGraphAgent
 from src_v2.agents.character_graph import CharacterGraphAgent
 from src_v2.agents.context_builder import ContextBuilder
 from src_v2.utils.llm_retry import invoke_with_retry, get_image_error_message
+from src_v2.safety.output_guard import OutputSafetyGuard
 
 # Managers for Context Node
 from src_v2.memory.manager import memory_manager
@@ -55,6 +56,7 @@ class MasterGraphAgent:
         self.character_agent = CharacterGraphAgent()
         self.context_builder = ContextBuilder()
         self.fast_llm = create_llm(mode="main") # Use main model for fast path, but without tools
+        self.output_guard = OutputSafetyGuard()
         
         # Build Graph
         workflow = StateGraph(SuperGraphState)
@@ -66,6 +68,7 @@ class MasterGraphAgent:
         workflow.add_node("reflective_agent", self.reflective_subgraph_node)
         workflow.add_node("character_agent", self.character_subgraph_node)
         workflow.add_node("fast_responder", self.fast_responder_node) # Fallback/Simple
+        workflow.add_node("output_guard", self.output_guard_node)
         
         # Edges - Classifier FIRST so extraction can inform context fetch
         workflow.set_entry_point("classifier")
@@ -83,11 +86,17 @@ class MasterGraphAgent:
             }
         )
         
-        workflow.add_edge("reflective_agent", END)
-        workflow.add_edge("character_agent", END)
-        workflow.add_edge("fast_responder", END)
+        # Route all responses through output guard
+        workflow.add_edge("reflective_agent", "output_guard")
+        workflow.add_edge("character_agent", "output_guard")
+        workflow.add_edge("fast_responder", "output_guard")
+        workflow.add_edge("output_guard", END)
         
         self.graph = workflow.compile()
+
+    async def output_guard_node(self, state: SuperGraphState) -> SuperGraphState:
+        """Audits response for safety if high-risk behavior detected."""
+        return await self.output_guard.check(state)
 
     async def context_node(self, state: SuperGraphState):
         """Parallel fetch of all necessary context."""

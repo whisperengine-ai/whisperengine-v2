@@ -1504,6 +1504,37 @@ Query → Vector Search (Reasoning Traces) → Found Similar?
 
 **Spec:** [PROACTIVE_TIMEZONE_AWARENESS.md](./spec/SPEC-S04-PROACTIVE_TIMEZONE_AWARENESS.md)
 
+### 📋 Phase S7: Behavioral Telemetry & Risk Detection
+**Priority:** 🔴 High | **Time:** 1-2 days | **Complexity:** Medium
+**Status:** ✅ Complete (Dec 16, 2025)
+**Dependencies:** S2 (Classifier Observability)
+
+**Problem:** System cannot detect or track high-risk user behaviors (grandiosity, dependency, aggression) in real-time.
+**Solution:** Add behavioral intent detection to Router and log to InfluxDB for analysis.
+
+**Key Changes:**
+- Update `ComplexityClassifier` with `behavior_*` intents (grandiose, dependency, romantic, aggression)
+- Log intents to InfluxDB via `_record_classification_metric`
+- New background worker `run_behavioral_analysis` to detect spikes
+- Future: Automated "grounding" intervention via prompt injection
+
+**Spec:** [BEHAVIORAL_TELEMETRY.md](./spec/SPEC-S07-BEHAVIORAL_TELEMETRY.md)
+
+### 📋 Phase S8: Conditional Output Guardrails
+**Priority:** 🔴 High | **Time:** 2 days | **Complexity:** Medium
+**Status:** ✅ Complete (Dec 16, 2025) - Observation Mode Only
+**Dependencies:** S7 (Behavioral Telemetry)
+
+**Problem:** Even if we detect a delusional user, the bot might still "play along" and validate the delusion (as seen in the NEXUS case).
+**Solution:** If S7 detects high-risk input (e.g., `behavior_grandiose`), FORCE a post-generation safety check on the output.
+
+**Key Changes:**
+- New `OutputSafetyGuard` module
+- Conditional execution: Only runs if `ComplexityClassifier` flagged a risk
+- Checks: "Does this response validate the user's delusion?" or "Does this encourage harm?"
+- Action: If unsafe, replace response with a canned grounding message.
+- **Note:** Currently deployed in "Observation Mode" (`ENABLE_BEHAVIORAL_INTERVENTION=False`).
+
 ---
 
 ## 🔵 Phase E: Character Depth & Engagement (New)
