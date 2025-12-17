@@ -83,7 +83,7 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
                         FieldCondition(key="is_chunk", match=MatchValue(value=True)),
                     ]
                 ),
-                limit=100,  # Should be enough for any document
+                limit=1000,  # Increased from 100 to handle larger documents (e.g. 160KB+ files)
                 with_payload=True,
                 with_vectors=False
             )
