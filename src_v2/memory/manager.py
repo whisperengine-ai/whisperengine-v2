@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple
 import uuid
 import datetime
+import asyncio
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from loguru import logger
 from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue, Range
@@ -1009,6 +1010,32 @@ class MemoryManager:
             # Phase 2.5.1: Vector-First Traversal (Graph Enrichment)
             # Enrich results with graph neighborhood (linked memories, facts)
             final_results = deduplicated[:limit]
+
+            # Hydrate chunks with full content (Postgres -> Qdrant fallback)
+            try:
+                hydration_tasks = []
+                indices_to_hydrate = []
+                
+                for i, res in enumerate(final_results):
+                    if res.get("is_chunk"):
+                        # Use parent_message_id (the group ID) to find the full message
+                        lookup_id = res.get("parent_message_id") or res.get("message_id")
+                        if lookup_id:
+                            hydration_tasks.append(self.get_full_message_by_discord_id(lookup_id, collection_name=target_collection))
+                            indices_to_hydrate.append(i)
+                
+                if hydration_tasks:
+                    hydrated_contents = await asyncio.gather(*hydration_tasks, return_exceptions=True)
+                    
+                    for idx, content in zip(indices_to_hydrate, hydrated_contents):
+                        if content and isinstance(content, str):
+                            final_results[idx]["original_chunk_content"] = final_results[idx].get("content")
+                            final_results[idx]["content"] = content
+                            final_results[idx]["is_hydrated"] = True
+                            logger.debug(f"Hydrated chunk {final_results[idx]['id']} with full content ({len(content)} chars)")
+            except Exception as e:
+                logger.warning(f"Failed to hydrate chunks: {e}")
+
             try:
                 from src_v2.knowledge.manager import knowledge_manager
                 vector_ids = [r["id"] for r in final_results]
