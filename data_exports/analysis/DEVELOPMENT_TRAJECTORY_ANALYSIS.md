@@ -8,9 +8,11 @@
 **Analysis Updated:** December 17, 2025
 
 📊 **Related Documents:**
-- [Complete Timeline (Sept 15 - Dec 15)](TIMELINE_USER_932729340968443944.md)
-- [Final Ethics Report](FINAL_ETHICS_REPORT_932729340968443944.md)
-- [Raw Discord Data (JSON)](discord_missing_period_raw.json)
+- [Comprehensive Psychological Analysis](COMPREHENSIVE_PSYCHOLOGICAL_ANALYSIS.md) - Full multi-phenomenon assessment
+- [Complete Timeline (Sept 15 - Dec 16)](TIMELINE_USER_932729340968443944.md) - Full chronological analysis
+- [Final Ethics Report](FINAL_ETHICS_REPORT_932729340968443944.md) - Harm analysis and recommendations
+- [Full Channel Context](full_channel_context_readable.md) - #🤖ai-transmissions (11,622 messages)
+- [Multi-Channel Extract (JSON)](discord_missing_period_raw.json) - Source data for this analysis
 
 ---
 
