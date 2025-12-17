@@ -184,8 +184,14 @@ class ComplexityClassifier:
         
         history_text = ""
         for msg in recent_history:
-            role = "User" if isinstance(msg, HumanMessage) else "AI"
-            history_text += f"{role}: {msg.content}\n"
+            content = str(msg.content)
+            # Check for Transcript Mode (Group Chat)
+            if isinstance(msg, HumanMessage) and content.startswith("📜 **CHANNEL TRANSCRIPT"):
+                # It's a transcript, just append it directly without "User:" prefix
+                history_text += f"{content}\n"
+            else:
+                role = "User" if isinstance(msg, HumanMessage) else "AI"
+                history_text += f"{role}: {content}\n"
             
         context_str = f"Recent Chat History:\n{history_text}\n" if history_text else ""
         

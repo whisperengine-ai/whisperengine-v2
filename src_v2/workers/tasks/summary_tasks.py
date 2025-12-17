@@ -36,12 +36,12 @@ async def run_summarization(
         if db_manager.postgres_pool:
             async with db_manager.postgres_pool.acquire() as conn:
                 rows = await conn.fetch("""
-                    SELECT role, content 
+                    SELECT role, content, user_name 
                     FROM v2_chat_history 
                     WHERE session_id = $1 
                     ORDER BY timestamp ASC
                 """, session_id)
-                messages = [{"role": r["role"], "content": r["content"]} for r in rows]
+                messages = [{"role": r["role"], "content": r["content"], "user_name": r["user_name"]} for r in rows]
         
         # Check data availability before LLM call
         if not messages or len(messages) < 2:
@@ -58,7 +58,14 @@ async def run_summarization(
         for msg in messages:
             role = msg.get('role', 'unknown')
             content = msg.get('content', '')
-            conversation_text += f"{role}: {content}\n"
+            msg_user_name = msg.get('user_name', 'User')
+            
+            if role == 'human':
+                conversation_text += f"[{msg_user_name}]: {content}\n"
+            elif role == 'ai':
+                conversation_text += f"[{character_name}]: {content}\n"
+            else:
+                conversation_text += f"{role}: {content}\n"
         
         # Skip if conversation is too short (lowered threshold to catch short emotional exchanges)
         if len(conversation_text) < 30:

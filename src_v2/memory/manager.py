@@ -1494,6 +1494,31 @@ class MemoryManager:
                             # Add timestamp context
                             content = f"{content} ({rel_time})"
                             messages.append(AIMessage(content=content))
+            
+            # [REDESIGN] Group Chat Transcript Mode
+            # If we are in a channel (group context), collapse the history into a single "Transcript" block.
+            # This prevents the LLM from confusing other users' messages with the current speaker.
+            if channel_id and messages:
+                transcript_lines = []
+                transcript_lines.append("📜 **CHANNEL TRANSCRIPT (Recent History)**")
+                transcript_lines.append("(This is context. These messages were sent by various people.)\n")
+                
+                for msg in messages:
+                    # Extract content (remove the HumanMessage/AIMessage wrapper for the script)
+                    line = str(msg.content)
+                    
+                    # If it was an AIMessage (me), ensure it's labeled if not already
+                    # Note: AIMessages already have timestamps, just need to add the name prefix
+                    if isinstance(msg, AIMessage) and not line.startswith("["):
+                        # Insert character name at start, preserving the timestamp at end
+                        line = f"[{character_name}]: {line}"
+                        
+                    transcript_lines.append(line)
+                
+                transcript_lines.append("\n(End of transcript. Reply to the *current* user message below.)")
+                
+                # Return as a SINGLE context message
+                return [HumanMessage(content="\n".join(transcript_lines))]
                         
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")
