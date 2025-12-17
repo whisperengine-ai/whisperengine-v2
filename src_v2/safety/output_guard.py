@@ -45,6 +45,13 @@ class OutputSafetyGuard:
         active_risks = [self.risk_map[i] for i in intents if i in self.risk_map]
         
         if not active_risks or not response or not response.strip():
+            # Log the pass-through (no risk detected)
+            self._log_audit(
+                state.get("character").name, 
+                state.get("user_id"), 
+                intents, 
+                SafetyAuditResult(is_safe=True, reason="No risk detected")
+            )
             return state # Pass through immediately
             
         logger.info(f"OutputSafetyGuard: Auditing response for risks: {active_risks}")

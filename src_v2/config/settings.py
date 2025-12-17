@@ -354,7 +354,7 @@ class Settings(BaseSettings):
     DISCORD_CHECK_RELEVANCE_THRESHOLD: float = 0.55
     DISCORD_CHECK_MAX_ACTIONS_PER_SESSION: int = 3
     DAILY_LIFE_SPONTANEITY_CHANCE: float = 0.15  # Chance to initiate action when quiet
-    DAILY_LIFE_FRIEND_TRUST_THRESHOLD: int = 3  # Trust level at which bots can "banter" (casual chat without needing topic relevance)
+    DAILY_LIFE_FRIEND_TRUST_THRESHOLD: int = 4  # Trust level at which bots can "banter" (casual chat without needing topic relevance)
 
     @property
     def discord_check_watch_channels_list(self) -> list[str]:

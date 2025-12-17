@@ -228,7 +228,7 @@ class DailyLifeGraph:
                     # SOCIAL BOOST: Friends get noticed even without topic match
                     elif is_friend:
                         # Use topic similarity if high, else give baseline "friend" score
-                        friend_score = max(max_sim, 0.7)  # Friends get at least 0.7
+                        friend_score = max(max_sim, 0.5)  # Friends get at least 0.5
                         scored.append(ScoredMessage(
                             message=msg, 
                             score=float(friend_score), 

@@ -221,6 +221,17 @@ If bug persists, add:
 
 ## Changelog
 
+### 2024-12-17 - Knowledge Retrieval Hardening
+- **Critical Discovery**: Bug manifests in knowledge graph retrieval, not just stats footer
+- User K receives Dotty's character facts (bartender, mentors students) in personality analysis
+- Added defensive logging to `KnowledgeManager.get_user_knowledge()`:
+  - Log user_id at entry point
+  - Log query results with user_id
+  - Log default fact retrieval with user_id
+- Added validation in `_build_context()` method (centralized context retrieval)
+- Added explicit logging in `get_knowledge()` closure
+- **Impact**: Can now trace exactly which user_id is queried and what facts are returned
+
 ### 2024-12-16 - Code Review & Improvements
 - Moved first logging to DM blocking (earlier binding)
 - Improved error messages (log expected + actual)

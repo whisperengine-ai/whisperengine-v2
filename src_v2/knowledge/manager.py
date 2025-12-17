@@ -881,6 +881,8 @@ PRIVACY RESTRICTION ENABLED:
         If query is provided, it generates a specific Cypher query.
         Otherwise, it returns general facts.
         """
+        # BUGFIX: Log user_id to trace context confusion
+        logger.debug(f"[KNOWLEDGE] get_user_knowledge called with user_id={user_id}, query={query}")
         start_time = time.time()
 
         try:
@@ -920,6 +922,7 @@ PRIVACY RESTRICTION ENABLED:
                             logger.error(f"Failed to log knowledge metrics: {e}")
 
                     if not records:
+                        logger.debug(f"[KNOWLEDGE] No query results for user_id={user_id}")
                         return ""
                     
                     # Format results
@@ -928,11 +931,14 @@ PRIVACY RESTRICTION ENABLED:
                         values = [str(v) for v in record.values()]
                         formatted_results.append(" ".join(values))
                     
-                    return "\n".join(formatted_results)
+                    result_str = "\n".join(formatted_results)
+                    logger.debug(f"[KNOWLEDGE] Query returned {len(records)} facts for user_id={user_id}: {result_str[:100]}...")
+                    return result_str
                 
                 else:
                     # Default: Get all facts about the user
                     # Limit to requested number (default 10)
+                    logger.debug(f"[KNOWLEDGE] Retrieving default facts for user_id={user_id}, limit={limit}")
                     result = await session.run("""
                         MATCH (u:User {id: $user_id})-[r:FACT]->(e:Entity)
                         RETURN r.predicate, e.name
@@ -941,6 +947,7 @@ PRIVACY RESTRICTION ENABLED:
                     """, user_id=user_id, limit=limit)
                     
                     records = await result.data()
+                    logger.debug(f"[KNOWLEDGE] Retrieved {len(records)} default facts for user_id={user_id}")
                     
                     # Log metrics
                     if db_manager.influxdb_write_api:

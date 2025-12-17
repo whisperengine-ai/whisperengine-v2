@@ -1879,7 +1879,7 @@
             "type": "influxdb",
             "uid": "InfluxDB_V2"
           },
-          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"complexity_classification\")\n  |> filter(fn: (r) => r[\"_field\"] =~ /intent_behavior_.*/)\n  |> aggregateWindow(every: v.windowPeriod, fn: sum, createEmpty: false)\n  |> yield(name: \"sum\")",
+          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"complexity_classification\")\n  |> filter(fn: (r) => r[\"_field\"] =~ /^intent_behavior_/)\n  |> filter(fn: (r) => r[\"_value\"] > 0)\n  |> aggregateWindow(every: v.windowPeriod, fn: sum, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -1983,7 +1983,7 @@
             "type": "influxdb",
             "uid": "InfluxDB_V2"
           },
-          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"safety_audit\")\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"bot_name\", \"user_id\", \"is_safe\", \"reason\"])\n  |> drop(columns: [\"_start\", \"_stop\", \"_measurement\"])",
+          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"safety_audit\")\n  |> pivot(rowKey:[\"_time\", \"bot_name\", \"user_id\", \"is_safe\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
           "refId": "A"
         }
       ],

@@ -515,6 +515,19 @@ class MessageHandler:
         Retrieves context from memory, history, knowledge, summaries, universe, and nickname.
         Returns (memories, chat_history, knowledge_facts, past_summaries, universe_context, preferred_nickname).
         """
+        # BUGFIX: Validate user_id parameter matches message author
+        expected_user_id = str(message.author.id)
+        if user_id != expected_user_id:
+            logger.error(
+                f"CRITICAL BUG in _build_context: user_id mismatch! "
+                f"Expected: {expected_user_id} (message.author.id), "
+                f"Got: {user_id}, "
+                f"Author: {message.author.display_name}"
+            )
+            user_id = expected_user_id  # Force correction
+        else:
+            logger.debug(f"_build_context: user_id validated={user_id}")
+        
         channel_id = str(message.channel.id)
         
         async def get_memories():
@@ -555,7 +568,10 @@ class MessageHandler:
 
         async def get_knowledge():
             try:
+                # BUGFIX: Log user_id to trace knowledge retrieval
+                logger.debug(f"[KNOWLEDGE_CALL] get_user_knowledge with user_id={user_id}, author={message.author.display_name}")
                 facts = await knowledge_manager.get_user_knowledge(user_id)
+                logger.debug(f"[KNOWLEDGE_CALL] Retrieved facts for user_id={user_id}: {facts[:150] if facts else 'NONE'}...")
                 if "name" not in facts.lower():
                     display_name = message.author.display_name
                     facts += f"\n- User's Discord Display Name: {display_name}"
