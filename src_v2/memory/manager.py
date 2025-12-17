@@ -1030,9 +1030,10 @@ class MemoryManager:
                     for idx, content in zip(indices_to_hydrate, hydrated_contents):
                         if content and isinstance(content, str):
                             final_results[idx]["original_chunk_content"] = final_results[idx].get("content")
-                            final_results[idx]["content"] = content
+                            # Cap hydrated content to prevent context bloat (2000 chars ~ 500 tokens)
+                            final_results[idx]["content"] = smart_truncate(content, 2000)
                             final_results[idx]["is_hydrated"] = True
-                            logger.debug(f"Hydrated chunk {final_results[idx]['id']} with full content ({len(content)} chars)")
+                            logger.debug(f"Hydrated chunk {final_results[idx]['id']} with full content ({len(content)} -> {len(final_results[idx]['content'])} chars)")
             except Exception as e:
                 logger.warning(f"Failed to hydrate chunks: {e}")
 
