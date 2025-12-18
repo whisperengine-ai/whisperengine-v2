@@ -291,7 +291,7 @@
             "type": "influxdb",
             "uid": "InfluxDB_V2"
           },
-          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"message_event\")\n  |> filter(fn: (r) => r[\"_field\"] == \"length\")\n  |> count()\n  |> yield(name: \"count\")",
+          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"message_event\")\n  |> filter(fn: (r) => r[\"_field\"] == \"length\")\n  |> group()\n  |> count()\n  |> yield(name: \"count\")",
           "refId": "A"
         }
       ],
@@ -943,7 +943,7 @@
             "type": "influxdb",
             "uid": "InfluxDB_V2"
           },
-          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"complexity_classification\")\n  |> filter(fn: (r) => r[\"_field\"] == \"intent_count\")\n  |> sum()\n  |> yield(name: \"sum\")",
+          "query": "from(bucket: \"metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"complexity_classification\")\n  |> filter(fn: (r) => r[\"_field\"] == \"intent_count\")\n  |> group()\n  |> sum()\n  |> yield(name: \"sum\")",
           "refId": "A"
         }
       ],
@@ -2024,7 +2024,7 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {},

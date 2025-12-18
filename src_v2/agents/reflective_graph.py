@@ -35,6 +35,9 @@ from src_v2.tools.web_search import WebSearchTool
 from src_v2.tools.web_reader import ReadWebPageTool
 from src_v2.config.settings import settings
 from src_v2.memory.traces import trace_retriever
+from src_v2.core.database import db_manager
+from influxdb_client import Point
+import time
 
 # Define State
 class AgentState(TypedDict):
@@ -43,6 +46,8 @@ class AgentState(TypedDict):
     tools: List[BaseTool]
     callback: Optional[Callable[[str], Awaitable[None]]]
     max_steps: int
+    user_id: str
+    character_name: str
 
 class ReflectiveGraphAgent:
     """
@@ -291,7 +296,7 @@ TOOL USAGE GUIDE:
 {special_notes}{intent_section}
 """
 
-    async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool]) -> tuple[ToolMessage, str]:
+    async def _execute_tool_wrapper(self, tool_call: Any, tools: List[BaseTool], user_id: str, character_name: str) -> tuple[ToolMessage, str]:
         """
         Executes a single tool. Returns (ToolMessage, tool_name) for batched callbacks.
         """
@@ -300,24 +305,58 @@ TOOL USAGE GUIDE:
         tool_call_id = tool_call["id"]
         
         logger.info(f"Executing Tool: {tool_name}")
+        start_time = time.time()
         
         # Find tool instance
         selected_tool = next((t for t in tools if t.name == tool_name), None)
         
+        success = False
         if selected_tool:
             try:
                 # Execute tool
                 observation = await selected_tool.ainvoke(tool_args)
+                success = True
             except Exception as e:
                 observation = f"Error executing tool: {e}"
         else:
             observation = f"Error: Tool {tool_name} not found."
+
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Log tool usage to InfluxDB
+        asyncio.create_task(self._log_tool_usage(
+            user_id=user_id,
+            bot_name=character_name,
+            tool_name=tool_name,
+            duration_ms=duration_ms,
+            success=success
+        ))
 
         return ToolMessage(
             content=str(observation),
             tool_call_id=tool_call_id,
             name=tool_name
         ), tool_name
+
+    async def _log_tool_usage(self, user_id: str, bot_name: str, tool_name: str, duration_ms: float, success: bool):
+        """Logs tool usage metrics to InfluxDB."""
+        if db_manager.influxdb_write_api:
+            try:
+                point = Point("tool_usage") \
+                    .tag("user_id", user_id) \
+                    .tag("bot_name", bot_name) \
+                    .tag("tool_name", tool_name) \
+                    .field("duration_ms", float(duration_ms)) \
+                    .field("success", success) \
+                    .time(datetime.datetime.utcnow())
+                
+                db_manager.influxdb_write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET,
+                    org=settings.INFLUXDB_ORG,
+                    record=point
+                )
+            except Exception as e:
+                logger.error(f"Failed to log tool usage to InfluxDB: {e}")
 
     # --- Graph Nodes ---
 
@@ -362,6 +401,8 @@ TOOL USAGE GUIDE:
         last_message = messages[-1]
         tools = state['tools']
         callback = state['callback']
+        user_id = state['user_id']
+        character_name = state['character_name']
         
         if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
             return {"messages": []}
@@ -377,7 +418,7 @@ TOOL USAGE GUIDE:
         # Execute all tools in parallel (no per-tool callbacks)
         tasks = []
         for tool_call in last_message.tool_calls:
-            tasks.append(self._execute_tool_wrapper(tool_call, tools))
+            tasks.append(self._execute_tool_wrapper(tool_call, tools, user_id, character_name))
         
         results = await asyncio.gather(*tasks)
         
@@ -720,7 +761,9 @@ TOOL USAGE GUIDE:
             "steps": 0,
             "tools": tools,
             "callback": callback,
-            "max_steps": max_steps
+            "max_steps": max_steps,
+            "user_id": user_id,
+            "character_name": character_name or settings.DISCORD_BOT_NAME or "default"
         })
         
         messages = final_state["messages"]

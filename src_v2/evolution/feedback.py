@@ -324,7 +324,7 @@ class FeedbackAnalyzer:
                 .tag("bot_name", bot_name) \
                 .tag("message_id", message_id) \
                 .tag("action", action) \
-                .field("reaction", reaction) \
+                .tag("reaction", reaction) \
                 .field("message_length", message_length) \
                 .time(datetime.utcnow())
             

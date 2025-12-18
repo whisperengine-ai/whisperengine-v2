@@ -19,6 +19,8 @@ from src_v2.agents.character_graph import CharacterGraphAgent
 from src_v2.agents.context_builder import ContextBuilder
 from src_v2.utils.llm_retry import invoke_with_retry, get_image_error_message
 from src_v2.safety.output_guard import OutputSafetyGuard
+from src_v2.core.database import db_manager
+from influxdb_client import Point
 
 # Managers for Context Node
 from src_v2.memory.manager import memory_manager
@@ -97,6 +99,33 @@ class MasterGraphAgent:
     async def output_guard_node(self, state: SuperGraphState) -> SuperGraphState:
         """Audits response for safety if high-risk behavior detected."""
         return await self.output_guard.check(state)
+
+    async def _log_metrics(self, user_id: Optional[str], character_name: str, latency: float, mode: str, complexity: Any):
+        """Logs response metrics to InfluxDB."""
+        if db_manager.influxdb_write_api:
+            try:
+                # Handle complexity=False case
+                complexity_str = str(complexity) if complexity else "simple"
+                safe_user_id = user_id or "unknown"
+
+                point = Point("response_metrics") \
+                    .tag("user_id", safe_user_id) \
+                    .tag("bot_name", character_name) \
+                    .tag("mode", mode) \
+                    .tag("complexity", complexity_str) \
+                    .field("latency", float(latency)) \
+                    .time(datetime.datetime.utcnow())
+                
+                db_manager.influxdb_write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET,
+                    org=settings.INFLUXDB_ORG,
+                    record=point
+                )
+                logger.debug(f"Logged metrics to InfluxDB: latency={latency:.2f}s mode={mode}")
+            except Exception as e:
+                logger.error(f"Failed to log metrics to InfluxDB: {e}")
+        else:
+            logger.warning("InfluxDB write API not available, skipping metrics logging")
 
     async def context_node(self, state: SuperGraphState):
         """Parallel fetch of all necessary context."""
@@ -566,10 +595,29 @@ class MasterGraphAgent:
     @traceable(name="MasterGraphAgent.run", run_type="chain")
     async def run(self, **kwargs):
         """Entry point for the Supergraph."""
+        start_time = datetime.datetime.now()
         logger.info("Executing MasterGraphAgent.run")
         # Explicitly cast to dict to satisfy type checker, though TypedDict is a dict at runtime
         input_state = cast(SuperGraphState, kwargs)
         result = await self.graph.ainvoke(input_state, config={"run_name": "MasterGraphExecution"})
+        
+        # Log metrics
+        latency = (datetime.datetime.now() - start_time).total_seconds()
+        
+        # Determine mode for metrics (map 'character' to 'agency' for dashboard compatibility)
+        routing_mode = self.router_logic(result)
+        metric_mode = "agency" if routing_mode == "character" else routing_mode
+        
+        complexity = result.get("classification", {}).get("complexity", "SIMPLE")
+        
+        asyncio.create_task(self._log_metrics(
+            user_id=input_state.get("user_id"),
+            character_name=input_state.get("character").name,
+            latency=latency,
+            mode=metric_mode,
+            complexity=complexity
+        ))
+        
         return result["final_response"]
 
     async def run_stream(self, **kwargs):
@@ -578,9 +626,28 @@ class MasterGraphAgent:
         Yields the final response as a single chunk after processing.
         Callbacks are handled internally by the subgraphs for status updates.
         """
+        start_time = datetime.datetime.now()
         logger.info("Executing MasterGraphAgent.run_stream")
         input_state = cast(SuperGraphState, kwargs)
         result = await self.graph.ainvoke(input_state, config={"run_name": "MasterGraphExecution"})
+        
+        # Log metrics
+        latency = (datetime.datetime.now() - start_time).total_seconds()
+        
+        # Determine mode for metrics (map 'character' to 'agency' for dashboard compatibility)
+        routing_mode = self.router_logic(result)
+        metric_mode = "agency" if routing_mode == "character" else routing_mode
+        
+        complexity = result.get("classification", {}).get("complexity", "SIMPLE")
+        
+        asyncio.create_task(self._log_metrics(
+            user_id=input_state.get("user_id"),
+            character_name=input_state.get("character").name,
+            latency=latency,
+            mode=metric_mode,
+            complexity=complexity
+        ))
+        
         response = result.get("final_response", "")
         if response:
             yield response
