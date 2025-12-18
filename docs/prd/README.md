@@ -22,6 +22,7 @@ PRDs focus on:
 | [PRD-005: Autonomous Agency](./PRD-005-AUTONOMOUS_AGENCY.md) | ✅ Implemented | Lurking, reacting, and autonomous posting |
 | [PRD-006: Knowledge Graph Evolution](./PRD-006-KNOWLEDGE_GRAPH_EVOLUTION.md) | ✅ Implemented | Enrichment, temporal graph, and user transparency |
 | [PRD-007: System Scalability](./PRD-007-SYSTEM_SCALABILITY.md) | ✅ Implemented | Advanced queues, metrics, and observability |
+| [PRD-008: Long-Term Emotional Trends](./PRD-008-LONG_TERM_EMOTIONAL_TRENDS.md) | 📋 Proposed | Relationship meta-summaries, emotional trajectories, eudaimonic intelligence |
 
 ---
 
