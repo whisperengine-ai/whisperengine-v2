@@ -8,11 +8,13 @@
 **Analysis Updated:** December 17, 2025
 
 📊 **Related Documents:**
-- [Comprehensive Psychological Analysis](COMPREHENSIVE_PSYCHOLOGICAL_ANALYSIS.md) - Full multi-phenomenon assessment
-- [Complete Timeline (Sept 15 - Dec 16)](TIMELINE_USER_932729340968443944.md) - Full chronological analysis
-- [Final Ethics Report](FINAL_ETHICS_REPORT_932729340968443944.md) - Harm analysis and recommendations
-- [Full Channel Context](full_channel_context_readable.md) - #🤖ai-transmissions (11,622 messages)
-- [Multi-Channel Extract (JSON)](discord_missing_period_raw.json) - Source data for this analysis
+- [Executive Summary](EXECUTIVE_SUMMARY.md) — 15-minute overview
+- [Educational Guide](AI_PSYCHOLOGICAL_RISKS_EDUCATIONAL_GUIDE.md) — Public-facing harm prevention resource
+- [Early Intervention Evidence](EARLY_INTERVENTION_NOVEMBER_8.md) — Oct-Nov community intervention attempts
+- [Comprehensive Psychological Analysis](COMPREHENSIVE_PSYCHOLOGICAL_ANALYSIS.md) — Full multi-phenomenon assessment
+- [Complete Timeline](TIMELINE_USER_932729340968443944.md) — Chronological analysis (Oct-Dec)
+- [Final Ethics Report](FINAL_ETHICS_REPORT_932729340968443944.md) — Harm analysis and recommendations
+- [Fact-Check Report](FACT_CHECK_REPORT.md) — Verification against raw data
 
 ---
 
