@@ -103,14 +103,10 @@ def strip_context_markers(content: str) -> str:
         flags=re.IGNORECASE
     )
     
-    # Pattern 9: [Attached File Content]: ... (document attachments)
-    # Keep the user's message but remove the attached file content for embedding
-    content = re.sub(
-        r'\n\n\[Attached File Content\]:.*$',
-        '',
-        content,
-        flags=re.IGNORECASE | re.DOTALL
-    )
+    # NOTE: We do NOT strip [Attached File Content]: sections!
+    # File attachments are actual user content that should be embedded and searchable.
+    # Unlike reply/forward context (which is redundant quoted content), file attachments
+    # are primary content that the user explicitly uploaded for the bot to reference.
     
     # Clean up any leftover whitespace
     content = content.strip()

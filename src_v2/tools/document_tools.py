@@ -37,11 +37,24 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
             marker = f"--- Referenced File: {filename} ---"
         
         if marker not in content:
+            # Debug: Log what markers we found to help diagnose the issue
+            found_markers = []
+            for line in content.split('\n')[:100]:  # Check first 100 lines only
+                if '--- File:' in line or '--- Referenced File:' in line:
+                    found_markers.append(line.strip())
+            
+            if found_markers:
+                logger.warning(f"Filename mismatch for '{filename}'. Found markers: {found_markers[:5]}")
+            else:
+                # Show first 500 chars of content for debugging
+                content_preview = content[:500].replace('\n', ' ')
+                logger.warning(f"No file markers found for '{filename}'. Content starts: '{content_preview}...'")
             return None
             
         # Split and get content after marker
         parts = content.split(marker, 1)
         if len(parts) <= 1:
+            logger.warning(f"Found marker '{marker}' but couldn't split content (unexpected)")
             return None
             
         file_content = parts[1].strip()
@@ -55,6 +68,9 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
         # Remove trailing metadata if present
         if "[Attached File Content]:" in file_content:
             file_content = file_content.split("[Attached File Content]:")[0].strip()
+        
+        if not file_content:
+            logger.warning(f"Extracted empty content for '{filename}' after marker removal")
             
         return file_content if file_content else None
 
@@ -253,8 +269,14 @@ The filename must include the extension (e.g., 'AUTONOMOUS_AGENTS_PHASE_3.md')."
                     logger.warning(f"Header search fallback failed: {e}")
             
             # If we found results but couldn't extract content
-            logger.warning(f"Found {len(results)} memories mentioning '{filename}' but couldn't extract content")
-            return f"Found references to '{filename}' but couldn't extract the full document content. The document preview you saw is the full content available. Use search_specific_memories to find specific details within the document."
+            # This can happen when:
+            # 1. The file was chunked and we haven't found the chunk with the header
+            # 2. The file marker format doesn't match expected format
+            # 3. The content was stripped during embedding cleanup
+            logger.warning(f"Found {len(results)} memories mentioning '{filename}' but couldn't extract content. Checking if document exists in preview...")
+            
+            # Last resort: suggest using the preview that was already shown
+            return f"I found references to '{filename}' in our conversation history, but couldn't retrieve the full stored document. However, you should have already seen a preview of this document when you uploaded it. If you need me to reference specific parts, please quote them directly or ask about specific sections."
             
         except Exception as e:
             logger.error(f"Error reading document '{filename}': {e}")
