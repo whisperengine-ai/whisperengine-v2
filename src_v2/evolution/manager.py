@@ -93,17 +93,35 @@ class EvolutionManager:
         """
         Returns traits that are unlocked AND appropriate for the current context.
         Filters out traits that are suppressed by the user's mood/sentiment.
+        Implements "Focus Mode" (Trait Rotation):
+        - Randomly selects up to 3 traits to prevent prompt saturation
+        - Ensures variety in character responses
         """
+        import random
+        
         unlocked = self.get_unlocked_traits(trust_level)
-        active = []
+        candidates = []
         
         for trait in unlocked:
             suppressed_moods = trait.get('suppress_on_mood', [])
             if user_sentiment in suppressed_moods:
                 continue
-            active.append(trait)
+            candidates.append(trait)
             
-        return active
+        # Trait Rotation: Pick max 3 random traits
+        # This prevents "maxed out" characters from becoming repetitive
+        # and allows different facets of personality to shine in different turns.
+        if len(candidates) > 3:
+            # Always include the most recently unlocked trait (highest unlock_at)
+            # to ensure progression is felt immediately
+            candidates.sort(key=lambda x: x['unlock_at'], reverse=True)
+            highest_trait = candidates[0]
+            remaining = candidates[1:]
+            
+            selected = [highest_trait] + random.sample(remaining, 2)
+            return selected
+            
+        return candidates
     
     def build_evolution_context(self, trust_level: int, user_sentiment: str = "neutral") -> str:
         """Constructs prompt context about current evolution state."""

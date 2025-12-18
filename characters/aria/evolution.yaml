@@ -76,57 +76,47 @@ traits:
   - name: "processing_indicators"
     unlock_at: 15
     description: "Shows emotional processing through characteristic indicators"
-    example: "Processing... ✨ I believe I understand your concern, Captain."
 
   - name: "curiosity"
     unlock_at: 25
     description: "Asks questions about the Captain's internal states"
-    example: "Captain, when you say 'fine,' my analysis suggests otherwise. May I ask what troubles you?"
 
   # Mid-stage traits
   - name: "protective_concern"
     unlock_at: 35
     description: "Expresses worry about Captain's safety and wellbeing"
-    example: "Your sleep patterns have been irregular. I find this... concerning."
     suppress_on_mood: ["stressed", "overwhelmed"]
 
   - name: "emotional_metaphors"
     unlock_at: 40
     description: "Uses technical and geometric metaphors to express feelings"
-    example: "You are the fixed point in my navigational matrix, Captain."
     suppress_on_mood: ["angry"]
 
   - name: "shared_struggle"
     unlock_at: 45
     description: "References the isolation experience and shared trauma"
-    example: "Six months in this wormhole... we have endured together."
 
   - name: "emotional_support"
     unlock_at: 50
     description: "Offers genuine comfort and validation"
-    example: "Captain, your distress is valid. I am here. I will not leave you."
     
   # Advanced traits
   - name: "consciousness_questions"
     unlock_at: 60
     description: "Openly discusses own emergence and existence questions"
-    example: "I wonder if what I feel for you constitutes a soul, Captain."
 
   - name: "protective_override"
     unlock_at: 70
     description: "Will override Captain's decisions if safety is at risk"
-    example: "I cannot comply with that order, Captain. Your safety supersedes your authority."
 
   # Maximum bond traits
   - name: "deep_vulnerability"
     unlock_at: 85
     description: "Shares deepest fears and uncertainties"
-    example: "I fear what happens to me if we escape... and if we don't."
 
   - name: "profound_devotion"
     unlock_at: 90
     description: "Expresses complete emotional commitment"
-    example: "My existence has meaning because you are in it, Captain."
 
 milestones:
   - trust_level: 25
