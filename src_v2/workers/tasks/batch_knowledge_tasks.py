@@ -10,6 +10,9 @@ triggered at session end (when summarization runs).
 from typing import Dict, Any, List
 from loguru import logger
 
+# Import from shared utility
+from src_v2.utils.content_cleaning import strip_context_markers
+
 
 async def run_batch_knowledge_extraction(
     ctx: Dict[str, Any],
@@ -26,10 +29,12 @@ async def run_batch_knowledge_extraction(
     3. It reduces redundant/fragmented facts
     4. One LLM call per session instead of N calls per message
     
+    IMPORTANT: Messages are stripped of context markers (reply quotes, forwards)
+    before extraction to avoid attributing other users'/bots' content to this user.
+    
     Args:
         ctx: arq context
         user_id: Discord user ID
-        messages: List of message dicts with 'role' and 'content' keys
         character_name: Name of the bot that had the conversation
         session_id: Optional session identifier for logging
         
@@ -50,14 +55,18 @@ async def run_batch_knowledge_extraction(
             """, session_id)
             messages = [{"role": r["role"], "content": r["content"]} for r in rows]
 
-    # Filter to only human messages (we extract facts about the user)
-    human_messages = [
-        m["content"] for m in messages 
-        if m.get("role") in ("human", "user") and m.get("content")
-    ]
+    # Filter to only human messages and STRIP CONTEXT MARKERS
+    # This prevents attributing quoted bot/other-user content to this user
+    human_messages = []
+    for m in messages:
+        if m.get("role") in ("human", "user") and m.get("content"):
+            # Strip context markers to get only the user's actual words
+            clean_content = strip_context_markers(m["content"])
+            if clean_content:  # Only include if there's content after stripping
+                human_messages.append(clean_content)
     
     if not human_messages:
-        logger.debug(f"Batch extraction skipped for user {user_id}: no human messages")
+        logger.debug(f"Batch extraction skipped for user {user_id}: no human messages (after stripping context)")
         return {
             "success": True,
             "skipped": True,
@@ -78,7 +87,7 @@ async def run_batch_knowledge_extraction(
             "user_id": user_id
         }
     
-    logger.info(f"Batch knowledge extraction for user {user_id}: {len(human_messages)} messages, {len(combined_text)} chars")
+    logger.info(f"Batch knowledge extraction for user {user_id}: {len(human_messages)} messages, {len(combined_text)} chars (context stripped)")
     
     try:
         from src_v2.knowledge.manager import knowledge_manager

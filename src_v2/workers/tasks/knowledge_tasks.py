@@ -1,6 +1,9 @@
 from typing import Dict, Any
 from loguru import logger
 
+# Import the context stripping function from shared utility
+from src_v2.utils.content_cleaning import strip_context_markers
+
 async def run_knowledge_extraction(
     ctx: Dict[str, Any],
     user_id: str,
@@ -14,6 +17,8 @@ async def run_knowledge_extraction(
     This is the most critical background task - it was previously blocking
     the response pipeline. Now runs asynchronously after response is sent.
     
+    DEPRECATED: Use run_batch_knowledge_extraction for session-level extraction.
+    
     Args:
         ctx: arq context
         user_id: Discord user ID
@@ -24,6 +29,11 @@ async def run_knowledge_extraction(
     Returns:
         Dict with success status and extracted fact count
     """
+    # Strip context markers (reply quotes, forwards) to avoid extracting
+    # facts about other users/bots from quoted content
+    if not is_bot:
+        message = strip_context_markers(message)
+    
     # Check data availability before LLM call
     if not message or len(message.strip()) < 20:
         logger.debug(f"Knowledge extraction skipped for user {user_id}: message too short ({len(message) if message else 0} chars)")

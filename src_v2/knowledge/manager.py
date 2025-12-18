@@ -50,17 +50,27 @@ EXAMPLES:
 4. Q: "Do we have anything in common?"
    A: MATCH (u:User {{id: $user_id}})-[r1:FACT]->(e:Entity)<-[r2:FACT]-(c:Character {{name: $bot_name}}) RETURN e.name, r1.predicate
 
-5. Q: "pinky finger callus" (keyword search)
+5. Q: "pinky finger callus" (keyword search - MUST still filter by user_id or bot_name)
    A: MATCH (n)-[r:FACT]->(o:Entity) WHERE ((n:User AND n.id = $user_id) OR (n:Character AND n.name = $bot_name)) AND (o.name CONTAINS 'pinky' OR o.name CONTAINS 'callus') RETURN labels(n)[0] as owner, o.name, r.predicate
 
 6. Q: "Who is user with id 12345?"
    A: MATCH (u:User {{id: '12345'}})-[r:FACT]->(o:Entity) RETURN o.name, r.predicate
 
-RULES:
+7. Q: "What do you know about me?" / "roast me" / "tell me about myself"
+   A: MATCH (u:User {{id: $user_id}})-[r:FACT]->(o:Entity) RETURN o.name, r.predicate LIMIT 20
+
+CRITICAL RULES FOR DATA ISOLATION:
+- ALWAYS include $user_id when querying about the user. NEVER query all User nodes.
+- NEVER generate a query like "MATCH (u:User)-[r:FACT]->(e:Entity) RETURN ..." without filtering by u.id = $user_id
+- If the question asks about "me" or "I", ALWAYS use $user_id to filter.
+- Do NOT return facts about OTHER users - only the current user or the bot character.
+- If you cannot answer with user-specific or bot-specific data, return: RETURN "NO_ANSWER"
+
+OTHER RULES:
 - Use the parameter $user_id for the User node by default.
 - If the question specifies a specific User ID (e.g. "user with id 123"), use that ID string directly in the query.
 - ALWAYS use the parameter $bot_name for the Character node.
-- If the query is ambiguous about the target (User vs Character), search BOTH.
+- If the query is ambiguous about the target (User vs Character), search BOTH but STILL filter by $user_id and $bot_name.
 - Return the relevant properties (usually o.name or r.predicate).
 - Do NOT include markdown formatting (```cypher). Just the raw query.
 - Use case-insensitive matching if unsure (e.g., toLower(r.predicate) = 'likes').

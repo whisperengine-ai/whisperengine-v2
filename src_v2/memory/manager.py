@@ -12,6 +12,7 @@ from src_v2.utils.time_utils import get_relative_time
 from src_v2.memory.models import MemorySourceType
 from src_v2.memory import scoring
 from src_v2.utils.validation import smart_truncate
+from src_v2.utils.content_cleaning import strip_context_markers
 from influxdb_client import Point
 import time
 
@@ -322,6 +323,10 @@ class MemoryManager:
         
         ADR-014: Now includes author_id, author_is_bot, author_name fields
         to properly attribute messages in multi-party conversations.
+        
+        Content Cleaning: For human messages, we strip context markers (reply quotes,
+        forwarded content) BEFORE embedding to prevent semantic pollution. The original
+        content is still stored in the payload for display/context purposes.
         """
         start_time = time.time()
         
@@ -348,10 +353,19 @@ class MemoryManager:
             
             target_collection = collection_name or self.collection_name
             
+            # For human messages, strip context markers before embedding
+            # This prevents semantic pollution from quoted bot/other-user content
+            # Original content is preserved in payload for display
+            embed_content = content
+            if role in ("human", "user") and not effective_author_is_bot:
+                embed_content = strip_context_markers(content)
+                if embed_content != content:
+                    logger.debug(f"Stripped context markers for embedding: {len(content)} -> {len(embed_content)} chars")
+            
             # Check if we need to chunk this content
-            if len(content) > CHUNK_THRESHOLD:
-                chunks = chunk_text(content)
-                logger.debug(f"Chunking long message ({len(content)} chars) into {len(chunks)} chunks")
+            if len(embed_content) > CHUNK_THRESHOLD:
+                chunks = chunk_text(embed_content)
+                logger.debug(f"Chunking long message ({len(embed_content)} chars) into {len(chunks)} chunks")
                 
                 # Ensure we have a parent ID for grouping chunks (use message_id or generate new UUID)
                 chunk_group_id = str(message_id) if message_id else str(uuid.uuid4())
@@ -360,7 +374,7 @@ class MemoryManager:
                 points_to_upsert = []
                 vector_ids = []  # Track IDs for graph nodes
                 for chunk_content, chunk_idx in chunks:
-                    # Generate embedding for this chunk
+                    # Generate embedding for this chunk (already cleaned)
                     embedding = await self.embedding_service.embed_query_async(chunk_content)
                     
                     # Generate vector ID upfront for dual-write (Phase 2.5.1)
@@ -435,19 +449,20 @@ class MemoryManager:
                 
             else:
                 # Original path for short messages
-                # Generate embedding
-                embedding = await self.embedding_service.embed_query_async(content)
+                # Generate embedding using cleaned content (for human messages)
+                embedding = await self.embedding_service.embed_query_async(embed_content)
                 
                 # Generate vector ID upfront for dual-write (Phase 2.5.1)
                 vector_id = str(uuid.uuid4())
                 timestamp_str = datetime.datetime.now().isoformat()
                 
-                # Prepare payload
+                # Prepare payload - store CLEANED content for consistency with chunked path
+                # Postgres stores the full original content for history/display
                 payload = {
                     "type": "conversation",  # Default type for chat messages
                     "user_id": str(user_id),
                     "role": role,
-                    "content": content,
+                    "content": embed_content,  # Use cleaned content for vector payload
                     "timestamp": timestamp_str,
                     "channel_id": str(channel_id) if channel_id else None,
                     "message_id": str(message_id) if message_id else None,
@@ -487,7 +502,7 @@ class MemoryManager:
                     await knowledge_manager.add_memory_node(
                         user_id=str(user_id),
                         vector_id=vector_id,
-                        content=smart_truncate(content, 500),  # Truncate for graph storage
+                        content=smart_truncate(embed_content, 500),  # Use cleaned content for graph node
                         timestamp=timestamp_str,
                         source_type=source_type.value,
                         bot_name=settings.DISCORD_BOT_NAME,
@@ -667,7 +682,8 @@ class MemoryManager:
         collection_name: Optional[str] = None,
         time_range: Optional[Dict[str, str]] = None,
         channel_id: Optional[str] = None,
-        bot_id: Optional[str] = None
+        bot_id: Optional[str] = None,
+        exclude_bot_authors: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Searches for relevant episode memories in Qdrant with recency weighting.
@@ -692,6 +708,8 @@ class MemoryManager:
             channel_id: Optional channel filter - if provided, adds channel context to results
             bot_id: Optional bot ID. If provided with channel_id, enables "Dual Stream" retrieval:
                     (user_id == user_id) OR (channel_id == channel_id AND user_id == bot_id)
+            exclude_bot_authors: If True, exclude messages authored by bots (author_is_bot=True).
+                    Useful when searching for what a USER said, not quoted bot content.
         """
         start_time = time.time()
         
@@ -740,11 +758,32 @@ class MemoryManager:
                         ])
                     ]
                 )
+                # Add bot exclusion to both streams if requested
+                if exclude_bot_authors:
+                    query_filter = Filter(
+                        should=[
+                            Filter(must=[
+                                FieldCondition(key="user_id", match=MatchValue(value=str(user_id))),
+                                FieldCondition(key="author_is_bot", match=MatchValue(value=False))
+                            ]),
+                            Filter(must=[
+                                FieldCondition(key="channel_id", match=MatchValue(value=str(channel_id))),
+                                FieldCondition(key="user_id", match=MatchValue(value=str(bot_id))),
+                                FieldCondition(key="author_is_bot", match=MatchValue(value=False))
+                            ])
+                        ]
+                    )
             else:
                 # Classic Logic: Strict filtering
                 must_conditions = [
                     FieldCondition(key="user_id", match=MatchValue(value=str(user_id)))
                 ]
+                
+                # Exclude bot-authored content if requested
+                if exclude_bot_authors:
+                    must_conditions.append(
+                        FieldCondition(key="author_is_bot", match=MatchValue(value=False))
+                    )
                 
                 # If channel_id provided without bot_id, strictly filter by channel (Legacy/Specific use)
                 if channel_id:
