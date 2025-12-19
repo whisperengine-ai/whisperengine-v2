@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import uuid
 import datetime
 import asyncio
+import json
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from loguru import logger
 from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue, Range
@@ -201,8 +202,8 @@ class MemoryManager:
             async with db_manager.postgres_pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO v2_chat_history 
-                    (user_id, character_name, role, content, user_name, channel_id, message_id, author_id, author_is_bot, reply_to_msg_id, session_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    (user_id, character_name, role, content, user_name, channel_id, message_id, author_id, author_is_bot, reply_to_msg_id, session_id, metadata)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                     ON CONFLICT (message_id) DO NOTHING
                 """, 
                     str(user_id), 
@@ -215,7 +216,8 @@ class MemoryManager:
                     str(author_id) if author_id else None,
                     author_is_bot,
                     str(reply_to_msg_id) if reply_to_msg_id else None,
-                    str(session_id) if session_id else None
+                    str(session_id) if session_id else None,
+                    json.dumps(metadata) if metadata else '{}'
                 )
             
             # Also save to vector memory
