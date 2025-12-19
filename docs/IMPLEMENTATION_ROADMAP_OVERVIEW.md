@@ -94,6 +94,7 @@ This document tracks all implementation items for WhisperEngine v2, organized by
 | 🟢 High | **The Reverie** | Active Idle State (Memory Consolidation) | **Done** | ✅ Complete |
 | 🟢 High | **Multi-Party** | ADR-014 Phase 1 (Author Tracking) | **Done** | ✅ Complete |
 | 🟢 High | **Adaptive Identity** | Self-Editing Persona (Phase 2.6) | **1 week** | 🔄 Active |
+| 🟡 Medium | **Neuro-Symbolic** | Working Memory + Verification (Phase 2.7) | **2 weeks** | 📋 Planned |
 | 🟡 Medium | **Observe** | Monitor bot-to-bot interactions, trust milestones | **Ongoing** | 🔄 Active |
 
 #### ✅ Completed: Schema Before Automation (ADR-014)

@@ -96,9 +96,21 @@ Currently, character identity is static (`character.md`).
       playfulness: 0.7
     ```
 
+### Phase 2.7: Neuro-Symbolic Evolution (Post-Agent Architecture)
+**Goal:** Implement "Post-Agent" architecture with working memory and verification.
+**Effort:** Medium | **Risk:** Medium | **Status:** 📋 **PLANNED**
+**Ref:** `PRD-004`, `SPEC-004`
+
+Based on the "Transformer Evolution" research, we are moving beyond simple RAG/Agents.
+
+*   **Implementation:**
+    1.  **Working Memory (Redis):** A 30-minute "scratchpad" for current conversation goals/topics that outlives the context window but isn't permanent.
+    2.  **Hybrid Verification (Neo4j):** A "Fact Check" tool that prevents hallucinations by verifying generated claims against the Knowledge Graph.
+    3.  **Outcome-Based Reinforcement:** A feedback loop where high Trust Score increases boost the weights of the memories that generated them.
+
 ---
 
-## 3. Future Considerations (Phase 2.6+)
+## 3. Future Considerations (Phase 2.8+)
 
 These are not in the immediate roadmap but are worth documenting for future exploration.
 
