@@ -21,6 +21,7 @@ from src_v2.memory.session import session_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.knowledge.walker import GraphWalker
+from src_v2.universe.context_builder import universe_context_builder
 from datetime import datetime
 import time
 import asyncio
@@ -79,35 +80,82 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         if not session_id:
             session_id = await session_manager.create_session(request.user_id, bot_name)
 
-        # Pre-fetch context to match Discord behavior (and ensure consistency)
-        # Discord MessageHandler fetches memories using the RAW message before classification.
-        # The Supergraph (used by API) defaults to using EXTRACTED search terms from classification.
-        # To ensure the API returns the same results as Discord, we must pre-fetch here using the raw message.
+        # 1. Parallel Context Fetching (Match Discord behavior)
+        # Define async getters for parallel execution
         
-        # 1. Memories
-        memories = []
-        formatted_memories = ""
-        try:
-            # Use raw message for search, just like Discord
-            memories = await memory_manager.search_memories(request.message, request.user_id)
-            if memories:
-                # Simple formatting for Fast Mode fallback
-                formatted_memories = "\n".join([f"- {m.get('content', '')}" for m in memories])
-        except Exception as e:
-            logger.error(f"API memory search failed: {e}")
+        async def get_memories():
+            try:
+                mems = await memory_manager.search_memories(request.message, request.user_id)
+                if mems:
+                    # Simple formatting for Fast Mode fallback
+                    fmt = "\\n".join([f"- {m.get('content', '')}" for m in mems])
+                    return mems, fmt
+                return [], "No relevant memories found."
+            except Exception as e:
+                logger.error(f"API memory search failed: {e}")
+                return [], ""
 
-        # 2. Knowledge
-        knowledge_facts = ""
-        try:
-            knowledge_facts = await knowledge_manager.get_user_knowledge(request.user_id)
-        except Exception as e:
-            logger.error(f"API knowledge fetch failed: {e}")
+        async def get_history():
+            try:
+                # API is always 1:1 - don't use channel_id which would share history across API users
+                return await memory_manager.get_recent_history(request.user_id, bot_name, channel_id=None)
+            except Exception as e:
+                logger.error(f"API history fetch failed: {e}")
+                return []
 
-        # 3. Save User Message (Match Discord behavior)
+        async def get_knowledge():
+            try:
+                facts = await knowledge_manager.get_user_knowledge(request.user_id)
+                if "name" not in facts.lower():
+                    # Try to get name from context or default
+                    user_name = request.context.get("user_name", request.user_id) if request.context else request.user_id
+                    facts += f"\\n- User's Name: {user_name}"
+                return facts
+            except Exception as e:
+                logger.error(f"API knowledge fetch failed: {e}")
+                return ""
+
+        async def get_summaries():
+            try:
+                sums = await memory_manager.search_summaries(request.message, request.user_id, limit=3)
+                if sums:
+                    return "\\n".join([f"- {s['content']} (Meaningfulness: {s['meaningfulness']}, {s.get('relative_time', 'unknown time')})" for s in sums])
+                return ""
+            except Exception as e:
+                logger.error(f"API summaries fetch failed: {e}")
+                return ""
+
+        async def get_universe_context():
+            try:
+                # API users are "remote" or in a virtual location
+                return await universe_context_builder.build_context(request.user_id, "api_guild", "api_chat", bot_name)
+            except Exception as e:
+                logger.error(f"API universe context fetch failed: {e}")
+                return "Location: Unknown (API)"
+
+        async def get_user_nickname():
+            try:
+                trust_data = await trust_manager.get_relationship_level(request.user_id, bot_name)
+                preferences = trust_data.get('preferences', {})
+                return preferences.get('nickname') 
+            except Exception as e:
+                logger.debug(f"API nickname fetch failed: {e}")
+                return None
+
+        # Execute all fetches in parallel
+        (memories, formatted_memories), chat_history, knowledge_facts, past_summaries, universe_context, preferred_nickname = await asyncio.gather(
+            get_memories(),
+            get_history(),
+            get_knowledge(),
+            get_summaries(),
+            get_universe_context(),
+            get_user_nickname()
+        )
+
+        # 2. Save User Message (Match Discord behavior)
+        user_name = preferred_nickname or (request.context.get("user_name", request.user_id) if request.context else request.user_id)
+        
         try:
-            # Use context variables for author info if provided, else default to user_id
-            user_name = request.context.get("user_name", request.user_id) if request.context else request.user_id
-            
             await memory_manager.add_message(
                 user_id=request.user_id,
                 character_name=bot_name,
@@ -124,23 +172,27 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         except Exception as e:
             logger.error(f"Failed to save API message to memory: {e}")
 
-        # Update context variables
+        # 3. Update context variables
         context = request.context or {}
         context.update({
             "prefetched_memories": memories,
             "prefetched_knowledge": knowledge_facts,
             "memory_context": formatted_memories, # For Fast Mode
-            "knowledge_context": knowledge_facts  # For Fast Mode
+            "knowledge_context": knowledge_facts,  # For Fast Mode
+            "past_summaries": past_summaries,
+            "universe_context": universe_context,
+            "user_name": user_name # Ensure nickname is used
         })
 
         # Determine mode override
         force_fast = request.force_mode == "fast"
         force_reflective = request.force_mode == "reflective"
         
-        # Generate response with metadata
+        # 4. Generate response with metadata
         result = await agent_engine.generate_response(
             character=character,
             user_message=request.message,
+            chat_history=chat_history, # Pass the fetched history!
             user_id=request.user_id,
             context_variables=context,
             return_metadata=True,
@@ -148,18 +200,39 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
             force_fast=force_fast
         )
         
+        # Extract response text
+        response_text = result.response if hasattr(result, "response") else str(result)
+        
+        # 5. Save AI Response (Match Discord behavior)
+        try:
+            await memory_manager.add_message(
+                user_id=request.user_id,
+                character_name=bot_name,
+                role='ai',
+                content=response_text,
+                user_name=bot_name,
+                channel_id="api_chat",
+                message_id=f"api_resp_{int(time.time()*1000)}",
+                session_id=session_id,
+                author_id=bot_name, # Bot ID would be better but name works for now
+                author_name=bot_name,
+                author_is_bot=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to save API response to memory: {e}")
+
         processing_time = (time.time() - start_time) * 1000
         
         return ChatResponse(
             success=True,
-            response=result.response,
+            response=response_text,
             timestamp=datetime.now(),
             bot_name=bot_name,
             processing_time_ms=processing_time,
             memory_stored=True,
-            mode=result.mode,
-            complexity=result.complexity,
-            model_used=result.model_used
+            mode=result.mode if hasattr(result, "mode") else "unknown",
+            complexity=result.complexity if hasattr(result, "complexity") else "unknown",
+            model_used=result.model_used if hasattr(result, "model_used") else "unknown"
         )
         
     except Exception as e:
