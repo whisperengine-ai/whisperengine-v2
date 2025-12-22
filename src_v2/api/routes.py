@@ -17,6 +17,7 @@ from src_v2.config.settings import settings
 from src_v2.core.character import character_manager
 from src_v2.core.database import db_manager
 from src_v2.memory.manager import memory_manager
+from src_v2.memory.session import session_manager
 from src_v2.evolution.trust import trust_manager
 from src_v2.knowledge.manager import knowledge_manager
 from src_v2.knowledge.walker import GraphWalker
@@ -73,6 +74,65 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=500, detail=f"Character {bot_name} not found")
 
     try:
+        # 0. Session Management (Match Discord behavior)
+        session_id = await session_manager.get_active_session(request.user_id, bot_name)
+        if not session_id:
+            session_id = await session_manager.create_session(request.user_id, bot_name)
+
+        # Pre-fetch context to match Discord behavior (and ensure consistency)
+        # Discord MessageHandler fetches memories using the RAW message before classification.
+        # The Supergraph (used by API) defaults to using EXTRACTED search terms from classification.
+        # To ensure the API returns the same results as Discord, we must pre-fetch here using the raw message.
+        
+        # 1. Memories
+        memories = []
+        formatted_memories = ""
+        try:
+            # Use raw message for search, just like Discord
+            memories = await memory_manager.search_memories(request.message, request.user_id)
+            if memories:
+                # Simple formatting for Fast Mode fallback
+                formatted_memories = "\n".join([f"- {m.get('content', '')}" for m in memories])
+        except Exception as e:
+            logger.error(f"API memory search failed: {e}")
+
+        # 2. Knowledge
+        knowledge_facts = ""
+        try:
+            knowledge_facts = await knowledge_manager.get_user_knowledge(request.user_id)
+        except Exception as e:
+            logger.error(f"API knowledge fetch failed: {e}")
+
+        # 3. Save User Message (Match Discord behavior)
+        try:
+            # Use context variables for author info if provided, else default to user_id
+            user_name = request.context.get("user_name", request.user_id) if request.context else request.user_id
+            
+            await memory_manager.add_message(
+                user_id=request.user_id,
+                character_name=bot_name,
+                role='human',
+                content=request.message,
+                user_name=user_name,
+                channel_id="api_chat", # Virtual channel for API
+                message_id=f"api_{int(time.time()*1000)}", # Virtual message ID
+                session_id=session_id,
+                author_id=request.user_id,
+                author_name=user_name,
+                author_is_bot=False
+            )
+        except Exception as e:
+            logger.error(f"Failed to save API message to memory: {e}")
+
+        # Update context variables
+        context = request.context or {}
+        context.update({
+            "prefetched_memories": memories,
+            "prefetched_knowledge": knowledge_facts,
+            "memory_context": formatted_memories, # For Fast Mode
+            "knowledge_context": knowledge_facts  # For Fast Mode
+        })
+
         # Determine mode override
         force_fast = request.force_mode == "fast"
         force_reflective = request.force_mode == "reflective"
@@ -82,7 +142,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
             character=character,
             user_message=request.message,
             user_id=request.user_id,
-            context_variables=request.context or {},
+            context_variables=context,
             return_metadata=True,
             force_reflective=force_reflective,
             force_fast=force_fast
