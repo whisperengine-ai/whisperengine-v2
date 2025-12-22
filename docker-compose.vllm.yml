@@ -1,0 +1,25 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.6.6
+    container_name: vllm-server
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+      - VLLM_WORKER_MULTIPROC_METHOD=spawn
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    ports:
+      - "8000:8000"
+    shm_size: '16gb'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      --model Qwen/Qwen2.5-3B-Instruct
+      --max-model-len 4096
+      --gpu-memory-utilization 0.8
+      --trust-remote-code
+      --disable-log-requests
