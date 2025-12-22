@@ -5,6 +5,7 @@ x-bot-defaults: &bot-defaults
     dockerfile: Dockerfile
   restart: unless-stopped
   volumes:
+    - .:/app
     - ./logs:/app/logs
   depends_on:
     postgres:
