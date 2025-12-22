@@ -231,6 +231,7 @@ Get bot configuration, database status, and feature flags.
 | `llm_models` | object | LLM models configured (main, reflective, router) |
 | `database_status` | object | Connection status for each database |
 | `feature_flags` | object | Enabled feature flags |
+| `queue_depths` | object | Number of pending jobs in each worker queue |
 | `uptime_seconds` | float | Seconds since bot started |
 | `version` | string | Bot version |
 
@@ -254,6 +255,12 @@ Get bot configuration, database status, and feature flags.
     "fact_extraction": true,
     "preference_extraction": true,
     "proactive_messaging": false
+  },
+  "queue_depths": {
+    "cognition": 0,
+    "sensory": 2,
+    "action": 0,
+    "social": 0
   },
   "uptime_seconds": 3600.5,
   "version": "2.0.0"
@@ -387,6 +394,80 @@ Clear user data for test isolation. Use for test setup/teardown.
 
 ---
 
+### POST `/api/user-graph`
+
+Get user's knowledge graph subgraph for visualization (D3.js compatible).
+
+#### Request
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `user_id` | string | ✅ | - | User ID to get graph for |
+| `depth` | int | ❌ | 2 | Max depth to traverse from user node (1-4) |
+| `include_other_users` | boolean | ❌ | false | Include other users connected through shared entities |
+| `max_nodes` | int | ❌ | 50 | Maximum nodes to return (10-100) |
+
+#### Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether operation succeeded |
+| `user_id` | string | User ID |
+| `bot_name` | string | Character name |
+| `nodes` | array | List of graph nodes |
+| `edges` | array | List of graph edges |
+| `clusters` | array | Thematic clusters of nodes |
+| `stats` | object | Graph statistics (node_count, edge_count, etc.) |
+
+**Example Response**:
+```json
+{
+  "success": true,
+  "user_id": "user_12345",
+  "bot_name": "elena",
+  "nodes": [
+    {
+      "id": "user_12345",
+      "label": "User",
+      "name": "MarkC",
+      "score": 1.0,
+      "properties": {}
+    },
+    {
+      "id": "entity_coffee",
+      "label": "Entity",
+      "name": "Coffee",
+      "score": 0.8,
+      "properties": {"category": "beverage"}
+    }
+  ],
+  "edges": [
+    {
+      "source": "user_12345",
+      "target": "entity_coffee",
+      "edge_type": "LIKES",
+      "properties": {"weight": 0.9}
+    }
+  ],
+  "clusters": [
+    {
+      "theme": "Preferences",
+      "node_ids": ["user_12345", "entity_coffee"],
+      "cohesion_score": 0.85
+    }
+  ],
+  "stats": {
+    "node_count": 2,
+    "edge_count": 1,
+    "cluster_count": 1,
+    "max_depth": 2,
+    "processing_time_ms": 250.5
+  }
+}
+```
+
+---
+
 ## Usage Examples
 
 ### cURL
@@ -410,6 +491,14 @@ curl http://localhost:8000/api/diagnostics
 curl -X POST http://localhost:8000/api/user-state \
   -H "Content-Type: application/json" \
   -d '{"user_id": "user_12345"}'
+
+# Get user graph
+curl -X POST http://localhost:8000/api/user-graph \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user_12345",
+    "depth": 2
+  }'
 
 # Multi-turn conversation test
 curl -X POST http://localhost:8000/api/conversation \
