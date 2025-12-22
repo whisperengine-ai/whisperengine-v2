@@ -88,6 +88,7 @@ services:
       NEO4J_server_memory_heap_max__size: 1G
     volumes:
       - neo4j_data_v2:/data
+      - neo4j_logs_v2:/logs
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 10s
@@ -112,6 +113,7 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: metrics
     volumes:
       - influxdb_data_v2:/var/lib/influxdb2
+      - influxdb_config_v2:/etc/influxdb2
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
       interval: 10s
@@ -482,7 +484,9 @@ volumes:
   postgres_data_v2:
   qdrant_data_v2:
   neo4j_data_v2:
+  neo4j_logs_v2:
   influxdb_data_v2:
+  influxdb_config_v2:
   redis_data_v2:
   grafana_data_v2:
 
