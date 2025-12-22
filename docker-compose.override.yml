@@ -1,0 +1,94 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded by Docker Compose in development
+# For production deployment, use: docker compose -f docker-compose.yml up
+#
+# Development features:
+# - Live code reload (mount source code)
+# - Easier debugging
+
+services:
+  # Override bot defaults to mount code for live development
+  aetheris:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  elena:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  nottaylor:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  dotty:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  aria:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  dream:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  jake:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  marcus:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  ryan:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  sophia:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  gabriel:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  aethys:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  aetheris:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  worker-cognition:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  worker-action:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  worker-sensory:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+
+  worker-social:
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
