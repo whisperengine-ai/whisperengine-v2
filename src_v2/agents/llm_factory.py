@@ -172,6 +172,8 @@ def create_llm(
             "temperature": temp,
             "request_timeout": timeout
         }
+        if base_url:
+            kwargs["base_url"] = base_url
         if max_tokens:
             kwargs["max_tokens"] = max_tokens
         if reasoning_config:
