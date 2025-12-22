@@ -11,6 +11,7 @@ sys.path.append(str(project_root))
 from qdrant_client import AsyncQdrantClient
 from neo4j import AsyncGraphDatabase
 from src_v2.config.settings import settings
+from src_v2.utils.validation import smart_truncate
 
 V2_COLLECTION = "whisperengine_memory_aetheris"
 BOT_NAME = "aetheris"
@@ -43,6 +44,7 @@ async def backfill():
     ON CREATE SET u.is_bot = false
     MERGE (m:Memory {id: $vector_id})
     ON CREATE SET 
+        m.user_id = $user_id,
         m.name = $name,
         m.content = $content,
         m.timestamp = $timestamp,
@@ -82,7 +84,10 @@ async def backfill():
                 author_id = payload.get("author_id", user_id)
                 author_is_bot = payload.get("author_is_bot", False)
                 
-                # Create human-readable name
+                # Truncate content to 500 chars (matches production behavior)
+                truncated_content = smart_truncate(content, 500)
+                
+                # Create human-readable name (50 chars for readability)
                 memory_name = content[:50].strip() if content else "memory"
                 if len(content) > 50:
                     memory_name += "..."
@@ -97,7 +102,7 @@ async def backfill():
                         user_id=str(user_id),
                         vector_id=str(vector_id),
                         name=memory_name,
-                        content=content,
+                        content=truncated_content,
                         timestamp=timestamp_str,
                         source_type=source_type,
                         bot_name=BOT_NAME,
