@@ -6,7 +6,6 @@ x-bot-defaults: &bot-defaults
   restart: unless-stopped
   volumes:
     - .:/app
-    - /app/.venv
     - ./logs:/app/logs
   depends_on:
     postgres:
