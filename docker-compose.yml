@@ -59,10 +59,6 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data_v2:/qdrant/storage
-    deploy:
-      resources:
-        limits:
-          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"] 
       interval: 10s
@@ -83,9 +79,10 @@ services:
     environment:
       NEO4J_AUTH: neo4j/password
       # Neo4j 5.x uses server.* instead of deprecated dbms.* settings
-      NEO4J_server_memory_pagecache_size: 512M
-      NEO4J_server_memory_heap_initial__size: 512M
-      NEO4J_server_memory_heap_max__size: 1G
+      # Increased for native Linux - no Docker Desktop VM constraints
+      NEO4J_server_memory_pagecache_size: 2G
+      NEO4J_server_memory_heap_initial__size: 2G
+      NEO4J_server_memory_heap_max__size: 4G
     volumes:
       - neo4j_data_v2:/data
       - neo4j_logs_v2:/logs
@@ -411,9 +408,6 @@ services:
     profiles: ["worker", "all"]
     deploy:
       replicas: 1
-      resources:
-        limits:
-          memory: 2G
     env_file:
       - .env.worker
     environment:
@@ -430,9 +424,6 @@ services:
     profiles: ["worker", "all"]
     deploy:
       replicas: 1
-      resources:
-        limits:
-          memory: 1G
     env_file:
       - .env.worker
     environment:
@@ -449,9 +440,6 @@ services:
     profiles: ["worker", "all"]
     deploy:
       replicas: 1
-      resources:
-        limits:
-          memory: 1G
     env_file:
       - .env.worker
     environment:
@@ -468,9 +456,6 @@ services:
     profiles: ["worker", "all"]
     deploy:
       replicas: 1
-      resources:
-        limits:
-          memory: 1G
     env_file:
       - .env.worker
     environment:
